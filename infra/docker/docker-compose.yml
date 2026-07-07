@@ -1,0 +1,112 @@
+services:
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: porprov_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-porprov_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-porprov_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-porprov_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - porprov_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: porprov_redis
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD:-porprov_redis_secret}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - porprov_network
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: porprov_nats
+    restart: always
+    command: ["-js"]
+    ports:
+      - "4222:4222" # Client port
+      - "8222:8222" # Management port
+    volumes:
+      - nats_data:/data
+    networks:
+      - porprov_network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: porprov_keycloak
+    restart: always
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-porprov_db}
+      KC_DB_USERNAME: ${POSTGRES_USER:-porprov_admin}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-porprov_secret}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_secret}
+      KC_HEALTH_ENABLED: 'true'
+      KC_METRICS_ENABLED: 'true'
+    command: start-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - porprov_network
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: porprov_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - keycloak
+    networks:
+      - porprov_network
+
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: porprov_prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - porprov_network
+
+  grafana:
+    image: grafana/grafana-oss:10.0.3
+    container_name: porprov_grafana
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - porprov_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  nats_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  porprov_network:
+    driver: bridge

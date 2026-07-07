@@ -1,0 +1,4 @@
+FROM sqlc/sqlc
+COPY . /src
+WORKDIR /src
+CMD ["generate"]

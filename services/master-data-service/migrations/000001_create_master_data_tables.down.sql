@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS nomor_tandings;
+DROP TABLE IF EXISTS cabors;
+DROP TABLE IF EXISTS kontingens;

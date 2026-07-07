@@ -1,0 +1,10 @@
+go 1.25.0
+
+use (
+	./services/api-gateway
+	./services/user-service
+	./services/master-data-service
+	./services/schedule-service
+	./services/audit-service
+	./packages/messaging
+)
