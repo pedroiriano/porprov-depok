@@ -42,16 +42,14 @@
   --text-muted: #64748b;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark Mode - ESPN / Flashscore inspired */
-    --bg-base: #020617; /* Very dark slate */
-    --bg-surface: #0f172a; 
-    --bg-elevated: rgba(15, 23, 42, 0.7);
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #64748b;
-  }
+.dark {
+  /* Dark Mode - ESPN / Flashscore inspired */
+  --bg-base: #020617; /* Very dark slate */
+  --bg-surface: #0f172a; 
+  --bg-elevated: rgba(15, 23, 42, 0.7);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
 }
 
 body {

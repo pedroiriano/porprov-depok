@@ -1,6 +1,10 @@
 import { Trophy, Calendar, MapPin, ChevronRight, Activity } from "lucide-react";
+import { CountdownTimer } from "@/components/CountdownTimer";
 
 export default function Home() {
+  // PORPROV XV starts on November 7, 2026
+  const targetDate = "2026-11-07T00:00:00+07:00";
+
   return (
     <div className="flex flex-col gap-12 pb-16">
       {/* Hero Section */}
@@ -13,7 +17,7 @@ export default function Home() {
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-12 md:py-20 flex flex-col md:flex-row items-center gap-8">
           <div className="flex-1 text-center md:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white text-sm font-medium mb-6 glass">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white text-sm font-medium mb-6 backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-accent-500 animate-pulse-subtle"></span>
               Menuju Pembukaan PORPROV XV
             </div>
@@ -30,7 +34,7 @@ export default function Home() {
               <button className="px-6 py-3 rounded-xl bg-accent-500 hover:bg-accent-600 text-white font-semibold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2">
                 Lihat Jadwal <Calendar className="w-5 h-5" />
               </button>
-              <button className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold transition-all glass flex items-center justify-center gap-2">
+              <button className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold transition-all backdrop-blur-md flex items-center justify-center gap-2">
                 Jelajahi Venue <MapPin className="w-5 h-5" />
               </button>
             </div>
@@ -38,24 +42,10 @@ export default function Home() {
           
           {/* Countdown Widget */}
           <div className="w-full md:w-auto mt-8 md:mt-0">
-            <div className="glass-card p-6 md:p-8 bg-white/10 border border-white/20 text-white min-w-[320px]">
-              <h3 className="text-center font-medium text-blue-100 mb-6 uppercase tracking-wider text-sm">Hitung Mundur</h3>
-              <div className="flex justify-between gap-4">
-                <div className="flex flex-col items-center">
-                  <span className="text-4xl font-bold font-mono">142</span>
-                  <span className="text-xs text-blue-200 mt-1">HARI</span>
-                </div>
-                <div className="text-3xl font-light text-blue-300/50">:</div>
-                <div className="flex flex-col items-center">
-                  <span className="text-4xl font-bold font-mono">08</span>
-                  <span className="text-xs text-blue-200 mt-1">JAM</span>
-                </div>
-                <div className="text-3xl font-light text-blue-300/50">:</div>
-                <div className="flex flex-col items-center">
-                  <span className="text-4xl font-bold font-mono">45</span>
-                  <span className="text-xs text-blue-200 mt-1">MNT</span>
-                </div>
-              </div>
+            <div className="p-6 md:p-8 bg-white/10 border border-white/20 text-white min-w-[320px] rounded-3xl backdrop-blur-xl shadow-2xl">
+              <h3 className="text-center font-bold text-blue-100 mb-2 uppercase tracking-wider text-sm">Hitung Mundur Pembukaan</h3>
+              <p className="text-center text-blue-200/70 text-xs mb-6">Waktu Indonesia Barat (GMT+7)</p>
+              <CountdownTimer targetDate={targetDate} />
             </div>
           </div>
         </div>

@@ -1,0 +1,87 @@
+"use client";
+
+import { useState, useEffect } from "react";
+
+interface CountdownProps {
+  targetDate: string; // ISO String format
+}
+
+export function CountdownTimer({ targetDate }: CountdownProps) {
+  const [timeLeft, setTimeLeft] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const target = new Date(targetDate).getTime();
+
+    const calculateTimeLeft = () => {
+      const now = new Date().getTime();
+      const difference = target - now;
+
+      if (difference <= 0) {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+
+      return {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((difference % (1000 * 60)) / 1000),
+      };
+    };
+
+    // Set immediately on mount
+    setTimeLeft(calculateTimeLeft());
+
+    const interval = setInterval(() => {
+      const newTimeLeft = calculateTimeLeft();
+      setTimeLeft(newTimeLeft);
+      
+      if (newTimeLeft.days === 0 && newTimeLeft.hours === 0 && newTimeLeft.minutes === 0 && newTimeLeft.seconds === 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [targetDate]);
+
+  if (!mounted) {
+    return (
+      <div className="flex gap-4 justify-center mt-6">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex flex-col items-center">
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-200 dark:bg-slate-800 rounded-2xl animate-pulse backdrop-blur-md"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-3 sm:gap-4 justify-center mt-6">
+      {[
+        { label: 'Hari', value: timeLeft.days },
+        { label: 'Jam', value: timeLeft.hours },
+        { label: 'Menit', value: timeLeft.minutes },
+        { label: 'Detik', value: timeLeft.seconds },
+      ].map((item, idx) => (
+        <div key={idx} className="flex flex-col items-center">
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-white/80 dark:bg-slate-800/80 rounded-2xl flex items-center justify-center backdrop-blur-md shadow-lg border border-white/20 dark:border-slate-700/50">
+            <span className="text-2xl md:text-3xl font-black text-primary-600 dark:text-primary-400">
+              {item.value.toString().padStart(2, '0')}
+            </span>
+          </div>
+          <span className="text-xs md:text-sm font-bold text-white mt-2 uppercase tracking-wider text-shadow-sm">
+            {item.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}

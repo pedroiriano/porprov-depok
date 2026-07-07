@@ -1,6 +1,10 @@
 package router
 
 import (
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -8,6 +12,25 @@ import (
 	"github.com/porprov-xv/porprov-depok/services/api-gateway/internal/handler"
 	customMiddleware "github.com/porprov-xv/porprov-depok/services/api-gateway/internal/middleware"
 )
+
+// setupProxy creates a reverse proxy to a target URL
+func setupProxy(targetURL string) http.HandlerFunc {
+	url, _ := url.Parse(targetURL)
+	proxy := httputil.NewSingleHostReverseProxy(url)
+	
+	// Modifikasi request agar path diteruskan dengan benar ke service downstream
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Header.Set("X-Proxy", "API-Gateway")
+		// Host harus diset ke URL target agar request tidak ditolak
+		req.Host = url.Host
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		proxy.ServeHTTP(w, r)
+	}
+}
 
 // SetupRouter mengonfigurasi dan mengembalikan Chi mux router
 func SetupRouter(jwtMid *customMiddleware.JWTMiddleware) *chi.Mux {
@@ -39,6 +62,19 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware) *chi.Mux {
 			r.Use(jwtMid.RequireAuth)
 			r.Get("/profile", handler.ProfileHandler)
 		})
+
+		// Reverse Proxy ke Microservices
+		// Master Data Service (Port 8081)
+		r.Handle("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1")))
+		r.Handle("/master-data", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1")))
+		
+		// Schedule Service (Port 8082)
+		r.Handle("/schedule/*", http.StripPrefix("/api/v1/schedule", setupProxy("http://localhost:8082/api/v1")))
+		r.Handle("/schedule", http.StripPrefix("/api/v1/schedule", setupProxy("http://localhost:8082/api/v1")))
+
+		// Audit Service (Port 8084)
+		r.Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy("http://localhost:8084/api/v1")))
+		r.Handle("/audit", http.StripPrefix("/api/v1/audit", setupProxy("http://localhost:8084/api/v1")))
 	})
 
 	return r
