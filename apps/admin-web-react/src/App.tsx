@@ -75,18 +75,56 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
               {location.pathname === '/' ? 'Dashboard' : location.pathname.split('/')[1].replace('-', ' ')}
             </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <button className="relative p-2 rounded-full text-slate-400 hover:bg-slate-100">
+          <div className="flex items-center gap-4 relative">
+            <button 
+              onClick={() => {
+                const el = document.getElementById('notification-dropdown');
+                if (el) el.classList.toggle('hidden');
+              }}
+              className="relative p-2 rounded-full text-slate-400 hover:bg-slate-100"
+            >
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
             </button>
-            <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
+            <div id="notification-dropdown" className="hidden absolute top-12 right-0 w-80 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h3 className="font-bold text-sm text-text-primary">Notifikasi</h3>
+                <span className="text-xs text-primary-600 font-medium cursor-pointer">Tandai semua dibaca</span>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                <div className="px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                  <p className="text-sm font-medium text-text-primary">Selamat datang di Portal PORPROV</p>
+                  <p className="text-xs text-text-muted mt-1">Sistem berhasil dikonfigurasi dan siap digunakan.</p>
+                </div>
+                <div className="px-4 py-3 hover:bg-slate-50 transition-colors">
+                  <p className="text-sm font-medium text-text-primary">Perubahan Jadwal: Final Sepak Bola</p>
+                  <p className="text-xs text-text-muted mt-1">Admin telah memindahkan jadwal final ke Stadion Merpati.</p>
+                </div>
+              </div>
+              <div className="px-4 py-2 border-t border-slate-100 text-center">
+                <span className="text-xs text-primary-600 font-medium cursor-pointer">Lihat semua notifikasi</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 border-l border-slate-200 pl-4 relative cursor-pointer"
+                 onClick={() => {
+                   const el = document.getElementById('user-dropdown');
+                   if (el) el.classList.toggle('hidden');
+                 }}>
               <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600">
                 {String(auth.user?.profile.preferred_username || "U").charAt(0).toUpperCase()}
               </div>
               <div className="hidden md:block text-sm">
                 <p className="font-semibold text-text-primary leading-none mb-1">{auth.user?.profile.preferred_username || auth.user?.profile.name}</p>
                 <p className="text-xs text-text-muted leading-none">{isAdmin ? 'Admin' : 'Koresponden'}</p>
+              </div>
+              
+              <div id="user-dropdown" className="hidden absolute top-12 right-0 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                <div className="px-4 py-2 border-b border-slate-100 hover:bg-slate-50">
+                  <a href="http://localhost:8080/realms/porprov/account/" target="_blank" rel="noreferrer" className="text-sm text-text-primary block w-full text-left">Manajemen Akun</a>
+                </div>
+                <div className="px-4 py-2 hover:bg-red-50">
+                  <button onClick={() => auth.signoutRedirect()} className="text-sm text-danger-500 font-medium block w-full text-left">Logout</button>
+                </div>
               </div>
             </div>
           </div>

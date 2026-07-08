@@ -18,6 +18,7 @@ import (
 func setupProxy(targetURL string) http.HandlerFunc {
 	url, _ := url.Parse(targetURL)
 	proxy := httputil.NewSingleHostReverseProxy(url)
+	proxy.FlushInterval = -1 // Ensure immediate flush for SSE
 	
 	// Modifikasi request agar path diteruskan dengan benar ke service downstream
 	originalDirector := proxy.Director

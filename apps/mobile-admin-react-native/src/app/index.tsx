@@ -1,6 +1,8 @@
 import { View, Text, Pressable, ScrollView } from 'react-native';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Clock, MapPin, ChevronRight, Activity } from 'lucide-react-native';
+import EventSource from 'react-native-sse';
 
 const ASSIGNED_MATCHES = [
   {
@@ -25,6 +27,50 @@ const ASSIGNED_MATCHES = [
 
 export default function KorespondenDashboard() {
   const router = useRouter();
+  const [matches, setMatches] = useState(ASSIGNED_MATCHES);
+  const [sseConnected, setSseConnected] = useState(false);
+
+  useEffect(() => {
+    // In production, point to actual API Gateway SSE endpoint
+    // For local emulator, usually 10.0.2.2 points to localhost of the host machine
+    const sse = new EventSource('http://10.0.2.2:8080/api/v1/stream/events');
+    
+    sse.addEventListener('open', () => {
+      setSseConnected(true);
+    });
+
+    sse.addEventListener('message', (event: any) => {
+      if (event.data) {
+        try {
+          const data = JSON.parse(event.data);
+          // If it's a livescore update, update the matches
+          if (data.matchId) {
+            setMatches(prev => prev.map(m => {
+              if (m.id === data.matchId) {
+                return {
+                  ...m,
+                  score: `${data.scoreA} - ${data.scoreB}`,
+                  status: data.status || m.status
+                };
+              }
+              return m;
+            }));
+          }
+        } catch (e) {
+          console.error("Error parsing SSE data", e);
+        }
+      }
+    });
+
+    sse.addEventListener('error', (event) => {
+      setSseConnected(false);
+    });
+
+    return () => {
+      sse.removeAllEventListeners();
+      sse.close();
+    };
+  }, []);
 
   return (
     <ScrollView className="flex-1 px-4 py-6 bg-slate-50">
@@ -34,7 +80,7 @@ export default function KorespondenDashboard() {
       </View>
 
       <View className="flex-col gap-4">
-        {ASSIGNED_MATCHES.map((match) => (
+        {matches.map((match) => (
           <Pressable 
             key={match.id}
             onPress={() => router.push(`/match/${match.id}`)}
@@ -73,11 +119,15 @@ export default function KorespondenDashboard() {
         ))}
       </View>
 
-      <View className="mt-8 bg-blue-50 p-4 rounded-xl border border-blue-100 flex-row gap-3">
-        <Activity size={24} color="#3b82f6" />
+      <View className={`mt-8 p-4 rounded-xl border flex-row gap-3 ${sseConnected ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
+        <Activity size={24} color={sseConnected ? "#3b82f6" : "#ef4444"} />
         <View className="flex-1">
-          <Text className="font-semibold text-blue-900 mb-1">Sistem Terhubung</Text>
-          <Text className="text-xs text-blue-700">Koneksi ke API Gateway stabil. LiveScore akan disinkronisasi seketika.</Text>
+          <Text className={`font-semibold mb-1 ${sseConnected ? 'text-blue-900' : 'text-red-900'}`}>
+            {sseConnected ? 'Sistem Terhubung' : 'Terputus (SSE)'}
+          </Text>
+          <Text className={`text-xs ${sseConnected ? 'text-blue-700' : 'text-red-700'}`}>
+            {sseConnected ? 'Koneksi ke API Gateway stabil. LiveScore tersinkronisasi.' : 'Menunggu koneksi ulang...'}
+          </Text>
         </View>
       </View>
     </ScrollView>

@@ -18,6 +18,12 @@ export default function HomeScreen() {
         <Text className="text-white text-3xl font-black mb-2 text-center">PORPROV XV</Text>
         <Text className="text-primary-100 text-center mb-6 font-medium">Jawa Barat 2026 • Kota Depok</Text>
         
+        <Image 
+          source={require('../../assets/extracted/page5_img1.png')} 
+          className="w-48 h-48 mb-6"
+          resizeMode="contain"
+        />
+        
         <View className="bg-white/10 p-5 rounded-3xl w-full max-w-sm border border-white/20">
           <Text className="text-center font-bold text-white mb-1 uppercase tracking-wider text-xs">Hitung Mundur Pembukaan</Text>
           <Text className="text-center font-medium text-blue-200 text-[10px] mb-2">Waktu Indonesia Barat (GMT+7)</Text>

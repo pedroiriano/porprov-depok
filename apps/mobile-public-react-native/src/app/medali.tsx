@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, Image } from 'react-native';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import EventSource from 'react-native-sse';
 
 export default function MedaliScreen() {
   const dummyStandings = [
@@ -10,6 +11,43 @@ export default function MedaliScreen() {
     { id: '5', rank: 5, region: 'Kab. Bogor', gold: 76, silver: 80, bronze: 92 },
     { id: '6', rank: 6, region: 'Kota Bekasi', gold: 60, silver: 55, bronze: 65 },
   ];
+
+  const [standings, setStandings] = useState(dummyStandings);
+  const [sseConnected, setSseConnected] = useState(false);
+
+  useEffect(() => {
+    // 10.0.2.2 is loopback for Android emulator pointing to localhost
+    const sse = new EventSource('http://10.0.2.2:8080/api/v1/stream/events');
+    
+    sse.addEventListener('open', () => {
+      setSseConnected(true);
+    });
+
+    sse.addEventListener('message', (event: any) => {
+      if (event.data) {
+        try {
+          const data = JSON.parse(event.data);
+          // Assuming Medals update event has 'action' === 'MEDAL_UPDATE' and 'data' with the new standings or specific kontingen
+          if (data.action === 'MEDAL_UPDATE' || data.kontingen_id) {
+            // This is a placeholder logic for updating medals
+            // In a real scenario, you'd merge the array or refetch
+            // For now, let's just trigger a re-render or update dummy if matched
+          }
+        } catch (e) {
+          console.error("Parse error", e);
+        }
+      }
+    });
+
+    sse.addEventListener('error', () => {
+      setSseConnected(false);
+    });
+
+    return () => {
+      sse.removeAllEventListeners();
+      sse.close();
+    };
+  }, []);
 
   return (
     <View className="flex-1 bg-slate-950">
@@ -34,11 +72,11 @@ export default function MedaliScreen() {
             </View>
 
             {/* Table Rows */}
-            {dummyStandings.map((item, index) => (
+            {standings.map((item, index) => (
               <View 
                 key={item.id} 
                 className={`flex-row items-center px-4 py-4 ${
-                  index !== dummyStandings.length - 1 ? 'border-b border-slate-800' : ''
+                  index !== standings.length - 1 ? 'border-b border-slate-800' : ''
                 } ${item.region === 'Kota Depok' ? 'bg-primary-900/20' : ''}`}
               >
                 <View className="w-8 items-center">

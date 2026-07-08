@@ -109,6 +109,31 @@ func main() {
 		select {}
 	}()
 
+	// Consume messages from JetStream for Medals
+	medalConsumer, err := js.CreateOrUpdateConsumer(ctx, "MEDALS", jetstream.ConsumerConfig{
+		Durable:       "realtime_gateway_medals",
+		FilterSubject: "realtime.medals",
+		AckPolicy:     jetstream.AckExplicitPolicy,
+	})
+	if err == nil {
+		go func() {
+			cc, _ := medalConsumer.Consume(func(msg jetstream.Msg) {
+				data := msg.Data()
+				
+				// Cache in Redis for Medals (Optional, just keep latest)
+				rdb.Set(ctx, "medals:latest", data, 24*time.Hour)
+
+				// Broadcast to SSE clients
+				broadcastEvent(data)
+				msg.Ack()
+			})
+			defer cc.Stop()
+			select {}
+		}()
+	} else {
+		log.Printf("Warning: Failed to create medal consumer: %v", err)
+	}
+
 	// HTTP Server
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -119,7 +144,7 @@ func main() {
 		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "Cache-Control"},
 	}))
 
-	r.Get("/api/v1/stream/livescore", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/api/v1/stream/events", func(w http.ResponseWriter, r *http.Request) {
 		flusher, ok := w.(http.Flusher)
 		if !ok {
 			http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
@@ -153,6 +178,12 @@ func main() {
 				fmt.Fprintf(w, "data: %s\n\n", data)
 			}
 		}
+
+		medalData, err := rdb.Get(ctx, "medals:latest").Bytes()
+		if err == nil {
+			fmt.Fprintf(w, "data: %s\n\n", medalData)
+		}
+
 		flusher.Flush()
 
 		// Listen for new events

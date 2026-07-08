@@ -8,6 +8,7 @@ const oidcConfig = {
   authority: "http://localhost:8080/realms/porprov",
   client_id: "porprov-admin-web",
   redirect_uri: "http://localhost:5173/",
+  post_logout_redirect_uri: "http://localhost:5173/",
   onSigninCallback: () => {
     window.history.replaceState({}, document.title, window.location.pathname)
   }

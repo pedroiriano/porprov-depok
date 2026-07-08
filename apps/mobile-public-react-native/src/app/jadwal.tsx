@@ -1,5 +1,6 @@
 import { View, Text, ScrollView } from 'react-native';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import EventSource from 'react-native-sse';
 import { MatchCard } from '../components/MatchCard';
 
 export default function JadwalScreen() {
@@ -43,8 +44,51 @@ export default function JadwalScreen() {
       team2: 'Kota Bogor',
       status: 'UPCOMING' as const,
       time: '16:45',
-    },
   ];
+
+  const [matches, setMatches] = useState(dummyMatches);
+  const [sseConnected, setSseConnected] = useState(false);
+
+  useEffect(() => {
+    // 10.0.2.2 is loopback for Android emulator pointing to localhost
+    const sse = new EventSource('http://10.0.2.2:8080/api/v1/stream/events');
+    
+    sse.addEventListener('open', () => {
+      setSseConnected(true);
+    });
+
+    sse.addEventListener('message', (event: any) => {
+      if (event.data) {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.matchId) {
+            setMatches(prev => prev.map(m => {
+              if (m.id === data.matchId) {
+                return {
+                  ...m,
+                  score1: String(data.scoreA),
+                  score2: String(data.scoreB),
+                  status: (data.status === 'Berlangsung' ? 'LIVE' : data.status === 'Selesai' ? 'FINISHED' : 'UPCOMING') as any
+                };
+              }
+              return m;
+            }));
+          }
+        } catch (e) {
+          console.error("Parse error", e);
+        }
+      }
+    });
+
+    sse.addEventListener('error', () => {
+      setSseConnected(false);
+    });
+
+    return () => {
+      sse.removeAllEventListeners();
+      sse.close();
+    };
+  }, []);
 
   return (
     <View className="flex-1 bg-slate-950">
@@ -64,7 +108,7 @@ export default function JadwalScreen() {
       <ScrollView className="flex-1 px-4 pt-4">
         <Text className="text-slate-400 font-medium text-sm mb-4 uppercase tracking-wider">Selasa, 10 Nov 2026</Text>
         
-        {dummyMatches.map((match) => (
+        {matches.map((match) => (
           <MatchCard
             key={match.id}
             caborName={match.caborName}

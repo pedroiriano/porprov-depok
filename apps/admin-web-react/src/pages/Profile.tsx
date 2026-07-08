@@ -66,7 +66,7 @@ export default function Profile() {
               <p className="text-sm text-slate-500 mb-4">Terautentikasi via Keycloak</p>
               
               <button 
-                onClick={() => auth.signinRedirect()} 
+                onClick={() => window.open('http://localhost:8080/realms/porprov/account/', '_blank')} 
                 className="w-full py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center justify-center gap-2"
               >
                 <Key className="w-4 h-4" /> Manajemen Akun

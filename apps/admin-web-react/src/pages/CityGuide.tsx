@@ -151,10 +151,13 @@ export default function CityGuide() {
                   onChange={(e) => setFormData({...formData, category: e.target.value})}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="Wisata">Wisata</option>
-                  <option value="Kuliner">Kuliner</option>
-                  <option value="Transportasi">Transportasi</option>
-                  <option value="Lainnya">Lainnya</option>
+                  <option value="Coffee Shop">Coffee Shop</option>
+                  <option value="Wisata Kuliner">Wisata Kuliner</option>
+                  <option value="Tempat Menginap">Tempat Menginap</option>
+                  <option value="Wisata Buatan">Wisata Buatan</option>
+                  <option value="Wisata Situ">Wisata Situ</option>
+                  <option value="Pusat Perbelanjaan">Pusat Perbelanjaan</option>
+                  <option value="Rumah Sakit">Rumah Sakit</option>
                 </select>
               </div>
               <div>
