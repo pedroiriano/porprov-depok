@@ -16,8 +16,8 @@ export default async function CaborPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-text-primary">Daftar Cabang Olahraga</h1>
-        <p className="text-text-secondary mt-2">Seluruh cabang olahraga yang dipertandingkan pada PORPROV XV Jawa Barat 2026 di Kota Depok.</p>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Daftar Cabang Olahraga</h1>
+        <p className="text-slate-700 dark:text-slate-300 mt-2">Seluruh cabang olahraga yang dipertandingkan pada PORPROV XV Jawa Barat 2026 di Kota Depok.</p>
       </div>
 
       {cabors.length === 0 ? (
@@ -33,8 +33,8 @@ export default async function CaborPage() {
                 <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mb-4 text-primary-600 font-bold text-xl group-hover:scale-110 transition-transform">
                   {cabor.name.charAt(0)}
                 </div>
-                <h3 className="text-xl font-bold text-text-primary mb-2">{cabor.name}</h3>
-                <p className="text-sm text-text-secondary line-clamp-2">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">{cabor.name}</h3>
+                <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
                   {cabor.description?.String || 'Cabang olahraga resmi PORPROV XV.'}
                 </p>
                 <div className="mt-4 flex items-center gap-2">

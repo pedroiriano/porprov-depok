@@ -19,7 +19,7 @@ export function Navbar() {
         </div>
         
         <div className="flex items-center gap-4 md:gap-6">
-          <nav className="hidden md:flex items-center gap-6 font-medium text-sm text-text-secondary dark:text-slate-300">
+          <nav className="hidden md:flex items-center gap-6 font-medium text-sm text-slate-700 dark:text-slate-300 dark:text-slate-300">
             <a href="/" className="hover:text-primary-500 dark:hover:text-primary-400 transition-colors">Beranda</a>
             <a href="/cabor" className="hover:text-primary-500 dark:hover:text-primary-400 transition-colors">Cabor</a>
             <a href="/jadwal" className="hover:text-primary-500 dark:hover:text-primary-400 transition-colors">Jadwal</a>
@@ -33,7 +33,7 @@ export function Navbar() {
           <ThemeToggle />
           
           <button 
-            className="md:hidden p-2 text-text-secondary dark:text-slate-300 focus:outline-none"
+            className="md:hidden p-2 text-slate-700 dark:text-slate-300 dark:text-slate-300 focus:outline-none"
             onClick={() => setIsOpen(!isOpen)}
             aria-label="Toggle Menu"
           >
@@ -49,14 +49,14 @@ export function Navbar() {
       {/* Mobile Menu */}
       {isOpen && (
         <div className="md:hidden absolute top-16 left-0 w-full glass dark:bg-slate-900/95 border-b border-white/10 dark:border-slate-800/50 flex flex-col px-4 py-6 gap-4 shadow-xl">
-          <a href="/" className="text-text-primary dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Beranda</a>
-          <a href="/cabor" className="text-text-primary dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Cabang Olahraga</a>
-          <a href="/jadwal" className="text-text-primary dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Jadwal Pertandingan</a>
-          <a href="/livescore" className="text-text-primary dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors flex items-center gap-2" onClick={() => setIsOpen(false)}>
+          <a href="/" className="text-slate-900 dark:text-slate-100 dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Beranda</a>
+          <a href="/cabor" className="text-slate-900 dark:text-slate-100 dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Cabang Olahraga</a>
+          <a href="/jadwal" className="text-slate-900 dark:text-slate-100 dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Jadwal Pertandingan</a>
+          <a href="/livescore" className="text-slate-900 dark:text-slate-100 dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors flex items-center gap-2" onClick={() => setIsOpen(false)}>
             <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse-subtle"></span>
             Live Score Real-time
           </a>
-          <a href="/medali" className="text-text-primary dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Klasemen Medali</a>
+          <a href="/medali" className="text-slate-900 dark:text-slate-100 dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Klasemen Medali</a>
         </div>
       )}
     </header>

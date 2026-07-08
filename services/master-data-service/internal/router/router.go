@@ -10,7 +10,7 @@ import (
 	"github.com/porprov-xv/porprov-depok/services/master-data-service/internal/handler"
 )
 
-func SetupRouter(masterDataHandler *handler.MasterDataHandler) *chi.Mux {
+func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler *handler.CityGuideHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
@@ -45,6 +45,13 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler) *chi.Mux {
 			r.Get("/{id}", masterDataHandler.GetKontingen)
 			r.Put("/{id}", masterDataHandler.UpdateKontingen)
 			r.Delete("/{id}", masterDataHandler.DeleteKontingen)
+		})
+		r.Route("/city-guides", func(r chi.Router) {
+			r.Post("/", cityGuideHandler.CreateCityGuide)
+			r.Get("/", cityGuideHandler.ListCityGuides)
+			r.Get("/{id}", cityGuideHandler.GetCityGuide)
+			r.Put("/{id}", cityGuideHandler.UpdateCityGuide)
+			r.Delete("/{id}", cityGuideHandler.DeleteCityGuide)
 		})
 	})
 

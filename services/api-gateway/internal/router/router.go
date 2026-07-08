@@ -11,6 +11,7 @@ import (
 
 	"github.com/porprov-xv/porprov-depok/services/api-gateway/internal/handler"
 	customMiddleware "github.com/porprov-xv/porprov-depok/services/api-gateway/internal/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // setupProxy creates a reverse proxy to a target URL
@@ -54,6 +55,9 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware) *chi.Mux {
 
 	// Endpoint publik
 	r.Get("/health", handler.HealthCheckHandler)
+	
+	// Observability: Metrics Endpoint
+	r.Handle("/metrics", promhttp.Handler())
 
 	// API Versi 1
 	r.Route("/api/v1", func(r chi.Router) {
@@ -61,20 +65,33 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware) *chi.Mux {
 		r.Group(func(r chi.Router) {
 			r.Use(jwtMid.RequireAuth)
 			r.Get("/profile", handler.ProfileHandler)
+
+			// Reverse Proxy ke Microservices
+			// Master Data Service (Port 8081)
+			r.Handle("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1")))
+			r.Handle("/master-data", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1")))
+			
+			// Schedule Service (Port 8082)
+			r.Handle("/schedule/*", http.StripPrefix("/api/v1/schedule", setupProxy("http://localhost:8082/api/v1")))
+			r.Handle("/schedule", http.StripPrefix("/api/v1/schedule", setupProxy("http://localhost:8082/api/v1")))
+
+			// Audit Service (Port 8084)
+			r.Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy("http://localhost:8084/api/v1")))
+			r.Handle("/audit", http.StripPrefix("/api/v1/audit", setupProxy("http://localhost:8084/api/v1")))
+			
+			// Livescore Service (Port 8083) - Hanya admin/koresponden yang boleh mengupdate skor
+			r.Handle("/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy("http://localhost:8083/api/v1/livescore")))
+			r.Handle("/livescore", http.StripPrefix("/api/v1/livescore", setupProxy("http://localhost:8083/api/v1/livescore")))
+			// Medal Standing Service (Port 8086)
+			r.Handle("/medals/*", http.StripPrefix("/api/v1/medals", setupProxy("http://localhost:8086/api/v1/medals")))
+			r.Handle("/medals", http.StripPrefix("/api/v1/medals", setupProxy("http://localhost:8086/api/v1/medals")))
 		})
 
-		// Reverse Proxy ke Microservices
-		// Master Data Service (Port 8081)
-		r.Handle("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1")))
-		r.Handle("/master-data", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1")))
-		
-		// Schedule Service (Port 8082)
-		r.Handle("/schedule/*", http.StripPrefix("/api/v1/schedule", setupProxy("http://localhost:8082/api/v1")))
-		r.Handle("/schedule", http.StripPrefix("/api/v1/schedule", setupProxy("http://localhost:8082/api/v1")))
+		// Rute Terbuka (Public)
+		// Realtime Gateway Service (Port 8085) - Penonton mengakses ini tanpa token
 
-		// Audit Service (Port 8084)
-		r.Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy("http://localhost:8084/api/v1")))
-		r.Handle("/audit", http.StripPrefix("/api/v1/audit", setupProxy("http://localhost:8084/api/v1")))
+		r.Handle("/stream/*", http.StripPrefix("/api/v1/stream", setupProxy("http://localhost:8085/api/v1/stream")))
+		r.Handle("/stream", http.StripPrefix("/api/v1/stream", setupProxy("http://localhost:8085/api/v1/stream")))
 	})
 
 	return r

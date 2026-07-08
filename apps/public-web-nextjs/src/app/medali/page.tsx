@@ -11,15 +11,15 @@ export default function Medali() {
             </div>
             Klasemen Medali
           </h1>
-          <p className="text-text-muted mt-2">Daftar perolehan medali resmi secara nasional per Kontingen.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">Daftar perolehan medali resmi secara nasional per Kontingen.</p>
         </div>
       </div>
 
-      <div className="glass-card bg-background-surface border border-slate-200 dark:border-slate-800 overflow-hidden shadow-lg">
+      <div className="glass-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-lg">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-100 dark:bg-slate-900/80 text-sm uppercase tracking-wider text-text-muted border-b border-slate-200 dark:border-slate-800">
+              <tr className="bg-slate-100 dark:bg-slate-900/80 text-sm uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                 <th className="p-5 font-semibold text-center w-20">Rank</th>
                 <th className="p-5 font-semibold">Kontingen Daerah</th>
                 <th className="p-5 font-semibold text-center">
@@ -53,7 +53,7 @@ export default function Medali() {
                     {idx === 0 ? (
                       <span className="w-8 h-8 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-700 mx-auto font-black">1</span>
                     ) : (
-                      <span className="text-text-muted">{item.rank}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{item.rank}</span>
                     )}
                   </td>
                   <td className="p-5">
@@ -62,9 +62,9 @@ export default function Medali() {
                       <span className="font-bold text-lg">{item.name}</span>
                     </div>
                   </td>
-                  <td className="p-5 text-center font-black text-xl text-text-primary">{item.gold}</td>
-                  <td className="p-5 text-center font-bold text-lg text-text-secondary">{item.silver}</td>
-                  <td className="p-5 text-center font-bold text-lg text-text-muted">{item.bronze}</td>
+                  <td className="p-5 text-center font-black text-xl text-slate-900 dark:text-slate-100">{item.gold}</td>
+                  <td className="p-5 text-center font-bold text-lg text-slate-700 dark:text-slate-300">{item.silver}</td>
+                  <td className="p-5 text-center font-bold text-lg text-slate-500 dark:text-slate-400">{item.bronze}</td>
                   <td className="p-5 text-center font-black text-2xl text-primary-600 dark:text-primary-400 bg-slate-50 dark:bg-slate-900/30">
                     {item.gold + item.silver + item.bronze}
                   </td>

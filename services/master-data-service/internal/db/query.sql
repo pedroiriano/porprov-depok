@@ -56,3 +56,31 @@ RETURNING *;
 
 -- name: DeleteKontingen :exec
 DELETE FROM kontingens WHERE id = $1;
+
+-- name: CreateCityGuide :one
+INSERT INTO city_guides (title, category, description, address, image_url)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: ListCityGuides :many
+SELECT * FROM city_guides
+WHERE category = COALESCE(NULLIF($1::text, ''), category)
+ORDER BY title ASC;
+
+-- name: GetCityGuideByID :one
+SELECT * FROM city_guides WHERE id = $1 LIMIT 1;
+
+-- name: UpdateCityGuide :one
+UPDATE city_guides
+SET 
+  title = COALESCE(NULLIF($2::text, ''), title),
+  category = COALESCE(NULLIF($3::text, ''), category),
+  description = COALESCE(NULLIF($4::text, ''), description),
+  address = COALESCE(NULLIF($5::text, ''), address),
+  image_url = COALESCE(NULLIF($6::text, ''), image_url),
+  updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteCityGuide :exec
+DELETE FROM city_guides WHERE id = $1;

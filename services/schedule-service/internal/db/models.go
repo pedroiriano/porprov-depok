@@ -33,6 +33,7 @@ type Venue struct {
 	Name      string             `json:"name"`
 	Address   pgtype.Text        `json:"address"`
 	Capacity  pgtype.Int4        `json:"capacity"`
+	City      string             `json:"city"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }

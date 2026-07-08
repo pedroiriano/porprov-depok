@@ -35,3 +35,14 @@ type NomorTanding struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
+
+type CityGuide struct {
+	ID          pgtype.UUID        `json:"id"`
+	Title       string             `json:"title"`
+	Category    string             `json:"category"`
+	Description pgtype.Text        `json:"description"`
+	Address     pgtype.Text        `json:"address"`
+	ImageUrl    pgtype.Text        `json:"image_url"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}

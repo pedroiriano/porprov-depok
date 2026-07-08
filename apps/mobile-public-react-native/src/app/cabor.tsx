@@ -1,75 +1,84 @@
 import { View, Text, FlatList, ActivityIndicator, Image } from 'react-native';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { Trophy } from 'lucide-react-native';
 
-interface Sport {
+interface Cabor {
   id: string;
   name: string;
-  category: string;
-  status: string;
-  venues_count?: number;
+  description?: string;
   icon_url?: string;
 }
 
 export default function CaborScreen() {
-  const [sports, setSports] = useState<Sport[]>([]);
+  const [cabors, setCabors] = useState<Cabor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSports();
+    fetchCabors();
   }, []);
 
-  const fetchSports = async () => {
+  const fetchCabors = async () => {
     try {
-      const response = await api.get('/master/sports');
-      setSports(response.data.data);
+      setLoading(true);
+      const res = await api.get('/master-data/cabors');
+      setCabors(res.data || []);
+      setError(null);
     } catch (err: any) {
-      console.error(err);
-      setError('Gagal memuat data cabang olahraga.');
+      setError(err.message || 'Gagal memuat cabang olahraga');
     } finally {
       setLoading(false);
     }
   };
 
-  const renderItem = ({ item }: { item: Sport }) => (
-    <View className="bg-background-elevated p-4 rounded-2xl mb-4 border border-slate-700/50 shadow-md flex-row items-center">
-      <View className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 items-center justify-center overflow-hidden mr-4">
-        {item.icon_url ? (
-          <Image source={{ uri: item.icon_url }} className="w-8 h-8 opacity-80" />
-        ) : (
-          <Text className="text-xl">🏅</Text>
-        )}
+  if (loading) {
+    return (
+      <View className="flex-1 bg-slate-950 items-center justify-center">
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text className="text-slate-400 mt-4 font-medium">Memuat Data Cabor...</Text>
       </View>
-      <View className="flex-1">
-        <Text className="text-white text-lg font-bold">{item.name}</Text>
-        <Text className="text-slate-400 text-sm">{item.category}</Text>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 bg-slate-950 items-center justify-center p-6">
+        <Text className="text-red-400 text-center mb-4">{error}</Text>
+        <View className="bg-primary-600 px-6 py-2 rounded-lg">
+          <Text className="text-white font-bold" onPress={fetchCabors}>Coba Lagi</Text>
+        </View>
       </View>
-      <View className="bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700">
-        <Text className="text-xs text-slate-300">Aktif</Text>
-      </View>
-    </View>
-  );
+    );
+  }
 
   return (
-    <View className="flex-1 bg-background p-4">
-      {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#3b82f6" />
-        </View>
-      ) : error ? (
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-red-400">{error}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={sports}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+    <View className="flex-1 bg-slate-950">
+      <FlatList
+        data={cabors}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ padding: 16 }}
+        renderItem={({ item }) => (
+          <View className="bg-slate-900 rounded-2xl mb-4 p-4 flex-row items-center border border-slate-800 shadow-md">
+            <View className="w-12 h-12 bg-blue-500/10 rounded-full items-center justify-center mr-4 border border-blue-500/20">
+              <Trophy size={24} color="#3b82f6" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-white font-bold text-lg mb-1">{item.name}</Text>
+              {item.description ? (
+                <Text className="text-slate-400 text-sm" numberOfLines={2}>
+                  {item.description}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        )}
+        ListEmptyComponent={
+          <View className="py-10 items-center">
+            <Text className="text-slate-500 text-center">Belum ada data cabang olahraga.</Text>
+          </View>
+        }
+      />
     </View>
   );
 }

@@ -67,8 +67,8 @@ export default function Home() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="glass-card p-5 bg-background-surface border border-slate-200 dark:border-slate-800">
-              <div className="flex justify-between items-center mb-4 text-xs font-semibold text-text-muted">
+            <div key={i} className="glass-card p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <div className="flex justify-between items-center mb-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
                 <span className="uppercase tracking-wider">Bulutangkis - Final</span>
                 <span className="text-red-500 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse-subtle"></span> Set 2</span>
               </div>
@@ -85,7 +85,7 @@ export default function Home() {
                     <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700"></div>
                     <span className="font-medium">Kota Bandung</span>
                   </div>
-                  <span className="text-xl font-bold text-text-muted">18</span>
+                  <span className="text-xl font-bold text-slate-500 dark:text-slate-400">18</span>
                 </div>
               </div>
             </div>
@@ -107,11 +107,11 @@ export default function Home() {
           </a>
         </div>
         
-        <div className="glass-card overflow-hidden border border-slate-200 dark:border-slate-800 bg-background-surface">
+        <div className="glass-card overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase tracking-wider text-text-muted border-b border-slate-200 dark:border-slate-800">
+                <tr className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                   <th className="p-4 font-semibold">Peringkat</th>
                   <th className="p-4 font-semibold">Kontingen</th>
                   <th className="p-4 font-semibold text-center text-yellow-500">Emas</th>
@@ -132,9 +132,9 @@ export default function Home() {
                       <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700"></div>
                       {item.name}
                     </td>
-                    <td className="p-4 text-center font-bold text-text-primary">{item.gold}</td>
-                    <td className="p-4 text-center font-bold text-text-secondary">{item.silver}</td>
-                    <td className="p-4 text-center font-bold text-text-muted">{item.bronze}</td>
+                    <td className="p-4 text-center font-bold text-slate-900 dark:text-slate-100">{item.gold}</td>
+                    <td className="p-4 text-center font-bold text-slate-700 dark:text-slate-300">{item.silver}</td>
+                    <td className="p-4 text-center font-bold text-slate-500 dark:text-slate-400">{item.bronze}</td>
                     <td className="p-4 text-center font-black text-primary-600 dark:text-primary-400">
                       {item.gold + item.silver + item.bronze}
                     </td>

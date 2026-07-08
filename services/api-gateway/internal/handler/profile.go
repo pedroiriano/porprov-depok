@@ -17,12 +17,22 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var roles []string
+	if realmAccess, ok := claims["realm_access"].(map[string]interface{}); ok {
+		if rolesInterface, ok := realmAccess["roles"].([]interface{}); ok {
+			for _, v := range rolesInterface {
+				roles = append(roles, v.(string))
+			}
+		}
+	}
+
 	// INFO: Mendapatkan data penting dari JWT Keycloak
 	data := map[string]interface{}{
 		"user_id":  claims["sub"],
 		"username": claims["preferred_username"],
 		"email":    claims["email"],
-		"roles":    claims["realm_access"],
+		"name":     claims["name"], // Biasanya keycloak menyertakan name
+		"roles":    roles,
 	}
 
 	response.JSON(w, r, http.StatusOK, "User profile retrieved successfully", data)

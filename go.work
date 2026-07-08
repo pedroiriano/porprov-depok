@@ -1,10 +1,12 @@
-go 1.25.0
+go 1.26.4
 
 use (
-	./services/api-gateway
-	./services/user-service
-	./services/master-data-service
-	./services/schedule-service
-	./services/audit-service
 	./packages/messaging
+	./services/api-gateway
+	./services/audit-service
+	./services/livescore-service
+	./services/master-data-service
+	./services/realtime-gateway
+	./services/schedule-service
+	./services/user-service
 )

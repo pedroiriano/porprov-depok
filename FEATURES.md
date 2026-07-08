@@ -69,7 +69,7 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 
 | Fitur | Status | Versi | File/Area | Catatan |
 |---|---|---|---|---|
-| Public Mobile | `[ ] Planned` | v0.1 | `apps/mobile-public-react-native/` | Jadwal, venue, LiveScore, medali |
+| Public Mobile | `[x] Done` | v0.1 | `apps/mobile-public-react-native/` | UI Jadwal, LiveScore, medali, Cabor |
 | Admin/Koresponden Mobile | `[ ] Planned` | v0.1 | `apps/mobile-admin-react-native/` | Input skor, bukti foto, offline queue |
 | Secure storage | `[ ] Planned` | v0.1 | mobile auth | Token aman |
 | Push notification | `[ ] Planned` | v0.1 | mobile notification | FCM/APNs |

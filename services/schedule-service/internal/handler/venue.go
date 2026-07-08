@@ -35,6 +35,7 @@ func (h *VenueHandler) CreateVenue(w http.ResponseWriter, r *http.Request) {
 		Name     string `json:"name"`
 		Address  string `json:"address"`
 		Capacity int32  `json:"capacity"`
+		City     string `json:"city"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -46,6 +47,7 @@ func (h *VenueHandler) CreateVenue(w http.ResponseWriter, r *http.Request) {
 		Name:     req.Name,
 		Address:  pgtype.Text{String: req.Address, Valid: req.Address != ""},
 		Capacity: pgtype.Int4{Int32: req.Capacity, Valid: req.Capacity > 0},
+		City:     req.City,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -65,7 +67,8 @@ func (h *VenueHandler) CreateVenue(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *VenueHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
-	venues, err := h.queries.ListVenues(r.Context())
+	city := r.URL.Query().Get("city")
+	venues, err := h.queries.ListVenues(r.Context(), city)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -105,6 +108,7 @@ func (h *VenueHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) {
 		Name     string `json:"name"`
 		Address  string `json:"address"`
 		Capacity int32  `json:"capacity"`
+		City     string `json:"city"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 
@@ -113,6 +117,7 @@ func (h *VenueHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) {
 		Column2: req.Name,
 		Column3: req.Address,
 		Column4: req.Capacity,
+		Column5: req.City,
 	})
 	if err != nil {
 		http.Error(w, "Failed to update venue", http.StatusInternalServerError)

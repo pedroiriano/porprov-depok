@@ -1,0 +1,210 @@
+import { useState, useEffect } from 'react';
+import { Search, Plus, Edit, Trash, Loader2 } from 'lucide-react';
+import axios from 'axios';
+import { useAuth } from 'react-oidc-context';
+
+const API_BASE_URL = 'http://localhost:8080/api/v1';
+
+export default function CabangOlahraga() {
+  const [cabors, setCabors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({ name: '', description: '', icon_url: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const auth = useAuth();
+
+  useEffect(() => {
+    fetchCabors();
+  }, []);
+
+  const getAuthConfig = () => {
+    return {
+      headers: {
+        Authorization: `Bearer ${auth.user?.access_token}`
+      }
+    }
+  }
+
+  const fetchCabors = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_BASE_URL}/master-data/cabors`, getAuthConfig());
+      setCabors(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch cabors:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      await axios.post(`${API_BASE_URL}/master-data/cabors`, formData, getAuthConfig());
+      setIsModalOpen(false);
+      setFormData({ name: '', description: '', icon_url: '' });
+      fetchCabors();
+    } catch (error) {
+      console.error('Failed to create cabor:', error);
+      alert('Gagal menyimpan data cabang olahraga.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus cabor ini?')) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/master-data/cabors/${id}`, getAuthConfig());
+      fetchCabors();
+    } catch (error) {
+      console.error('Failed to delete cabor:', error);
+      alert('Gagal menghapus data.');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-text-primary">Master Data: Cabang Olahraga</h2>
+          <p className="text-text-muted text-sm mt-1">Kelola data seluruh cabang olahraga PORPROV.</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors"
+        >
+          <Plus className="w-5 h-5" /> Tambah Cabor
+        </button>
+      </div>
+
+      <div className="card">
+        {/* Toolbar */}
+        <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row gap-4 justify-between">
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Cari nama cabor atau kode..." 
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="table-container border-none rounded-none min-h-[300px]">
+          {loading ? (
+            <div className="flex justify-center items-center h-48">
+              <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+            </div>
+          ) : cabors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-500">
+              <p>Belum ada data Cabang Olahraga.</p>
+            </div>
+          ) : (
+            <table className="table-base">
+              <thead className="table-header">
+                <tr>
+                  <th className="table-cell">ID (UUID)</th>
+                  <th className="table-cell">Nama Cabor</th>
+                  <th className="table-cell">Deskripsi</th>
+                  <th className="table-cell">Status</th>
+                  <th className="table-cell text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cabors.map((item, i) => (
+                  <tr key={item.id || i} className="table-row">
+                    <td className="table-cell font-mono text-xs text-text-muted">
+                      {(item.id || '').substring(0, 8)}...
+                    </td>
+                    <td className="table-cell font-semibold text-text-primary">
+                      {item.name}
+                    </td>
+                    <td className="table-cell text-sm text-text-secondary truncate max-w-xs">
+                      {item.description?.String || '-'}
+                    </td>
+                    <td className="table-cell">
+                      <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-success-100 text-success-700">
+                        Aktif
+                      </span>
+                    </td>
+                    <td className="table-cell text-right">
+                      <div className="flex justify-end gap-2">
+                        <button className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition-colors">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(item.id)}
+                          className="p-1.5 text-slate-400 hover:text-danger-600 hover:bg-red-50 rounded-md transition-colors"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Form Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+              <h3 className="font-bold text-lg">Tambah Cabang Olahraga</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <Trash className="w-5 h-5 hidden" /> {/* Placeholder for close icon space */}
+                <span>&times;</span>
+              </button>
+            </div>
+            <form onSubmit={handleCreate} className="p-6 flex flex-col gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nama Cabor</label>
+                <input 
+                  type="text" 
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Misal: Sepak Bola"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Deskripsi</label>
+                <textarea 
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Deskripsi singkat cabor..."
+                ></textarea>
+              </div>
+              <div className="mt-4 flex gap-3 justify-end">
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 font-medium text-slate-600 hover:bg-slate-100 rounded-lg"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={submitting}
+                  className="px-4 py-2 font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg flex items-center gap-2 disabled:opacity-70"
+                >
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Simpan Data
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

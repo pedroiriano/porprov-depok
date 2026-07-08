@@ -74,25 +74,32 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 }
 
 const createVenue = `-- name: CreateVenue :one
-INSERT INTO venues (name, address, capacity)
-VALUES ($1, $2, $3)
-RETURNING id, name, address, capacity, created_at, updated_at
+INSERT INTO venues (name, address, capacity, city)
+VALUES ($1, $2, $3, $4)
+RETURNING id, name, address, capacity, city, created_at, updated_at
 `
 
 type CreateVenueParams struct {
 	Name     string      `json:"name"`
 	Address  pgtype.Text `json:"address"`
 	Capacity pgtype.Int4 `json:"capacity"`
+	City     string      `json:"city"`
 }
 
 func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue, error) {
-	row := q.db.QueryRow(ctx, createVenue, arg.Name, arg.Address, arg.Capacity)
+	row := q.db.QueryRow(ctx, createVenue,
+		arg.Name,
+		arg.Address,
+		arg.Capacity,
+		arg.City,
+	)
 	var i Venue
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Address,
 		&i.Capacity,
+		&i.City,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -138,7 +145,7 @@ func (q *Queries) GetMatchByID(ctx context.Context, id pgtype.UUID) (Match, erro
 }
 
 const getVenueByID = `-- name: GetVenueByID :one
-SELECT id, name, address, capacity, created_at, updated_at FROM venues WHERE id = $1 LIMIT 1
+SELECT id, name, address, capacity, city, created_at, updated_at FROM venues WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetVenueByID(ctx context.Context, id pgtype.UUID) (Venue, error) {
@@ -149,6 +156,7 @@ func (q *Queries) GetVenueByID(ctx context.Context, id pgtype.UUID) (Venue, erro
 		&i.Name,
 		&i.Address,
 		&i.Capacity,
+		&i.City,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -222,12 +230,13 @@ func (q *Queries) ListMatches(ctx context.Context) ([]Match, error) {
 }
 
 const listVenues = `-- name: ListVenues :many
-SELECT id, name, address, capacity, created_at, updated_at FROM venues
+SELECT id, name, address, capacity, city, created_at, updated_at FROM venues
+WHERE city = COALESCE(NULLIF($1::text, ''), city)
 ORDER BY name ASC
 `
 
-func (q *Queries) ListVenues(ctx context.Context) ([]Venue, error) {
-	rows, err := q.db.Query(ctx, listVenues)
+func (q *Queries) ListVenues(ctx context.Context, city string) ([]Venue, error) {
+	rows, err := q.db.Query(ctx, listVenues, city)
 	if err != nil {
 		return nil, err
 	}
@@ -240,6 +249,7 @@ func (q *Queries) ListVenues(ctx context.Context) ([]Venue, error) {
 			&i.Name,
 			&i.Address,
 			&i.Capacity,
+			&i.City,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -304,9 +314,10 @@ SET
   name = COALESCE(NULLIF($2::text, ''), name),
   address = COALESCE(NULLIF($3::text, ''), address),
   capacity = COALESCE(NULLIF($4::int, 0), capacity),
+  city = COALESCE(NULLIF($5::text, ''), city),
   updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, address, capacity, created_at, updated_at
+RETURNING id, name, address, capacity, city, created_at, updated_at
 `
 
 type UpdateVenueParams struct {
@@ -314,6 +325,7 @@ type UpdateVenueParams struct {
 	Column2 string      `json:"column_2"`
 	Column3 string      `json:"column_3"`
 	Column4 int32       `json:"column_4"`
+	Column5 string      `json:"column_5"`
 }
 
 func (q *Queries) UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue, error) {
@@ -322,6 +334,7 @@ func (q *Queries) UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue
 		arg.Column2,
 		arg.Column3,
 		arg.Column4,
+		arg.Column5,
 	)
 	var i Venue
 	err := row.Scan(
@@ -329,6 +342,7 @@ func (q *Queries) UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue
 		&i.Name,
 		&i.Address,
 		&i.Capacity,
+		&i.City,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

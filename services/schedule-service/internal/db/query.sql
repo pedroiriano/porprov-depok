@@ -1,10 +1,11 @@
 -- name: CreateVenue :one
-INSERT INTO venues (name, address, capacity)
-VALUES ($1, $2, $3)
+INSERT INTO venues (name, address, capacity, city)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: ListVenues :many
 SELECT * FROM venues
+WHERE city = COALESCE(NULLIF($1::text, ''), city)
 ORDER BY name ASC;
 
 -- name: CreateMatch :one
@@ -34,6 +35,7 @@ SET
   name = COALESCE(NULLIF($2::text, ''), name),
   address = COALESCE(NULLIF($3::text, ''), address),
   capacity = COALESCE(NULLIF($4::int, 0), capacity),
+  city = COALESCE(NULLIF($5::text, ''), city),
   updated_at = NOW()
 WHERE id = $1
 RETURNING *;
