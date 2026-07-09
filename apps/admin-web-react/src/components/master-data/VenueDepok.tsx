@@ -65,27 +65,38 @@ export default function VenueDepok() {
   const fetchCabors = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/master-data/cabors`, getAuthConfig());
-      setAllCabors(res.data || []);
+      setCabors(res.data || []);
     } catch (error) {
       console.error('Failed to fetch cabors:', error);
     }
   };
 
-  const toggleCabor = (caborId: string) => {
+  const toggleCaborSelection = (id: string) => {
     setFormData(prev => {
-      const current = prev.cabors || [];
-      if (current.includes(caborId)) {
-        return { ...prev, cabors: current.filter(id => id !== caborId) };
+      const isSelected = prev.cabor_ids.includes(id);
+      if (isSelected) {
+        return { ...prev, cabor_ids: prev.cabor_ids.filter(c => c !== id) };
+      } else {
+        return { ...prev, cabor_ids: [...prev.cabor_ids, id] };
       }
-      return { ...prev, cabors: [...current, caborId] };
     });
+  };
+
+  const removeCabor = (id: string) => {
+    setFormData(prev => ({ ...prev, cabor_ids: prev.cabor_ids.filter(c => c !== id) }));
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      await axios.post(`${API_BASE_URL}/venues`, formData, getAuthConfig());
+      const payload = {
+        ...formData,
+        capacity: parseInt(formData.capacity.toString(), 10) || 0,
+        latitude: parseFloat(formData.latitude.toString()) || 0,
+        longitude: parseFloat(formData.longitude.toString()) || 0,
+      };
+      await axios.post(`${API_BASE_URL}/venues`, payload, getAuthConfig());
       setIsModalOpen(false);
       resetForm();
       fetchVenues();
@@ -109,12 +120,17 @@ export default function VenueDepok() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', address: '', capacity: 0, latitude: 0, longitude: 0, map_route_url: '', cabors: [] });
+    setFormData({ 
+      name: '', image_url: '', address: '', 
+      latitude: -6.4025, longitude: 106.7942, map_route_url: '', 
+      capacity: 0, facilities: '', readiness_status: 'Persiapan', contact_person: '',
+      cabor_ids: [], city_guide_ids: [] 
+    });
     setCaborSearch('');
     setIsCaborDropdownOpen(false);
   };
 
-  const filteredCabors = allCabors.filter(c => c.name.toLowerCase().includes(caborSearch.toLowerCase()));
+  const filteredCabors = cabors.filter(c => c.name.toLowerCase().includes(caborSearch.toLowerCase()));
 
   return (
     <div className="flex flex-col gap-6">
