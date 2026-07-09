@@ -34,9 +34,13 @@ func publishAudit(entityName, action, entityID string, payload interface{}) {
 // ====================== CABOR ======================
 func (h *MasterDataHandler) CreateCabor(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		IconURL     string `json:"icon_url"`
+		Name              string `json:"name"`
+		Description       string `json:"description"`
+		IconURL           string `json:"icon_url"`
+		Kategori          string `json:"kategori"`
+		TotalMedali       int32  `json:"total_medali"`
+		TechnicalDelegate string `json:"technical_delegate"`
+		Status            string `json:"status"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -45,9 +49,13 @@ func (h *MasterDataHandler) CreateCabor(w http.ResponseWriter, r *http.Request) 
 	}
 
 	cabor, err := h.queries.CreateCabor(r.Context(), db.CreateCaborParams{
-		Name:        req.Name,
-		Description: pgtype.Text{String: req.Description, Valid: req.Description != ""},
-		IconUrl:     pgtype.Text{String: req.IconURL, Valid: req.IconURL != ""},
+		Name:              req.Name,
+		Description:       pgtype.Text{String: req.Description, Valid: req.Description != ""},
+		IconUrl:           pgtype.Text{String: req.IconURL, Valid: req.IconURL != ""},
+		Kategori:          pgtype.Text{String: req.Kategori, Valid: req.Kategori != ""},
+		TotalMedali:       pgtype.Int4{Int32: req.TotalMedali, Valid: req.TotalMedali > 0},
+		TechnicalDelegate: pgtype.Text{String: req.TechnicalDelegate, Valid: req.TechnicalDelegate != ""},
+		Status:            pgtype.Text{String: req.Status, Valid: req.Status != ""},
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -104,9 +112,13 @@ func (h *MasterDataHandler) UpdateCabor(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		IconURL     string `json:"icon_url"`
+		Name              string `json:"name"`
+		Description       string `json:"description"`
+		IconURL           string `json:"icon_url"`
+		Kategori          string `json:"kategori"`
+		TotalMedali       int32  `json:"total_medali"`
+		TechnicalDelegate string `json:"technical_delegate"`
+		Status            string `json:"status"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 
@@ -115,6 +127,10 @@ func (h *MasterDataHandler) UpdateCabor(w http.ResponseWriter, r *http.Request) 
 		Column2: req.Name,
 		Column3: req.Description,
 		Column4: req.IconURL,
+		Column5: req.Kategori,
+		Column6: req.TotalMedali,
+		Column7: req.TechnicalDelegate,
+		Column8: req.Status,
 	})
 	if err != nil {
 		http.Error(w, "Failed to update cabor: "+err.Error(), http.StatusInternalServerError)

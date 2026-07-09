@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Trophy, CalendarDays, Medal, MapPin } from 'lucide-react-native';
 import { CountdownTimer } from '../components/CountdownTimer';

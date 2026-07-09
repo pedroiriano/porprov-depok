@@ -1,6 +1,6 @@
 -- name: CreateCabor :one
-INSERT INTO cabors (name, description, icon_url)
-VALUES ($1, $2, $3)
+INSERT INTO cabors (name, description, icon_url, kategori, total_medali, technical_delegate, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: ListCabors :many
@@ -34,6 +34,10 @@ SET
   name = COALESCE(NULLIF($2::text, ''), name),
   description = COALESCE(NULLIF($3::text, ''), description),
   icon_url = COALESCE(NULLIF($4::text, ''), icon_url),
+  kategori = COALESCE(NULLIF($5::text, ''), kategori),
+  total_medali = COALESCE(NULLIF($6::integer, 0), total_medali),
+  technical_delegate = COALESCE(NULLIF($7::text, ''), technical_delegate),
+  status = COALESCE(NULLIF($8::text, ''), status),
   updated_at = NOW()
 WHERE id = $1
 RETURNING *;

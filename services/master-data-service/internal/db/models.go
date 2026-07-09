@@ -9,12 +9,16 @@ import (
 )
 
 type Cabor struct {
-	ID          pgtype.UUID        `json:"id"`
-	Name        string             `json:"name"`
-	Description pgtype.Text        `json:"description"`
-	IconUrl     pgtype.Text        `json:"icon_url"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID                pgtype.UUID        `json:"id"`
+	Name              string             `json:"name"`
+	Description       pgtype.Text        `json:"description"`
+	IconUrl           pgtype.Text        `json:"icon_url"`
+	Kategori          pgtype.Text        `json:"kategori"`
+	TotalMedali       pgtype.Int4        `json:"total_medali"`
+	TechnicalDelegate pgtype.Text        `json:"technical_delegate"`
+	Status            pgtype.Text        `json:"status"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Kontingen struct {

@@ -1,4 +1,5 @@
-import { View, Text, FlatList, ActivityIndicator, Image } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { Trophy } from 'lucide-react-native';

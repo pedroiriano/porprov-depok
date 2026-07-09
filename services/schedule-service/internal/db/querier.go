@@ -20,7 +20,7 @@ type Querier interface {
 	GetVenueByID(ctx context.Context, id pgtype.UUID) (Venue, error)
 	ListMatchParticipants(ctx context.Context, matchID pgtype.UUID) ([]MatchParticipant, error)
 	ListMatches(ctx context.Context) ([]Match, error)
-	ListVenues(ctx context.Context) ([]Venue, error)
+	ListVenues(ctx context.Context, city string) ([]Venue, error)
 	UpdateMatch(ctx context.Context, arg UpdateMatchParams) (Match, error)
 	UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue, error)
 }

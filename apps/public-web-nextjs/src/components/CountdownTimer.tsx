@@ -73,11 +73,11 @@ export function CountdownTimer({ targetDate }: CountdownProps) {
       ].map((item, idx) => (
         <div key={idx} className="flex flex-col items-center">
           <div className="w-16 h-16 md:w-20 md:h-20 bg-white/80 dark:bg-slate-800/80 rounded-2xl flex items-center justify-center backdrop-blur-md shadow-lg border border-white/20 dark:border-slate-700/50">
-            <span className="text-2xl md:text-3xl font-black text-primary-600 dark:text-primary-400">
+            <span className="text-2xl md:text-3xl font-black text-primary">
               {item.value.toString().padStart(2, '0')}
             </span>
           </div>
-          <span className="text-xs md:text-sm font-bold text-white mt-2 uppercase tracking-wider text-shadow-sm">
+          <span className="text-xs md:text-sm font-bold text-white mt-2 uppercase tracking-wider drop-shadow-sm">
             {item.label}
           </span>
         </div>

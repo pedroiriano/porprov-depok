@@ -86,6 +86,14 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware) *chi.Mux {
 			// Medal Standing Service (Port 8086)
 			r.Handle("/medals/*", http.StripPrefix("/api/v1/medals", setupProxy("http://localhost:8086/api/v1/medals")))
 			r.Handle("/medals", http.StripPrefix("/api/v1/medals", setupProxy("http://localhost:8086/api/v1/medals")))
+
+			// Venue Service Protected Routes (POST, PUT, DELETE)
+			r.Post("/venues", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
+			r.Post("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
+			r.Put("/venues", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
+			r.Put("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
+			r.Delete("/venues", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
+			r.Delete("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
 		})
 
 		// Rute Terbuka (Public)
@@ -93,6 +101,14 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware) *chi.Mux {
 
 		r.Handle("/stream/*", http.StripPrefix("/api/v1/stream", setupProxy("http://localhost:8085/api/v1/stream")))
 		r.Handle("/stream", http.StripPrefix("/api/v1/stream", setupProxy("http://localhost:8085/api/v1/stream")))
+
+		// Public Venue Service (GET)
+		r.Get("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
+		r.Get("/venues", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
+		
+		// Public Master Data Service (GET)
+		r.Get("/master-data/cabors", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1/master-data")).ServeHTTP)
+		r.Get("/master-data/cabors/*", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1/master-data")).ServeHTTP)
 	})
 
 	return r

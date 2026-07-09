@@ -2,16 +2,16 @@
 
 @theme {
   /* Brand Colors (Vibrant Sports Theme) */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6; /* Base Primary - Vibrant Blue */
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  --color-primary-50: #e6f4fe;
+  --color-primary-100: #b3dcfb;
+  --color-primary-200: #80c4f8;
+  --color-primary-300: #4dacf5;
+  --color-primary-400: #208aef;
+  --color-primary-500: #1a71c5; /* Base Primary - PORPROV Blue */
+  --color-primary-600: #13579b;
+  --color-primary-700: #0d3e71;
+  --color-primary-800: #062447;
+  --color-primary-900: #031326;
 
   --color-accent-500: #f59e0b; /* Amber for medals/highlights */
   
@@ -23,9 +23,13 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
 
-  /* Shadows for glassmorphism and modern UI */
+  /* Techwind Premium Shadows */
+  --shadow-xs: 0 2px 4px 0 rgb(0 0 0 / 0.1);
+  --shadow-sm: 0 0 3px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 5px 13px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 25px -3px rgb(0 0 0 / 0.1);
   --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.1);
-  --shadow-neon: 0 0 10px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3);
+  --shadow-neon: 0 0 10px rgba(32, 138, 239, 0.5), 0 0 20px rgba(32, 138, 239, 0.3);
 
   /* Border radius */
   --radius-xl: 1rem;
@@ -97,4 +101,68 @@ body {
 
 .animate-pulse-subtle {
   animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Navbar specific overrides for Techwind */
+.l-dark { display: none; }
+.l-light { display: inline-block; }
+
+.nav-sticky .l-dark { display: inline-block; }
+.nav-sticky .l-light { display: none; }
+
+.login-btn-primary { display: none; }
+.login-btn-light { display: inline-block; }
+
+.nav-sticky .login-btn-primary { display: inline-block; }
+.nav-sticky .login-btn-light { display: none; }
+
+.nav-light .sub-menu-item { color: white; }
+.nav-light .sub-menu-item:hover { color: var(--color-primary-200); }
+
+.nav-sticky .nav-light .sub-menu-item { color: var(--color-primary-900); }
+.nav-sticky .nav-light .sub-menu-item:hover { color: var(--color-primary-500); }
+
+.dark .nav-sticky .nav-light .sub-menu-item { color: white; }
+.dark .nav-sticky .nav-light .sub-menu-item:hover { color: var(--color-primary-200); }
+
+/* Ensure navbar background behaves nicely on scroll */
+#topnav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background-color: transparent;
+  transition: all 0.5s ease;
+}
+
+#topnav.nav-sticky {
+  position: fixed;
+  background-color: var(--color-background-surface);
+  box-shadow: 0 0 3px rgb(0 0 0 / 10%);
+}
+
+.dark #topnav.nav-sticky {
+  background-color: var(--color-background-surface);
+  box-shadow: 0 0 3px rgb(255 255 255 / 10%);
+}
+
+/* Alternating Section Backgrounds (Techwind Base Theme) */
+section:nth-of-type(even) {
+  background-color: var(--bg-surface);
+}
+
+section:nth-of-type(odd) {
+  background-color: var(--bg-base);
+}
+
+section[class*="bg-[url"],
+section.bg-transparent {
+  background-color: transparent !important;
 }

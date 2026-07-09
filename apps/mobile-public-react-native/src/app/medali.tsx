@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, Image } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import React, { useState, useEffect } from 'react';
 import EventSource from 'react-native-sse';
 

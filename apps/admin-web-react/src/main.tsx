@@ -4,6 +4,8 @@ import { AuthProvider } from 'react-oidc-context'
 import './index.css'
 import App from './App.tsx'
 
+import { ThemeProvider } from './components/ThemeProvider'
+
 const oidcConfig = {
   authority: "http://localhost:8080/realms/porprov",
   client_id: "porprov-admin-web",
@@ -16,8 +18,10 @@ const oidcConfig = {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider {...oidcConfig}>
-      <App />
-    </AuthProvider>
+    <ThemeProvider defaultTheme="light" storageKey="admin-theme">
+      <AuthProvider {...oidcConfig}>
+        <App />
+      </AuthProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

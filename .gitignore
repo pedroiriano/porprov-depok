@@ -1,0 +1,5 @@
+services/**/tmp_build
+services/**/sqlc_bin.exe
+*.log
+**/node_modules/
+theme-reference/

@@ -12,25 +12,41 @@ import (
 )
 
 const createCabor = `-- name: CreateCabor :one
-INSERT INTO cabors (name, description, icon_url)
-VALUES ($1, $2, $3)
-RETURNING id, name, description, icon_url, created_at, updated_at
+INSERT INTO cabors (name, description, icon_url, kategori, total_medali, technical_delegate, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, name, description, icon_url, kategori, total_medali, technical_delegate, status, created_at, updated_at
 `
 
 type CreateCaborParams struct {
-	Name        string      `json:"name"`
-	Description pgtype.Text `json:"description"`
-	IconUrl     pgtype.Text `json:"icon_url"`
+	Name              string      `json:"name"`
+	Description       pgtype.Text `json:"description"`
+	IconUrl           pgtype.Text `json:"icon_url"`
+	Kategori          pgtype.Text `json:"kategori"`
+	TotalMedali       pgtype.Int4 `json:"total_medali"`
+	TechnicalDelegate pgtype.Text `json:"technical_delegate"`
+	Status            pgtype.Text `json:"status"`
 }
 
 func (q *Queries) CreateCabor(ctx context.Context, arg CreateCaborParams) (Cabor, error) {
-	row := q.db.QueryRow(ctx, createCabor, arg.Name, arg.Description, arg.IconUrl)
+	row := q.db.QueryRow(ctx, createCabor,
+		arg.Name,
+		arg.Description,
+		arg.IconUrl,
+		arg.Kategori,
+		arg.TotalMedali,
+		arg.TechnicalDelegate,
+		arg.Status,
+	)
 	var i Cabor
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Description,
 		&i.IconUrl,
+		&i.Kategori,
+		&i.TotalMedali,
+		&i.TechnicalDelegate,
+		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -115,7 +131,7 @@ func (q *Queries) DeleteKontingen(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getCaborByID = `-- name: GetCaborByID :one
-SELECT id, name, description, icon_url, created_at, updated_at FROM cabors WHERE id = $1 LIMIT 1
+SELECT id, name, description, icon_url, kategori, total_medali, technical_delegate, status, created_at, updated_at FROM cabors WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetCaborByID(ctx context.Context, id pgtype.UUID) (Cabor, error) {
@@ -126,6 +142,10 @@ func (q *Queries) GetCaborByID(ctx context.Context, id pgtype.UUID) (Cabor, erro
 		&i.Name,
 		&i.Description,
 		&i.IconUrl,
+		&i.Kategori,
+		&i.TotalMedali,
+		&i.TechnicalDelegate,
+		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -151,7 +171,7 @@ func (q *Queries) GetKontingenByID(ctx context.Context, id pgtype.UUID) (Konting
 }
 
 const listCabors = `-- name: ListCabors :many
-SELECT id, name, description, icon_url, created_at, updated_at FROM cabors
+SELECT id, name, description, icon_url, kategori, total_medali, technical_delegate, status, created_at, updated_at FROM cabors
 ORDER BY name ASC
 `
 
@@ -169,6 +189,10 @@ func (q *Queries) ListCabors(ctx context.Context) ([]Cabor, error) {
 			&i.Name,
 			&i.Description,
 			&i.IconUrl,
+			&i.Kategori,
+			&i.TotalMedali,
+			&i.TechnicalDelegate,
+			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -253,9 +277,13 @@ SET
   name = COALESCE(NULLIF($2::text, ''), name),
   description = COALESCE(NULLIF($3::text, ''), description),
   icon_url = COALESCE(NULLIF($4::text, ''), icon_url),
+  kategori = COALESCE(NULLIF($5::text, ''), kategori),
+  total_medali = COALESCE(NULLIF($6::integer, 0), total_medali),
+  technical_delegate = COALESCE(NULLIF($7::text, ''), technical_delegate),
+  status = COALESCE(NULLIF($8::text, ''), status),
   updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, description, icon_url, created_at, updated_at
+RETURNING id, name, description, icon_url, kategori, total_medali, technical_delegate, status, created_at, updated_at
 `
 
 type UpdateCaborParams struct {
@@ -263,6 +291,10 @@ type UpdateCaborParams struct {
 	Column2 string      `json:"column_2"`
 	Column3 string      `json:"column_3"`
 	Column4 string      `json:"column_4"`
+	Column5 string      `json:"column_5"`
+	Column6 int32       `json:"column_6"`
+	Column7 string      `json:"column_7"`
+	Column8 string      `json:"column_8"`
 }
 
 func (q *Queries) UpdateCabor(ctx context.Context, arg UpdateCaborParams) (Cabor, error) {
@@ -271,6 +303,10 @@ func (q *Queries) UpdateCabor(ctx context.Context, arg UpdateCaborParams) (Cabor
 		arg.Column2,
 		arg.Column3,
 		arg.Column4,
+		arg.Column5,
+		arg.Column6,
+		arg.Column7,
+		arg.Column8,
 	)
 	var i Cabor
 	err := row.Scan(
@@ -278,6 +314,10 @@ func (q *Queries) UpdateCabor(ctx context.Context, arg UpdateCaborParams) (Cabor
 		&i.Name,
 		&i.Description,
 		&i.IconUrl,
+		&i.Kategori,
+		&i.TotalMedali,
+		&i.TechnicalDelegate,
+		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

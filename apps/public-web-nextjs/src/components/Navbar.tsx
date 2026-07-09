@@ -1,64 +1,96 @@
 "use client";
 
-import { useState } from "react";
-import { ThemeToggle } from "./ThemeToggle";
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useTheme } from "next-themes";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSticky, setIsSticky] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  
+  // Techwind original scroll logic for sticky navbar
+  useEffect(() => {
+    setMounted(true);
+    const windowScroll = () => {
+      const navbar = document.getElementById("topnav");
+      if (navbar != null) {
+        if (
+          document.body.scrollTop >= 50 ||
+          document.documentElement.scrollTop >= 50
+        ) {
+          setIsSticky(true);
+          navbar.classList.add("nav-sticky");
+        } else {
+          setIsSticky(false);
+          navbar.classList.remove("nav-sticky");
+        }
+      }
+    };
+    
+    window.addEventListener("scroll", windowScroll);
+    return () => window.removeEventListener("scroll", windowScroll);
+  }, []);
+
+  const toggleMenu = () => setIsOpen(!isOpen);
 
   return (
-    <header className="sticky top-0 z-50 glass dark:bg-slate-900/80 border-b border-white/10 dark:border-slate-800/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center font-bold text-white shadow-neon">
-            P
-          </div>
-          <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent">
-            PORPROV XV
+    <nav id="topnav" className={`defaultscroll is-sticky ${isSticky ? 'nav-sticky' : ''}`}>
+      <div className="container relative">
+        {/* Logo container*/}
+        <Link className="logo" href="/">
+          <span className="inline-block dark:hidden">
+            <Image src="/assets/images/logo-porprov-dan-tulisan.png" className="l-dark h-[40px] w-auto object-contain mt-3" width={200} height={40} alt="Logo" priority />
+            <Image src="/assets/images/logo-porprov-dan-tulisan.png" className="l-light h-[40px] w-auto object-contain mt-3 brightness-0 invert" width={200} height={40} alt="Logo" priority />
           </span>
-        </div>
-        
-        <div className="flex items-center gap-4 md:gap-6">
-          <nav className="hidden md:flex items-center gap-6 font-medium text-sm text-slate-700 dark:text-slate-300 dark:text-slate-300">
-            <a href="/" className="hover:text-primary-500 dark:hover:text-primary-400 transition-colors">Beranda</a>
-            <a href="/cabor" className="hover:text-primary-500 dark:hover:text-primary-400 transition-colors">Cabor</a>
-            <a href="/jadwal" className="hover:text-primary-500 dark:hover:text-primary-400 transition-colors">Jadwal</a>
-            <a href="/livescore" className="hover:text-primary-500 dark:hover:text-primary-400 transition-colors flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse-subtle"></span>
-              LiveScore
+          <Image src="/assets/images/logo-porprov-dan-tulisan.png" width={200} height={40} className="hidden dark:inline-block h-[40px] w-auto object-contain mt-3 brightness-0 invert" alt="Logo" priority />
+        </Link>
+
+        {/* End Logo container*/}
+        <div className="menu-extras">
+          <div className="menu-item">
+            {/* Mobile menu toggle*/}
+            <a className={`navbar-toggle ${isOpen ? 'open' : ''}`} id="isToggle" onClick={toggleMenu}>
+              <div className="lines">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
             </a>
-            <a href="/medali" className="hover:text-primary-500 dark:hover:text-primary-400 transition-colors">Medali</a>
-          </nav>
-          
-          <ThemeToggle />
-          
-          <button 
-            className="md:hidden p-2 text-slate-700 dark:text-slate-300 dark:text-slate-300 focus:outline-none"
-            onClick={() => setIsOpen(!isOpen)}
-            aria-label="Toggle Menu"
-          >
-            {isOpen ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-            )}
-          </button>
+            {/* End mobile menu toggle*/}
+          </div>
+        </div>
+
+        {/*Login button Start*/}
+        <ul className="buy-button list-none mb-0">
+          <li className="inline mb-0">
+            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="focus:outline-none">
+              <span className="login-btn-primary"><span className="size-9 inline-flex items-center justify-center tracking-wide align-middle duration-500 text-base text-center rounded-full bg-primary/5 hover:bg-primary border border-primary/10 hover:border-primary text-primary hover:text-white"><i className={mounted && theme === 'dark' ? "ri-sun-line" : "ri-moon-line"}></i></span></span>
+              <span className="login-btn-light"><span className="size-9 inline-flex items-center justify-center tracking-wide border border-gray-50 align-middle duration-500 text-base text-center rounded-full bg-gray-50 hover:bg-gray-200 dark:bg-slate-900 dark:hover:bg-gray-700 hover:border-gray-100 dark:border-gray-800 dark:hover:border-gray-700"><i className={mounted && theme === 'dark' ? "ri-sun-line" : "ri-moon-line"}></i></span></span>
+            </button>
+          </li>
+  
+          <li className="inline ps-1 mb-0">
+            <Link href="/livescore">
+              <div className="login-btn-primary"><span className="size-9 inline-flex items-center justify-center tracking-wide align-middle duration-500 text-base text-center rounded-full bg-primary hover:bg-primary-700 border border-primary hover:border-primary-700 text-white"><i className="ri-live-line"></i></span></div>
+              <div className="login-btn-light"><span className="size-9 inline-flex items-center justify-center tracking-wide border border-gray-50 align-middle duration-500 text-base text-center rounded-full bg-gray-50 hover:bg-gray-200 dark:bg-slate-900 dark:hover:bg-gray-700 hover:border-gray-100 dark:border-gray-800 dark:hover:border-gray-700"><i className="ri-live-line text-red-500"></i></span></div>
+            </Link>
+          </li>
+        </ul>
+        {/*Login button End*/}
+
+        <div id="navigation" style={{ display: isOpen ? 'block' : '' }}>
+          {/* Navigation Menu*/}   
+          <ul className="navigation-menu nav-light font-bold">
+            <li><Link href="/" className="sub-menu-item">Beranda</Link></li>
+            <li><Link href="/cabor" className="sub-menu-item">Cabor</Link></li>
+            <li><Link href="/jadwal" className="sub-menu-item">Jadwal</Link></li>
+            <li><Link href="/medali" className="sub-menu-item">Klasemen</Link></li>
+          </ul>
         </div>
       </div>
-
-      {/* Mobile Menu */}
-      {isOpen && (
-        <div className="md:hidden absolute top-16 left-0 w-full glass dark:bg-slate-900/95 border-b border-white/10 dark:border-slate-800/50 flex flex-col px-4 py-6 gap-4 shadow-xl">
-          <a href="/" className="text-slate-900 dark:text-slate-100 dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Beranda</a>
-          <a href="/cabor" className="text-slate-900 dark:text-slate-100 dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Cabang Olahraga</a>
-          <a href="/jadwal" className="text-slate-900 dark:text-slate-100 dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Jadwal Pertandingan</a>
-          <a href="/livescore" className="text-slate-900 dark:text-slate-100 dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors flex items-center gap-2" onClick={() => setIsOpen(false)}>
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse-subtle"></span>
-            Live Score Real-time
-          </a>
-          <a href="/medali" className="text-slate-900 dark:text-slate-100 dark:text-slate-200 font-medium text-lg hover:text-primary-500 transition-colors" onClick={() => setIsOpen(false)}>Klasemen Medali</a>
-        </div>
-      )}
-    </header>
+    </nav>
   );
 }

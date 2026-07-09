@@ -9,7 +9,15 @@ export default function CabangOlahraga() {
   const [cabors, setCabors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', description: '', icon_url: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    description: '', 
+    icon_url: '',
+    kategori: 'Tanding',
+    total_medali: 0,
+    technical_delegate: '',
+    status: 'Aktif'
+  });
   const [submitting, setSubmitting] = useState(false);
   const auth = useAuth();
 
@@ -41,9 +49,12 @@ export default function CabangOlahraga() {
     e.preventDefault();
     try {
       setSubmitting(true);
-      await axios.post(`${API_BASE_URL}/master-data/cabors`, formData, getAuthConfig());
+      await axios.post(`${API_BASE_URL}/master-data/cabors`, {
+        ...formData,
+        total_medali: parseInt(formData.total_medali.toString(), 10) || 0
+      }, getAuthConfig());
       setIsModalOpen(false);
-      setFormData({ name: '', description: '', icon_url: '' });
+      setFormData({ name: '', description: '', icon_url: '', kategori: 'Tanding', total_medali: 0, technical_delegate: '', status: 'Aktif' });
       fetchCabors();
     } catch (error) {
       console.error('Failed to create cabor:', error);
@@ -108,7 +119,9 @@ export default function CabangOlahraga() {
                 <tr>
                   <th className="table-cell">ID (UUID)</th>
                   <th className="table-cell">Nama Cabor</th>
-                  <th className="table-cell">Deskripsi</th>
+                  <th className="table-cell">Kategori</th>
+                  <th className="table-cell">Medali</th>
+                  <th className="table-cell">Technical Delegate</th>
                   <th className="table-cell">Status</th>
                   <th className="table-cell text-right">Aksi</th>
                 </tr>
@@ -123,11 +136,21 @@ export default function CabangOlahraga() {
                       {item.name}
                     </td>
                     <td className="table-cell text-sm text-text-secondary truncate max-w-xs">
-                      {item.description?.String || '-'}
+                      {item.kategori?.String || '-'}
+                    </td>
+                    <td className="table-cell text-sm text-text-secondary">
+                      {item.total_medali?.Int32 || 0}
+                    </td>
+                    <td className="table-cell text-sm text-text-secondary truncate max-w-xs">
+                      {item.technical_delegate?.String || '-'}
                     </td>
                     <td className="table-cell">
-                      <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-success-100 text-success-700">
-                        Aktif
+                      <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
+                        item.status?.String === 'Aktif' ? 'bg-success-100 text-success-700' : 
+                        item.status?.String === 'Eksibisi' ? 'bg-warning-100 text-warning-700' : 
+                        'bg-slate-100 text-slate-700'
+                      }`}>
+                        {item.status?.String || 'Aktif'}
                       </span>
                     </td>
                     <td className="table-cell text-right">
@@ -174,14 +197,63 @@ export default function CabangOlahraga() {
                   placeholder="Misal: Sepak Bola"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
+                  <select 
+                    value={formData.kategori}
+                    onChange={(e) => setFormData({...formData, kategori: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="Tanding">Tanding</option>
+                    <option value="Seni/Terukur">Seni/Terukur</option>
+                    <option value="E-Sports">E-Sports</option>
+                    <option value="Eksibisi">Eksibisi</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                  <select 
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="Aktif">Aktif</option>
+                    <option value="Eksibisi">Eksibisi</option>
+                    <option value="Non-Aktif">Non-Aktif</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Total Medali</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    value={formData.total_medali}
+                    onChange={(e) => setFormData({...formData, total_medali: parseInt(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Technical Delegate</label>
+                  <input 
+                    type="text" 
+                    value={formData.technical_delegate}
+                    onChange={(e) => setFormData({...formData, technical_delegate: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="Nama TD"
+                  />
+                </div>
+              </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Deskripsi</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Deskripsi/Keterangan</label>
                 <textarea 
-                  rows={3}
+                  rows={2}
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Deskripsi singkat cabor..."
+                  placeholder="Keterangan tambahan..."
                 ></textarea>
               </div>
               <div className="mt-4 flex gap-3 justify-end">

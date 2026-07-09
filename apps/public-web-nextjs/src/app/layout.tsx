@@ -1,25 +1,52 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Nunito } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 
-const inter = Inter({
+const nunito = Nunito({
   variable: "--font-sans",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Portal PORPROV XV Jawa Barat 2026",
-  description: "Portal resmi Pekan Olahraga Provinsi (PORPROV) XV Jawa Barat 2026 di Kota Depok.",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "PORPROV 2026",
+  title: {
+    default: "Portal PORPROV XV Jawa Barat 2026",
+    template: "%s | PORPROV XV 2026",
   },
-  formatDetection: {
-    telephone: false,
+  description: "Portal resmi Pekan Olahraga Provinsi (PORPROV) XV Jawa Barat 2026 di Kota Depok. Pantau klasemen medali, jadwal, venue, dan berita terkini secara real-time.",
+  keywords: ["PORPROV XV", "PORPROV 2026", "Jawa Barat", "Kota Depok", "Olahraga", "Klasemen Medali", "LiveScore", "Toca", "Toci"],
+  authors: [{ name: "Diskominfo Kota Depok" }],
+  creator: "Pemerintah Kota Depok",
+  publisher: "KONI Jawa Barat",
+  openGraph: {
+    type: "website",
+    locale: "id_ID",
+    url: "https://porprov2026.depok.go.id",
+    title: "Portal PORPROV XV Jawa Barat 2026",
+    description: "Pantau klasemen medali, jadwal, venue, dan berita terkini secara real-time di Portal resmi PORPROV XV Jawa Barat 2026.",
+    siteName: "PORPROV XV 2026",
+    images: [
+      {
+        url: "/assets/images/logo-porprov.png",
+        width: 1200,
+        height: 630,
+        alt: "Logo PORPROV XV Jawa Barat 2026",
+      }
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Portal PORPROV XV Jawa Barat 2026",
+    description: "Pantau klasemen medali, jadwal, venue, dan berita terkini secara real-time.",
+    images: ["/assets/images/logo-porprov.png"],
+  },
+  manifest: "/manifest.webmanifest",
+  title: "PORPROV XV Jawa Barat 2026",
+  description: "Portal Resmi Pekan Olahraga Provinsi XV Jawa Barat Tahun 2026 di Kota Depok",
+  icons: {
+    icon: '/icon.png',
   },
 };
 
@@ -37,22 +64,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${inter.variable} antialiased h-full`} suppressHydrationWarning>
+    <html lang="id" className={`${nunito.variable} antialiased h-full`} suppressHydrationWarning dir="ltr">
+      <head>
+        <link href="/assets/libs/remixicon/fonts/remixicon.css" rel="stylesheet" />
+        <link href="/assets/css/tailwind.css" rel="stylesheet" />
+      </head>
       <body className="min-h-full flex flex-col bg-background-base dark:bg-slate-950 text-text-primary dark:text-slate-100 transition-colors duration-300">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <Navbar />
 
-          <main className="flex-grow flex flex-col">
+          <main className="flex-1 flex flex-col relative w-full h-full">
             {children}
           </main>
-
-          {/* Footer */}
-          <footer className="border-t border-slate-200 dark:border-slate-800 bg-background-surface dark:bg-slate-900 py-8 mt-auto transition-colors duration-300">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-text-muted dark:text-slate-400">
-              <p>&copy; 2026 Pemerintah Kota Depok. Hak Cipta Dilindungi.</p>
-              <p className="mt-2">Portal Resmi Pekan Olahraga Provinsi XV Jawa Barat</p>
-            </div>
-          </footer>
+          
+          <Footer />
         </ThemeProvider>
       </body>
     </html>
