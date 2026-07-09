@@ -1,5 +1,38 @@
 @import "tailwindcss";
 
+@theme {
+  /* Techwind Primary Color (Vibrant Indigo/Purple) */
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+
+  --color-success-100: #dcfce7;
+  --color-success-500: #22c55e;
+  --color-success-700: #15803d;
+
+  --color-warning-100: #fef9c3;
+  --color-warning-500: #eab308;
+  --color-warning-700: #a16207;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+
+  /* Theme mappings */
+  --color-background-base: var(--bg-base);
+  --color-background-surface: var(--bg-surface);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+}
+
 :root {
   font-family: 'Nunito', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -9,12 +42,49 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Light Mode */
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
 }
 
-/* Remove any interfering layout resets from Vite */
+.dark {
+  /* Dark Mode */
+  --bg-base: #020617; /* Slate 950 */
+  --bg-surface: #0f172a; /* Slate 900 */
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+}
+
 body, html, #root {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
+  background-color: var(--color-background-base);
+  color: var(--color-text-primary);
+}
+
+/* Base Card Style */
+.card {
+  @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm;
+}
+
+/* Base Form Input Style */
+.form-input {
+  @apply w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500;
+}
+
+/* Layout Utilities */
+.sidebar-wrapper {
+  background-color: #0f172a;
+  color: #fff;
+}
+
+.top-header {
+  @apply bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40;
 }
