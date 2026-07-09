@@ -65,23 +65,27 @@ export default function VenueDepok() {
   const fetchCabors = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/master-data/cabors`, getAuthConfig());
-      setCabors(res.data || []);
+      setAllCabors(res.data || []);
     } catch (error) {
       console.error('Failed to fetch cabors:', error);
     }
+  };
+
+  const toggleCabor = (caborId: string) => {
+    setFormData(prev => {
+      const current = prev.cabors || [];
+      if (current.includes(caborId)) {
+        return { ...prev, cabors: current.filter(id => id !== caborId) };
+      }
+      return { ...prev, cabors: [...current, caborId] };
+    });
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const payload = {
-        ...formData,
-        capacity: parseInt(formData.capacity.toString(), 10) || 0,
-        latitude: parseFloat(formData.latitude.toString()) || 0,
-        longitude: parseFloat(formData.longitude.toString()) || 0,
-      };
-      await axios.post(`${API_BASE_URL}/venues`, payload, getAuthConfig());
+      await axios.post(`${API_BASE_URL}/venues`, formData, getAuthConfig());
       setIsModalOpen(false);
       resetForm();
       fetchVenues();
@@ -105,37 +109,19 @@ export default function VenueDepok() {
   };
 
   const resetForm = () => {
-    setFormData({ 
-      name: '', image_url: '', address: '', latitude: -6.4025, longitude: 106.7942, 
-      map_route_url: '', capacity: 0, facilities: '', readiness_status: 'Persiapan', 
-      contact_person: '', cabor_ids: [], city_guide_ids: [] 
-    });
+    setFormData({ name: '', address: '', capacity: 0, latitude: 0, longitude: 0, map_route_url: '', cabors: [] });
     setCaborSearch('');
+    setIsCaborDropdownOpen(false);
   };
 
-  const toggleCaborSelection = (id: string) => {
-    setFormData(prev => {
-      const isSelected = prev.cabor_ids.includes(id);
-      if (isSelected) {
-        return { ...prev, cabor_ids: prev.cabor_ids.filter(c => c !== id) };
-      } else {
-        return { ...prev, cabor_ids: [...prev.cabor_ids, id] };
-      }
-    });
-  };
-
-  const removeCabor = (id: string) => {
-    setFormData(prev => ({ ...prev, cabor_ids: prev.cabor_ids.filter(c => c !== id) }));
-  };
-
-  const filteredCabors = cabors.filter(c => c.name.toLowerCase().includes(caborSearch.toLowerCase()));
+  const filteredCabors = allCabors.filter(c => c.name.toLowerCase().includes(caborSearch.toLowerCase()));
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-text-primary">Data Venue Khusus Kota Depok</h2>
-          <p className="text-text-muted text-sm mt-1">Kelola data lokasi pertandingan di area Depok.</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Master Data: Venue Depok</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Kelola data seluruh lokasi pertandingan di Kota Depok.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
@@ -146,7 +132,17 @@ export default function VenueDepok() {
       </div>
 
       <div className="card">
-        {/* Table */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Cari nama venue..." 
+              className="form-input pl-9"
+            />
+          </div>
+        </div>
+
         <div className="overflow-x-auto min-h-[300px]">
           {loading ? (
             <div className="flex justify-center items-center h-48">
@@ -160,32 +156,33 @@ export default function VenueDepok() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">ID (UUID)</th>
                   <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Nama Venue</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Alamat</th>
+                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Alamat Lengkap</th>
                   <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Kapasitas</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Status</th>
                   <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {venues.map((item, i) => (
                   <tr key={item.id || i} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="p-4 font-mono text-xs text-text-muted">
+                      {(item.id || '').substring(0, 8)}...
+                    </td>
                     <td className="p-4 font-semibold text-slate-900 dark:text-white">
                       {item.name}
                     </td>
+                    <td className="p-4 text-sm text-slate-600 dark:text-slate-400 truncate max-w-xs">
+                      {item.address}
+                    </td>
                     <td className="p-4 text-sm text-slate-600 dark:text-slate-400">
-                      {item.address?.String || '-'}
-                    </td>
-                    <td className="p-4 text-slate-900 dark:text-white">
-                      {item.capacity?.Int32 || 0}
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${item.readiness_status?.String === 'Siap' ? 'bg-success-100 text-success-700' : 'bg-warning-100 text-warning-700'}`}>
-                        {item.readiness_status?.String || 'Persiapan'}
-                      </span>
+                      {item.capacity}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
+                        <button className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-md transition-colors">
+                          <Edit className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => handleDelete(item.id)}
                           className="p-1.5 text-slate-400 hover:text-danger-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
@@ -202,12 +199,17 @@ export default function VenueDepok() {
         </div>
       </div>
 
-      {/* Form Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => { setIsModalOpen(false); resetForm(); }}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">Tambah Venue Depok</h3>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">Tambah Venue Pertandingan</h3>
               <button onClick={() => { setIsModalOpen(false); resetForm(); }} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
                 <X className="w-5 h-5" />
               </button>

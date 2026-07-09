@@ -28,6 +28,17 @@ export default function JadwalPertandingan() {
     fetchCabors();
   }, []);
 
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isModalOpen]);
+
   const getAuthConfig = () => {
     return {
       headers: {
@@ -207,8 +218,14 @@ export default function JadwalPertandingan() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h3 className="font-bold text-lg text-slate-900 dark:text-white">Tambah Jadwal Pertandingan</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-2xl leading-none">
