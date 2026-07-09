@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Edit, Trash, Loader2, X, Check, ChevronDown } from 'lucide-react';
+import { Search, Plus, Edit, Trash, Loader2, X, Check, ChevronDown, Image as PhotoIcon } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from 'react-oidc-context';
+import MediaSelectorModal from '../media/MediaSelectorModal';
 
 const API_BASE_URL = 'http://localhost:8080/api/v1';
 
@@ -10,6 +11,7 @@ export default function VenueDepok() {
   const [cabors, setCabors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMediaSelectorOpen, setIsMediaSelectorOpen] = useState(false);
   
   const [formData, setFormData] = useState({ 
     name: '', image_url: '', address: '', 
@@ -30,6 +32,17 @@ export default function VenueDepok() {
     fetchVenues();
     fetchCabors();
   }, []);
+
+  useEffect(() => {
+    if (isModalOpen || isMediaSelectorOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isModalOpen, isMediaSelectorOpen]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -381,12 +394,22 @@ export default function VenueDepok() {
                   <h4 className="text-sm font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wider">4. Media & Info Lainnya</h4>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">URL Gambar (Foto)</label>
-                    <input 
-                      type="text" value={formData.image_url}
-                      onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                      className="form-input"
-                      placeholder="/assets/images/venue/..."
-                    />
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" value={formData.image_url}
+                        onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                        className="form-input flex-1"
+                        placeholder="Pilih atau masukkan URL gambar..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsMediaSelectorOpen(true)}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg border border-slate-300 dark:border-slate-600 transition-colors flex items-center gap-2"
+                      >
+                        <PhotoIcon className="w-5 h-5" />
+                        Pilih Media
+                      </button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -427,6 +450,14 @@ export default function VenueDepok() {
           </div>
         </div>
       )}
+
+      
+      {/* Media Selector */}
+      <MediaSelectorModal 
+        isOpen={isMediaSelectorOpen}
+        onClose={() => setIsMediaSelectorOpen(false)}
+        onSelect={(url) => setFormData({...formData, image_url: url})}
+      />
     </div>
   );
 }

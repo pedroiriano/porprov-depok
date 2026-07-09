@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash, Loader2 } from 'lucide-react';
+import { Search, Plus, Edit, Trash, Loader2, Image as PhotoIcon } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from 'react-oidc-context';
+import MediaSelectorModal from '../media/MediaSelectorModal';
 
 const API_BASE_URL = 'http://localhost:8080/api/v1';
 
@@ -9,6 +10,7 @@ export default function CabangOlahraga() {
   const [cabors, setCabors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMediaSelectorOpen, setIsMediaSelectorOpen] = useState(false);
   const [formData, setFormData] = useState({ 
     name: '', 
     description: '', 
@@ -26,7 +28,7 @@ export default function CabangOlahraga() {
   }, []);
 
   useEffect(() => {
-    if (isModalOpen) {
+    if (isModalOpen || isMediaSelectorOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -34,7 +36,7 @@ export default function CabangOlahraga() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isModalOpen]);
+  }, [isModalOpen, isMediaSelectorOpen]);
 
   const getAuthConfig = () => {
     return {
@@ -312,6 +314,12 @@ export default function CabangOlahraga() {
           </div>
         </div>
       )}
+      {/* Media Selector */}
+      <MediaSelectorModal 
+        isOpen={isMediaSelectorOpen}
+        onClose={() => setIsMediaSelectorOpen(false)}
+        onSelect={(url) => setFormData({...formData, icon_url: url})}
+      />
     </div>
   );
 }

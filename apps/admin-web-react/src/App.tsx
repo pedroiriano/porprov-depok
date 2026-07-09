@@ -12,6 +12,7 @@ import AuditLog from './pages/AuditLog';
 import Profile from './pages/Profile';
 import Medals from './pages/Medals';
 import CityGuide from './pages/CityGuide';
+import MediaLibrary from './components/media/MediaLibrary';
 
 // Sidebar Item Component
 const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: any, label: string, path: string, isActive: boolean }) => (
@@ -50,6 +51,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
             <SidebarItem icon={Activity} label="LiveScore Center" path="/livescore" isActive={location.pathname.startsWith('/livescore')} />
             <SidebarItem icon={Activity} label="Perolehan Medali" path="/medals" isActive={location.pathname.startsWith('/medals')} />
             <SidebarItem icon={Database} label="City Guide" path="/city-guide" isActive={location.pathname.startsWith('/city-guide')} />
+            <SidebarItem icon={Database} label="Media Library" path="/media" isActive={location.pathname.startsWith('/media')} />
             {isAdmin && (
               <>
                 <SidebarItem icon={FileCheck} label="Verifikasi" path="/verifikasi" isActive={location.pathname.startsWith('/verifikasi')} />
@@ -182,6 +184,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/medals" element={<Medals />} />
           <Route path="/city-guide" element={<CityGuide />} />
+          <Route path="/media" element={<MediaLibrary />} />
           <Route path="/verifikasi" element={<div><h1>Verifikasi Kontingen & Atlet</h1></div>} />
         </Routes>
       </AdminLayout>

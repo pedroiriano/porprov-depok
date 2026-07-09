@@ -25,8 +25,20 @@ INSERT INTO venues (id, name, address, capacity) VALUES
 ('e0000000-0000-0000-0000-000000000007', 'Stadion Mahakam', 'Jalan Rasamala Raya No 1, Baktijaya, Kec. Sukmajaya, Kota Depok, Jawa Barat', 3000),
 ('e0000000-0000-0000-0000-000000000008', 'Lapangan Tembak Kostrad Cilodong', 'KOSTRAD 328 (Cilodong), Kec. Cilodong, Kota Depok, Jawa Barat', 500),
 ('e0000000-0000-0000-0000-000000000009', 'GOR Kartika', 'Jl. Asrama Cilodong No.80, Cilodong, Kec. Cilodong, Kota Depok, Jawa Barat', 2500),
-('e0000000-0000-0000-0000-000000000010', 'Emeralda Golf Club', 'Jl. Emeralda Raya, Kec. Tapos, Kota Depok, Jawa Barat', 1000)
+('e0000000-0000-0000-0000-000000000010', 'Emeralda Golf Club', 'Jl. Emeralda Raya, Kec. Tapos, Kota Depok, Jawa Barat', 1000),
+('e0000000-0000-0000-0000-000000000011', 'Alun-Alun Kota Depok', 'Boulevard Grand Depok City, Jatimulya, Kec. Cilodong, Kota Depok, Jawa Barat', 10000),
+('e0000000-0000-0000-0000-000000000012', 'Balaikota Depok', 'Jl. Margonda Raya No.54, Pancoran Mas, Kota Depok, Jawa Barat', 2000),
+('e0000000-0000-0000-0000-000000000013', 'Margo City Mall', 'Jl. Margonda Raya No.358, Kemiri Muka, Kecamatan Beji, Kota Depok, Jawa Barat', 5000),
+('e0000000-0000-0000-0000-000000000014', 'GOR Kota Depok', 'Jl. Boulevard Grand Depok City, Depok', 3000)
 ON CONFLICT (id) DO UPDATE SET address = EXCLUDED.address;
+
+-- Insert Media Assets
+INSERT INTO media_assets (file_name, file_url, mime_type, file_size) VALUES
+('Logo Sepak Bola', 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Soccerball.svg/500px-Soccerball.svg.png', 'image/png', 50000),
+('Logo Basket', 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Basketball.png/500px-Basketball.png', 'image/png', 50000),
+('Stadion Merpati', 'https://cdn0-production-images-kly.akamaized.net/9YhZ3z4_T47fM51xO8y69kYgG1E=/1200x675/smart/filters:quality(75):strip_icc():format(webp)/kly-media-production/medias/4055627/original/038898100_1655455644-Stadion_Merpati_Depok.jpg', 'image/jpeg', 100000),
+('Alun Alun Depok', 'https://asset.kompas.com/crops/YxP1B0r1l5tE1X8aQ7h5lX9n8sE=/0x0:1000x667/750x500/data/photo/2020/01/12/5e1b2121e7d98.jpg', 'image/jpeg', 150000)
+ON CONFLICT DO NOTHING;
 
 -- 3. Insert City Guides
 INSERT INTO city_guides (title, category, address) VALUES 

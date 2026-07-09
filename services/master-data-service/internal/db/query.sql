@@ -88,3 +88,19 @@ RETURNING *;
 
 -- name: DeleteCityGuide :exec
 DELETE FROM city_guides WHERE id = $1;
+
+-- name: CreateMedia :one
+INSERT INTO media_assets (
+  file_name, file_url, mime_type, file_size
+) VALUES (
+  $1, $2, $3, $4
+)
+RETURNING *;
+
+-- name: GetMedia :many
+SELECT * FROM media_assets
+ORDER BY created_at DESC;
+
+-- name: DeleteMedia :exec
+DELETE FROM media_assets
+WHERE id = $1;

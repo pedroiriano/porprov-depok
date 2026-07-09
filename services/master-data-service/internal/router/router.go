@@ -53,7 +53,15 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler 
 			r.Put("/{id}", cityGuideHandler.UpdateCityGuide)
 			r.Delete("/{id}", cityGuideHandler.DeleteCityGuide)
 		})
+		r.Route("/media", func(r chi.Router) {
+			r.Post("/upload", masterDataHandler.UploadMedia)
+			r.Get("/", masterDataHandler.ListMedia)
+			r.Delete("/{id}", masterDataHandler.DeleteMedia)
+		})
 	})
+
+	// Serve uploaded files statically
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
 	return r
 }
