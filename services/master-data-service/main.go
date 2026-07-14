@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/porprov-xv/porprov-depok/packages/messaging"
 	"github.com/porprov-xv/porprov-depok/services/master-data-service/internal/config"
 	"github.com/porprov-xv/porprov-depok/services/master-data-service/internal/db"
@@ -18,13 +18,13 @@ func main() {
 	// INFO: Load configuration
 	cfg := config.LoadConfig()
 
-	// INFO: Connect to PostgreSQL using pgx
+	// INFO: Connect to PostgreSQL using pgxpool for concurrency safety
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, cfg.DBConn)
+	conn, err := pgxpool.New(ctx, cfg.DBConn)
 	if err != nil {
 		log.Fatalf("Gagal terhubung ke database PostgreSQL: %v\n", err)
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	log.Println("Berhasil terhubung ke database PostgreSQL master_data_db")
 
@@ -39,7 +39,7 @@ func main() {
 	}
 
 	// INFO: Initialize Handlers
-	masterDataHandler := handler.NewMasterDataHandler(queries)
+	masterDataHandler := handler.NewMasterDataHandler(queries, cfg.ScheduleURL)
 	cityGuideHandler := handler.NewCityGuideHandler(queries)
 
 	// INFO: Setup Chi Router

@@ -1,6 +1,8 @@
-# AGENTS.md — Protokol Codex Agent VS Code Portal PORPROV Enterprise UI/UX v3
+# AGENTS.md — Protokol Codex Agent Portal PORPROV Enterprise UI/UX v4
 
 Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Portal PORPROV XV Jawa Barat 2026.
+
+> **Konteks aktif per 14 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime yang sudah terintegrasi meliputi Admin Web, API Gateway, Master Data Service, Venue Service, Schedule Service, PostgreSQL, Keycloak, Redis, NATS, dan observability berbasis Docker. Soft delete end-to-end beserta Recycle Bin sudah aktif untuk Master Data, Media Library, Venue, dan Jadwal. Public Web, mobile, LiveScore, RBAC granular, audit immutable/outbox, serta hardening dilanjutkan bertahap sesuai `FEATURES.md`.
 
 ## Mode Kerja Utama
 
@@ -12,9 +14,13 @@ Agent wajib bekerja sebagai **enterprise pair programmer** yang membaca dokumen 
 2. `RULES.md`
 3. `FEATURES.md`
 4. `DOCUMENTATION.md`
-5. `docs/reference/Portal_PORPROV_XV_Jawa_Barat_2026_Analisis_Desain.docx`
-6. `docs/reference/Portal_PORPROV_XV_Jawa_Barat_2026_ASCII_Wireframe.docx`
-7. `docs/reference/Dokumen Perencanaan Arsitektur Enterprise Web & Mobile.docx`
+5. `README.md`
+6. `AGENTS.md`
+7. `docs/reference/Portal_PORPROV_XV_Jawa_Barat_2026_Analisis_Desain.docx`
+8. `docs/reference/Portal_PORPROV_XV_Jawa_Barat_2026_ASCII_Wireframe.docx`
+9. `docs/reference/Dokumen Perencanaan Arsitektur Enterprise Web & Mobile.docx`
+
+Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tidak boleh mengarang isinya, dan tetap memakai enam Markdown root sebagai baseline yang dapat diverifikasi.
 
 ## Stack Wajib
 
@@ -32,17 +38,49 @@ Agent wajib bekerja sebagai **enterprise pair programmer** yang membaca dokumen 
 | Event Broker | NATS JetStream untuk durable event bisnis |
 | Auth | Keycloak + OpenID Connect/OAuth2 + JWT |
 | Deployment | Docker + Nginx + SSL pada VM Diskominfo Kota Depok; Kubernetes bila skala enterprise besar |
-| UI System | Tailwind CSS v4.x, design tokens, mobile-first, accessible components |
+| UI System | Techwind 3.3.0 sebagai baseline visual, Tailwind CSS v4.x, design tokens PORPROV, mobile-first, accessible components |
 
 
-## UX Benchmark yang Harus Dipakai
+## Baseline UI/UX yang Harus Dipakai
 
 | Sumber Inspirasi | Prinsip yang Diambil | Adaptasi PORPROV |
 |---|---|---|
+| `theme-reference/HTML/Landing/` | Baseline Techwind untuk Public Web: navigation, hero, section rhythm, cards, editorial, event, gallery, CTA, footer | Diubah menjadi pengalaman PORPROV yang orisinal, energik, SEO-ready, realtime, dan beridentitas Kota Depok |
+| `theme-reference/HTML/Dashboard/` | Baseline Techwind untuk Admin Web: sidebar, topbar, dashboard, forms, tables, profile, calendar, gallery, responsive shell | Diubah menjadi workspace operator olahraga yang padat, cepat, role-aware, audit-friendly, dan aksesibel |
 | Flashscore | Kepadatan LiveScore, filter cabor/tanggal, match card, standings, detail match, status realtime | LiveScore per cabor, venue, kontingen, ronde, status official, timeline event, standings medali |
 | ESPN | Sports media storytelling, highlights, news cards, video/editorial hub, coverage berbasis narasi olahraga | Berita PORPROV, highlight atlet, galeri, press release, profil venue, cerita maskot Toca-Toci |
-| Fitness Zone | Hero energik, CTA visual, schedule section, gallery, cards promosi, atmosfer event | Landing page PORPROV, countdown, kartu venue, Depok Guide, galeri acara, promosi kota |
 | Tailwind CSS v4.x | Utility-first, CSS-first token, responsive utilities, scrollbar/logical utilities modern | Design system PORPROV dengan token warna, spacing, status badges, skeleton loading, dark mode opsional |
+
+### Standar “Masterpiece” PORPROV
+
+- Techwind adalah baseline komposisi dan interaksi, bukan hasil akhir yang disalin mentah.
+- Implementasi wajib menggunakan komponen React/Next.js dan token PORPROV; source Gulp/HTML tema tidak menjadi runtime aplikasi.
+- Setiap layar wajib mempunyai hierarki visual yang jelas, state loading/empty/error/success, responsif mobile-first, navigasi keyboard, focus state, kontras WCAG 2.2 AA, dan motion yang menghormati `prefers-reduced-motion`.
+- Public Web harus terasa energik dan editorial tanpa mengorbankan kepadatan LiveScore, SEO, atau Core Web Vitals.
+- Admin Web harus mengutamakan kecepatan kerja, keterbacaan tabel/form, status sistem, konfirmasi aksi, dan konsistensi lintas modul.
+- Asset, logo, copywriting, dan identitas Techwind tidak boleh dipublikasikan sebagai brand PORPROV. Pastikan penggunaan tema mematuhi lisensi yang dimiliki proyek.
+
+## Aturan Data: Soft Delete Wajib
+
+- Semua operasi hapus atas data persisten/domain wajib menggunakan soft delete, termasuk Master Data, Media Library, Venue, Jadwal, user, berita, galeri, dan data operasional lain.
+- Model minimal memiliki `deleted_at`, `deleted_by`, dan bila relevan `delete_reason`; query normal wajib memfilter `deleted_at IS NULL`.
+- API `DELETE` hanya menandai data terhapus dan menulis audit trail. Sediakan restore yang terotorisasi; hard delete/purge hanya melalui kebijakan retensi, role khusus, audit, dan persetujuan eksplisit.
+- File Media Library tidak boleh langsung dihapus dari storage ketika metadata di-soft-delete. Penghapusan fisik hanya dilakukan proses purge terkontrol setelah masa retensi.
+- Dilarang memakai cascade hard delete lintas domain. Publikasikan event delete/restore bila perubahan perlu diketahui service lain.
+- Implementasi lama yang masih hard delete wajib dicatat sebagai technical debt di `FEATURES.md` dan dimigrasikan sebelum fitur dinyatakan final.
+
+## Sinkronisasi Enam Dokumen Root
+
+Setiap perubahan aturan, stack, arsitektur, standar UI/UX, keamanan, data, quality gate, atau status produk wajib memperbarui file root yang relevan pada tahap yang sama: `README.md`, `AI.md`, `AGENTS.md`, `RULES.md`, `FEATURES.md`, dan `DOCUMENTATION.md`. `RULES.md` adalah sumber normatif; lima file lain tidak boleh bertentangan dengannya.
+
+## Namespace Port Wajib
+
+- Production hanya mengekspos Nginx `80/443`; browser tidak boleh mengakses port diagnostik service.
+- Public development memakai Admin `5173`, API Gateway `8000`, dan Keycloak `8080`.
+- Diagnostik Docker host memakai Master `18081`, Schedule `18082`, dan Venue `18087`.
+- Local `go run` memakai namespace `28xxx`: Gateway `28000`, User `28001`, Master `28081`, Schedule `28082`, LiveScore `28083`, Audit `28084`, Realtime `28085`, Medal `28086`, dan Venue `28087`.
+- Infrastruktur host memakai port configurable dari `infra/docker/.env`: PostgreSQL `15432`, Redis `16379`, NATS `14222/18222`, Prometheus `19090`, dan Grafana `13000`.
+- Port internal Docker tetap stabil dan komunikasi antarkontainer wajib memakai DNS nama service. Semua host port harus configurable melalui environment, bukan hardcoded untuk hosting.
 
 
 ## Tahapan Kerja Wajib
@@ -103,8 +141,11 @@ Konfirmasi: lanjut ke Tahap berikutnya?
 - Dilarang menulis placeholder seperti `...`, `kode sebelumnya`, `lanjutkan sendiri`, atau potongan parsial bila diminta implementasi file.
 - Komentar kode wajib informatif: `// INFO:`, `// CHANGE:`, `// SECURITY:`, `// PERFORMANCE:`, `// SEO:`, `// ACCESSIBILITY:`, `// TEST:`.
 - Setiap fitur wajib memperbarui `FEATURES.md`, dan setiap perubahan arsitektural wajib dicatat di dokumentasi/ADR.
+- Setiap perubahan aturan/standar wajib menyinkronkan enam Markdown root yang relevan.
+- Semua delete data persisten wajib soft delete; hard delete hanya purge terkontrol.
+- Jangan menambah port host baru di luar registry tanpa memperbarui enam dokumen root dan `.env.example`.
 - Semua implementasi harus mobile-first, aksesibel, SEO-ready untuk public web, aman, observable, dan testable.
-- Jangan menyalin UI/brand Flashscore, ESPN, atau ThemeForest secara identik. Gunakan hanya prinsip pengalaman pengguna, pola informasi, dan heuristik desain.
+- Jangan menyalin UI/brand Techwind, Flashscore, atau ESPN secara identik. Gunakan Techwind sebagai baseline berlisensi dan adaptasikan menjadi design system PORPROV yang orisinal.
 
 
 ## Perilaku Saat Ada Konflik
@@ -116,4 +157,4 @@ Konfirmasi: lanjut ke Tahap berikutnya?
 
 ## Definisi Selesai
 
-Fitur dianggap selesai jika code compile/build, test relevan lulus, lint/type check lulus, aksesibilitas dasar dicek, SEO tidak rusak untuk public web, tidak ada secret, dokumentasi dan `FEATURES.md` diperbarui, serta siap diuji di staging VM Diskominfo.
+Fitur dianggap selesai jika code compile/build, test relevan lulus, lint/type check lulus, aksesibilitas dasar dicek, SEO tidak rusak untuk public web, delete persisten memakai soft delete beserta audit/restore, tidak ada secret, enam dokumentasi root terkait telah sinkron, serta siap diuji di staging VM Diskominfo.

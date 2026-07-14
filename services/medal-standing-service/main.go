@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -25,7 +24,7 @@ func main() {
 	// Connect to Database
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://porprov_admin:porprov_secret@localhost:5433/porprov_db?sslmode=disable"
+		dbURL = "postgres://porprov_admin:porprov_secret@localhost:15432/porprov_db?sslmode=disable"
 	}
 
 	ctx := context.Background()
@@ -38,12 +37,9 @@ func main() {
 	queries := db.New(pool)
 	medalHandler := handler.NewMedalHandler(queries)
 
-	// Initialize NATS
-	natsURL := os.Getenv("NATS_URL")
-	if natsURL == "" {
-		natsURL = "nats://localhost:4222"
-	}
-	if err := messaging.Connect(natsURL); err != nil {
+	// Initialize NATS through the shared package so every service uses the
+	// same environment contract and local-development fallback.
+	if err := messaging.InitNATS(); err != nil {
 		log.Printf("Failed to connect to NATS: %v", err)
 	} else {
 		log.Println("Connected to NATS")
@@ -62,7 +58,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8086"
+		port = "28086"
 	}
 	log.Printf("Medal Standing Service running on port %s", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {

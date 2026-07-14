@@ -14,7 +14,7 @@ import (
 const addMatchParticipant = `-- name: AddMatchParticipant :one
 INSERT INTO match_participants (match_id, kontingen_id, athlete_name)
 VALUES ($1, $2, $3)
-RETURNING id, match_id, kontingen_id, athlete_name, created_at, updated_at
+RETURNING id, match_id, kontingen_id, athlete_name, created_at, updated_at, deleted_at, deleted_by, delete_reason
 `
 
 type AddMatchParticipantParams struct {
@@ -33,6 +33,9 @@ func (q *Queries) AddMatchParticipant(ctx context.Context, arg AddMatchParticipa
 		&i.AthleteName,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
@@ -40,7 +43,7 @@ func (q *Queries) AddMatchParticipant(ctx context.Context, arg AddMatchParticipa
 const createMatch = `-- name: CreateMatch :one
 INSERT INTO matches (nomor_tanding_id, venue_id, match_date, status, round)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, nomor_tanding_id, venue_id, match_date, status, round, created_at, updated_at
+RETURNING id, nomor_tanding_id, venue_id, match_date, status, round, created_at, updated_at, deleted_at, deleted_by, delete_reason
 `
 
 type CreateMatchParams struct {
@@ -69,6 +72,9 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 		&i.Round,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
@@ -76,7 +82,7 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 const createVenue = `-- name: CreateVenue :one
 INSERT INTO venues (name, address, capacity, city)
 VALUES ($1, $2, $3, $4)
-RETURNING id, name, address, capacity, city, created_at, updated_at
+RETURNING id, name, address, capacity, created_at, updated_at, city, deleted_at, deleted_by, delete_reason
 `
 
 type CreateVenueParams struct {
@@ -99,33 +105,18 @@ func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue
 		&i.Name,
 		&i.Address,
 		&i.Capacity,
-		&i.City,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.City,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
 
-const deleteMatch = `-- name: DeleteMatch :exec
-DELETE FROM matches WHERE id = $1
-`
-
-func (q *Queries) DeleteMatch(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteMatch, id)
-	return err
-}
-
-const deleteVenue = `-- name: DeleteVenue :exec
-DELETE FROM venues WHERE id = $1
-`
-
-func (q *Queries) DeleteVenue(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteVenue, id)
-	return err
-}
-
 const getMatchByID = `-- name: GetMatchByID :one
-SELECT id, nomor_tanding_id, venue_id, match_date, status, round, created_at, updated_at FROM matches WHERE id = $1 LIMIT 1
+SELECT id, nomor_tanding_id, venue_id, match_date, status, round, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM matches WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetMatchByID(ctx context.Context, id pgtype.UUID) (Match, error) {
@@ -140,12 +131,15 @@ func (q *Queries) GetMatchByID(ctx context.Context, id pgtype.UUID) (Match, erro
 		&i.Round,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
 
 const getVenueByID = `-- name: GetVenueByID :one
-SELECT id, name, address, capacity, city, created_at, updated_at FROM venues WHERE id = $1 LIMIT 1
+SELECT id, name, address, capacity, created_at, updated_at, city, deleted_at, deleted_by, delete_reason FROM venues WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetVenueByID(ctx context.Context, id pgtype.UUID) (Venue, error) {
@@ -156,16 +150,19 @@ func (q *Queries) GetVenueByID(ctx context.Context, id pgtype.UUID) (Venue, erro
 		&i.Name,
 		&i.Address,
 		&i.Capacity,
-		&i.City,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.City,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
 
 const listMatchParticipants = `-- name: ListMatchParticipants :many
-SELECT id, match_id, kontingen_id, athlete_name, created_at, updated_at FROM match_participants
-WHERE match_id = $1
+SELECT id, match_id, kontingen_id, athlete_name, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM match_participants
+WHERE match_id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) ListMatchParticipants(ctx context.Context, matchID pgtype.UUID) ([]MatchParticipant, error) {
@@ -184,6 +181,9 @@ func (q *Queries) ListMatchParticipants(ctx context.Context, matchID pgtype.UUID
 			&i.AthleteName,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
 		); err != nil {
 			return nil, err
 		}
@@ -196,7 +196,8 @@ func (q *Queries) ListMatchParticipants(ctx context.Context, matchID pgtype.UUID
 }
 
 const listMatches = `-- name: ListMatches :many
-SELECT id, nomor_tanding_id, venue_id, match_date, status, round, created_at, updated_at FROM matches
+SELECT id, nomor_tanding_id, venue_id, match_date, status, round, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM matches
+WHERE deleted_at IS NULL
 ORDER BY match_date ASC
 `
 
@@ -218,6 +219,9 @@ func (q *Queries) ListMatches(ctx context.Context) ([]Match, error) {
 			&i.Round,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
 		); err != nil {
 			return nil, err
 		}
@@ -230,13 +234,14 @@ func (q *Queries) ListMatches(ctx context.Context) ([]Match, error) {
 }
 
 const listVenues = `-- name: ListVenues :many
-SELECT id, name, address, capacity, city, created_at, updated_at FROM venues
-WHERE city = COALESCE(NULLIF($1::text, ''), city)
+SELECT id, name, address, capacity, created_at, updated_at, city, deleted_at, deleted_by, delete_reason FROM venues
+WHERE deleted_at IS NULL
+  AND city = COALESCE(NULLIF($1::text, ''), city)
 ORDER BY name ASC
 `
 
-func (q *Queries) ListVenues(ctx context.Context, city string) ([]Venue, error) {
-	rows, err := q.db.Query(ctx, listVenues, city)
+func (q *Queries) ListVenues(ctx context.Context, dollar_1 string) ([]Venue, error) {
+	rows, err := q.db.Query(ctx, listVenues, dollar_1)
 	if err != nil {
 		return nil, err
 	}
@@ -249,9 +254,12 @@ func (q *Queries) ListVenues(ctx context.Context, city string) ([]Venue, error) 
 			&i.Name,
 			&i.Address,
 			&i.Capacity,
-			&i.City,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.City,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
 		); err != nil {
 			return nil, err
 		}
@@ -272,8 +280,8 @@ SET
   status = COALESCE(NULLIF($5::text, ''), status),
   round = COALESCE(NULLIF($6::text, ''), round),
   updated_at = NOW()
-WHERE id = $1
-RETURNING id, nomor_tanding_id, venue_id, match_date, status, round, created_at, updated_at
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, nomor_tanding_id, venue_id, match_date, status, round, created_at, updated_at, deleted_at, deleted_by, delete_reason
 `
 
 type UpdateMatchParams struct {
@@ -304,6 +312,9 @@ func (q *Queries) UpdateMatch(ctx context.Context, arg UpdateMatchParams) (Match
 		&i.Round,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
@@ -316,8 +327,8 @@ SET
   capacity = COALESCE(NULLIF($4::int, 0), capacity),
   city = COALESCE(NULLIF($5::text, ''), city),
   updated_at = NOW()
-WHERE id = $1
-RETURNING id, name, address, capacity, city, created_at, updated_at
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, name, address, capacity, created_at, updated_at, city, deleted_at, deleted_by, delete_reason
 `
 
 type UpdateVenueParams struct {
@@ -342,9 +353,12 @@ func (q *Queries) UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue
 		&i.Name,
 		&i.Address,
 		&i.Capacity,
-		&i.City,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.City,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }

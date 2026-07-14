@@ -16,7 +16,7 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Actor-ID", "X-Request-ID"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
@@ -32,6 +32,8 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler 
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/deleted", masterDataHandler.ListDeleted)
+		r.Post("/deleted/{entity}/{id}/restore", masterDataHandler.RestoreDeleted)
 		r.Route("/cabors", func(r chi.Router) {
 			r.Post("/", masterDataHandler.CreateCabor)
 			r.Get("/", masterDataHandler.ListCabors)
@@ -45,6 +47,13 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler 
 			r.Get("/{id}", masterDataHandler.GetKontingen)
 			r.Put("/{id}", masterDataHandler.UpdateKontingen)
 			r.Delete("/{id}", masterDataHandler.DeleteKontingen)
+		})
+		r.Route("/nomor-tandings", func(r chi.Router) {
+			r.Post("/", masterDataHandler.CreateNomorTanding)
+			r.Get("/", masterDataHandler.ListNomorTandings)
+			r.Get("/{id}", masterDataHandler.GetNomorTanding)
+			r.Put("/{id}", masterDataHandler.UpdateNomorTanding)
+			r.Delete("/{id}", masterDataHandler.DeleteNomorTanding)
 		})
 		r.Route("/city-guides", func(r chi.Router) {
 			r.Post("/", cityGuideHandler.CreateCityGuide)
@@ -60,8 +69,8 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler 
 		})
 	})
 
-	// Serve uploaded files statically
-	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+	// SECURITY: Delivery media harus memverifikasi tombstone sebelum melayani file.
+	r.Get("/uploads/{fileName}", masterDataHandler.ServeMedia)
 
 	return r
 }

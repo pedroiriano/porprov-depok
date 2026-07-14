@@ -1,6 +1,14 @@
-# RULES.md — Aturan Mutlak Codex Agent Portal PORPROV Enterprise UI/UX v3
+# RULES.md — Aturan Mutlak Portal PORPROV Enterprise UI/UX v4
 
 Dokumen ini mengikat semua agent AI/Codex saat membuat, mengubah, menguji, atau mendokumentasikan aplikasi Portal PORPROV XV Jawa Barat 2026.
+
+## 0. Konteks Produk dan Sumber Kebenaran
+
+- Produk aktif adalah repository `porprov-depok` untuk Portal PORPROV XV Jawa Barat 2026 Kota Depok.
+- Kondisi implementasi aktual wajib dibaca dari `FEATURES.md`; jangan menganggap fitur planned sebagai tersedia atau fitur yang hanya compile sebagai final.
+- `RULES.md` adalah sumber normatif. `README.md`, `AI.md`, `AGENTS.md`, `FEATURES.md`, dan `DOCUMENTATION.md` wajib konsisten dengannya.
+- Setiap perubahan aturan atau standar wajib memperbarui semua Markdown root yang terdampak dalam pekerjaan yang sama.
+- Techwind 3.3.0 di `theme-reference/` adalah baseline UI lokal. Source tema adalah referensi desain, bukan runtime aplikasi dan bukan identitas brand PORPROV.
 
 ## 1. Keputusan Final Stack
 
@@ -18,7 +26,7 @@ Dokumen ini mengikat semua agent AI/Codex saat membuat, mengubah, menguji, atau 
 | Event Broker | NATS JetStream untuk durable event bisnis |
 | Auth | Keycloak + OpenID Connect/OAuth2 + JWT |
 | Deployment | Docker + Nginx + SSL pada VM Diskominfo Kota Depok; Kubernetes bila skala enterprise besar |
-| UI System | Tailwind CSS v4.x, design tokens, mobile-first, accessible components |
+| UI System | Techwind 3.3.0 sebagai baseline visual, Tailwind CSS v4.x, design tokens PORPROV, mobile-first, accessible components |
 
 
 ## 2. Arsitektur Repositori Wajib
@@ -31,6 +39,10 @@ porprov-xv/
 ├── RULES.md
 ├── FEATURES.md
 ├── DOCUMENTATION.md
+├── theme-reference/
+│   └── HTML/
+│       ├── Landing/
+│       └── Dashboard/
 ├── apps/
 │   ├── public-web-nextjs/
 │   ├── admin-web-react/
@@ -83,22 +95,38 @@ porprov-xv/
 
 Agent wajib berhenti dan bertanya: **"Konfirmasi: lanjut ke Tahap X?"** setelah menyelesaikan foundation, infra, auth, backend, public web, admin web, mobile, realtime, testing, hardening, atau deployment.
 
-## 5. Aturan UI/UX Benchmark
+## 5. Baseline UI/UX Techwind dan Benchmark Olahraga
 
 | Sumber Inspirasi | Prinsip yang Diambil | Adaptasi PORPROV |
 |---|---|---|
+| `theme-reference/HTML/Landing/` | Baseline Public Web Techwind: navigation, hero, event/feature sections, editorial, gallery, CTA, footer | Implementasi ulang di Next.js dengan konten PORPROV, SEO, LiveScore, venue, medali, berita, dan Depok Guide |
+| `theme-reference/HTML/Dashboard/` | Baseline Admin Techwind: application shell, sidebar, topbar, KPI, form, table, calendar, profile, gallery | Implementasi ulang di React sebagai workspace operator yang role-aware, realtime, audit-friendly, dan efisien |
 | Flashscore | Kepadatan LiveScore, filter cabor/tanggal, match card, standings, detail match, status realtime | LiveScore per cabor, venue, kontingen, ronde, status official, timeline event, standings medali |
 | ESPN | Sports media storytelling, highlights, news cards, video/editorial hub, coverage berbasis narasi olahraga | Berita PORPROV, highlight atlet, galeri, press release, profil venue, cerita maskot Toca-Toci |
-| Fitness Zone | Hero energik, CTA visual, schedule section, gallery, cards promosi, atmosfer event | Landing page PORPROV, countdown, kartu venue, Depok Guide, galeri acara, promosi kota |
 | Tailwind CSS v4.x | Utility-first, CSS-first token, responsive utilities, scrollbar/logical utilities modern | Design system PORPROV dengan token warna, spacing, status badges, skeleton loading, dark mode opsional |
 
 
 Aturan:
+- Techwind adalah baseline utama Public/Admin, tetapi HTML/Gulp tema tidak boleh ditempel langsung ke runtime React/Next.js.
+- Telaah halaman referensi yang relevan sebelum mengubah UI; dokumentasikan mapping komponen dan keputusan besar pada docs UI/UX atau ADR.
 - Ambil pola terbaik, bukan menyalin tampilan identik.
 - Flashscore-inspired: match card, filter, standings, compact dense data, realtime connection state.
 - ESPN-inspired: editorial card, highlights, sports news, media center, athlete/venue story.
-- Fitness Zone-inspired: hero energik, countdown, CTA, schedule, gallery, venue/event promotion.
 - Tailwind v4.x digunakan untuk membangun design system, bukan styling acak.
+- Gunakan identitas visual PORPROV/Kota Depok, asset resmi, copywriting Indonesia, dan token aplikasi. Jangan mengekspos logo, nama, demo content, atau identitas Techwind.
+- Pastikan penggunaan dan distribusi asset tema sesuai lisensi proyek.
+
+### 5.1 Quality Bar “Masterpiece”
+
+Sebuah UI hanya boleh disebut masterpiece bila memenuhi seluruh quality bar berikut:
+
+- Hierarki visual, grid, density, spacing, typography, warna, dan motion konsisten melalui design tokens.
+- Semua state tersedia: loading/skeleton, empty, error/retry, success, disabled, permission denied, offline, dan realtime reconnect bila relevan.
+- Responsif mobile-first tanpa overflow atau informasi kritis tersembunyi.
+- WCAG 2.2 AA: semantic HTML, keyboard navigation, visible focus, label/ARIA benar, kontras cukup, target sentuh minimal 44px, dan `prefers-reduced-motion`.
+- Public Web memenuhi SEO teknis dan target Core Web Vitals; Admin memprioritaskan task completion, scanability, bulk-safe actions, filter, pagination, dan feedback yang jelas.
+- Tidak ada placeholder generik, demo copy, asset pecah, inkonsistensi icon, atau duplikasi komponen tanpa alasan.
+- Visual regression, accessibility check, lint, type check, dan build menjadi quality gate sesuai risiko perubahan.
 
 ## 6. Design System Tailwind v4.x
 
@@ -124,6 +152,7 @@ Aturan:
 - Admin tidak wajib SEO, tetapi wajib cepat, aman, dan realtime.
 - Wajib memiliki role-based sidebar, global search, data table, filter kompleks, approval workflow, notification center, audit log, export Excel/PDF, dan dashboard KPI.
 - Data besar harus memakai pagination server-side atau virtualization.
+- Aksi destruktif harus menampilkan konsekuensi dan konfirmasi yang aksesibel; aksi “Hapus” selalu menjalankan soft delete dan menawarkan restore sesuai role.
 
 ## 9. Aturan Mobile — React Native
 
@@ -138,6 +167,7 @@ Aturan:
 - Framework: Gin/Fiber/Chi sesuai service; pilih konsisten dan dokumentasikan ADR.
 - Database access: utamakan `pgx` + `sqlc`; ORM hanya bila disetujui.
 - Gunakan validator, logging Zap/Zerolog, OpenTelemetry, Prometheus.
+- Semua entity persisten mengikuti kontrak soft delete pada Bagian 17.
 - API response wajib mengikuti format:
 ```json
 {"success":true,"message":"Data berhasil diproses","data":{},"meta":{"request_id":"uuid","timestamp":"2026-07-06T13:00:00+07:00"}}
@@ -189,3 +219,68 @@ Gunakan komentar bersih:
 - Minimum production: Docker, Docker Compose staging, Nginx reverse proxy, SSL/TLS, PostgreSQL, Redis, NATS JetStream, Keycloak, CI/CD, backup, monitoring, log aggregation.
 - Enterprise upgrade: Kubernetes, Nginx Ingress, Cert Manager, HPA, PostgreSQL HA, Redis Sentinel/Cluster, NATS Cluster, object storage, blue-green/canary deployment.
 - Semua konfigurasi rahasia wajib memakai `.env` atau secret manager, tidak masuk git.
+
+## 17. Soft Delete Wajib untuk Semua Data Persisten
+
+> Status penerapan 14 Juli 2026: kontrak ini sudah diterapkan dan diuji pada Cabor, Nomor Pertandingan, Kontingen, City Guide, Media Library, Venue, dan Jadwal. Implementasi service/domain baru wajib memakai kontrak yang sama; keputusan teknis aktif dicatat pada `docs/adr/ADR-0002-soft-delete-and-port-namespaces.md`.
+
+### 17.1 Kontrak Data
+
+- Setiap tabel/entity domain yang dapat dihapus wajib memiliki `deleted_at TIMESTAMPTZ NULL`, `deleted_by` sesuai tipe identitas actor, dan `delete_reason` bila penghapusan perlu alasan bisnis.
+- Query list/get/relasi standar wajib menyertakan `deleted_at IS NULL`. Akses data terhapus hanya melalui scope khusus untuk recycle bin, audit, restore, atau purge.
+- Unique constraint data aktif wajib menggunakan partial unique index `WHERE deleted_at IS NULL` bila record dengan nilai sama boleh dibuat kembali setelah dihapus.
+- Dilarang memakai `ON DELETE CASCADE` sebagai alur penghapusan bisnis lintas entity/service. Relasi ditangani dengan policy domain, validasi, dan event.
+
+### 17.2 Kontrak API dan Audit
+
+- Endpoint `DELETE` tetap boleh digunakan, tetapi hanya melakukan update penanda soft delete, bersifat idempotent, dan tidak menghapus row/file secara fisik.
+- Actor, waktu, alasan, request ID, serta nilai penting sebelum perubahan wajib dicatat pada audit trail.
+- Restore wajib memakai endpoint eksplisit, misalnya `POST /resources/{id}/restore`, dengan authorization, validasi konflik, audit, dan event restore.
+- Service harus memublikasikan event versioned seperti `resource.deleted` dan `resource.restored` melalui outbox/NATS bila consumer lain perlu menyelaraskan projection.
+- Response tidak boleh membocorkan record soft-deleted kepada pengguna tanpa permission yang sesuai.
+
+### 17.3 Media, Retensi, dan Purge
+
+- Soft delete Media Library hanya menandai metadata; object/file tetap tersedia bagi proses restore namun tidak muncul pada selector/list aktif dan tidak boleh dilayani melalui URL publik tanpa scope restore yang sah.
+- Purge fisik hanya boleh dilakukan worker/job terkontrol setelah masa retensi `[TBD — perlu keputusan produk dan legal]`, memastikan tidak ada referensi aktif, serta menghasilkan audit log.
+- Hard delete manual melalui UI/API umum dilarang. Pengecualian seperti data uji, kewajiban hukum, atau insiden keamanan membutuhkan role khusus, persetujuan eksplisit, dan audit.
+
+### 17.4 Quality Gate Soft Delete
+
+- Migration harus backward-safe dan memiliki strategi backfill/rollback.
+- Unit/integration test minimal mencakup delete, invisibility pada query aktif, get by ID, restore, konflik uniqueness, authorization, audit, idempotency, dan purge terkontrol.
+- Fitur yang masih melakukan hard delete tidak boleh berstatus `[x] Final`; catat sebagai `[~] In Progress` atau technical debt pada `FEATURES.md`.
+
+## 18. Sinkronisasi Dokumentasi Root
+
+Gunakan pembagian tanggung jawab berikut setiap kali aturan/standar berubah:
+
+| File | Wajib Memuat |
+|---|---|
+| `README.md` | Orientasi aplikasi, quick start, baseline penting, dan tautan dokumen |
+| `AI.md` | Konteks kerja dan perilaku ringkas agent |
+| `AGENTS.md` | Protokol operasional, tahapan, quality gate, dan format handoff |
+| `RULES.md` | Aturan normatif dan larangan mutlak |
+| `FEATURES.md` | Status implementasi nyata, gap kepatuhan, dan technical debt |
+| `DOCUMENTATION.md` | Detail teknis, arsitektur, kontrak data/API, operasi, dan runbook |
+
+Perubahan arsitektur tetap membutuhkan ADR. Perubahan fitur tetap memperbarui `FEATURES.md`. Jangan membuat keenam file menjadi salinan identik; sinkronkan keputusan yang sama sesuai fungsi masing-masing.
+
+## 19. Registry dan Portabilitas Port
+
+| Lapisan | Port Standar | Aturan |
+|---|---|---|
+| Production edge | `80`, `443` | Hanya Nginx/reverse proxy yang diekspos publik |
+| Public development | Admin `5173`, Gateway `8000`, Keycloak `8080` | Entry point browser dan SSO lokal |
+| Docker diagnostic | Master `18081`, Schedule `18082`, Venue `18087` | Hanya health check/troubleshooting lokal |
+| Local Go debug | Gateway `28000`, User `28001`, Master `28081`, Schedule `28082`, LiveScore `28083`, Audit `28084`, Realtime `28085`, Medal `28086`, Venue `28087` | Tidak bentrok dengan port host Docker |
+| Infrastruktur host | PostgreSQL `15432`, Redis `16379`, NATS `14222/18222`, Prometheus `19090`, Grafana `13000` | Dapat diubah melalui `infra/docker/.env` |
+
+Aturan mutlak:
+
+- Port internal Docker tetap mengikuti kontrak image/service dan komunikasi antarkontainer memakai DNS nama service, bukan `localhost` atau host port.
+- Seluruh mapping host pada Compose wajib memakai environment variable dengan default terdokumentasi.
+- Frontend hanya menggunakan API Gateway atau same-origin reverse proxy; dilarang mengakses Master/Schedule/Venue melalui port diagnostik.
+- Local `go run` menggunakan namespace `28xxx`. Menjalankan Docker dan Go lokal bersamaan diperbolehkan untuk debugging, tetapi hindari concurrent write terhadap database yang sama.
+- Deployment hosting harus dapat mengganti host port tanpa rebuild source. Pada production, tutup port diagnostik melalui Compose override/firewall.
+- Penambahan service/port wajib memperbarui registry ini, `.env.example`, `DOCUMENTATION.md`, dan dokumen root terkait.

@@ -8,10 +8,11 @@ INSERT INTO venues (
 
 -- name: ListVenues :many
 SELECT * FROM venues
+WHERE deleted_at IS NULL
 ORDER BY name ASC;
 
 -- name: GetVenueByID :one
-SELECT * FROM venues WHERE id = $1 LIMIT 1;
+SELECT * FROM venues WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: UpdateVenue :one
 UPDATE venues
@@ -29,8 +30,5 @@ SET
     readiness_status = COALESCE(NULLIF($12::text, ''), readiness_status),
     contact_person = COALESCE(NULLIF($13::text, ''), contact_person),
     updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
-
--- name: DeleteVenue :exec
-DELETE FROM venues WHERE id = $1;

@@ -43,8 +43,6 @@ export const metadata: Metadata = {
     images: ["/assets/images/logo-porprov.png"],
   },
   manifest: "/manifest.webmanifest",
-  title: "PORPROV XV Jawa Barat 2026",
-  description: "Portal Resmi Pekan Olahraga Provinsi XV Jawa Barat Tahun 2026 di Kota Depok",
   icons: {
     icon: '/icon.png',
   },

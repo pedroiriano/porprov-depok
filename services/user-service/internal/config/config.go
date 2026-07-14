@@ -15,7 +15,7 @@ type AppConfig struct {
 func LoadConfig() *AppConfig {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "18001" // Port 18001 dipilih agar tidak bentrok dengan framework web lain
+		port = "28001" // Local debug namespace; Docker/hosting wajib override.
 	}
 
 	env := os.Getenv("APP_ENV")
@@ -26,7 +26,7 @@ func LoadConfig() *AppConfig {
 	dbConn := os.Getenv("DATABASE_URL")
 	if dbConn == "" {
 		// Menggunakan database user_service_db sesuai desain
-		dbConn = "postgres://porprov_admin:porprov_secret@localhost:5433/user_service_db?sslmode=disable"
+		dbConn = "postgres://porprov_admin:porprov_secret@localhost:15432/user_service_db?sslmode=disable"
 	}
 
 	return &AppConfig{

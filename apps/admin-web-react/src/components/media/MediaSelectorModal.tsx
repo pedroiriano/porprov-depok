@@ -1,19 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Image as ImageIcon, Loader2, Upload, X } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
-import { 
-  Image as ImageIcon, 
-  Upload,
-  X
-} from 'lucide-react';
-
-interface MediaAsset {
-  id: string;
-  file_name: string;
-  file_url: string;
-  mime_type: string;
-  file_size: number;
-}
+import {
+  apiClient,
+  authConfig,
+  getApiErrorMessage,
+  normalizeStoredMediaUrl,
+  resolveMediaUrl,
+  unwrapApiData,
+} from '../../lib/api';
+import type { MediaAsset } from '../../types/master-data';
 
 interface MediaSelectorModalProps {
   isOpen: boolean;
@@ -21,168 +19,184 @@ interface MediaSelectorModalProps {
   onSelect: (url: string) => void;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:18002/api/v1';
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaSelectorModalProps) {
   const auth = useAuth();
-  const [media, setMedia] = useState<MediaAsset[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
+  const mediaQuery = useQuery({
+    queryKey: ['media-assets'],
+    enabled: isOpen,
+    queryFn: async () => {
+      const response = await apiClient.get<MediaAsset[] | { data: MediaAsset[] }>(
+        '/master-data/media',
+        authConfig(auth.user?.access_token),
+      );
+      return unwrapApiData(response.data) ?? [];
+    },
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      await apiClient.post('/master-data/media/upload', formData, authConfig(auth.user?.access_token));
+    },
+    onSuccess: async () => {
+      setUploadError('');
+      await queryClient.invalidateQueries({ queryKey: ['media-assets'] });
+    },
+    onError: (error) => {
+      setUploadError(getApiErrorMessage(error, 'Gagal mengunggah gambar.'));
+    },
+  });
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (isOpen) {
-      fetchMedia();
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
+    if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !uploadMutation.isPending) onClose();
     };
-  }, [isOpen]);
+    document.addEventListener('keydown', handleEscape);
 
-  const getAuthConfig = () => {
-    return {
-      headers: {
-        Authorization: `Bearer ${auth.user?.access_token}`
-      }
-    }
-  }
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, onClose, uploadMutation.isPending]);
 
-  const fetchMedia = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/media`, getAuthConfig());
-      setMedia(res.data || []);
-    } catch (error) {
-      console.error('Failed to fetch media:', error);
-    }
-  };
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      alert('Hanya file gambar yang diperbolehkan.');
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setUploadError('Format harus JPG, PNG, atau WebP.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      setUploadError('Ukuran gambar maksimal 10 MB.');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
-    setIsUploading(true);
-    try {
-      await axios.post(`${API_BASE_URL}/media/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${auth.user?.access_token}`
-        }
-      });
-      fetchMedia();
-    } catch (error) {
-      console.error('Failed to upload media:', error);
-      alert('Gagal mengunggah gambar.');
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
+    setUploadError('');
+    uploadMutation.mutate(file);
   };
 
-  const getFullUrl = (url: string) => {
-    if (url.startsWith('/uploads')) {
-      const urlObj = new URL(API_BASE_URL);
-      return `${urlObj.protocol}//${urlObj.host}${url}`;
-    }
-    return url;
-  };
+  if (!isOpen || !mounted) return null;
 
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+  const media = mediaQuery.data ?? [];
+  const modalContent = (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="Tutup pemilih media"
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
         onClick={onClose}
-      ></div>
+      />
 
-      {/* Modal */}
-      <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-fade-in-up">
-        {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Pilih Media</h2>
-          <div className="flex items-center gap-4">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleUpload} 
-              accept="image/*" 
-              className="hidden" 
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="media-selector-title"
+        className="relative flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-slate-800"
+      >
+        <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-800/80 sm:px-6">
+          <div>
+            <h2 id="media-selector-title" className="text-xl font-bold text-slate-800 dark:text-white">Pilih Media</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pilih gambar yang sudah ada atau unggah gambar baru.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleUpload}
             />
-            <button 
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-500/20 dark:hover:bg-indigo-500/30 dark:text-indigo-400 font-medium rounded-lg transition-colors text-sm"
+              disabled={uploadMutation.isPending}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-indigo-100 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-200 disabled:opacity-50 dark:bg-indigo-500/20 dark:text-indigo-300"
             >
-              {isUploading ? (
-                <span className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
-              ) : (
-                <Upload className="w-4 h-4" />
-              )}
-              Unggah Baru
+              {uploadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              <span className="hidden sm:inline">Unggah Baru</span>
             </button>
-            <button 
+            <button
+              ref={closeButtonRef}
+              type="button"
               onClick={onClose}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors"
+              aria-label="Tutup"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
             >
-              <X className="w-6 h-6" />
+              <X className="h-6 w-6" />
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Content / Grid */}
-        <div className="p-6 overflow-y-auto flex-1">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {media.map((item) => (
-              <div 
-                key={item.id} 
-                onClick={() => {
-                  onSelect(getFullUrl(item.file_url));
-                  onClose();
-                }}
-                className="group relative bg-slate-100 dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm hover:ring-2 hover:ring-indigo-500 cursor-pointer transition-all border border-slate-200 dark:border-slate-700"
-              >
-                <div className="aspect-square relative flex items-center justify-center">
-                  {item.mime_type?.startsWith('image/') ? (
-                    <img 
-                      src={getFullUrl(item.file_url)} 
-                      alt={item.file_name} 
-                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <ImageIcon className="w-10 h-10 text-slate-400" />
-                  )}
-                  {/* Select overlay */}
-                  <div className="absolute inset-0 bg-indigo-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-medium shadow-sm">
-                      Pilih
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {(uploadError || mediaQuery.error) && (
+            <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {uploadError || getApiErrorMessage(mediaQuery.error, 'Gagal memuat Media Library.')}
+            </div>
+          )}
 
-          {media.length === 0 && (
+          {mediaQuery.isLoading ? (
+            <div className="flex min-h-64 items-center justify-center" aria-live="polite">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+              <span className="sr-only">Memuat media</span>
+            </div>
+          ) : media.length > 0 ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+              {media.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    onSelect(normalizeStoredMediaUrl(item.file_url));
+                    onClose();
+                  }}
+                  className="group overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-left shadow-sm transition-all hover:ring-2 hover:ring-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <span className="relative flex aspect-square items-center justify-center overflow-hidden">
+                    {item.mime_type?.startsWith('image/') ? (
+                      <img
+                        src={resolveMediaUrl(item.file_url)}
+                        alt=""
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <ImageIcon className="h-10 w-10 text-slate-400" />
+                    )}
+                  </span>
+                  <span className="block truncate px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {item.file_name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
             <div className="py-12 text-center text-slate-500 dark:text-slate-400">
-              <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Belum ada gambar. Silakan unggah gambar baru.</p>
+              <ImageIcon className="mx-auto mb-3 h-12 w-12 opacity-50" />
+              <p>Belum ada gambar. Unggah gambar pertama untuk melanjutkan.</p>
             </div>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

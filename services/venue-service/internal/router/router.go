@@ -1,10 +1,10 @@
 package router
 
 import (
-	"net/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/porprov-xv/porprov-depok/services/venue-service/internal/handler"
+	"net/http"
 )
 
 func New(venueHandler *handler.VenueHandler) *chi.Mux {
@@ -13,7 +13,7 @@ func New(venueHandler *handler.VenueHandler) *chi.Mux {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Actor-ID", "X-Request-ID"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
@@ -26,6 +26,8 @@ func New(venueHandler *handler.VenueHandler) *chi.Mux {
 	r.Route("/api/v1/venues", func(r chi.Router) {
 		r.Post("/", venueHandler.CreateVenue)
 		r.Get("/", venueHandler.ListVenues)
+		r.Get("/deleted", venueHandler.ListDeletedVenues)
+		r.Post("/{id}/restore", venueHandler.RestoreVenue)
 		r.Get("/{id}", venueHandler.GetVenue)
 		r.Put("/{id}", venueHandler.UpdateVenue)
 		r.Delete("/{id}", venueHandler.DeleteVenue)

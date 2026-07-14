@@ -129,20 +129,3 @@ func (h *VenueHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(venue)
 }
-
-func (h *VenueHandler) DeleteVenue(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var uuid pgtype.UUID
-	if err := uuid.Scan(id); err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
-		return
-	}
-
-	if err := h.queries.DeleteVenue(r.Context(), uuid); err != nil {
-		http.Error(w, "Failed to delete venue", http.StatusInternalServerError)
-		return
-	}
-
-	publishAudit("Venue", "DELETE", id, map[string]string{"id": id})
-	w.WriteHeader(http.StatusNoContent)
-}

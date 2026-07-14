@@ -14,7 +14,7 @@ import (
 const createCabor = `-- name: CreateCabor :one
 INSERT INTO cabors (name, description, icon_url, kategori, total_medali, technical_delegate, status)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, name, description, icon_url, kategori, total_medali, technical_delegate, status, created_at, updated_at
+RETURNING id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason
 `
 
 type CreateCaborParams struct {
@@ -43,12 +43,54 @@ func (q *Queries) CreateCabor(ctx context.Context, arg CreateCaborParams) (Cabor
 		&i.Name,
 		&i.Description,
 		&i.IconUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.Kategori,
 		&i.TotalMedali,
 		&i.TechnicalDelegate,
 		&i.Status,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+	)
+	return i, err
+}
+
+const createCityGuide = `-- name: CreateCityGuide :one
+INSERT INTO city_guides (title, category, description, address, image_url)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason
+`
+
+type CreateCityGuideParams struct {
+	Title       string      `json:"title"`
+	Category    string      `json:"category"`
+	Description pgtype.Text `json:"description"`
+	Address     pgtype.Text `json:"address"`
+	ImageUrl    pgtype.Text `json:"image_url"`
+}
+
+func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams) (CityGuide, error) {
+	row := q.db.QueryRow(ctx, createCityGuide,
+		arg.Title,
+		arg.Category,
+		arg.Description,
+		arg.Address,
+		arg.ImageUrl,
+	)
+	var i CityGuide
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Category,
+		&i.Description,
+		&i.Address,
+		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
@@ -56,7 +98,7 @@ func (q *Queries) CreateCabor(ctx context.Context, arg CreateCaborParams) (Cabor
 const createKontingen = `-- name: CreateKontingen :one
 INSERT INTO kontingens (name, region_type, logo_url)
 VALUES ($1, $2, $3)
-RETURNING id, name, region_type, logo_url, created_at, updated_at
+RETURNING id, name, region_type, logo_url, created_at, updated_at, deleted_at, deleted_by, delete_reason
 `
 
 type CreateKontingenParams struct {
@@ -75,6 +117,48 @@ func (q *Queries) CreateKontingen(ctx context.Context, arg CreateKontingenParams
 		&i.LogoUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+	)
+	return i, err
+}
+
+const createMedia = `-- name: CreateMedia :one
+INSERT INTO media_assets (
+  file_name, file_url, mime_type, file_size
+) VALUES (
+  $1, $2, $3, $4
+)
+RETURNING id, file_name, file_url, mime_type, file_size, created_at, updated_at, deleted_at, deleted_by, delete_reason
+`
+
+type CreateMediaParams struct {
+	FileName string      `json:"file_name"`
+	FileUrl  string      `json:"file_url"`
+	MimeType pgtype.Text `json:"mime_type"`
+	FileSize pgtype.Int4 `json:"file_size"`
+}
+
+func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (MediaAsset, error) {
+	row := q.db.QueryRow(ctx, createMedia,
+		arg.FileName,
+		arg.FileUrl,
+		arg.MimeType,
+		arg.FileSize,
+	)
+	var i MediaAsset
+	err := row.Scan(
+		&i.ID,
+		&i.FileName,
+		&i.FileUrl,
+		&i.MimeType,
+		&i.FileSize,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
@@ -82,7 +166,7 @@ func (q *Queries) CreateKontingen(ctx context.Context, arg CreateKontingenParams
 const createNomorTanding = `-- name: CreateNomorTanding :one
 INSERT INTO nomor_tandings (cabor_id, name, gender_category, match_type)
 VALUES ($1, $2, $3, $4)
-RETURNING id, cabor_id, name, gender_category, match_type, created_at, updated_at
+RETURNING id, cabor_id, name, gender_category, match_type, created_at, updated_at, deleted_at, deleted_by, delete_reason
 `
 
 type CreateNomorTandingParams struct {
@@ -108,30 +192,15 @@ func (q *Queries) CreateNomorTanding(ctx context.Context, arg CreateNomorTanding
 		&i.MatchType,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
 
-const deleteCabor = `-- name: DeleteCabor :exec
-DELETE FROM cabors WHERE id = $1
-`
-
-func (q *Queries) DeleteCabor(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteCabor, id)
-	return err
-}
-
-const deleteKontingen = `-- name: DeleteKontingen :exec
-DELETE FROM kontingens WHERE id = $1
-`
-
-func (q *Queries) DeleteKontingen(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteKontingen, id)
-	return err
-}
-
 const getCaborByID = `-- name: GetCaborByID :one
-SELECT id, name, description, icon_url, kategori, total_medali, technical_delegate, status, created_at, updated_at FROM cabors WHERE id = $1 LIMIT 1
+SELECT id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason FROM cabors WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetCaborByID(ctx context.Context, id pgtype.UUID) (Cabor, error) {
@@ -142,18 +211,44 @@ func (q *Queries) GetCaborByID(ctx context.Context, id pgtype.UUID) (Cabor, erro
 		&i.Name,
 		&i.Description,
 		&i.IconUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.Kategori,
 		&i.TotalMedali,
 		&i.TechnicalDelegate,
 		&i.Status,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+	)
+	return i, err
+}
+
+const getCityGuideByID = `-- name: GetCityGuideByID :one
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+`
+
+func (q *Queries) GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGuide, error) {
+	row := q.db.QueryRow(ctx, getCityGuideByID, id)
+	var i CityGuide
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Category,
+		&i.Description,
+		&i.Address,
+		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
 
 const getKontingenByID = `-- name: GetKontingenByID :one
-SELECT id, name, region_type, logo_url, created_at, updated_at FROM kontingens WHERE id = $1 LIMIT 1
+SELECT id, name, region_type, logo_url, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM kontingens WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetKontingenByID(ctx context.Context, id pgtype.UUID) (Kontingen, error) {
@@ -166,12 +261,99 @@ func (q *Queries) GetKontingenByID(ctx context.Context, id pgtype.UUID) (Konting
 		&i.LogoUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+	)
+	return i, err
+}
+
+const getMedia = `-- name: GetMedia :many
+SELECT id, file_name, file_url, mime_type, file_size, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM media_assets
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetMedia(ctx context.Context) ([]MediaAsset, error) {
+	rows, err := q.db.Query(ctx, getMedia)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MediaAsset
+	for rows.Next() {
+		var i MediaAsset
+		if err := rows.Scan(
+			&i.ID,
+			&i.FileName,
+			&i.FileUrl,
+			&i.MimeType,
+			&i.FileSize,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMediaByID = `-- name: GetMediaByID :one
+SELECT id, file_name, file_url, mime_type, file_size, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM media_assets
+WHERE id = $1 AND deleted_at IS NULL
+LIMIT 1
+`
+
+func (q *Queries) GetMediaByID(ctx context.Context, id pgtype.UUID) (MediaAsset, error) {
+	row := q.db.QueryRow(ctx, getMediaByID, id)
+	var i MediaAsset
+	err := row.Scan(
+		&i.ID,
+		&i.FileName,
+		&i.FileUrl,
+		&i.MimeType,
+		&i.FileSize,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+	)
+	return i, err
+}
+
+const getNomorTandingByID = `-- name: GetNomorTandingByID :one
+SELECT id, cabor_id, name, gender_category, match_type, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM nomor_tandings WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+`
+
+func (q *Queries) GetNomorTandingByID(ctx context.Context, id pgtype.UUID) (NomorTanding, error) {
+	row := q.db.QueryRow(ctx, getNomorTandingByID, id)
+	var i NomorTanding
+	err := row.Scan(
+		&i.ID,
+		&i.CaborID,
+		&i.Name,
+		&i.GenderCategory,
+		&i.MatchType,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
 
 const listCabors = `-- name: ListCabors :many
-SELECT id, name, description, icon_url, kategori, total_medali, technical_delegate, status, created_at, updated_at FROM cabors
+SELECT id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason FROM cabors
+WHERE deleted_at IS NULL
 ORDER BY name ASC
 `
 
@@ -189,12 +371,54 @@ func (q *Queries) ListCabors(ctx context.Context) ([]Cabor, error) {
 			&i.Name,
 			&i.Description,
 			&i.IconUrl,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.Kategori,
 			&i.TotalMedali,
 			&i.TechnicalDelegate,
 			&i.Status,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCityGuides = `-- name: ListCityGuides :many
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM city_guides
+WHERE deleted_at IS NULL
+  AND category = COALESCE(NULLIF($1::text, ''), category)
+ORDER BY title ASC
+`
+
+func (q *Queries) ListCityGuides(ctx context.Context, dollar_1 string) ([]CityGuide, error) {
+	rows, err := q.db.Query(ctx, listCityGuides, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CityGuide
+	for rows.Next() {
+		var i CityGuide
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Category,
+			&i.Description,
+			&i.Address,
+			&i.ImageUrl,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
 		); err != nil {
 			return nil, err
 		}
@@ -207,7 +431,8 @@ func (q *Queries) ListCabors(ctx context.Context) ([]Cabor, error) {
 }
 
 const listKontingens = `-- name: ListKontingens :many
-SELECT id, name, region_type, logo_url, created_at, updated_at FROM kontingens
+SELECT id, name, region_type, logo_url, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM kontingens
+WHERE deleted_at IS NULL
 ORDER BY name ASC
 `
 
@@ -227,6 +452,9 @@ func (q *Queries) ListKontingens(ctx context.Context) ([]Kontingen, error) {
 			&i.LogoUrl,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
 		); err != nil {
 			return nil, err
 		}
@@ -239,7 +467,8 @@ func (q *Queries) ListKontingens(ctx context.Context) ([]Kontingen, error) {
 }
 
 const listNomorTandings = `-- name: ListNomorTandings :many
-SELECT id, cabor_id, name, gender_category, match_type, created_at, updated_at FROM nomor_tandings
+SELECT id, cabor_id, name, gender_category, match_type, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM nomor_tandings
+WHERE deleted_at IS NULL
 ORDER BY name ASC
 `
 
@@ -260,6 +489,9 @@ func (q *Queries) ListNomorTandings(ctx context.Context) ([]NomorTanding, error)
 			&i.MatchType,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
 		); err != nil {
 			return nil, err
 		}
@@ -273,7 +505,7 @@ func (q *Queries) ListNomorTandings(ctx context.Context) ([]NomorTanding, error)
 
 const updateCabor = `-- name: UpdateCabor :one
 UPDATE cabors
-SET 
+SET
   name = COALESCE(NULLIF($2::text, ''), name),
   description = COALESCE(NULLIF($3::text, ''), description),
   icon_url = COALESCE(NULLIF($4::text, ''), icon_url),
@@ -282,8 +514,8 @@ SET
   technical_delegate = COALESCE(NULLIF($7::text, ''), technical_delegate),
   status = COALESCE(NULLIF($8::text, ''), status),
   updated_at = NOW()
-WHERE id = $1
-RETURNING id, name, description, icon_url, kategori, total_medali, technical_delegate, status, created_at, updated_at
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason
 `
 
 type UpdateCaborParams struct {
@@ -314,25 +546,76 @@ func (q *Queries) UpdateCabor(ctx context.Context, arg UpdateCaborParams) (Cabor
 		&i.Name,
 		&i.Description,
 		&i.IconUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.Kategori,
 		&i.TotalMedali,
 		&i.TechnicalDelegate,
 		&i.Status,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+	)
+	return i, err
+}
+
+const updateCityGuide = `-- name: UpdateCityGuide :one
+UPDATE city_guides
+SET
+  title = COALESCE(NULLIF($2::text, ''), title),
+  category = COALESCE(NULLIF($3::text, ''), category),
+  description = COALESCE(NULLIF($4::text, ''), description),
+  address = COALESCE(NULLIF($5::text, ''), address),
+  image_url = COALESCE(NULLIF($6::text, ''), image_url),
+  updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason
+`
+
+type UpdateCityGuideParams struct {
+	ID      pgtype.UUID `json:"id"`
+	Column2 string      `json:"column_2"`
+	Column3 string      `json:"column_3"`
+	Column4 string      `json:"column_4"`
+	Column5 string      `json:"column_5"`
+	Column6 string      `json:"column_6"`
+}
+
+func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams) (CityGuide, error) {
+	row := q.db.QueryRow(ctx, updateCityGuide,
+		arg.ID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+		arg.Column6,
+	)
+	var i CityGuide
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Category,
+		&i.Description,
+		&i.Address,
+		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
 
 const updateKontingen = `-- name: UpdateKontingen :one
 UPDATE kontingens
-SET 
+SET
   name = COALESCE(NULLIF($2::text, ''), name),
   region_type = COALESCE(NULLIF($3::text, ''), region_type),
   logo_url = COALESCE(NULLIF($4::text, ''), logo_url),
   updated_at = NOW()
-WHERE id = $1
-RETURNING id, name, region_type, logo_url, created_at, updated_at
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, name, region_type, logo_url, created_at, updated_at, deleted_at, deleted_by, delete_reason
 `
 
 type UpdateKontingenParams struct {
@@ -357,6 +640,53 @@ func (q *Queries) UpdateKontingen(ctx context.Context, arg UpdateKontingenParams
 		&i.LogoUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+	)
+	return i, err
+}
+
+const updateNomorTanding = `-- name: UpdateNomorTanding :one
+UPDATE nomor_tandings
+SET
+  cabor_id = $2,
+  name = $3,
+  gender_category = $4,
+  match_type = $5,
+  updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, cabor_id, name, gender_category, match_type, created_at, updated_at, deleted_at, deleted_by, delete_reason
+`
+
+type UpdateNomorTandingParams struct {
+	ID             pgtype.UUID `json:"id"`
+	CaborID        pgtype.UUID `json:"cabor_id"`
+	Name           string      `json:"name"`
+	GenderCategory string      `json:"gender_category"`
+	MatchType      string      `json:"match_type"`
+}
+
+func (q *Queries) UpdateNomorTanding(ctx context.Context, arg UpdateNomorTandingParams) (NomorTanding, error) {
+	row := q.db.QueryRow(ctx, updateNomorTanding,
+		arg.ID,
+		arg.CaborID,
+		arg.Name,
+		arg.GenderCategory,
+		arg.MatchType,
+	)
+	var i NomorTanding
+	err := row.Scan(
+		&i.ID,
+		&i.CaborID,
+		&i.Name,
+		&i.GenderCategory,
+		&i.MatchType,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }

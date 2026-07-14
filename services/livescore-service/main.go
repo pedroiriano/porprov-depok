@@ -89,7 +89,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8083"
+		port = "28083"
 	}
 
 	log.Printf("Livescore Service running on port %s", port)

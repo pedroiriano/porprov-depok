@@ -2,20 +2,26 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/porprov-xv/porprov-depok/packages/messaging"
 	"github.com/porprov-xv/porprov-depok/services/venue-service/internal/db"
 )
 
 type VenueHandler struct {
-	queries *db.Queries
+	queries     *db.Queries
+	scheduleURL string
+	httpClient  *http.Client
 }
 
-func NewVenueHandler(queries *db.Queries) *VenueHandler {
-	return &VenueHandler{queries: queries}
+func NewVenueHandler(queries *db.Queries, scheduleURL string) *VenueHandler {
+	return &VenueHandler{queries: queries, scheduleURL: strings.TrimRight(scheduleURL, "/"), httpClient: &http.Client{Timeout: 5 * time.Second}}
 }
 
 func publishAudit(entityName, action, entityID string, payload interface{}) {
@@ -54,7 +60,7 @@ func (h *VenueHandler) CreateVenue(w http.ResponseWriter, r *http.Request) {
 	var lat, lng pgtype.Numeric
 	lat.Scan(req.Latitude)
 	lng.Scan(req.Longitude)
-	
+
 	var cityGuideUUIDs []pgtype.UUID
 	for _, id := range req.CityGuideIds {
 		var u pgtype.UUID
@@ -107,7 +113,7 @@ func (h *VenueHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Ensure JSON returns empty array not null
 	if venues == nil {
 		venues = []db.Venue{}
@@ -178,19 +184,19 @@ func (h *VenueHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	venue, err := h.queries.UpdateVenue(r.Context(), db.UpdateVenueParams{
-		ID:              uuid,
-		Column2:         req.Name,
-		Column3:         req.ImageUrl,
-		Column4:         req.Address,
-		Column5:         lat,
-		Column6:         lng,
-		Column7:         req.MapRouteUrl,
-		Column8:         cityGuideUUIDs,
-		Column9:         caborUUIDs,
-		Column10:        pgtype.Int4{Int32: req.Capacity, Valid: req.Capacity > 0},
-		Column11:        req.Facilities,
-		Column12:        req.ReadinessStatus,
-		Column13:        req.ContactPerson,
+		ID:       uuid,
+		Column2:  req.Name,
+		Column3:  req.ImageUrl,
+		Column4:  req.Address,
+		Column5:  lat,
+		Column6:  lng,
+		Column7:  req.MapRouteUrl,
+		Column8:  cityGuideUUIDs,
+		Column9:  caborUUIDs,
+		Column10: req.Capacity,
+		Column11: req.Facilities,
+		Column12: req.ReadinessStatus,
+		Column13: req.ContactPerson,
 	})
 
 	if err != nil {
@@ -205,18 +211,34 @@ func (h *VenueHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *VenueHandler) DeleteVenue(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var uuid pgtype.UUID
-	if err := uuid.Scan(id); err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+	id, idText, ok := venueID(w, r)
+	if !ok {
 		return
 	}
-
-	if err := h.queries.DeleteVenue(r.Context(), uuid); err != nil {
-		http.Error(w, "Failed to delete venue", http.StatusInternalServerError)
+	referenced, err := h.hasActiveScheduleReference(r.Context(), idText)
+	if err != nil {
+		http.Error(w, "Schedule Service tidak tersedia untuk validasi referensi", http.StatusServiceUnavailable)
 		return
 	}
-
-	publishAudit("Venue", "DELETE", id, map[string]string{"id": id})
+	if referenced {
+		http.Error(w, "Arsipkan jadwal aktif pada venue ini terlebih dahulu", http.StatusConflict)
+		return
+	}
+	actor, reason, ok := venueDeletionMetadata(w, r)
+	if !ok {
+		return
+	}
+	record, changed, err := h.queries.SoftDeleteVenue(r.Context(), id, actor, reason)
+	if errors.Is(err, pgx.ErrNoRows) {
+		http.Error(w, "Venue tidak ditemukan", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Gagal mengarsipkan venue", http.StatusInternalServerError)
+		return
+	}
+	if changed {
+		publishAudit("Venue", "SOFT_DELETE", idText, map[string]interface{}{"actor": actor, "reason": reason, "request_id": r.Header.Get("X-Request-ID"), "record": record})
+	}
 	w.WriteHeader(http.StatusNoContent)
 }

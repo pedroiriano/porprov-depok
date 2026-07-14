@@ -1,196 +1,185 @@
-import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Copy, Image as ImageIcon, Loader2, Trash2, Upload } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
-import { 
-  Upload, 
-  Trash2, 
-  Copy, 
-  Image as ImageIcon,
-  X
-} from 'lucide-react';
+import {
+  apiClient,
+  authConfig,
+  getApiErrorMessage,
+  resolveMediaUrl,
+  unwrapApiData,
+} from '../../lib/api';
+import type { MediaAsset } from '../../types/master-data';
+import { requestSoftDeleteReason } from '../../lib/soft-delete';
 
-interface MediaAsset {
-  id: string;
-  file_name: string;
-  file_url: string;
-  mime_type: string;
-  file_size: number;
-  created_at: string;
-}
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:18002/api/v1';
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export default function MediaLibrary() {
   const auth = useAuth();
-  const [media, setMedia] = useState<MediaAsset[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [actionError, setActionError] = useState('');
+  const [notice, setNotice] = useState('');
 
-  useEffect(() => {
-    fetchMedia();
-  }, []);
+  const mediaQuery = useQuery({
+    queryKey: ['media-assets'],
+    queryFn: async () => {
+      const response = await apiClient.get<MediaAsset[] | { data: MediaAsset[] }>(
+        '/master-data/media',
+        authConfig(auth.user?.access_token),
+      );
+      return unwrapApiData(response.data) ?? [];
+    },
+  });
 
-  const getAuthConfig = () => {
-    return {
-      headers: {
-        Authorization: `Bearer ${auth.user?.access_token}`
-      }
-    }
-  }
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      await apiClient.post('/master-data/media/upload', formData, authConfig(auth.user?.access_token));
+    },
+    onSuccess: async () => {
+      setActionError('');
+      setNotice('Gambar berhasil diunggah.');
+      await queryClient.invalidateQueries({ queryKey: ['media-assets'] });
+    },
+    onError: (error) => setActionError(getApiErrorMessage(error, 'Gagal mengunggah gambar.')),
+  });
 
-  const fetchMedia = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/media`, getAuthConfig());
-      setMedia(res.data || []);
-    } catch (error) {
-      console.error('Failed to fetch media:', error);
-    }
-  };
+  const deleteMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      await apiClient.delete(`/master-data/media/${id}`, { ...authConfig(auth.user?.access_token), data: { reason } });
+    },
+    onSuccess: async () => {
+      setActionError('');
+      setNotice('Media dipindahkan ke Recycle Bin.');
+      await queryClient.invalidateQueries({ queryKey: ['media-assets'] });
+    },
+    onError: (error) => setActionError(getApiErrorMessage(error, 'Gagal mengarsipkan media.')),
+  });
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      alert('Hanya file gambar yang diperbolehkan (JPG, PNG, WebP).');
+    setNotice('');
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setActionError('Format harus JPG, PNG, atau WebP.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      setActionError('Ukuran gambar maksimal 10 MB.');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
+    setActionError('');
+    uploadMutation.mutate(file);
+  };
 
-    setIsUploading(true);
+  const copyToClipboard = async (url: string) => {
     try {
-      await axios.post(`${API_BASE_URL}/media/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${auth.user?.access_token}`
-        }
-      });
-      fetchMedia();
-    } catch (error) {
-      console.error('Failed to upload media:', error);
-      alert('Gagal mengunggah gambar.');
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      await navigator.clipboard.writeText(resolveMediaUrl(url));
+      setActionError('');
+      setNotice('URL media berhasil disalin.');
+    } catch {
+      setActionError('Browser tidak mengizinkan akses clipboard.');
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus gambar ini?')) return;
-    try {
-      await axios.delete(`${API_BASE_URL}/media/${id}`, getAuthConfig());
-      fetchMedia();
-    } catch (error) {
-      console.error('Failed to delete media:', error);
-      alert('Gagal menghapus gambar.');
-    }
-  };
-
-  const copyToClipboard = (url: string) => {
-    // Determine the full URL (if the API returns a relative URL, prepend the host)
-    let fullUrl = url;
-    if (url.startsWith('/uploads')) {
-      // Assuming API_BASE_URL is something like http://localhost:18002/api/v1
-      // We extract the host from API_BASE_URL
-      const urlObj = new URL(API_BASE_URL);
-      fullUrl = `${urlObj.protocol}//${urlObj.host}${url}`;
-    }
-    
-    navigator.clipboard.writeText(fullUrl);
-    alert('URL berhasil disalin ke clipboard!');
-  };
-
-  const getFullUrl = (url: string) => {
-    if (url.startsWith('/uploads')) {
-      const urlObj = new URL(API_BASE_URL);
-      return `${urlObj.protocol}//${urlObj.host}${url}`;
-    }
-    return url;
-  };
+  const media = mediaQuery.data ?? [];
+  const isMutating = uploadMutation.isPending || deleteMutation.isPending;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="flex justify-between items-center mb-8">
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Media Library</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2">Kelola semua gambar dan aset visual di satu tempat.</p>
+          <p className="mt-2 text-slate-500 dark:text-slate-400">Kelola gambar yang digunakan oleh seluruh Master Data.</p>
         </div>
-        <div>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleUpload} 
-            accept="image/*" 
-            className="hidden" 
-          />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50"
-          >
-            {isUploading ? (
-              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            ) : (
-              <Upload className="w-5 h-5" />
-            )}
-            Unggah Gambar
-          </button>
-        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handleUpload}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isMutating}
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {uploadMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+          Unggah Gambar
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-        {media.map((item) => (
-          <div key={item.id} className="group relative bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md border border-slate-200 dark:border-slate-700 transition-all">
-            <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative overflow-hidden flex items-center justify-center">
-              {item.mime_type?.startsWith('image/') ? (
-                <img 
-                  src={getFullUrl(item.file_url)} 
-                  alt={item.file_name} 
-                  className="object-cover w-full h-full"
-                />
-              ) : (
-                <ImageIcon className="w-12 h-12 text-slate-400" />
-              )}
-              
-              {/* Hover Actions overlay */}
-              <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                <button 
-                  onClick={() => copyToClipboard(item.file_url)}
-                  className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
-                  title="Copy URL"
-                >
-                  <Copy className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => handleDelete(item.id)}
-                  className="p-2 bg-red-500/80 hover:bg-red-500 rounded-full text-white backdrop-blur-sm transition-colors"
-                  title="Hapus"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+      {(actionError || mediaQuery.error) && (
+        <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {actionError || getApiErrorMessage(mediaQuery.error, 'Gagal memuat Media Library.')}
+        </div>
+      )}
+      {notice && (
+        <div role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+          {notice}
+        </div>
+      )}
+
+      {mediaQuery.isLoading ? (
+        <div className="flex min-h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+          <span className="sr-only">Memuat media</span>
+        </div>
+      ) : media.length > 0 ? (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
+          {media.map((item) => (
+            <article key={item.id} className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
+              <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-900">
+                {item.mime_type?.startsWith('image/') ? (
+                  <img src={resolveMediaUrl(item.file_url)} alt={item.file_name} className="h-full w-full object-cover" />
+                ) : (
+                  <ImageIcon className="h-12 w-12 text-slate-400" />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center gap-3 bg-slate-900/60 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => void copyToClipboard(item.file_url)}
+                    aria-label={`Salin URL ${item.file_name}`}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+                  >
+                    <Copy className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const reason = requestSoftDeleteReason(`Media ${item.file_name}`);
+                      if (reason !== null) deleteMutation.mutate({ id: item.id, reason });
+                    }}
+                    disabled={deleteMutation.isPending}
+                    aria-label={`Arsipkan ${item.file_name}`}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-red-500/80 text-white hover:bg-red-500 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="p-3">
-              <p className="text-sm font-medium text-slate-900 dark:text-white truncate" title={item.file_name}>
-                {item.file_name}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {(item.file_size / 1024).toFixed(1)} KB
-              </p>
-            </div>
-          </div>
-        ))}
-        {media.length === 0 && (
-          <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-            <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>Belum ada gambar yang diunggah.</p>
-          </div>
-        )}
-      </div>
+              <div className="p-3">
+                <p className="truncate text-sm font-medium text-slate-900 dark:text-white" title={item.file_name}>{item.file_name}</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {item.file_size ? `${(item.file_size / 1024).toFixed(1)} KB` : 'Ukuran tidak tersedia'}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 py-12 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+          <ImageIcon className="mx-auto mb-3 h-12 w-12 opacity-50" />
+          <p>Belum ada gambar yang diunggah.</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,10 @@
-# DOCUMENTATION.md — Dokumentasi Teknis Portal PORPROV Enterprise UI/UX v3
+# DOCUMENTATION.md — Dokumentasi Teknis Portal PORPROV Enterprise UI/UX v4
 
 ## 1. Ringkasan
 
 Portal PORPROV XV Jawa Barat 2026 adalah platform sports event berbasis web dan mobile yang menyediakan informasi PORPROV, cabor, jadwal, venue/maps, LiveScore realtime, standings medali, galeri, Depok Guide, backend admin, dan aplikasi koresponden.
+
+Konteks aktif per 14 Juli 2026: Admin Web, API Gateway, Master Data Service, Venue Service, Schedule Service, serta Media Library telah terintegrasi dalam runtime Docker. Soft delete end-to-end pada Cabor, Nomor Pertandingan, Kontingen, City Guide, Media, Venue, dan Jadwal sudah diterapkan beserta Recycle Bin dan restore. Hardening RBAC granular, durable outbox/audit immutable, serta kebijakan retensi dan purge tetap menjadi pekerjaan lanjutan sesuai `FEATURES.md`.
 
 ## 2. Stack Final
 
@@ -20,7 +22,7 @@ Portal PORPROV XV Jawa Barat 2026 adalah platform sports event berbasis web dan 
 | Event Broker | NATS JetStream untuk durable event bisnis |
 | Auth | Keycloak + OpenID Connect/OAuth2 + JWT |
 | Deployment | Docker + Nginx + SSL pada VM Diskominfo Kota Depok; Kubernetes bila skala enterprise besar |
-| UI System | Tailwind CSS v4.x, design tokens, mobile-first, accessible components |
+| UI System | Techwind 3.3.0 sebagai baseline visual, Tailwind CSS v4.x, design tokens PORPROV, mobile-first, accessible components |
 
 
 ## 3. Struktur Repositori
@@ -33,6 +35,10 @@ porprov-xv/
 ├── RULES.md
 ├── FEATURES.md
 ├── DOCUMENTATION.md
+├── theme-reference/
+│   └── HTML/
+│       ├── Landing/
+│       └── Dashboard/
 ├── apps/
 │   ├── public-web-nextjs/
 │   ├── admin-web-react/
@@ -78,10 +84,15 @@ porprov-xv/
 
 | Sumber Inspirasi | Prinsip yang Diambil | Adaptasi PORPROV |
 |---|---|---|
+| `theme-reference/HTML/Landing/` | Baseline Techwind Public Web | Navigasi, hero, event sections, editorial, gallery, CTA, auth, dan footer dipetakan ke komponen Next.js PORPROV |
+| `theme-reference/HTML/Dashboard/` | Baseline Techwind Admin Web | Application shell, sidebar, topbar, KPI, form, table, calendar, gallery, dan profile dipetakan ke komponen React PORPROV |
 | Flashscore | Kepadatan LiveScore, filter cabor/tanggal, match card, standings, detail match, status realtime | LiveScore per cabor, venue, kontingen, ronde, status official, timeline event, standings medali |
 | ESPN | Sports media storytelling, highlights, news cards, video/editorial hub, coverage berbasis narasi olahraga | Berita PORPROV, highlight atlet, galeri, press release, profil venue, cerita maskot Toca-Toci |
-| Fitness Zone | Hero energik, CTA visual, schedule section, gallery, cards promosi, atmosfer event | Landing page PORPROV, countdown, kartu venue, Depok Guide, galeri acara, promosi kota |
 | Tailwind CSS v4.x | Utility-first, CSS-first token, responsive utilities, scrollbar/logical utilities modern | Design system PORPROV dengan token warna, spacing, status badges, skeleton loading, dark mode opsional |
+
+Techwind 3.3.0 adalah baseline visual lokal, bukan runtime atau brand aplikasi. HTML/Gulp pada `theme-reference/` dipakai untuk membaca struktur, ritme, responsive behavior, dan pola komponen, lalu diimplementasikan ulang sebagai React/Next.js dengan design tokens, asset, serta copywriting resmi PORPROV. Distribusi asset harus mematuhi lisensi yang dimiliki proyek.
+
+Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type yang konsisten, seluruh state loading/empty/error/success/disabled/offline/reconnect, mobile-first, WCAG 2.2 AA, reduced motion, performa, visual regression, dan tidak adanya demo content atau komponen duplikat tanpa alasan.
 
 
 ### 4.1 Public Web Experience
@@ -93,6 +104,8 @@ porprov-xv/
 - Gunakan match card padat untuk LiveScore.
 - Gunakan editorial card untuk berita, highlight atlet, dan galeri.
 - Gunakan venue cards untuk peta, rute, fasilitas, rekomendasi sekitar.
+- Referensi awal yang relevan pada Techwind Landing antara lain pola event, gym, blog/editorial, gallery, auth, dan landing; pilih per komponen, bukan menyalin satu halaman secara utuh.
+- Ubah seluruh pola menjadi design language PORPROV: energi kompetisi, identitas Kota Depok, status realtime, CTA yang jelas, dan kepadatan informasi yang tetap terbaca.
 
 ### 4.2 Admin Web Experience
 
@@ -100,6 +113,8 @@ porprov-xv/
 - KPI cards, realtime notification, queue panel, approval panel.
 - Data table besar dengan server-side pagination, filter, sort, search, export.
 - Role-based menu untuk SUPER_ADMIN, ADMIN_ORGANISASI, OPERATOR, VERIFIKATOR, PETUGAS_LAPANGAN, AUDITOR.
+- Gunakan Techwind Dashboard sebagai baseline shell, sidebar/topbar, table, form, calendar, profile, gallery, dan feedback state; jangan memasukkan Gulp/theme JavaScript ke bundle React.
+- Aksi delete harus diberi konfirmasi aksesibel, menjelaskan bahwa data masuk Recycle Bin/arsip, dan menyediakan restore sesuai permission.
 
 ### 4.3 Mobile Koresponden Experience
 
@@ -161,6 +176,16 @@ pnpm install
 pnpm dev
 ```
 
+Admin Web menggunakan variabel berikut:
+
+| Variabel | Default lokal | Fungsi |
+|---|---|---|
+| `VITE_API_URL` | `http://localhost:8000/api/v1` | Satu-satunya entry point API browser |
+| `VITE_OIDC_AUTHORITY` | `http://localhost:8080/realms/porprov` | Authority Keycloak |
+| `VITE_OIDC_CLIENT_ID` | `porprov-admin-web` | Client OIDC Admin Web |
+
+Media Library dan seluruh form Master Data menggunakan API Gateway. Nilai media disimpan sebagai URL relatif `/uploads/<nama-acak>.<ext>` agar tetap valid saat domain atau port deployment berubah.
+
 ### 5.5 Backend Service
 
 ```bash
@@ -178,6 +203,69 @@ pnpm install
 pnpm start
 ```
 
+### 5.7 Stack Master Data dalam Docker
+
+Jalankan stack Admin Web, API Gateway, Master Data, Venue, dan Schedule beserta migrasinya:
+
+```powershell
+cd infra/docker
+docker compose up -d master-data-service venue-service schedule-service api-gateway admin-web prometheus
+```
+
+Port Docker development:
+
+| Komponen | URL |
+|---|---|
+| Admin Web | `http://localhost:5173` |
+| API Gateway | `http://localhost:8000` |
+| Keycloak | `http://localhost:8080` |
+| Master Data Service (diagnostik) | `http://localhost:18081` |
+| Schedule Service (diagnostik) | `http://localhost:18082` |
+| Venue Service (diagnostik) | `http://localhost:18087` |
+
+Service browser tidak boleh menggunakan port diagnostik. Port tersebut hanya untuk pemeriksaan lokal; operasi Admin Web selalu melalui API Gateway.
+
+Migration SQL dikemas ke image migration agar berfungsi pada workspace Windows di drive yang tidak dibagikan sebagai bind mount. Aset Media Library disimpan pada named volume `master_data_uploads`; soft delete media hanya menonaktifkan metadata dan delivery publik, tidak menghapus file dari volume.
+
+Pemeriksaan status:
+
+```powershell
+docker compose ps
+curl.exe http://localhost:8000/health
+curl.exe http://localhost:8000/api/v1/master-data/media
+curl.exe http://localhost:8000/api/v1/venues
+```
+
+### 5.8 Registry Port dan Mode Debug
+
+Host port Compose dibaca dari `infra/docker/.env` dengan fallback pada `.env.example`:
+
+| Kategori | Variabel | Default |
+|---|---|---|
+| Public dev | `ADMIN_WEB_HOST_PORT`, `API_GATEWAY_HOST_PORT`, `KEYCLOAK_HOST_PORT` | `5173`, `8000`, `8080` |
+| Diagnostic | `MASTER_DATA_HOST_PORT`, `SCHEDULE_HOST_PORT`, `VENUE_HOST_PORT` | `18081`, `18082`, `18087` |
+| Data/event | `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT`, `NATS_CLIENT_HOST_PORT`, `NATS_MONITOR_HOST_PORT` | `15432`, `16379`, `14222`, `18222` |
+| Observability | `PROMETHEUS_HOST_PORT`, `GRAFANA_HOST_PORT` | `19090`, `13000` |
+| Edge | `HTTP_HOST_PORT`, `HTTPS_HOST_PORT` | `80`, `443` |
+
+Default `go run` sengaja berada pada namespace terpisah:
+
+| Service | Local debug |
+|---|---|
+| API Gateway | `28000` |
+| User | `28001` |
+| Master Data | `28081` |
+| Schedule | `28082` |
+| LiveScore | `28083` |
+| Audit | `28084` |
+| Realtime Gateway | `28085` |
+| Medal Standing | `28086` |
+| Venue | `28087` |
+
+Dengan demikian `go run .` tidak berebut port dengan container Docker. Service lokal mengakses PostgreSQL `15432`, NATS `14222`, dan Redis `16379`. Untuk menguji Admin terhadap Gateway lokal, set `VITE_API_URL=http://localhost:28000/api/v1`; default Admin Docker tetap memakai Gateway `8000`.
+
+Pada hosting, gunakan Nginx `80/443` sebagai satu-satunya entry point, hilangkan publish port diagnostik melalui Compose override/firewall, dan gunakan DNS service internal. Mengganti host port tidak memerlukan perubahan source atau image.
+
 ## 6. Domain Service
 
 | Service | Tanggung Jawab |
@@ -185,7 +273,7 @@ pnpm start
 | API Gateway | Routing, auth, rate limit, request id |
 | Auth Adapter | Integrasi Keycloak, user claims, RBAC |
 | User Service | User, role mapping, profile dasar |
-| Master Data Service | Cabor, venue, kontingen, atlet |
+| Master Data Service | Cabor, nomor pertandingan, kontingen, Media Library |
 | Schedule Service | Jadwal, bracket, rundown |
 | LiveScore Service | Score event, validation, correction, projection |
 | Realtime Gateway | WebSocket/SSE fanout |
@@ -216,6 +304,10 @@ Audit Service
 ## 8. Database
 
 Gunakan database per service. Integrasi data antar service dilakukan melalui event NATS JetStream, bukan join lintas database.
+
+`venue-service` adalah pemilik data venue. `schedule-service` menyimpan UUID venue eksternal tanpa foreign key lintas database dan memvalidasi keberadaan venue melalui kontrak internal sebelum membuat atau memperbarui jadwal. Nomor pertandingan dimiliki `master-data-service` dan divalidasi dengan pola yang sama.
+
+Keputusan integrasi ini dicatat pada `docs/adr/ADR-0001-master-data-media-integration.md`.
 
 ## 9. API Standard
 
@@ -299,3 +391,89 @@ Simpan di `docs/reference/`:
 - Dokumen Perencanaan Arsitektur Enterprise Web & Mobile.
 - Custom GPT Instructions/Knowledge.
 - Keputusan arsitektur/ADR.
+
+## 16. Standar Teknis Soft Delete
+
+### 16.1 Skema dan Query
+
+Semua entity persisten yang dapat dihapus wajib memakai kolom berikut sesuai kebutuhan domain:
+
+```sql
+deleted_at TIMESTAMPTZ NULL,
+deleted_by UUID NULL,
+delete_reason TEXT NULL
+```
+
+Jika identitas actor belum berbentuk UUID pada service tertentu, tipe `deleted_by` boleh mengikuti subject/actor ID yang digunakan service dan harus didokumentasikan. Query aktif memakai `WHERE deleted_at IS NULL`; query recycle bin menggunakan scope terpisah dan authorization khusus. Unique key yang dapat dipakai kembali setelah delete menggunakan partial unique index untuk record aktif.
+
+Migration harus backward-safe. Jangan memakai cascade hard delete sebagai workflow bisnis atau membuat foreign key lintas database service.
+
+### 16.2 API, Restore, Audit, dan Event
+
+- `DELETE /resources/{id}` melakukan update soft delete yang idempotent, bukan SQL `DELETE`.
+- Simpan actor, timestamp, reason, request ID, dan before-state pada audit trail.
+- `POST /resources/{id}/restore` mengaktifkan kembali record setelah authorization dan pemeriksaan konflik.
+- List/get publik maupun operasional tidak menampilkan record terhapus tanpa scope khusus.
+- Event `resource.deleted` dan `resource.restored` dipublikasikan melalui outbox/NATS JetStream jika dibutuhkan consumer lintas service.
+- UI Admin menampilkan Recycle Bin atau filter archived sesuai role; Public Web tidak boleh mengekspos data terhapus.
+
+### 16.3 Media Library dan Purge
+
+Soft delete media menyembunyikan metadata dari daftar aktif dan selector serta membuat delivery publik menolak file tersebut. File/object tetap disimpan di storage privat/terkontrol untuk restore. Purge fisik dijalankan oleh job terkontrol setelah masa retensi `[TBD — perlu keputusan produk dan legal]`, setelah memastikan tidak ada referensi aktif, dengan role khusus dan audit. Endpoint delete umum tidak boleh menghapus file fisik.
+
+### 16.4 Implementasi Aktif Master Data, Media, Venue, dan Jadwal
+
+Implementasi aktif memakai `deleted_by TEXT` karena identitas actor berasal dari claim JWT `sub` Keycloak. API Gateway selalu menghapus `X-Actor-ID` dari request klien lalu mengisinya kembali dari JWT yang sudah tervalidasi, serta meneruskan `X-Request-ID`. Endpoint Recycle Bin dan restore memerlukan autentikasi; pemetaan role granular merupakan tahap hardening RBAC berikutnya.
+
+| Database/service | Migration | Entity aktif |
+|---|---:|---|
+| `master_data_db` / Master Data | v5 | Cabor, Nomor Pertandingan, Kontingen, City Guide, Media |
+| `venue_db` / Venue | v2 | Venue |
+| `schedule_db` / Schedule | v4 | Jadwal/Match serta tabel legacy terkait |
+
+Endpoint Admin melalui API Gateway:
+
+| Method dan path | Fungsi |
+|---|---|
+| `DELETE /api/v1/master-data/{resource}/{id}` | Mengarsipkan Cabor, Nomor, Kontingen, City Guide, atau Media dengan body opsional `{"reason":"..."}` |
+| `GET /api/v1/master-data/deleted` | Tombstone gabungan Master Data dan Media |
+| `POST /api/v1/master-data/deleted/{entity}/{id}/restore` | Restore entity `cabor`, `nomor_tanding`, `kontingen`, `city_guide`, atau `media` |
+| `DELETE /api/v1/venues/{id}` / `POST /api/v1/venues/{id}/restore` | Arsip/restore Venue |
+| `GET /api/v1/venues/deleted` | Tombstone Venue |
+| `DELETE /api/v1/schedule/matches/{id}` / `POST /api/v1/schedule/matches/{id}/restore` | Arsip/restore Jadwal |
+| `GET /api/v1/schedule/matches/deleted` | Tombstone Jadwal |
+
+Aturan integritas yang aktif:
+
+- Cabor tidak dapat diarsipkan bila masih memiliki Nomor Pertandingan aktif.
+- Nomor Pertandingan dan Venue tidak dapat diarsipkan bila masih dirujuk Jadwal aktif; pemeriksaan lintas service bersifat fail-closed melalui `SCHEDULE_SERVICE_URL`.
+- Jadwal hanya dapat dipulihkan bila Nomor Pertandingan dan Venue referensinya sudah aktif kembali.
+- Media yang diarsipkan hilang dari list/selector dan `/uploads/{file}` mengembalikan `404`; setelah restore delivery kembali `200` tanpa mengunggah ulang file.
+- Delete dan restore bersifat idempotent. Operasi yang benar-benar mengubah state menerbitkan event audit NATS berisi actor, reason/request ID, serta snapshot record/tombstone. Durable outbox, event versioning, dan penyimpanan audit immutable belum diklaim selesai.
+
+Verifikasi 14 Juli 2026 mencakup `go test ./...` pada Master Data, Venue, Schedule, dan API Gateway; lint dan production build Admin; Compose config/build; runtime test delete–invisibility–restore–dependency guard–media retention; serta migration state `master=5`, `venue=2`, `schedule=4`, seluruhnya `dirty=false`. Keputusan implementasi dicatat pada `docs/adr/ADR-0002-soft-delete-and-port-namespaces.md`.
+
+### 16.5 Strategi Migrasi Implementasi Lama dan Domain Baru
+
+1. Tambahkan kolom soft delete dan partial indexes melalui migration per service.
+2. Ubah query generated/sqlc agar seluruh read aktif mengecualikan record terhapus.
+3. Ubah handler delete menjadi update idempotent dan tambahkan restore.
+4. Tambahkan audit/outbox event serta permission recycle bin/purge; jangan menganggap event best-effort setara dengan audit immutable.
+5. Ubah UI agar mengomunikasikan arsip/restore, bukan penghapusan permanen.
+6. Uji delete, invisibility, restore, uniqueness conflict, authorization, audit, idempotency, referential behavior, dan purge bila kebijakannya sudah disetujui.
+7. Baru setelah seluruh quality gate lulus, ubah status fitur terkait menjadi Done/Final pada `FEATURES.md`.
+
+## 17. Sinkronisasi Enam Markdown Root
+
+Setiap perubahan aturan atau standar harus disebarkan sesuai fungsi dokumen pada pekerjaan yang sama:
+
+| Dokumen | Peran |
+|---|---|
+| `README.md` | Orientasi aplikasi dan baseline penting |
+| `AI.md` | Pintu masuk dan konteks ringkas agent |
+| `AGENTS.md` | Protokol kerja dan handoff |
+| `RULES.md` | Sumber aturan normatif |
+| `FEATURES.md` | Status aktual, gap, dan technical debt |
+| `DOCUMENTATION.md` | Detail implementasi, operasi, dan runbook |
+
+Perubahan arsitektur tetap dicatat dalam ADR dan perubahan fitur tetap memperbarui `FEATURES.md`. Tanggal/status harus faktual; jangan menandai kepatuhan selesai sebelum migration, code, dan test tersedia.

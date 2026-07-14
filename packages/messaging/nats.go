@@ -14,7 +14,7 @@ var js nats.JetStreamContext
 func InitNATS() error {
 	natsURL := os.Getenv("NATS_URL")
 	if natsURL == "" {
-		natsURL = "nats://localhost:4222"
+		natsURL = "nats://localhost:14222"
 	}
 
 	var err error

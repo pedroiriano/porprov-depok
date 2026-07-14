@@ -5,6 +5,7 @@ RETURNING *;
 
 -- name: ListCabors :many
 SELECT * FROM cabors
+WHERE deleted_at IS NULL
 ORDER BY name ASC;
 
 -- name: CreateNomorTanding :one
@@ -14,7 +15,22 @@ RETURNING *;
 
 -- name: ListNomorTandings :many
 SELECT * FROM nomor_tandings
+WHERE deleted_at IS NULL
 ORDER BY name ASC;
+
+-- name: GetNomorTandingByID :one
+SELECT * FROM nomor_tandings WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
+
+-- name: UpdateNomorTanding :one
+UPDATE nomor_tandings
+SET
+  cabor_id = $2,
+  name = $3,
+  gender_category = $4,
+  match_type = $5,
+  updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING *;
 
 -- name: CreateKontingen :one
 INSERT INTO kontingens (name, region_type, logo_url)
@@ -23,14 +39,15 @@ RETURNING *;
 
 -- name: ListKontingens :many
 SELECT * FROM kontingens
+WHERE deleted_at IS NULL
 ORDER BY name ASC;
 
 -- name: GetCaborByID :one
-SELECT * FROM cabors WHERE id = $1 LIMIT 1;
+SELECT * FROM cabors WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: UpdateCabor :one
 UPDATE cabors
-SET 
+SET
   name = COALESCE(NULLIF($2::text, ''), name),
   description = COALESCE(NULLIF($3::text, ''), description),
   icon_url = COALESCE(NULLIF($4::text, ''), icon_url),
@@ -39,27 +56,21 @@ SET
   technical_delegate = COALESCE(NULLIF($7::text, ''), technical_delegate),
   status = COALESCE(NULLIF($8::text, ''), status),
   updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
--- name: DeleteCabor :exec
-DELETE FROM cabors WHERE id = $1;
-
 -- name: GetKontingenByID :one
-SELECT * FROM kontingens WHERE id = $1 LIMIT 1;
+SELECT * FROM kontingens WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: UpdateKontingen :one
 UPDATE kontingens
-SET 
+SET
   name = COALESCE(NULLIF($2::text, ''), name),
   region_type = COALESCE(NULLIF($3::text, ''), region_type),
   logo_url = COALESCE(NULLIF($4::text, ''), logo_url),
   updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
-
--- name: DeleteKontingen :exec
-DELETE FROM kontingens WHERE id = $1;
 
 -- name: CreateCityGuide :one
 INSERT INTO city_guides (title, category, description, address, image_url)
@@ -68,26 +79,24 @@ RETURNING *;
 
 -- name: ListCityGuides :many
 SELECT * FROM city_guides
-WHERE category = COALESCE(NULLIF($1::text, ''), category)
+WHERE deleted_at IS NULL
+  AND category = COALESCE(NULLIF($1::text, ''), category)
 ORDER BY title ASC;
 
 -- name: GetCityGuideByID :one
-SELECT * FROM city_guides WHERE id = $1 LIMIT 1;
+SELECT * FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: UpdateCityGuide :one
 UPDATE city_guides
-SET 
+SET
   title = COALESCE(NULLIF($2::text, ''), title),
   category = COALESCE(NULLIF($3::text, ''), category),
   description = COALESCE(NULLIF($4::text, ''), description),
   address = COALESCE(NULLIF($5::text, ''), address),
   image_url = COALESCE(NULLIF($6::text, ''), image_url),
   updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
-
--- name: DeleteCityGuide :exec
-DELETE FROM city_guides WHERE id = $1;
 
 -- name: CreateMedia :one
 INSERT INTO media_assets (
@@ -99,8 +108,10 @@ RETURNING *;
 
 -- name: GetMedia :many
 SELECT * FROM media_assets
+WHERE deleted_at IS NULL
 ORDER BY created_at DESC;
 
--- name: DeleteMedia :exec
-DELETE FROM media_assets
-WHERE id = $1;
+-- name: GetMediaByID :one
+SELECT * FROM media_assets
+WHERE id = $1 AND deleted_at IS NULL
+LIMIT 1;

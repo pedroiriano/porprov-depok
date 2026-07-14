@@ -19,9 +19,9 @@ export function Footer() {
                     Portal resmi penyelenggaraan Pekan Olahraga Provinsi (PORPROV) XV Jawa Barat Tahun 2026 di Kota Depok.
                   </p>
                   <ul className="list-none mt-6">
-                    <li className="inline"><a href="#" target="_blank" className="size-8 inline-flex justify-center items-center text-gray-400 hover:text-white border border-gray-800 dark:border-gray-700 rounded-md hover:border-primary dark:hover:border-primary hover:bg-primary dark:hover:bg-primary"><i className="ri-facebook-circle-line"></i></a></li>
-                    <li className="inline"><a href="#" target="_blank" className="size-8 inline-flex justify-center items-center text-gray-400 hover:text-white border border-gray-800 dark:border-gray-700 rounded-md hover:border-primary dark:hover:border-primary hover:bg-primary dark:hover:bg-primary"><i className="ri-instagram-line"></i></a></li>
-                    <li className="inline"><a href="#" target="_blank" className="size-8 inline-flex justify-center items-center text-gray-400 hover:text-white border border-gray-800 dark:border-gray-700 rounded-md hover:border-primary dark:hover:border-primary hover:bg-primary dark:hover:bg-primary"><i className="ri-twitter-x-line"></i></a></li>
+                    <li className="inline"><a href="#" target="_blank" className="size-8 inline-flex justify-center items-center text-gray-400 hover:text-white border border-gray-800 dark:border-gray-700 rounded-md hover:border-indigo-600 dark:hover:border-indigo-600 hover:bg-indigo-600 dark:hover:bg-indigo-600"><i className="ri-facebook-circle-line"></i></a></li>
+                    <li className="inline"><a href="#" target="_blank" className="size-8 inline-flex justify-center items-center text-gray-400 hover:text-white border border-gray-800 dark:border-gray-700 rounded-md hover:border-indigo-600 dark:hover:border-indigo-600 hover:bg-indigo-600 dark:hover:bg-indigo-600"><i className="ri-instagram-line"></i></a></li>
+                    <li className="inline"><a href="#" target="_blank" className="size-8 inline-flex justify-center items-center text-gray-400 hover:text-white border border-gray-800 dark:border-gray-700 rounded-md hover:border-indigo-600 dark:hover:border-indigo-600 hover:bg-indigo-600 dark:hover:bg-indigo-600"><i className="ri-twitter-x-line"></i></a></li>
                   </ul>
                 </div>
                 

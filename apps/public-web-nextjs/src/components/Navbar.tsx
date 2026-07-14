@@ -67,14 +67,14 @@ export function Navbar() {
         <ul className="buy-button list-none mb-0">
           <li className="inline mb-0">
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="focus:outline-none">
-              <span className="login-btn-primary"><span className="size-9 inline-flex items-center justify-center tracking-wide align-middle duration-500 text-base text-center rounded-full bg-primary/5 hover:bg-primary border border-primary/10 hover:border-primary text-primary hover:text-white"><i className={mounted && theme === 'dark' ? "ri-sun-line" : "ri-moon-line"}></i></span></span>
+              <span className="login-btn-primary"><span className="size-9 inline-flex items-center justify-center tracking-wide align-middle duration-500 text-base text-center rounded-full bg-indigo-600/5 hover:bg-indigo-600 border border-indigo-600/10 hover:border-indigo-600 text-indigo-600 hover:text-white"><i className={mounted && theme === 'dark' ? "ri-sun-line" : "ri-moon-line"}></i></span></span>
               <span className="login-btn-light"><span className="size-9 inline-flex items-center justify-center tracking-wide border border-gray-50 align-middle duration-500 text-base text-center rounded-full bg-gray-50 hover:bg-gray-200 dark:bg-slate-900 dark:hover:bg-gray-700 hover:border-gray-100 dark:border-gray-800 dark:hover:border-gray-700"><i className={mounted && theme === 'dark' ? "ri-sun-line" : "ri-moon-line"}></i></span></span>
             </button>
           </li>
   
           <li className="inline ps-1 mb-0">
             <Link href="/livescore">
-              <div className="login-btn-primary"><span className="size-9 inline-flex items-center justify-center tracking-wide align-middle duration-500 text-base text-center rounded-full bg-primary hover:bg-primary-700 border border-primary hover:border-primary-700 text-white"><i className="ri-live-line"></i></span></div>
+              <div className="login-btn-primary"><span className="size-9 inline-flex items-center justify-center tracking-wide align-middle duration-500 text-base text-center rounded-full bg-indigo-600 hover:bg-indigo-700 border border-indigo-600 hover:border-indigo-700 text-white"><i className="ri-live-line"></i></span></div>
               <div className="login-btn-light"><span className="size-9 inline-flex items-center justify-center tracking-wide border border-gray-50 align-middle duration-500 text-base text-center rounded-full bg-gray-50 hover:bg-gray-200 dark:bg-slate-900 dark:hover:bg-gray-700 hover:border-gray-100 dark:border-gray-800 dark:hover:border-gray-700"><i className="ri-live-line text-red-500"></i></span></div>
             </Link>
           </li>

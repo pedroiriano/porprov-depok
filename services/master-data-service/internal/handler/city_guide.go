@@ -135,18 +135,5 @@ func (h *CityGuideHandler) UpdateCityGuide(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *CityGuideHandler) DeleteCityGuide(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var uuid pgtype.UUID
-	if err := uuid.Scan(id); err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
-		return
-	}
-
-	if err := h.queries.DeleteCityGuide(r.Context(), uuid); err != nil {
-		http.Error(w, "Failed to delete city guide", http.StatusInternalServerError)
-		return
-	}
-
-	publishAuditCityGuide("DELETE", id, map[string]string{"id": id})
-	w.WriteHeader(http.StatusNoContent)
+	handleSoftDelete(w, r, h.queries, "city_guide", "City Guide")
 }

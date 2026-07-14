@@ -13,21 +13,54 @@ type Cabor struct {
 	Name              string             `json:"name"`
 	Description       pgtype.Text        `json:"description"`
 	IconUrl           pgtype.Text        `json:"icon_url"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 	Kategori          pgtype.Text        `json:"kategori"`
 	TotalMedali       pgtype.Int4        `json:"total_medali"`
 	TechnicalDelegate pgtype.Text        `json:"technical_delegate"`
 	Status            pgtype.Text        `json:"status"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy         pgtype.Text        `json:"deleted_by"`
+	DeleteReason      pgtype.Text        `json:"delete_reason"`
+}
+
+type CityGuide struct {
+	ID           pgtype.UUID        `json:"id"`
+	Title        string             `json:"title"`
+	Category     string             `json:"category"`
+	Description  pgtype.Text        `json:"description"`
+	Address      pgtype.Text        `json:"address"`
+	ImageUrl     pgtype.Text        `json:"image_url"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy    pgtype.Text        `json:"deleted_by"`
+	DeleteReason pgtype.Text        `json:"delete_reason"`
 }
 
 type Kontingen struct {
-	ID         pgtype.UUID        `json:"id"`
-	Name       string             `json:"name"`
-	RegionType string             `json:"region_type"`
-	LogoUrl    pgtype.Text        `json:"logo_url"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	ID           pgtype.UUID        `json:"id"`
+	Name         string             `json:"name"`
+	RegionType   string             `json:"region_type"`
+	LogoUrl      pgtype.Text        `json:"logo_url"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy    pgtype.Text        `json:"deleted_by"`
+	DeleteReason pgtype.Text        `json:"delete_reason"`
+}
+
+type MediaAsset struct {
+	ID           pgtype.UUID        `json:"id"`
+	FileName     string             `json:"file_name"`
+	FileUrl      string             `json:"file_url"`
+	MimeType     pgtype.Text        `json:"mime_type"`
+	FileSize     pgtype.Int4        `json:"file_size"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy    pgtype.Text        `json:"deleted_by"`
+	DeleteReason pgtype.Text        `json:"delete_reason"`
 }
 
 type NomorTanding struct {
@@ -38,15 +71,7 @@ type NomorTanding struct {
 	MatchType      string             `json:"match_type"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-}
-
-type CityGuide struct {
-	ID          pgtype.UUID        `json:"id"`
-	Title       string             `json:"title"`
-	Category    string             `json:"category"`
-	Description pgtype.Text        `json:"description"`
-	Address     pgtype.Text        `json:"address"`
-	ImageUrl    pgtype.Text        `json:"image_url"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy      pgtype.Text        `json:"deleted_by"`
+	DeleteReason   pgtype.Text        `json:"delete_reason"`
 }

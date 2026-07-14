@@ -1,0 +1,12 @@
+.git
+.agents
+.codex
+**/.env
+**/.docker-cli
+**/node_modules
+**/dist
+**/build
+**/*.exe
+**/tmp_build
+**/uploads
+**/*.log

@@ -1,6 +1,10 @@
-# AI.md — Panduan Masuk Agent AI/Codex untuk Portal PORPROV XV Jawa Barat 2026
+# AI.md — Panduan Masuk Agent AI/Codex Portal PORPROV v4
 
-> **WAJIB DIBACA PERTAMA.** Agent AI/Codex di VS Code wajib membaca `RULES.md`, `FEATURES.md`, `DOCUMENTATION.md`, dan `AGENTS.md` sebelum menganalisis, menulis, atau mengubah kode.
+> **WAJIB DIBACA PERTAMA.** Agent AI/Codex wajib membaca keenam dokumen root—`README.md`, `AI.md`, `AGENTS.md`, `RULES.md`, `FEATURES.md`, dan `DOCUMENTATION.md`—sebelum menganalisis, menulis, atau mengubah kode.
+
+## Konteks Aplikasi Aktif
+
+Repository `porprov-depok` adalah platform resmi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Sistem menggunakan monorepo aplikasi web/mobile, Golang microservices, database per service, API Gateway, event-driven architecture, serta runtime Docker. Admin Web dan alur Master Data–Media Library–Venue–Schedule telah terintegrasi. Soft delete, dependency guard, media retention, dan restore melalui Recycle Bin sudah aktif untuk domain inti tersebut; RBAC granular, audit immutable/outbox, dan retensi purge masih mengikuti status nyata pada `FEATURES.md`.
 
 ## Identitas Agent
 
@@ -26,17 +30,20 @@ Membangun platform web dan mobile PORPROV yang cepat, andal, aman, realtime, SEO
 | Event Broker | NATS JetStream untuk durable event bisnis |
 | Auth | Keycloak + OpenID Connect/OAuth2 + JWT |
 | Deployment | Docker + Nginx + SSL pada VM Diskominfo Kota Depok; Kubernetes bila skala enterprise besar |
-| UI System | Tailwind CSS v4.x, design tokens, mobile-first, accessible components |
+| UI System | Techwind 3.3.0 sebagai baseline visual, Tailwind CSS v4.x, design tokens PORPROV, mobile-first, accessible components |
 
 
 ## Prinsip UI/UX Wajib
 
 | Sumber Inspirasi | Prinsip yang Diambil | Adaptasi PORPROV |
 |---|---|---|
+| `theme-reference/HTML/Landing/` | Baseline Techwind Public Web | Navigasi, hero, event sections, editorial cards, galeri, CTA, dan footer diimplementasikan ulang sebagai komponen Next.js PORPROV |
+| `theme-reference/HTML/Dashboard/` | Baseline Techwind Admin Web | Sidebar, topbar, KPI, forms, tables, calendar, gallery, dan profile diimplementasikan ulang sebagai komponen React PORPROV |
 | Flashscore | Kepadatan LiveScore, filter cabor/tanggal, match card, standings, detail match, status realtime | LiveScore per cabor, venue, kontingen, ronde, status official, timeline event, standings medali |
 | ESPN | Sports media storytelling, highlights, news cards, video/editorial hub, coverage berbasis narasi olahraga | Berita PORPROV, highlight atlet, galeri, press release, profil venue, cerita maskot Toca-Toci |
-| Fitness Zone | Hero energik, CTA visual, schedule section, gallery, cards promosi, atmosfer event | Landing page PORPROV, countdown, kartu venue, Depok Guide, galeri acara, promosi kota |
 | Tailwind CSS v4.x | Utility-first, CSS-first token, responsive utilities, scrollbar/logical utilities modern | Design system PORPROV dengan token warna, spacing, status badges, skeleton loading, dark mode opsional |
+
+“Masterpiece” berarti hasil adaptasi yang orisinal dan terukur: hierarki visual kuat, konsistensi token/komponen, state lengkap, WCAG 2.2 AA, mobile-first, performa tinggi, SEO Public Web, efisiensi kerja Admin, serta motion yang aman. Menyalin halaman tema secara mentah tidak memenuhi standar ini.
 
 
 ## Urutan Membaca Wajib
@@ -48,7 +55,8 @@ Membangun platform web dan mobile PORPROV yang cepat, andal, aman, realtime, SEO
 | 3 | `FEATURES.md` | Tracking fitur, status, dan larangan menimpa fitur final |
 | 4 | `DOCUMENTATION.md` | Cara menjalankan, struktur, deployment, dan SOP teknis |
 | 5 | `AGENTS.md` | Protokol kerja Codex/VS Code |
-| 6 | `docs/reference/` | BRD/PRD/SRS/SDD, ASCII Wireframe, dan dokumen arsitektur enterprise |
+| 6 | `README.md` | Orientasi repository dan status aplikasi saat ini |
+| 7 | `docs/reference/` | BRD/PRD/SRS/SDD, ASCII Wireframe, dan dokumen arsitektur enterprise |
 
 ## Protokol Bertahap
 
@@ -59,7 +67,23 @@ Membangun platform web dan mobile PORPROV yang cepat, andal, aman, realtime, SEO
 5. Tampilkan full code lengkap per file dan path.
 6. Jalankan atau jelaskan test yang relevan.
 7. Perbarui `FEATURES.md` dan dokumentasi.
-8. Laporkan perubahan, risiko, dan langkah berikutnya.
+8. Jika aturan/standar berubah, sinkronkan seluruh Markdown root yang relevan.
+9. Laporkan perubahan, risiko, dan langkah berikutnya.
+
+## Prinsip Data yang Tidak Boleh Dilanggar
+
+- Semua penghapusan data persisten adalah soft delete.
+- API delete menandai `deleted_at`, `deleted_by`, dan alasan bila relevan; query aktif mengecualikan data terhapus.
+- Restore harus terotorisasi dan diaudit.
+- Hard delete hanya boleh berupa purge terkontrol berdasarkan retensi, role khusus, audit, dan persetujuan eksplisit.
+- Media yang di-soft-delete tetap disimpan sampai proses purge; jangan langsung menghapus file fisik.
+
+## Prinsip Portabilitas Runtime
+
+- Production hanya mengekspos Nginx `80/443`; aplikasi browser masuk melalui origin resmi dan API Gateway.
+- Docker memakai port internal tetap serta DNS nama service. Host port selalu configurable pada `infra/docker/.env`.
+- Local debugging memakai namespace `28xxx` agar dapat berjalan berdampingan dengan Docker tanpa bind conflict.
+- Jangan menulis URL service atau port diagnostik langsung di frontend; gunakan environment dan API Gateway.
 
 ## Aturan Ringkas yang Tidak Boleh Dilanggar
 
@@ -68,8 +92,10 @@ Membangun platform web dan mobile PORPROV yang cepat, andal, aman, realtime, SEO
 - Dilarang menulis placeholder seperti `...`, `kode sebelumnya`, `lanjutkan sendiri`, atau potongan parsial bila diminta implementasi file.
 - Komentar kode wajib informatif: `// INFO:`, `// CHANGE:`, `// SECURITY:`, `// PERFORMANCE:`, `// SEO:`, `// ACCESSIBILITY:`, `// TEST:`.
 - Setiap fitur wajib memperbarui `FEATURES.md`, dan setiap perubahan arsitektural wajib dicatat di dokumentasi/ADR.
+- Setiap perubahan aturan/standar wajib memperbarui Markdown root yang relevan.
+- Semua delete data persisten wajib soft delete.
 - Semua implementasi harus mobile-first, aksesibel, SEO-ready untuk public web, aman, observable, dan testable.
-- Jangan menyalin UI/brand Flashscore, ESPN, atau ThemeForest secara identik. Gunakan hanya prinsip pengalaman pengguna, pola informasi, dan heuristik desain.
+- Jangan menyalin UI/brand Techwind, Flashscore, atau ESPN secara identik. Adaptasikan baseline menjadi pengalaman PORPROV yang orisinal dan patuh lisensi.
 
 
 ## Orientasi Produk
@@ -81,4 +107,4 @@ Membangun platform web dan mobile PORPROV yang cepat, andal, aman, realtime, SEO
 
 ## Prinsip Hak Cipta dan Orisinalitas
 
-Flashscore, ESPN, dan tema Fitness Zone hanya dipakai sebagai benchmark pola UX. Jangan menyalin layout, asset, logo, warna khas, ikon proprietary, copywriting, atau komponen visual secara identik.
+Techwind dalam `theme-reference/` adalah baseline UI lokal proyek. Flashscore dan ESPN tetap menjadi benchmark heuristik sports experience. Jangan menyalin brand, logo, copywriting, atau identitas pihak ketiga; hasil akhir harus menggunakan identitas dan design tokens PORPROV.

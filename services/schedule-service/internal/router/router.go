@@ -10,13 +10,13 @@ import (
 	"github.com/porprov-xv/porprov-depok/services/schedule-service/internal/handler"
 )
 
-func SetupRouter(venueHandler *handler.VenueHandler, matchHandler *handler.MatchHandler) *chi.Mux {
+func SetupRouter(matchHandler *handler.MatchHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Actor-ID", "X-Request-ID"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
@@ -32,16 +32,13 @@ func SetupRouter(venueHandler *handler.VenueHandler, matchHandler *handler.Match
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Route("/venues", func(r chi.Router) {
-			r.Post("/", venueHandler.CreateVenue)
-			r.Get("/", venueHandler.ListVenues)
-			r.Get("/{id}", venueHandler.GetVenue)
-			r.Put("/{id}", venueHandler.UpdateVenue)
-			r.Delete("/{id}", venueHandler.DeleteVenue)
-		})
+		r.Get("/references/venue/{id}", matchHandler.ActiveVenueReference)
+		r.Get("/references/nomor-tanding/{id}", matchHandler.ActiveNomorTandingReference)
 		r.Route("/matches", func(r chi.Router) {
 			r.Post("/", matchHandler.CreateMatch)
 			r.Get("/", matchHandler.ListMatches)
+			r.Get("/deleted", matchHandler.ListDeletedMatches)
+			r.Post("/{id}/restore", matchHandler.RestoreMatch)
 			r.Get("/{id}", matchHandler.GetMatch)
 			r.Put("/{id}", matchHandler.UpdateMatch)
 			r.Delete("/{id}", matchHandler.DeleteMatch)

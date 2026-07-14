@@ -124,11 +124,11 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	arg := db.UpdateUserParams{
-		ID:       uuid,
-		Column2:  req.Username,
-		Column3:  req.Email,
-		Column4:  req.FullName,
-		Column5:  req.Role,
+		ID:      uuid,
+		Column2: req.Username,
+		Column3: req.Email,
+		Column4: req.FullName,
+		Column5: req.Role,
 	}
 
 	user, err := h.queries.UpdateUser(r.Context(), arg)

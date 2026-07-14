@@ -1,6 +1,13 @@
-# Portal PORPROV XV Jawa Barat 2026 — Codex Agent Guidelines Enterprise UI/UX v3
+# Portal PORPROV XV Jawa Barat 2026 Kota Depok
 
-Paket ini berisi file pedoman agent AI/Codex untuk VS Code setelah penyesuaian stack enterprise dan penyempurnaan UI/UX berbasis benchmark Flashscore, ESPN, Fitness Zone, serta Tailwind CSS v4.x.
+Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker untuk penyelenggaraan PORPROV XV Jawa Barat 2026 di Kota Depok. Repository ini juga memuat enam dokumen root yang menjadi pedoman bersama pengembang dan agent AI.
+
+## Kondisi Aplikasi Saat Ini
+
+- Admin Web, API Gateway, Master Data Service, Venue Service, Schedule Service, Media Library, PostgreSQL, Keycloak, Redis, NATS, dan monitoring telah mempunyai runtime Docker terintegrasi.
+- CRUD Master Data, pemilihan Media Library, soft delete, dan pemulihan melalui Recycle Bin Admin sudah tersedia end-to-end untuk Cabor, Nomor Pertandingan, Kontingen, City Guide, Media, Venue, dan Jadwal. Hardening RBAC granular serta kebijakan retensi/purge tetap mengikuti `FEATURES.md`.
+- Public Web, mobile, LiveScore event-driven, RBAC granular, security hardening, dan deployment production dilanjutkan berdasarkan status pada `FEATURES.md`.
+- Kondisi dan quality gate aktual tidak boleh disimpulkan dari README saja; `FEATURES.md` adalah tracker status implementasi.
 
 ## File
 
@@ -11,6 +18,7 @@ Paket ini berisi file pedoman agent AI/Codex untuk VS Code setelah penyesuaian s
 | `RULES.md` | Aturan mutlak implementasi |
 | `FEATURES.md` | Tracking fitur dan status |
 | `DOCUMENTATION.md` | Dokumentasi teknis dan operasional |
+| `README.md` | Orientasi repository, baseline, dan quick start |
 
 ## Stack Final
 
@@ -28,27 +36,49 @@ Paket ini berisi file pedoman agent AI/Codex untuk VS Code setelah penyesuaian s
 | Event Broker | NATS JetStream untuk durable event bisnis |
 | Auth | Keycloak + OpenID Connect/OAuth2 + JWT |
 | Deployment | Docker + Nginx + SSL pada VM Diskominfo Kota Depok; Kubernetes bila skala enterprise besar |
-| UI System | Tailwind CSS v4.x, design tokens, mobile-first, accessible components |
+| UI System | Techwind 3.3.0 sebagai baseline visual, Tailwind CSS v4.x, design tokens PORPROV, mobile-first, accessible components |
 
 
-## UI/UX Synthesis
+## Baseline UI/UX PORPROV
 
 | Sumber Inspirasi | Prinsip yang Diambil | Adaptasi PORPROV |
 |---|---|---|
+| `theme-reference/HTML/Landing/` | Techwind Public Web: hero, navigation, event sections, cards, gallery, CTA, footer | Diimplementasikan ulang di Next.js menggunakan brand, konten, SEO, dan sports experience PORPROV |
+| `theme-reference/HTML/Dashboard/` | Techwind Admin: sidebar, topbar, dashboard, form, table, calendar, gallery | Diimplementasikan ulang di React sebagai workspace operator PORPROV yang cepat, aman, dan role-aware |
 | Flashscore | Kepadatan LiveScore, filter cabor/tanggal, match card, standings, detail match, status realtime | LiveScore per cabor, venue, kontingen, ronde, status official, timeline event, standings medali |
 | ESPN | Sports media storytelling, highlights, news cards, video/editorial hub, coverage berbasis narasi olahraga | Berita PORPROV, highlight atlet, galeri, press release, profil venue, cerita maskot Toca-Toci |
-| Fitness Zone | Hero energik, CTA visual, schedule section, gallery, cards promosi, atmosfer event | Landing page PORPROV, countdown, kartu venue, Depok Guide, galeri acara, promosi kota |
 | Tailwind CSS v4.x | Utility-first, CSS-first token, responsive utilities, scrollbar/logical utilities modern | Design system PORPROV dengan token warna, spacing, status badges, skeleton loading, dark mode opsional |
+
+Target “masterpiece” bukan penyalinan template. UI harus orisinal, konsisten, memiliki seluruh state interaksi, mobile-first, WCAG 2.2 AA, cepat, SEO-ready untuk Public Web, efisien untuk Admin, serta lolos visual/accessibility regression sesuai risiko.
+
+## Aturan Data Utama
+
+Semua penghapusan data persisten wajib menggunakan soft delete. Record menyimpan waktu, actor, dan alasan yang relevan; query aktif menyembunyikan data terhapus; restore harus terotorisasi dan diaudit. File Media Library tetap disimpan selama masa retensi. Hard delete hanya diperbolehkan sebagai purge terkontrol, bukan aksi delete biasa.
+
+## Sinkronisasi Pedoman
+
+Setiap perubahan aturan atau standar wajib diterapkan pada keenam Markdown root yang relevan dalam pekerjaan yang sama. `RULES.md` adalah sumber normatif, `FEATURES.md` menyimpan status aktual, dan perubahan arsitektur tetap membutuhkan ADR.
+
+## Port dan Mode Menjalankan
+
+| Mode | Endpoint |
+|---|---|
+| Production | Nginx `80/443`; service domain tidak dipublikasikan |
+| Docker development | Admin `5173`, API Gateway `8000`, Keycloak `8080` |
+| Docker diagnostic | Master `18081`, Schedule `18082`, Venue `18087` |
+| Local Go debug | Gateway `28000`, Master `28081`, Schedule `28082`, Venue `28087`; service lain mengikuti registry `28xxx` |
+| Infrastruktur host | PostgreSQL `15432`, Redis `16379`, NATS `14222/18222`, Prometheus `19090`, Grafana `13000` |
+
+Semua host port dapat diubah melalui `infra/docker/.env` berdasarkan template `.env.example`. Port internal Docker tidak perlu diubah saat migrasi hosting karena service berkomunikasi melalui DNS Compose.
 
 
 ## Cara Pakai
 
-1. Salin semua file MD ke root repository `porprov-xv/`.
-2. Simpan dokumen referensi di `docs/reference/`.
-3. Jalankan Codex/agent di VS Code.
-4. Instruksikan agent untuk membaca `AI.md` terlebih dahulu.
-5. Pastikan agent selalu meminta konfirmasi sebelum lanjut tahap berikutnya.
+1. Baca `AI.md`, lalu `RULES.md`, `FEATURES.md`, `DOCUMENTATION.md`, `AGENTS.md`, dan README ini.
+2. Simpan dokumen kebutuhan/desain resmi di `docs/reference/` dan laporkan bila belum tersedia.
+3. Gunakan `theme-reference/HTML/Landing/` untuk audit UI Public dan `theme-reference/HTML/Dashboard/` untuk audit Admin.
+4. Jalankan pekerjaan sesuai tahap yang telah dikonfirmasi dan perbarui dokumen/status terkait.
 
 ## Catatan Orisinalitas
 
-Benchmark UI/UX hanya dipakai untuk prinsip desain dan pola pengalaman pengguna. Dilarang menyalin visual, brand, logo, ikon proprietary, layout spesifik, atau copywriting pihak ketiga secara identik.
+Techwind adalah baseline lokal proyek, sedangkan Flashscore dan ESPN adalah benchmark sports experience. Dilarang memublikasikan brand, logo, demo copy, atau identitas pihak ketiga sebagai bagian dari PORPROV. Gunakan asset resmi dan pastikan pemanfaatan tema sesuai lisensi proyek.

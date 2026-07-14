@@ -55,7 +55,7 @@ export default function DashboardOverview() {
         <div className="card col-span-2">
           <div className="p-5 border-b border-slate-200 flex justify-between items-center">
             <h3 className="font-bold text-lg">Pertandingan Sedang Berlangsung</h3>
-            <button className="text-sm text-primary-600 font-medium hover:underline">Lihat Semua</button>
+            <button className="text-sm text-indigo-600 font-medium hover:underline">Lihat Semua</button>
           </div>
           <div className="p-0">
             <div className="table-container border-none rounded-none">

@@ -5,7 +5,8 @@ RETURNING *;
 
 -- name: ListVenues :many
 SELECT * FROM venues
-WHERE city = COALESCE(NULLIF($1::text, ''), city)
+WHERE deleted_at IS NULL
+  AND city = COALESCE(NULLIF($1::text, ''), city)
 ORDER BY name ASC;
 
 -- name: CreateMatch :one
@@ -15,6 +16,7 @@ RETURNING *;
 
 -- name: ListMatches :many
 SELECT * FROM matches
+WHERE deleted_at IS NULL
 ORDER BY match_date ASC;
 
 -- name: AddMatchParticipant :one
@@ -24,10 +26,10 @@ RETURNING *;
 
 -- name: ListMatchParticipants :many
 SELECT * FROM match_participants
-WHERE match_id = $1;
+WHERE match_id = $1 AND deleted_at IS NULL;
 
 -- name: GetVenueByID :one
-SELECT * FROM venues WHERE id = $1 LIMIT 1;
+SELECT * FROM venues WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: UpdateVenue :one
 UPDATE venues
@@ -37,14 +39,11 @@ SET
   capacity = COALESCE(NULLIF($4::int, 0), capacity),
   city = COALESCE(NULLIF($5::text, ''), city),
   updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
--- name: DeleteVenue :exec
-DELETE FROM venues WHERE id = $1;
-
 -- name: GetMatchByID :one
-SELECT * FROM matches WHERE id = $1 LIMIT 1;
+SELECT * FROM matches WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: UpdateMatch :one
 UPDATE matches
@@ -55,8 +54,5 @@ SET
   status = COALESCE(NULLIF($5::text, ''), status),
   round = COALESCE(NULLIF($6::text, ''), round),
   updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
-
--- name: DeleteMatch :exec
-DELETE FROM matches WHERE id = $1;

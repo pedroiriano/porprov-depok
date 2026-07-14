@@ -14,13 +14,11 @@ type Querier interface {
 	AddMatchParticipant(ctx context.Context, arg AddMatchParticipantParams) (MatchParticipant, error)
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (Match, error)
 	CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue, error)
-	DeleteMatch(ctx context.Context, id pgtype.UUID) error
-	DeleteVenue(ctx context.Context, id pgtype.UUID) error
 	GetMatchByID(ctx context.Context, id pgtype.UUID) (Match, error)
 	GetVenueByID(ctx context.Context, id pgtype.UUID) (Venue, error)
 	ListMatchParticipants(ctx context.Context, matchID pgtype.UUID) ([]MatchParticipant, error)
 	ListMatches(ctx context.Context) ([]Match, error)
-	ListVenues(ctx context.Context, city string) ([]Venue, error)
+	ListVenues(ctx context.Context, dollar_1 string) ([]Venue, error)
 	UpdateMatch(ctx context.Context, arg UpdateMatchParams) (Match, error)
 	UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue, error)
 }

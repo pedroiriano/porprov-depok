@@ -1,5 +1,10 @@
 services/**/tmp_build
 services/**/sqlc_bin.exe
+services/**/*.exe
+services/**/uploads/
 *.log
 **/node_modules/
+**/.env
+!**/.env.example
+infra/docker/.docker-cli/
 theme-reference/

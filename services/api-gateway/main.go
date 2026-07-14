@@ -25,7 +25,7 @@ func main() {
 	}
 
 	// INFO: Inisialisasi Chi Router
-	r := router.SetupRouter(jwtMid)
+	r := router.SetupRouter(jwtMid, cfg)
 
 	// INFO: Setup HTTP Server
 	srv := &http.Server{

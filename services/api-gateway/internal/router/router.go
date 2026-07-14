@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
+	"github.com/porprov-xv/porprov-depok/services/api-gateway/internal/config"
 	"github.com/porprov-xv/porprov-depok/services/api-gateway/internal/handler"
 	customMiddleware "github.com/porprov-xv/porprov-depok/services/api-gateway/internal/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -19,12 +20,20 @@ func setupProxy(targetURL string) http.HandlerFunc {
 	url, _ := url.Parse(targetURL)
 	proxy := httputil.NewSingleHostReverseProxy(url)
 	proxy.FlushInterval = -1 // Ensure immediate flush for SSE
-	
+
 	// Modifikasi request agar path diteruskan dengan benar ke service downstream
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
 		req.Header.Set("X-Proxy", "API-Gateway")
+		// SECURITY: Jangan percaya header actor dari klien; selalu turunkan dari JWT tervalidasi.
+		req.Header.Del("X-Actor-ID")
+		if actorID := customMiddleware.ActorIDFromContext(req.Context()); actorID != "" {
+			req.Header.Set("X-Actor-ID", actorID)
+		}
+		if requestID := middleware.GetReqID(req.Context()); requestID != "" {
+			req.Header.Set("X-Request-ID", requestID)
+		}
 		// Host harus diset ke URL target agar request tidak ditolak
 		req.Host = url.Host
 	}
@@ -35,7 +44,7 @@ func setupProxy(targetURL string) http.HandlerFunc {
 }
 
 // SetupRouter mengonfigurasi dan mengembalikan Chi mux router
-func SetupRouter(jwtMid *customMiddleware.JWTMiddleware) *chi.Mux {
+func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) *chi.Mux {
 	r := chi.NewRouter()
 
 	// SECURITY: CORS strict setup
@@ -45,7 +54,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware) *chi.Mux {
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
-		MaxAge:           300, 
+		MaxAge:           300,
 	}))
 
 	// Middlewares bawaan Chi
@@ -56,7 +65,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware) *chi.Mux {
 
 	// Endpoint publik
 	r.Get("/health", handler.HealthCheckHandler)
-	
+
 	// Observability: Metrics Endpoint
 	r.Handle("/metrics", promhttp.Handler())
 
@@ -68,48 +77,54 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware) *chi.Mux {
 			r.Get("/profile", handler.ProfileHandler)
 
 			// Reverse Proxy ke Microservices
-			// Master Data Service (Port 8081)
-			r.Handle("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1")))
-			r.Handle("/master-data", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1")))
-			
-			// Schedule Service (Port 8082)
-			r.Handle("/schedule/*", http.StripPrefix("/api/v1/schedule", setupProxy("http://localhost:8082/api/v1")))
-			r.Handle("/schedule", http.StripPrefix("/api/v1/schedule", setupProxy("http://localhost:8082/api/v1")))
+			// Master Data Service melalui DNS dan port internal Docker.
+			r.Handle("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)))
+			r.Handle("/master-data", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)))
+			r.Get("/master-data/deleted", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)
+
+			// Schedule Service melalui DNS dan port internal Docker.
+			r.Handle("/schedule/*", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)))
+			r.Handle("/schedule", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)))
 
 			// Audit Service (Port 8084)
-			r.Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy("http://localhost:8084/api/v1")))
-			r.Handle("/audit", http.StripPrefix("/api/v1/audit", setupProxy("http://localhost:8084/api/v1")))
-			
+			r.Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
+			r.Handle("/audit", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
+
 			// Livescore Service (Port 8083) - Hanya admin/koresponden yang boleh mengupdate skor
-			r.Handle("/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy("http://localhost:8083/api/v1/livescore")))
-			r.Handle("/livescore", http.StripPrefix("/api/v1/livescore", setupProxy("http://localhost:8083/api/v1/livescore")))
+			r.Handle("/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
+			r.Handle("/livescore", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
 			// Medal Standing Service (Port 8086)
-			r.Handle("/medals/*", http.StripPrefix("/api/v1/medals", setupProxy("http://localhost:8086/api/v1/medals")))
-			r.Handle("/medals", http.StripPrefix("/api/v1/medals", setupProxy("http://localhost:8086/api/v1/medals")))
+			r.Handle("/medals/*", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)))
+			r.Handle("/medals", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)))
 
 			// Venue Service Protected Routes (POST, PUT, DELETE)
-			r.Post("/venues", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
-			r.Post("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
-			r.Put("/venues", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
-			r.Put("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
-			r.Delete("/venues", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
-			r.Delete("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
+			r.Post("/venues", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
+			r.Post("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
+			r.Put("/venues", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
+			r.Put("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
+			r.Delete("/venues", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
+			r.Delete("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
+			r.Get("/venues/deleted", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
 		})
 
 		// Rute Terbuka (Public)
 		// Realtime Gateway Service (Port 8085) - Penonton mengakses ini tanpa token
 
-		r.Handle("/stream/*", http.StripPrefix("/api/v1/stream", setupProxy("http://localhost:8085/api/v1/stream")))
-		r.Handle("/stream", http.StripPrefix("/api/v1/stream", setupProxy("http://localhost:8085/api/v1/stream")))
+		r.Handle("/stream/*", http.StripPrefix("/api/v1/stream", setupProxy(cfg.RealtimeURL)))
+		r.Handle("/stream", http.StripPrefix("/api/v1/stream", setupProxy(cfg.RealtimeURL)))
 
 		// Public Venue Service (GET)
-		r.Get("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
-		r.Get("/venues", http.StripPrefix("/api/v1/venues", setupProxy("http://localhost:8087/api/v1/venues")).ServeHTTP)
-		
+		r.Get("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
+		r.Get("/venues", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
+
 		// Public Master Data Service (GET)
-		r.Get("/master-data/cabors", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1/master-data")).ServeHTTP)
-		r.Get("/master-data/cabors/*", http.StripPrefix("/api/v1/master-data", setupProxy("http://localhost:8081/api/v1/master-data")).ServeHTTP)
+		r.Get("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)
 	})
+
+	// Rute Static File Uploads (Public)
+	masterDataOrigin, _ := url.Parse(cfg.MasterDataURL)
+	masterDataOrigin.Path = ""
+	r.Handle("/uploads/*", setupProxy(masterDataOrigin.String()))
 
 	return r
 }

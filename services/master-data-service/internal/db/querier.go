@@ -12,17 +12,24 @@ import (
 
 type Querier interface {
 	CreateCabor(ctx context.Context, arg CreateCaborParams) (Cabor, error)
+	CreateCityGuide(ctx context.Context, arg CreateCityGuideParams) (CityGuide, error)
 	CreateKontingen(ctx context.Context, arg CreateKontingenParams) (Kontingen, error)
+	CreateMedia(ctx context.Context, arg CreateMediaParams) (MediaAsset, error)
 	CreateNomorTanding(ctx context.Context, arg CreateNomorTandingParams) (NomorTanding, error)
-	DeleteCabor(ctx context.Context, id pgtype.UUID) error
-	DeleteKontingen(ctx context.Context, id pgtype.UUID) error
 	GetCaborByID(ctx context.Context, id pgtype.UUID) (Cabor, error)
+	GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGuide, error)
 	GetKontingenByID(ctx context.Context, id pgtype.UUID) (Kontingen, error)
+	GetMedia(ctx context.Context) ([]MediaAsset, error)
+	GetMediaByID(ctx context.Context, id pgtype.UUID) (MediaAsset, error)
+	GetNomorTandingByID(ctx context.Context, id pgtype.UUID) (NomorTanding, error)
 	ListCabors(ctx context.Context) ([]Cabor, error)
+	ListCityGuides(ctx context.Context, dollar_1 string) ([]CityGuide, error)
 	ListKontingens(ctx context.Context) ([]Kontingen, error)
 	ListNomorTandings(ctx context.Context) ([]NomorTanding, error)
 	UpdateCabor(ctx context.Context, arg UpdateCaborParams) (Cabor, error)
+	UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams) (CityGuide, error)
 	UpdateKontingen(ctx context.Context, arg UpdateKontingenParams) (Kontingen, error)
+	UpdateNomorTanding(ctx context.Context, arg UpdateNomorTandingParams) (NomorTanding, error)
 }
 
 var _ Querier = (*Queries)(nil)

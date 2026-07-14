@@ -3,6 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -11,11 +13,17 @@ import (
 )
 
 type MasterDataHandler struct {
-	queries *db.Queries
+	queries     *db.Queries
+	scheduleURL string
+	httpClient  *http.Client
 }
 
-func NewMasterDataHandler(queries *db.Queries) *MasterDataHandler {
-	return &MasterDataHandler{queries: queries}
+func NewMasterDataHandler(queries *db.Queries, scheduleURL string) *MasterDataHandler {
+	return &MasterDataHandler{
+		queries:     queries,
+		scheduleURL: strings.TrimRight(scheduleURL, "/"),
+		httpClient:  &http.Client{Timeout: 5 * time.Second},
+	}
 }
 
 // publishAudit is a helper to publish audit logs
@@ -144,20 +152,20 @@ func (h *MasterDataHandler) UpdateCabor(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *MasterDataHandler) DeleteCabor(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var uuid pgtype.UUID
-	if err := uuid.Scan(id); err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+	id, _, ok := resourceID(w, r)
+	if !ok {
 		return
 	}
-
-	if err := h.queries.DeleteCabor(r.Context(), uuid); err != nil {
-		http.Error(w, "Failed to delete cabor", http.StatusInternalServerError)
+	hasChildren, err := h.queries.HasActiveNomorTandings(r.Context(), id)
+	if err != nil {
+		http.Error(w, "Gagal memvalidasi nomor pertandingan", http.StatusInternalServerError)
 		return
 	}
-
-	publishAudit("Cabor", "DELETE", id, map[string]string{"id": id})
-	w.WriteHeader(http.StatusNoContent)
+	if hasChildren {
+		http.Error(w, "Arsipkan seluruh nomor pertandingan aktif pada cabor ini terlebih dahulu", http.StatusConflict)
+		return
+	}
+	handleSoftDelete(w, r, h.queries, "cabor", "Cabor")
 }
 
 // ====================== KONTINGEN ======================
@@ -257,18 +265,141 @@ func (h *MasterDataHandler) UpdateKontingen(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *MasterDataHandler) DeleteKontingen(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var uuid pgtype.UUID
-	if err := uuid.Scan(id); err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+	handleSoftDelete(w, r, h.queries, "kontingen", "Kontingen")
+}
+
+// ====================== NOMOR TANDING ======================
+type nomorTandingRequest struct {
+	CaborID        string `json:"cabor_id"`
+	Name           string `json:"name"`
+	GenderCategory string `json:"gender_category"`
+	MatchType      string `json:"match_type"`
+}
+
+func decodeNomorTandingRequest(w http.ResponseWriter, r *http.Request) (nomorTandingRequest, pgtype.UUID, bool) {
+	var req nomorTandingRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Payload JSON tidak valid", http.StatusBadRequest)
+		return req, pgtype.UUID{}, false
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" || req.CaborID == "" || req.GenderCategory == "" || req.MatchType == "" {
+		http.Error(w, "cabor_id, name, gender_category, dan match_type wajib diisi", http.StatusUnprocessableEntity)
+		return req, pgtype.UUID{}, false
+	}
+
+	var caborID pgtype.UUID
+	if err := caborID.Scan(req.CaborID); err != nil {
+		http.Error(w, "cabor_id tidak valid", http.StatusUnprocessableEntity)
+		return req, pgtype.UUID{}, false
+	}
+	return req, caborID, true
+}
+
+func (h *MasterDataHandler) CreateNomorTanding(w http.ResponseWriter, r *http.Request) {
+	req, caborID, ok := decodeNomorTandingRequest(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.queries.GetCaborByID(r.Context(), caborID); err != nil {
+		http.Error(w, "Cabang olahraga aktif tidak ditemukan", http.StatusUnprocessableEntity)
 		return
 	}
 
-	if err := h.queries.DeleteKontingen(r.Context(), uuid); err != nil {
-		http.Error(w, "Failed to delete kontingen", http.StatusInternalServerError)
+	item, err := h.queries.CreateNomorTanding(r.Context(), db.CreateNomorTandingParams{
+		CaborID:        caborID,
+		Name:           req.Name,
+		GenderCategory: req.GenderCategory,
+		MatchType:      req.MatchType,
+	})
+	if err != nil {
+		http.Error(w, "Gagal membuat nomor pertandingan: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	publishAudit("Kontingen", "DELETE", id, map[string]string{"id": id})
-	w.WriteHeader(http.StatusNoContent)
+	var id string
+	if item.ID.Valid {
+		encoded, _ := item.ID.MarshalJSON()
+		id = strings.Trim(string(encoded), "\"")
+	}
+	publishAudit("NomorTanding", "CREATE", id, item)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(item)
+}
+
+func (h *MasterDataHandler) ListNomorTandings(w http.ResponseWriter, r *http.Request) {
+	items, err := h.queries.ListNomorTandings(r.Context())
+	if err != nil {
+		http.Error(w, "Gagal mengambil nomor pertandingan", http.StatusInternalServerError)
+		return
+	}
+	if items == nil {
+		items = []db.NomorTanding{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
+}
+
+func (h *MasterDataHandler) GetNomorTanding(w http.ResponseWriter, r *http.Request) {
+	var id pgtype.UUID
+	if err := id.Scan(chi.URLParam(r, "id")); err != nil {
+		http.Error(w, "ID tidak valid", http.StatusBadRequest)
+		return
+	}
+	item, err := h.queries.GetNomorTandingByID(r.Context(), id)
+	if err != nil {
+		http.Error(w, "Nomor pertandingan tidak ditemukan", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(item)
+}
+
+func (h *MasterDataHandler) UpdateNomorTanding(w http.ResponseWriter, r *http.Request) {
+	var id pgtype.UUID
+	idText := chi.URLParam(r, "id")
+	if err := id.Scan(idText); err != nil {
+		http.Error(w, "ID tidak valid", http.StatusBadRequest)
+		return
+	}
+	req, caborID, ok := decodeNomorTandingRequest(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.queries.GetCaborByID(r.Context(), caborID); err != nil {
+		http.Error(w, "Cabang olahraga aktif tidak ditemukan", http.StatusUnprocessableEntity)
+		return
+	}
+	item, err := h.queries.UpdateNomorTanding(r.Context(), db.UpdateNomorTandingParams{
+		ID:             id,
+		CaborID:        caborID,
+		Name:           req.Name,
+		GenderCategory: req.GenderCategory,
+		MatchType:      req.MatchType,
+	})
+	if err != nil {
+		http.Error(w, "Gagal memperbarui nomor pertandingan: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	publishAudit("NomorTanding", "UPDATE", idText, item)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(item)
+}
+
+func (h *MasterDataHandler) DeleteNomorTanding(w http.ResponseWriter, r *http.Request) {
+	_, idText, ok := resourceID(w, r)
+	if !ok {
+		return
+	}
+	referenced, err := h.hasActiveScheduleReference(r.Context(), "nomor-tanding", idText)
+	if err != nil {
+		http.Error(w, "Schedule Service tidak tersedia untuk validasi referensi", http.StatusServiceUnavailable)
+		return
+	}
+	if referenced {
+		http.Error(w, "Arsipkan jadwal aktif yang menggunakan nomor pertandingan ini terlebih dahulu", http.StatusConflict)
+		return
+	}
+	handleSoftDelete(w, r, h.queries, "nomor_tanding", "Nomor pertandingan")
 }

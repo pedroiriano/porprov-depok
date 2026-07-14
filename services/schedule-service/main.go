@@ -39,11 +39,10 @@ func main() {
 	}
 
 	// INFO: Initialize Handlers
-	venueHandler := handler.NewVenueHandler(queries)
-	matchHandler := handler.NewMatchHandler(queries)
+	matchHandler := handler.NewMatchHandler(queries, cfg.MasterDataURL, cfg.VenueURL)
 
 	// INFO: Setup Chi Router
-	r := router.SetupRouter(venueHandler, matchHandler)
+	r := router.SetupRouter(matchHandler)
 
 	// INFO: Start HTTP Server
 	serverAddr := fmt.Sprintf(":%s", cfg.Port)

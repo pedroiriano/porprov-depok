@@ -1,21 +1,55 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/porprov-xv/porprov-depok/services/schedule-service/internal/db"
 )
 
 type MatchHandler struct {
-	queries *db.Queries
+	queries       *db.Queries
+	masterDataURL string
+	venueURL      string
+	httpClient    *http.Client
 }
 
-func NewMatchHandler(queries *db.Queries) *MatchHandler {
-	return &MatchHandler{queries: queries}
+func NewMatchHandler(queries *db.Queries, masterDataURL, venueURL string) *MatchHandler {
+	return &MatchHandler{
+		queries:       queries,
+		masterDataURL: strings.TrimRight(masterDataURL, "/"),
+		venueURL:      strings.TrimRight(venueURL, "/"),
+		httpClient:    &http.Client{Timeout: 5 * time.Second},
+	}
+}
+
+func (h *MatchHandler) referenceExists(ctx context.Context, endpoint string) (bool, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return false, err
+	}
+	response, err := h.httpClient.Do(request)
+	if err != nil {
+		return false, err
+	}
+	defer response.Body.Close()
+	_, _ = io.Copy(io.Discard, response.Body)
+	if response.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return false, fmt.Errorf("reference service returned HTTP %d", response.StatusCode)
+	}
+	return true, nil
 }
 
 func (h *MatchHandler) CreateMatch(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +65,10 @@ func (h *MatchHandler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if req.NomorTandingID == "" || req.VenueID == "" || req.Status == "" || req.Round == "" {
+		http.Error(w, "nomor_tanding_id, venue_id, status, dan round wajib diisi", http.StatusUnprocessableEntity)
+		return
+	}
 
 	t, err := time.Parse(time.RFC3339, req.MatchDate)
 	if err != nil {
@@ -39,8 +77,29 @@ func (h *MatchHandler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var nomorTandingUUID, venueUUID pgtype.UUID
-	nomorTandingUUID.Scan(req.NomorTandingID)
-	venueUUID.Scan(req.VenueID)
+	if err := nomorTandingUUID.Scan(req.NomorTandingID); err != nil {
+		http.Error(w, "nomor_tanding_id tidak valid", http.StatusUnprocessableEntity)
+		return
+	}
+	if err := venueUUID.Scan(req.VenueID); err != nil {
+		http.Error(w, "venue_id tidak valid", http.StatusUnprocessableEntity)
+		return
+	}
+
+	nomorExists, err := h.referenceExists(r.Context(), h.masterDataURL+"/nomor-tandings/"+req.NomorTandingID)
+	if err != nil {
+		http.Error(w, "Master Data Service tidak tersedia", http.StatusServiceUnavailable)
+		return
+	}
+	venueExists, err := h.referenceExists(r.Context(), h.venueURL+"/"+req.VenueID)
+	if err != nil {
+		http.Error(w, "Venue Service tidak tersedia", http.StatusServiceUnavailable)
+		return
+	}
+	if !nomorExists || !venueExists {
+		http.Error(w, "Nomor pertandingan atau venue tidak ditemukan", http.StatusUnprocessableEntity)
+		return
+	}
 
 	match, err := h.queries.CreateMatch(r.Context(), db.CreateMatchParams{
 		NomorTandingID: nomorTandingUUID,
@@ -110,19 +169,51 @@ func (h *MatchHandler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		Status         string `json:"status"`
 		Round          string `json:"round"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Payload JSON tidak valid", http.StatusBadRequest)
+		return
+	}
 
 	var t time.Time
 	if req.MatchDate != "" {
-		t, _ = time.Parse(time.RFC3339, req.MatchDate)
+		var err error
+		t, err = time.Parse(time.RFC3339, req.MatchDate)
+		if err != nil {
+			http.Error(w, "Invalid match_date format, use RFC3339", http.StatusBadRequest)
+			return
+		}
 	}
 
 	var nomorTandingUUID, venueUUID pgtype.UUID
 	if req.NomorTandingID != "" {
-		nomorTandingUUID.Scan(req.NomorTandingID)
+		if err := nomorTandingUUID.Scan(req.NomorTandingID); err != nil {
+			http.Error(w, "nomor_tanding_id tidak valid", http.StatusUnprocessableEntity)
+			return
+		}
+		exists, err := h.referenceExists(r.Context(), h.masterDataURL+"/nomor-tandings/"+req.NomorTandingID)
+		if err != nil {
+			http.Error(w, "Master Data Service tidak tersedia", http.StatusServiceUnavailable)
+			return
+		}
+		if !exists {
+			http.Error(w, "Nomor pertandingan tidak ditemukan", http.StatusUnprocessableEntity)
+			return
+		}
 	}
 	if req.VenueID != "" {
-		venueUUID.Scan(req.VenueID)
+		if err := venueUUID.Scan(req.VenueID); err != nil {
+			http.Error(w, "venue_id tidak valid", http.StatusUnprocessableEntity)
+			return
+		}
+		exists, err := h.referenceExists(r.Context(), h.venueURL+"/"+req.VenueID)
+		if err != nil {
+			http.Error(w, "Venue Service tidak tersedia", http.StatusServiceUnavailable)
+			return
+		}
+		if !exists {
+			http.Error(w, "Venue tidak ditemukan", http.StatusUnprocessableEntity)
+			return
+		}
 	}
 
 	match, err := h.queries.UpdateMatch(r.Context(), db.UpdateMatchParams{
@@ -145,18 +236,25 @@ func (h *MatchHandler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MatchHandler) DeleteMatch(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var uuid pgtype.UUID
-	if err := uuid.Scan(id); err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+	id, idText, ok := matchID(w, r)
+	if !ok {
 		return
 	}
-
-	if err := h.queries.DeleteMatch(r.Context(), uuid); err != nil {
-		http.Error(w, "Failed to delete match", http.StatusInternalServerError)
+	actor, reason, ok := matchDeletionMetadata(w, r)
+	if !ok {
 		return
 	}
-
-	publishAudit("Match", "DELETE", id, map[string]string{"id": id})
+	record, changed, err := h.queries.SoftDeleteMatch(r.Context(), id, actor, reason)
+	if errors.Is(err, pgx.ErrNoRows) {
+		http.Error(w, "Jadwal tidak ditemukan", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Gagal mengarsipkan jadwal", http.StatusInternalServerError)
+		return
+	}
+	if changed {
+		publishAudit("Match", "SOFT_DELETE", idText, map[string]interface{}{"actor": actor, "reason": reason, "request_id": r.Header.Get("X-Request-ID"), "record": record})
+	}
 	w.WriteHeader(http.StatusNoContent)
 }

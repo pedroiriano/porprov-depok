@@ -26,22 +26,26 @@ export default async function CaborPage() {
           <p className="text-slate-400">Data cabang olahraga belum tersedia di database atau API sedang luring.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-[30px]">
           {cabors.map((cabor: any) => (
-            <div key={cabor.id} className="glass rounded-xl overflow-hidden group hover:-translate-y-1 transition-transform duration-300 shadow-sm hover:shadow-md border border-white/40">
-              <div className="p-6">
-                <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mb-4 text-primary-600 font-bold text-xl group-hover:scale-110 transition-transform">
-                  {cabor.name.charAt(0)}
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">{cabor.name}</h3>
-                <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
-                  {cabor.description?.String || 'Cabang olahraga resmi PORPROV XV.'}
+            <div key={cabor.id} className="group relative rounded-md shadow dark:shadow-gray-800 bg-white dark:bg-slate-900 overflow-hidden text-center p-6 transition duration-500 hover:shadow-md hover:dark:shadow-gray-700">
+              <div className="w-20 h-20 bg-indigo-600/5 text-indigo-600 rounded-full text-3xl flex align-middle justify-center items-center shadow-sm dark:shadow-gray-800 mx-auto">
+                {cabor.icon_url?.String ? (
+                  <img src={cabor.icon_url.String} alt={cabor.name} className="w-12 h-12 object-contain" />
+                ) : (
+                  <i className="ri-medal-fill"></i>
+                )}
+              </div>
+              <div className="content mt-6">
+                <h4 className="text-lg font-medium hover:text-indigo-600 mb-2 transition duration-500">
+                  {cabor.name}
+                </h4>
+                <p className="text-slate-400 mb-4 line-clamp-2">
+                  {cabor.description?.String || 'Cabang olahraga resmi PORPROV XV Jawa Barat 2026 yang akan dipertandingkan.'}
                 </p>
-                <div className="mt-4 flex items-center gap-2">
-                  <span className="px-3 py-1 bg-slate-100 rounded-full text-xs font-semibold text-slate-600">
-                    ID: {cabor.id.substring(0, 8)}
-                  </span>
-                </div>
+                <span className="text-indigo-600 text-sm font-semibold uppercase tracking-wider">
+                  {cabor.type || 'Olahraga'}
+                </span>
               </div>
             </div>
           ))}

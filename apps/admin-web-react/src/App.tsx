@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Database, Activity, FileCheck, ShieldAlert, LogOut, Menu, User, Bell, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, Database, Activity, FileCheck, ShieldAlert, User } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useTheme } from './components/ThemeProvider';
@@ -119,11 +119,11 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
                 <div id="profile-dropdown" className="dropdown-menu absolute right-0 mt-3 w-44 bg-white dark:bg-slate-900 shadow-md dark:shadow-gray-800 rounded-md z-10 hidden">
                   <ul className="py-2 text-left">
                     <li>
-                      <Link to="/profile" className="flex items-center font-medium py-1 px-4 dark:text-white/70 hover:text-primary dark:hover:text-white"><i className="ri-user-line me-2"></i>Profile</Link>
+                      <Link to="/profile" className="flex items-center font-medium py-1 px-4 dark:text-white/70 hover:text-indigo-600 dark:hover:text-white"><i className="ri-user-line me-2"></i>Profile</Link>
                     </li>
                     <li className="border-t border-gray-100 dark:border-gray-800 my-2"></li>
                     <li>
-                      <button onClick={() => auth.signoutRedirect()} className="flex items-center font-medium py-1 px-4 dark:text-white/70 hover:text-primary dark:hover:text-white w-full text-left"><i className="ri-logout-circle-line me-2"></i>Logout</button>
+                      <button onClick={() => auth.signoutRedirect()} className="flex items-center font-medium py-1 px-4 dark:text-white/70 hover:text-indigo-600 dark:hover:text-white w-full text-left"><i className="ri-logout-circle-line me-2"></i>Logout</button>
                     </li>
                   </ul>
                 </div>
@@ -148,7 +148,7 @@ export default function App() {
   const auth = useAuth();
   
   if (auth.isLoading) {
-    return <div className="h-screen w-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-primary">Loading Auth...</div>;
+    return <div className="h-screen w-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-indigo-600">Loading Auth...</div>;
   }
 
   if (auth.error) {
@@ -158,13 +158,13 @@ export default function App() {
   if (!auth.isAuthenticated) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <div className="p-8 bg-white dark:bg-slate-800 shadow-xl rounded-2xl flex flex-col items-center max-w-sm w-full">
+        <div className="p-8 bg-white dark:bg-slate-800 shadow-xl rounded-md flex flex-col items-center max-w-sm w-full">
           <img src="/assets/images/logo-porprov.png" alt="Logo" className="w-24 h-24 mb-6" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Portal PORPROV</h1>
           <p className="text-slate-500 dark:text-slate-400 mb-8 text-center">Silakan masuk menggunakan akun panitia/koresponden Anda.</p>
           <button 
             onClick={() => auth.signinRedirect()} 
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-md transition-colors flex items-center justify-center"
           >
             Masuk dengan SSO
           </button>

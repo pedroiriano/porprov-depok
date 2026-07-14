@@ -1,3 +1,5 @@
+//go:build !initstreams
+
 package main
 
 import (
@@ -50,7 +52,7 @@ func main() {
 	// Redis setup
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
-		redisURL = "localhost:6379"
+		redisURL = "localhost:16379"
 	}
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     redisURL,
@@ -62,7 +64,7 @@ func main() {
 	// NATS setup
 	natsURL := os.Getenv("NATS_URL")
 	if natsURL == "" {
-		natsURL = nats.DefaultURL
+		natsURL = "nats://localhost:14222"
 	}
 	nc, err := nats.Connect(natsURL)
 	if err != nil {
@@ -89,7 +91,7 @@ func main() {
 		cc, _ := consumer.Consume(func(msg jetstream.Msg) {
 			data := msg.Data()
 			subject := msg.Subject()
-			
+
 			// e.g. "livescore.update.m1"
 			parts := strings.Split(subject, ".")
 			if len(parts) >= 3 {
@@ -119,7 +121,7 @@ func main() {
 		go func() {
 			cc, _ := medalConsumer.Consume(func(msg jetstream.Msg) {
 				data := msg.Data()
-				
+
 				// Cache in Redis for Medals (Optional, just keep latest)
 				rdb.Set(ctx, "medals:latest", data, 24*time.Hour)
 
@@ -201,7 +203,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8085"
+		port = "28085"
 	}
 
 	log.Printf("Realtime Gateway running on port %s", port)

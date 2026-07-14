@@ -14,7 +14,7 @@ type AppConfig struct {
 func LoadConfig() *AppConfig {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "18004"
+		port = "28084"
 	}
 
 	env := os.Getenv("APP_ENV")
@@ -24,12 +24,12 @@ func LoadConfig() *AppConfig {
 
 	dbConn := os.Getenv("DATABASE_URL")
 	if dbConn == "" {
-		dbConn = "postgres://porprov_admin:porprov_secret@localhost:5433/audit_db?sslmode=disable"
+		dbConn = "postgres://porprov_admin:porprov_secret@localhost:15432/audit_db?sslmode=disable"
 	}
 
 	natsURL := os.Getenv("NATS_URL")
 	if natsURL == "" {
-		natsURL = "nats://localhost:4222"
+		natsURL = "nats://localhost:14222"
 	}
 
 	return &AppConfig{
