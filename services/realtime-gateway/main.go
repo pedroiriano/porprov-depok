@@ -36,6 +36,22 @@ var (
 	clientsMu sync.Mutex
 )
 
+var requiredStreams = []jetstream.StreamConfig{
+	{Name: "LIVESCORE", Subjects: []string{"livescore.update.>"}},
+	{Name: "MEDALS", Subjects: []string{"realtime.medals"}},
+}
+
+// INFO: Gateway memastikan stream yang dikonsumsi tersedia agar startup tidak
+// bergantung pada urutan livescore-service atau initializer terpisah.
+func ensureRequiredStreams(ctx context.Context, js jetstream.JetStream) error {
+	for _, config := range requiredStreams {
+		if _, err := js.CreateOrUpdateStream(ctx, config); err != nil {
+			return fmt.Errorf("ensure stream %s: %w", config.Name, err)
+		}
+	}
+	return nil
+}
+
 func broadcastEvent(data []byte) {
 	clientsMu.Lock()
 	defer clientsMu.Unlock()
@@ -76,6 +92,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create JetStream context: %v", err)
 	}
+	if err := ensureRequiredStreams(ctx, js); err != nil {
+		log.Fatalf("Failed to prepare JetStream streams: %v", err)
+	}
 
 	// Consume messages from JetStream
 	consumer, err := js.CreateOrUpdateConsumer(ctx, "LIVESCORE", jetstream.ConsumerConfig{
@@ -88,7 +107,7 @@ func main() {
 	}
 
 	go func() {
-		cc, _ := consumer.Consume(func(msg jetstream.Msg) {
+		cc, consumeErr := consumer.Consume(func(msg jetstream.Msg) {
 			data := msg.Data()
 			subject := msg.Subject()
 
@@ -107,6 +126,10 @@ func main() {
 			broadcastEvent(data)
 			msg.Ack()
 		})
+		if consumeErr != nil {
+			log.Printf("Failed to start livescore consumer: %v", consumeErr)
+			return
+		}
 		defer cc.Stop()
 		select {}
 	}()
@@ -119,7 +142,7 @@ func main() {
 	})
 	if err == nil {
 		go func() {
-			cc, _ := medalConsumer.Consume(func(msg jetstream.Msg) {
+			cc, consumeErr := medalConsumer.Consume(func(msg jetstream.Msg) {
 				data := msg.Data()
 
 				// Cache in Redis for Medals (Optional, just keep latest)
@@ -129,6 +152,10 @@ func main() {
 				broadcastEvent(data)
 				msg.Ack()
 			})
+			if consumeErr != nil {
+				log.Printf("Failed to start medal consumer: %v", consumeErr)
+				return
+			}
 			defer cc.Stop()
 			select {}
 		}()

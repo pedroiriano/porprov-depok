@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,6 +21,16 @@ func setupProxy(targetURL string) http.HandlerFunc {
 	url, _ := url.Parse(targetURL)
 	proxy := httputil.NewSingleHostReverseProxy(url)
 	proxy.FlushInterval = -1 // Ensure immediate flush for SSE
+	proxy.ModifyResponse = func(response *http.Response) error {
+		// SECURITY: API Gateway adalah satu-satunya pemilik kebijakan CORS untuk browser.
+		// Header CORS dari service downstream akan menghasilkan nilai ganda yang ditolak browser.
+		for headerName := range response.Header {
+			if strings.HasPrefix(strings.ToLower(headerName), "access-control-") {
+				response.Header.Del(headerName)
+			}
+		}
+		return nil
+	}
 
 	// Modifikasi request agar path diteruskan dengan benar ke service downstream
 	originalDirector := proxy.Director

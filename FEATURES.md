@@ -90,7 +90,7 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | Venue Service | `[~] In Progress` | v0.4 | `services/venue-service/` | CRUD, soft delete/restore, dan fail-closed schedule dependency guard sudah teruji; hardening authorization/audit masih bertahap |
 | Schedule Service | `[~] In Progress` | v0.4 | `services/schedule-service/` | CRUD, validasi referensi, soft delete/restore, dan reference endpoint sudah teruji; bracket belum tersedia |
 | LiveScore Service | `[ ] Planned` | v0.1 | `services/livescore-service/` | Event sourcing |
-| Realtime Gateway | `[ ] Planned` | v0.1 | `services/realtime-gateway/` | WebSocket/SSE |
+| Realtime Gateway | `[~] In Progress` | v0.2 | `services/realtime-gateway/` | SSE fanout, cache Redis, consumer durable LiveScore/Medals, dan bootstrap stream JetStream idempotent tersedia; autentikasi stream, observability, serta scale-out fanout belum final |
 | Medal Standing Service | `[ ] Planned` | v0.1 | `services/medal-standing-service/` | Aggregation |
 | Notification Service | `[ ] Planned` | v0.1 | `services/notification-service/` | Push/in-app |
 | Audit Service | `[ ] Planned` | v0.1 | `services/audit-service/` | Immutable log |
@@ -101,8 +101,9 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 |---|---|---|---|---|
 | Docker Compose staging | `[~] In Progress` | v0.2 | `infra/docker/` | Admin, gateway, master, venue, schedule, migrasi, health check, dan volume media berjalan; service domain lain masih bertahap |
 | Registry port portable | `[x] Done` | v0.3 | Compose, config service, `.env.example`, enam Markdown root | Public, diagnostic, local debug `28xxx`, dan infra host dipisahkan; seluruh host mapping configurable |
+| Gateway CORS ownership | `[x] Done` | v0.3 | API Gateway router + Admin development env | Header CORS downstream dibuang sebelum kebijakan Gateway diterapkan; regression test menjamin satu origin dan Admin `npm run dev` otomatis memakai Gateway lokal `28000` |
 | Nginx SSL | `[ ] Planned` | v0.1 | `infra/nginx/` | Reverse proxy |
-| Keycloak realm | `[ ] Planned` | v0.1 | `infra/keycloak/` | OIDC/RBAC |
+| Keycloak realm dan Admin OIDC | `[~] In Progress` | v0.2 | `infra/docker/create_clients.sh`, Admin Web | Realm/client bootstrap idempotent, callback lokal 5173/5174, origin eksplisit, dan Authorization Code + PKCE S256 aktif; role granular, theme PORPROV, rotasi secret, serta konfigurasi production belum final |
 | NATS JetStream | `[ ] Planned` | v0.1 | `infra/nats/` | Durable event |
 | PostgreSQL per service | `[ ] Planned` | v0.1 | `infra/postgres/` | Database per service |
 | Redis | `[ ] Planned` | v0.1 | `infra/redis/` | Cache/presence/rate limit |

@@ -184,6 +184,18 @@ Admin Web menggunakan variabel berikut:
 | `VITE_OIDC_AUTHORITY` | `http://localhost:8080/realms/porprov` | Authority Keycloak |
 | `VITE_OIDC_CLIENT_ID` | `porprov-admin-web` | Client OIDC Admin Web |
 
+Admin Web membentuk `redirect_uri` dan `post_logout_redirect_uri` dari `window.location.origin`. Client publik `porprov-admin-web` menerima origin development eksplisit `localhost`/`127.0.0.1` pada port `5173` dan fallback Vite `5174`, dengan Authorization Code Flow + PKCE `S256`; wildcard origin global tidak digunakan. Jika Vite berpindah ke `5174` karena `5173` sedang dipakai proses lain, callback login tetap valid.
+
+`npm run dev` memuat `apps/admin-web-react/.env.development` dan mengarah ke Gateway lokal `http://localhost:28000/api/v1`. Build image Docker tetap menginjeksi Gateway `http://localhost:8000/api/v1`. Dengan demikian mode `go run` dan mode Compose tidak tercampur secara diam-diam. Setelah mengubah kode Gateway, hentikan lalu jalankan ulang `go run main.go` karena proses Go tidak melakukan hot reload.
+
+Bootstrap client bersifat idempotent dan dapat dijalankan ulang setelah Keycloak siap. Dari PowerShell pada folder `infra/docker`:
+
+```powershell
+Get-Content -Raw .\create_clients.sh | docker --config .\.docker-cli exec -i porprov_keycloak sh -c "tr -d '\r' | bash"
+```
+
+Untuk deployment, override `ADMIN_REDIRECT_URIS` dan `ADMIN_WEB_ORIGINS` ketika menjalankan script dengan origin HTTPS resmi. Jangan menambahkan `webOrigins=["+"]` atau wildcard port pada client browser.
+
 Media Library dan seluruh form Master Data menggunakan API Gateway. Nilai media disimpan sebagai URL relatif `/uploads/<nama-acak>.<ext>` agar tetap valid saat domain atau port deployment berubah.
 
 ### 5.5 Backend Service
@@ -262,7 +274,13 @@ Default `go run` sengaja berada pada namespace terpisah:
 | Medal Standing | `28086` |
 | Venue | `28087` |
 
-Dengan demikian `go run .` tidak berebut port dengan container Docker. Service lokal mengakses PostgreSQL `15432`, NATS `14222`, dan Redis `16379`. Untuk menguji Admin terhadap Gateway lokal, set `VITE_API_URL=http://localhost:28000/api/v1`; default Admin Docker tetap memakai Gateway `8000`.
+Dengan demikian `go run .` tidak berebut port dengan container Docker. Service lokal mengakses PostgreSQL `15432`, NATS `14222`, dan Redis `16379`. Admin `npm run dev` otomatis memakai Gateway lokal `28000` melalui `.env.development`, sedangkan image Admin Docker tetap memakai Gateway `8000` dari build argument Compose.
+
+Venue lokal dijalankan dengan `go run ./cmd/api` dari `services/venue-service`. Gunakan `.env.example` sebagai baseline: port `28087`, PostgreSQL `15432`, NATS `14222`, dan Schedule `28082`. File `.env` lama yang masih memakai `8087`, PostgreSQL `5433`, atau NATS `4222` harus diselaraskan agar tidak keluar dari registry port lokal.
+
+API Gateway merupakan satu-satunya pemilik header CORS untuk request browser. Reverse proxy membuang seluruh header `Access-Control-*` dari response service internal sebelum middleware Gateway menambahkan kebijakan edge. Ini mencegah `Access-Control-Allow-Origin` ganda yang dianggap invalid oleh browser walaupun upstream mengembalikan HTTP `200`.
+
+`realtime-gateway` dapat dijalankan langsung dari folder servicenya dengan `go run main.go`. Saat startup, gateway membuat atau menyelaraskan stream JetStream `LIVESCORE` (`livescore.update.>`) dan `MEDALS` (`realtime.medals`) secara idempotent sebelum membuat durable consumer. Karena itu startup lokal tidak lagi bergantung pada `livescore-service` atau initializer stream dijalankan lebih dahulu. Jika koneksi NATS/JetStream sendiri tidak tersedia, startup tetap gagal secara eksplisit agar realtime tidak berjalan dalam keadaan semu.
 
 Pada hosting, gunakan Nginx `80/443` sebagai satu-satunya entry point, hilangkan publish port diagnostik melalui Compose override/firewall, dan gunakan DNS service internal. Mengganti host port tidak memerlukan perubahan source atau image.
 
