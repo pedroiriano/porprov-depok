@@ -1,6 +1,7 @@
 package router
 
 import (
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -17,7 +18,7 @@ import (
 )
 
 // setupProxy creates a reverse proxy to a target URL
-func setupProxy(targetURL string) http.HandlerFunc {
+func setupProxyWithHeaders(targetURL string, trustedHeaders map[string]string) http.HandlerFunc {
 	url, _ := url.Parse(targetURL)
 	proxy := httputil.NewSingleHostReverseProxy(url)
 	proxy.FlushInterval = -1 // Ensure immediate flush for SSE
@@ -39,11 +40,19 @@ func setupProxy(targetURL string) http.HandlerFunc {
 		req.Header.Set("X-Proxy", "API-Gateway")
 		// SECURITY: Jangan percaya header actor dari klien; selalu turunkan dari JWT tervalidasi.
 		req.Header.Del("X-Actor-ID")
+		req.Header.Del("X-Actor-IP")
+		req.Header.Del("X-Internal-Stream-Token")
 		if actorID := customMiddleware.ActorIDFromContext(req.Context()); actorID != "" {
 			req.Header.Set("X-Actor-ID", actorID)
 		}
+		if host, _, splitErr := net.SplitHostPort(req.RemoteAddr); splitErr == nil {
+			req.Header.Set("X-Actor-IP", host)
+		}
 		if requestID := middleware.GetReqID(req.Context()); requestID != "" {
 			req.Header.Set("X-Request-ID", requestID)
+		}
+		for name, value := range trustedHeaders {
+			req.Header.Set(name, value)
 		}
 		// Host harus diset ke URL target agar request tidak ditolak
 		req.Host = url.Host
@@ -54,13 +63,17 @@ func setupProxy(targetURL string) http.HandlerFunc {
 	}
 }
 
+func setupProxy(targetURL string) http.HandlerFunc {
+	return setupProxyWithHeaders(targetURL, nil)
+}
+
 // SetupRouter mengonfigurasi dan mengembalikan Chi mux router
 func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) *chi.Mux {
 	r := chi.NewRouter()
 
 	// SECURITY: CORS strict setup
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"}, // TODO: Batasi di production sesuai domain resmi
+		AllowedOrigins:   cfg.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
@@ -70,7 +83,6 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 
 	// Middlewares bawaan Chi
 	r.Use(middleware.RequestID) // Men-generate request_id untuk tracing
-	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)    // TODO: Ganti dengan Zap/Zerolog nanti
 	r.Use(middleware.Recoverer) // Mencegah panic mematikan server
 
@@ -97,16 +109,25 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 			r.Handle("/schedule/*", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)))
 			r.Handle("/schedule", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)))
 
-			// Audit Service (Port 8084)
-			r.Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
-			r.Handle("/audit", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
+			// Audit immutable hanya dapat dibaca role audit/super admin.
+			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
+			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Handle("/audit", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
 
 			// Livescore Service (Port 8083) - Hanya admin/koresponden yang boleh mengupdate skor
-			r.Handle("/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
-			r.Handle("/livescore", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
-			// Medal Standing Service (Port 8086)
-			r.Handle("/medals/*", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)))
-			r.Handle("/medals", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)))
+			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden")).Handle("/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
+			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden")).Handle("/livescore", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
+
+			// Workflow Medali: koresponden submit, verifikator memeriksa, super admin memublikasikan.
+			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden")).Post("/medals/add", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden")).Post("/medals/submissions", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden", "verifikator")).Get("/medals/submissions", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(jwtMid.RequireAnyRole("super_admin", "verifikator")).Post("/medals/submissions/{submissionID}/verify", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(jwtMid.RequireAnyRole("super_admin", "verifikator")).Post("/medals/submissions/{submissionID}/reject", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(jwtMid.RequireAnyRole("super_admin")).Post("/medals/submissions/{submissionID}/publish", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+
+			// Private SSE memakai JWT di edge dan shared token hanya pada hop internal.
+			privateStreamProxy := setupProxyWithHeaders(cfg.RealtimeURL, map[string]string{"X-Internal-Stream-Token": cfg.InternalStreamToken})
+			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden", "verifikator", "auditor")).Get("/stream/admin/events", http.StripPrefix("/api/v1/stream", privateStreamProxy).ServeHTTP)
 
 			// Venue Service Protected Routes (POST, PUT, DELETE)
 			r.Post("/venues", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
@@ -141,6 +162,9 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 		// SECURITY: Mutasi medali tetap melewati route terproteksi di atas.
 		r.Get("/medals/*", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
 		r.Get("/medals", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+
+		// Public LiveScore projection tidak memuat actor, request ID, atau alasan koreksi.
+		r.Get("/livescore/public", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)).ServeHTTP)
 	})
 
 	// Rute Static File Uploads (Public)

@@ -13,16 +13,21 @@ type NullablePgText =
 
 type NullablePgNumber =
   | number
+  | string
   | null
   | undefined
   | {
       Int32?: number;
       Int64?: number;
       Float64?: number;
+      Int?: number | string;
+      Exp?: number;
       Valid?: boolean;
       int32?: number;
       int64?: number;
       float64?: number;
+      int?: number | string;
+      exp?: number;
       valid?: boolean;
     };
 
@@ -81,6 +86,11 @@ export function readPgNumber(value: NullablePgNumber): number {
     return value;
   }
 
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
   if (!value || typeof value !== "object") {
     return 0;
   }
@@ -96,10 +106,21 @@ export function readPgNumber(value: NullablePgNumber): number {
     value.Float64 ??
     value.int32 ??
     value.int64 ??
-    value.float64 ??
-    0;
+    value.float64;
 
-  return Number.isFinite(candidate) ? candidate : 0;
+  if (typeof candidate === "number" && Number.isFinite(candidate)) {
+    return candidate;
+  }
+
+  const numericInt = value.Int ?? value.int;
+  if (numericInt !== undefined) {
+    const parsedInt = Number(numericInt);
+    const exponent = value.Exp ?? value.exp ?? 0;
+    const parsed = parsedInt * Math.pow(10, exponent);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
 }
 
 export function readResourceId(value: unknown, fallback: string): string {

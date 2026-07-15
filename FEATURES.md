@@ -2,7 +2,7 @@
 
 Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality gates. Agent wajib membaca dan memperbarui dokumen ini sebelum dan sesudah pekerjaan.
 
-> **Baseline aktif per 14 Juli 2026:** Techwind 3.3.0 pada `theme-reference/HTML/Landing/` menjadi referensi utama Public Web dan `theme-reference/HTML/Dashboard/` menjadi referensi utama Admin Web. Semua delete data persisten wajib soft delete. Status di bawah harus mencerminkan implementasi nyata, bukan hanya target desain.
+> **Baseline aktif per 15 Juli 2026:** Techwind 3.3.0 pada `theme-reference/HTML/Landing/` menjadi referensi utama Public Web dan `theme-reference/HTML/Dashboard/` menjadi referensi utama Admin Web. Semua delete data persisten wajib soft delete. Status di bawah harus mencerminkan implementasi nyata, bukan hanya target desain.
 
 ## Status Legend
 
@@ -49,11 +49,11 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | SEO metadata system | `[ ] Planned` | v0.1 | `app/**/metadata` | Metadata API |
 | PWA installability | `[ ] Planned` | v0.1 | manifest/service worker | Pengganti Chrome App |
 | Beranda | `[~] In Progress` | v0.2 | `/` | Hero Techwind masterpiece, Tuan Rumah, pusat informasi, Venue live, dan CTA penonton tersedia; data Live Now/Medali/editorial penuh masih bertahap |
-| Cabor listing/detail | `[~] In Progress` | v0.2 | `/cabor` | Listing melalui API Gateway dan tautan Beranda aktif; detail cabor belum tersedia |
-| Jadwal | `[~] In Progress` | v0.2 | `/jadwal` | GET publik melalui API Gateway, filter tanggal/pencarian, loading, empty, error/retry; enrichment nama venue/nomor dan filter cabor penuh masih bertahap |
-| Venue & Maps | `[~] In Progress` | v0.2 | `/`, `/venue` | Listing live melalui API Gateway dengan refresh 30 detik, rute, fasilitas, status, pagination, dan state lengkap; detail/peta interaktif/rekomendasi sekitar belum final |
-| LiveScore | `[~] In Progress` | v0.2 | `/livescore` | Schedule aktif + SSE melalui API Gateway, status koneksi dan state lengkap tanpa match tiruan; event versioning/auth/scale-out belum final |
-| Standings Medali | `[~] In Progress` | v0.2 | `/medali` | Data resmi Medal Standing + nama/logo Kontingen melalui API Gateway, sorting dan empty/error faktual; workflow input/verifikasi belum final |
+| Cabor listing/detail | `[x] Done` | v0.3 | `/cabor`, `/cabor/[id]` | Listing, dynamic metadata, detail, nomor tanding, venue terkait, dan jadwal aktif melalui API Gateway; lint/build/E2E desktop teruji |
+| Jadwal | `[x] Done` | v0.3 | `/jadwal`, `ScheduleMatchCard` | Read-model enriched, filter tanggal/cabor/venue/status/pencarian, grouping, loading/empty/error, serta E2E mobile teruji |
+| Venue & Maps | `[~] In Progress` | v0.3 | `/`, `/venue`, `/venue/[id]` | Listing live dan detail dengan fasilitas, kapasitas, cabor, City Guide sekitar, rute, koordinat, serta jadwal tersedia; peta interaktif dan rekomendasi berbasis jarak belum final |
+| LiveScore | `[~] In Progress` | v0.4 | `/livescore` | Projection PostgreSQL, history append-only, koreksi beralasan, optimistic revision, validasi Jadwal, public SSE tersanitasi, dan fallback faktual tersedia; distributed fanout, observability, dan E2E pertandingan staging belum final |
+| Standings Medali | `[~] In Progress` | v0.4 | `/medali` | Hanya data OFFICIAL, sorting, public SSE v1, fallback polling, dan empty/error faktual; workflow backend/Admin tersedia, sedangkan E2E data kompetisi staging dan koreksi Medali official belum final |
 | Galeri | `[ ] Planned` | v0.1 | `/galeri` | Foto/video |
 | Depok Guide | `[ ] Planned` | v0.1 | `/depok-guide` | Coffee shop, kuliner, penginapan, wisata, RS |
 
@@ -62,14 +62,14 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | Fitur | Status | Versi | File/Area | Catatan |
 |---|---|---|---|---|
 | Vite React setup | `[x] Done` | v0.2 | `apps/admin-web-react/` | TypeScript + Tailwind v4; build produksi dan image Nginx teruji |
-| Role-based sidebar | `[ ] Planned` | v0.1 | admin layout | Menu sesuai RBAC |
+| Role-based sidebar | `[~] In Progress` | v0.4 | admin layout | LiveScore, submit/verifikasi Medali, dan Audit disaring menurut realm role; Master Data/domain lama belum seluruhnya memakai matrix granular |
 | Master data | `[x] Done` | v0.4 | cabor, nomor pertandingan, venue, kontingen, jadwal, City Guide | CRUD, pencarian, referensi, Media Selector, soft delete beralasan, dependency guard, dan restore melalui Recycle Bin teruji end-to-end; RBAC granular dilanjutkan pada tahap hardening |
 | Media Library | `[x] Done` | v0.4 | `components/media/`, master-data-service | Upload/selector/URL relatif, soft delete metadata, penyembunyian delivery publik, retensi file, dan restore teruji; kebijakan purge tetap TBD |
 | Recycle Bin Admin | `[x] Done` | v0.4 | `components/master-data/RecycleBin.tsx` | Menggabungkan tombstone Master Data, Media, Venue, dan Jadwal dengan pencarian, status, actor/alasan, serta restore aksesibel |
-| LiveScore center | `[ ] Planned` | v0.1 | admin livescore | Monitoring input skor |
-| Verification workflow | `[ ] Planned` | v0.1 | admin verifikasi | Submitted → verified → official |
-| Audit log | `[ ] Planned` | v0.1 | admin audit | Filter, export, immutable log |
-| Export | `[ ] Planned` | v0.1 | admin report | XLSX/PDF/CSV |
+| LiveScore center | `[~] In Progress` | v0.4 | admin livescore | Pilih Jadwal enriched, input/koreksi dengan expected revision, private SSE, dan history actor/reason; E2E pertandingan staging belum dijalankan tanpa data resmi |
+| Verification workflow | `[~] In Progress` | v0.4 | admin Medali/verifikasi | PENDING → VERIFIED → OFFICIAL/REJECTED dengan role terpisah dan actor tiap tahap; correction/reversal data OFFICIAL belum tersedia |
+| Audit log | `[~] In Progress` | v0.4 | admin audit | Filter, detail payload, dedup event, hash, dan DB immutable tersedia; SIEM/WORM/retention belum final |
+| Export | `[~] In Progress` | v0.4 | admin audit | CSV Audit tersedia; XLSX/PDF/report domain lain belum tersedia |
 
 ## 5. Mobile Apps — React Native
 
@@ -85,28 +85,28 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 
 | Fitur | Status | Versi | File/Area | Catatan |
 |---|---|---|---|---|
-| API Gateway | `[~] In Progress` | v0.3 | `services/api-gateway/` | JWT, routing environment, dan public read contract Master/Schedule/Venue/Medals teruji; mutasi tetap terproteksi, rate limit/RBAC rinci belum lengkap |
+| API Gateway | `[~] In Progress` | v0.4 | `services/api-gateway/` | JWT signature+issuer+expiry+subject+client, strict origin config, trusted actor/IP, role guard olahraga/audit, public/private stream, dan public reads teruji; RBAC domain lama/rate limit terdistribusi belum lengkap |
 | Master Data Service | `[~] In Progress` | v0.4 | `services/master-data-service/` | CRUD serta soft delete/restore Cabor, Nomor, Kontingen, City Guide, dan Media sudah teruji; immutable audit persistence/outbox dan RBAC granular belum selesai |
 | Venue Service | `[~] In Progress` | v0.4 | `services/venue-service/` | CRUD, soft delete/restore, dan fail-closed schedule dependency guard sudah teruji; hardening authorization/audit masih bertahap |
-| Schedule Service | `[~] In Progress` | v0.4 | `services/schedule-service/` | CRUD, validasi referensi, soft delete/restore, dan reference endpoint sudah teruji; bracket belum tersedia |
-| LiveScore Service | `[ ] Planned` | v0.1 | `services/livescore-service/` | Event sourcing |
-| Realtime Gateway | `[~] In Progress` | v0.2 | `services/realtime-gateway/` | SSE fanout, cache Redis, consumer durable LiveScore/Medals, dan bootstrap stream JetStream idempotent tersedia; autentikasi stream, observability, serta scale-out fanout belum final |
-| Medal Standing Service | `[~] In Progress` | v0.2 | `services/medal-standing-service/` | Standings dan update event tersedia; migration lokal terverifikasi, tetapi container migration, workflow verifikasi, soft-delete bila domain berkembang, dan hardening belum final |
+| Schedule Service | `[~] In Progress` | v0.5 | `services/schedule-service/` | CRUD, validasi referensi, soft delete/restore, reference endpoint, serta `GET /matches/enriched` dengan batch participant query teruji; bracket belum tersedia |
+| LiveScore Service | `[~] In Progress` | v0.4 | `services/livescore-service/` | PostgreSQL revision/current projection, schedule fail-closed, expected revision, correction append-only, transactional realtime+audit outbox, retry/backoff, dan public projection tersedia; load/staging E2E belum final |
+| Realtime Gateway | `[~] In Progress` | v0.4 | `services/realtime-gateway/` | Public/private SSE, internal token production guard, public metadata sanitization, replay Redis, per-client limit, durable consumers, dan stream bootstrap tersedia; distributed connection limit/fanout dan observability belum final |
+| Medal Standing Service | `[~] In Progress` | v0.4 | `services/medal-standing-service/` | Migration container, validasi Kontingen, workflow PENDING/VERIFIED/REJECTED/OFFICIAL, separated actors, double-publish guard, transactional audit/realtime outbox, dan official standings tersedia; official reversal/correction belum final |
 | Notification Service | `[ ] Planned` | v0.1 | `services/notification-service/` | Push/in-app |
-| Audit Service | `[ ] Planned` | v0.1 | `services/audit-service/` | Immutable log |
+| Audit Service | `[~] In Progress` | v0.4 | `services/audit-service/` | Durable consumer, dedup event ID, deterministic legacy ID, SHA-256 payload, poison termination, immutable trigger, role-protected query, dan Admin CSV tersedia; WORM/SIEM/retention belum final |
 
 ## 7. Infrastruktur, Security, Testing
 
 | Fitur | Status | Versi | File/Area | Catatan |
 |---|---|---|---|---|
-| Docker Compose staging | `[~] In Progress` | v0.2 | `infra/docker/` | Admin, gateway, master, venue, schedule, migrasi, health check, dan volume media berjalan; service domain lain masih bertahap |
+| Docker Compose staging | `[~] In Progress` | v0.4 | `infra/docker/` | Admin, Gateway, Master, Venue, Schedule, LiveScore, Medal, Audit, Realtime beserta migration image dan dependency health tersedia; production override/secret/edge hardening belum final |
 | Registry port portable | `[x] Done` | v0.3 | Compose, config service, `.env.example`, enam Markdown root | Public, diagnostic, local debug `28xxx`, dan infra host dipisahkan; seluruh host mapping configurable |
 | Gateway CORS ownership | `[x] Done` | v0.3 | API Gateway router + Admin development env | Header CORS downstream dibuang sebelum kebijakan Gateway diterapkan; regression test menjamin satu origin dan Admin `npm run dev` otomatis memakai Gateway lokal `28000` |
 | Nginx SSL | `[ ] Planned` | v0.1 | `infra/nginx/` | Reverse proxy |
 | Keycloak realm dan Admin OIDC | `[~] In Progress` | v0.2 | `infra/docker/create_clients.sh`, Admin Web | Realm/client bootstrap idempotent, callback lokal 5173/5174, origin eksplisit, dan Authorization Code + PKCE S256 aktif; role granular, theme PORPROV, rotasi secret, serta konfigurasi production belum final |
-| NATS JetStream | `[ ] Planned` | v0.1 | `infra/nats/` | Durable event |
-| PostgreSQL per service | `[ ] Planned` | v0.1 | `infra/postgres/` | Database per service |
-| Redis | `[ ] Planned` | v0.1 | `infra/redis/` | Cache/presence/rate limit |
+| NATS JetStream | `[~] In Progress` | v0.4 | LiveScore/Medal/Audit/Realtime | Stream bootstrap, durable consumer, ack, retry, dan at-least-once outbox tersedia untuk domain olahraga; cluster/monitoring/DLQ operasional belum final |
+| PostgreSQL per service | `[~] In Progress` | v0.4 | `infra/postgres/` | Database core termasuk `livescore_db`, `porprov_db`, dan `audit_db` aktif; backup/HA/retention belum final |
+| Redis | `[~] In Progress` | v0.4 | Realtime cache | Password environment, replay cache, dan TTL aktif; distributed rate limit/presence belum final |
 | Observability | `[ ] Planned` | v0.1 | `infra/monitoring/` | Prometheus/Grafana/Loki/Otel |
 | Security scan | `[ ] Planned` | v0.1 | CI/CD | Trivy/Sonar/SAST |
 | Load & stress test | `[ ] Planned` | v0.1 | `tests/k6/` | Tidak boleh klaim lulus sebelum diuji |
@@ -119,7 +119,7 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | Skema standar `deleted_at/deleted_by/delete_reason` | `[x] Done` | Master Data, Media, Venue, Schedule | Migration backward-safe aktif: master v5, venue v2, schedule v4; partial unique index dipakai untuk nama aktif yang relevan |
 | Default query scope | `[x] Done` | Master Data, Media, Venue, Schedule | List/get/update/relation aktif mengecualikan tombstone; media yang diarsipkan tidak dilayani publik |
 | Restore API dan Recycle Bin | `[x] Done` | Admin + gateway + service inti | Endpoint dilindungi JWT, actor diturunkan Gateway, restore idempotent, dan konflik referensi menghasilkan `409`; role granular masuk tahap RBAC |
-| Audit dan event delete/restore | `[~] In Progress` | API/service/NATS | Actor, reason, request ID, dan snapshot tombstone dikirim sebagai event NATS; durable outbox, event version, dan penyimpanan audit immutable belum selesai |
+| Audit dan event delete/restore | `[~] In Progress` | API/service/NATS | Audit Service immutable/dedup aktif dan LiveScore/Medali memakai durable transactional outbox; event delete/restore Master/Media/Venue/Jadwal masih best-effort dan harus dimigrasikan ke outbox |
 | Retensi dan purge Media Library | `[?] TBD` | master-data/file storage | Masa retensi memerlukan keputusan produk/legal; file tidak dihapus saat soft delete |
 | Test kepatuhan soft delete | `[x] Done` | service inti + gateway + Admin | Unit/contract/runtime mencakup auth actor, anti-spoofing, delete, hidden query/media, restore, dependency conflict, idempotency, build, dan migration; purge tetap dikecualikan sampai kebijakan disetujui |
 

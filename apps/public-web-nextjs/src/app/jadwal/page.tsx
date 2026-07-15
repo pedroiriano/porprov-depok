@@ -1,307 +1,94 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Calendar, Filter, Search, MapPin, Clock, Loader2 } from "lucide-react";
-import axios from "axios";
-import { publicApiUrl, readPgText, readPgTimestamp, readResourceId, unwrapCollection } from "@/lib/public-api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Calendar, Loader2, RefreshCw, Search } from "lucide-react";
+import { ScheduleMatchCard } from "@/components/ScheduleMatchCard";
+import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
+import { normalizeEnrichedMatch, type EnrichedMatch, type RawEnrichedMatch } from "@/lib/public-models";
 
-interface Match {
-  id: string;
-  match_time?: string | null;
-  match_name: string;
-  venue_name?: string | null;
-  cabor_id: string;
-  peserta_a?: string | null;
-  peserta_b?: string | null;
-  skor_a?: number | null;
-  skor_b?: number | null;
-  status?: string | null;
+function localDateKey(timestamp: string): string {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-interface Cabor {
-  id: string;
-  name: string;
-}
-
-interface RawMatch {
-  id?: unknown;
-  match_time?: Parameters<typeof readPgTimestamp>[0];
-  match_date?: Parameters<typeof readPgTimestamp>[0];
-  match_name?: string | null;
-  round?: string | null;
-  venue_name?: string | null;
-  cabor_id?: unknown;
-  peserta_a?: string | null;
-  peserta_b?: string | null;
-  skor_a?: number | null;
-  skor_b?: number | null;
-  status?: string | null;
-}
-
-function normalizeMatch(raw: RawMatch, index: number): Match {
-  const matchTime = readPgTimestamp(raw.match_time) || readPgTimestamp(raw.match_date);
-  const round = readPgText(raw.round);
-  return {
-    id: readResourceId(raw.id, `match-${index}`),
-    match_time: matchTime || null,
-    match_name: raw.match_name?.trim() || round || "Pertandingan PORPROV",
-    venue_name: raw.venue_name?.trim() || null,
-    cabor_id: readResourceId(raw.cabor_id, "lainnya"),
-    peserta_a: raw.peserta_a,
-    peserta_b: raw.peserta_b,
-    skor_a: raw.skor_a,
-    skor_b: raw.skor_b,
-    status: raw.status,
-  };
-}
-
-export default function Jadwal() {
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [cabors, setCabors] = useState<Cabor[]>([]);
+export default function JadwalPage() {
+  const [matches, setMatches] = useState<EnrichedMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [search, setSearch] = useState("");
+  const [date, setDate] = useState("");
+  const [cabor, setCabor] = useState("");
+  const [venue, setVenue] = useState("");
+  const [status, setStatus] = useState("");
 
-  // Filters
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
-
-  const fetchData = useCallback(async () => {
+  const loadMatches = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      setError("");
-      const [matchesRes, caborsRes] = await Promise.all([
-        axios.get<unknown>(publicApiUrl("/schedule/matches")),
-        axios.get<unknown>(publicApiUrl("/master-data/cabors")),
-      ]);
-
-      const fetchedMatches = unwrapCollection<RawMatch>(matchesRes.data).map(normalizeMatch);
-      setMatches(fetchedMatches);
-      setCabors(unwrapCollection<Cabor>(caborsRes.data));
-
-      // Extract unique dates for the date carousel
-      const dates = new Set<string>();
-      fetchedMatches.forEach((match) => {
-        if (match.match_time) {
-          const dateStr = new Date(match.match_time).toISOString().split("T")[0];
-          dates.add(dateStr);
-        }
-      });
-      const sortedDates = Array.from(dates).sort();
-      setAvailableDates(sortedDates);
-
-      setSelectedDate((currentDate) => currentDate ?? sortedDates[0] ?? null);
+      const response = await fetch(publicApiUrl("/schedule/matches/enriched"), { cache: "no-store", headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(`API Gateway merespons ${response.status}`);
+      const data = unwrapCollection<RawEnrichedMatch>(await response.json()).map(normalizeEnrichedMatch);
+      data.sort((left, right) => (left.matchDate || "9999").localeCompare(right.matchDate || "9999"));
+      setMatches(data);
+      setLastUpdated(new Date());
     } catch (cause) {
-      const status = axios.isAxiosError(cause) ? cause.response?.status : undefined;
-      setError(status === 401
-        ? "Akses data jadwal publik ditolak oleh API Gateway. Restart API Gateway setelah pembaruan route publik."
-        : "Jadwal belum dapat dimuat. Periksa API Gateway dan Schedule Service, lalu coba lagi.");
+      setError(`Jadwal belum dapat dimuat. ${cause instanceof Error ? cause.message : "Periksa service terkait."}`);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const initialTimer = window.setTimeout(() => void fetchData(), 0);
-    return () => window.clearTimeout(initialTimer);
-  }, [fetchData]);
+    const timer = window.setTimeout(() => void loadMatches(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadMatches]);
 
-  const getDayName = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('id-ID', { weekday: 'short' });
-  };
+  const options = useMemo(() => ({
+    dates: [...new Set(matches.map((match) => localDateKey(match.matchDate)).filter(Boolean))].sort(),
+    cabors: [...new Map(matches.filter((match) => match.caborId).map((match) => [match.caborId, match.caborName])).entries()].sort((a, b) => a[1].localeCompare(b[1], "id")),
+    venues: [...new Map(matches.filter((match) => match.venueId).map((match) => [match.venueId, match.venueName])).entries()].sort((a, b) => a[1].localeCompare(b[1], "id")),
+    statuses: [...new Set(matches.map((match) => match.status).filter(Boolean))].sort((a, b) => a.localeCompare(b, "id")),
+  }), [matches]);
 
-  const getShortDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-  };
+  const filteredMatches = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("id");
+    return matches.filter((match) => {
+      const searchable = [match.caborName, match.nomorTandingName, match.round, match.venueName, ...match.participants.map((item) => item.display_name)].join(" ").toLocaleLowerCase("id");
+      return (!query || searchable.includes(query)) && (!date || localDateKey(match.matchDate) === date) && (!cabor || match.caborId === cabor) && (!venue || match.venueId === venue) && (!status || match.status === status);
+    });
+  }, [cabor, date, matches, search, status, venue]);
 
-  // Filter matches based on search query and selected date
-  const filteredMatches = matches.filter(match => {
-    const matchDateStr = match.match_time ? new Date(match.match_time).toISOString().split('T')[0] : null;
-    const matchesDate = !selectedDate || matchDateStr === selectedDate;
+  const groupedMatches = useMemo(() => {
+    const groups = new Map<string, EnrichedMatch[]>();
+    for (const match of filteredMatches) groups.set(match.caborName, [...(groups.get(match.caborName) || []), match]);
+    return [...groups.entries()];
+  }, [filteredMatches]);
 
-    const matchesSearch =
-      (match.match_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (match.venue_name && match.venue_name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    return matchesDate && matchesSearch;
-  });
-
-  // Group matches by Cabor
-  const groupedMatches: Record<string, Match[]> = {};
-  filteredMatches.forEach(match => {
-    if (!groupedMatches[match.cabor_id]) {
-      groupedMatches[match.cabor_id] = [];
-    }
-    groupedMatches[match.cabor_id].push(match);
-  });
-
-  const getCaborName = (id: string) => {
-    const cabor = cabors.find(c => c.id === id);
-    return cabor ? cabor.name : 'Pertandingan Lainnya';
-  };
+  const resetFilters = () => { setSearch(""); setDate(""); setCabor(""); setVenue(""); setStatus(""); };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Jadwal Pertandingan</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2">Filter dan pantau jadwal dari berbagai Cabang Olahraga.</p>
+    <main className="mx-auto w-full max-w-7xl px-4 py-32 sm:px-6 md:py-40 lg:px-8">
+      <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-3xl"><p className="text-sm font-black uppercase tracking-[0.2em] text-primary-500">Agenda Resmi</p><h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Jadwal Pertandingan</h1><p className="mt-4 text-lg text-slate-600 dark:text-slate-300">Telusuri jadwal berdasarkan tanggal, cabor, venue, dan status pertandingan.</p></div>
+        <div className="flex flex-wrap items-center gap-3"><span className="text-sm text-slate-500" role="status" aria-live="polite">{lastUpdated ? `Diperbarui ${lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}` : "Menunggu data"}</span><button type="button" onClick={() => void loadMatches()} disabled={loading} className="inline-flex min-h-11 items-center rounded-xl bg-primary-500 px-4 font-black text-white hover:bg-primary-600 disabled:opacity-60"><RefreshCw className={`me-2 size-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />Perbarui</button></div>
+      </header>
+
+      <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-labelledby="filter-title">
+        <div className="flex items-center justify-between gap-3"><h2 id="filter-title" className="font-black">Filter jadwal</h2><button type="button" onClick={resetFilters} className="min-h-11 px-3 text-sm font-bold text-primary-600 hover:text-primary-700">Reset filter</button></div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <label className="relative xl:col-span-1"><span className="sr-only">Cari jadwal</span><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cabor, peserta, venue..." className="min-h-11 w-full rounded-xl border border-slate-300 bg-transparent pl-10 pr-3 dark:border-slate-700" /></label>
+          <label><span className="sr-only">Tanggal</span><select value={date} onChange={(event) => setDate(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"><option value="">Semua tanggal</option>{options.dates.map((item) => <option key={item} value={item}>{new Date(`${item}T00:00:00`).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" })}</option>)}</select></label>
+          <label><span className="sr-only">Cabang olahraga</span><select value={cabor} onChange={(event) => setCabor(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"><option value="">Semua cabor</option>{options.cabors.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+          <label><span className="sr-only">Venue</span><select value={venue} onChange={(event) => setVenue(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"><option value="">Semua venue</option>{options.venues.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+          <label><span className="sr-only">Status</span><select value={status} onChange={(event) => setStatus(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"><option value="">Semua status</option>{options.statuses.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         </div>
-        
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-400" />
-            <input
-              type="text" 
-              placeholder="Cari nomor tanding, venue..."
-              aria-label="Cari jadwal berdasarkan nomor tanding atau venue"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="form-input w-full sm:w-64 pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-600 focus:border-indigo-600"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={fetchData}
-            disabled={loading}
-            aria-label="Perbarui data jadwal"
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 border border-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 hover:border-indigo-700 transition-colors"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Filter className="w-4 h-4" aria-hidden="true" />} Perbarui
-          </button>
-        </div>
-      </div>
+      </section>
 
-      {error && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="alert">
-          <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-          <div className="flex-1">
-            <p className="font-bold">Pembaruan jadwal tertunda</p>
-            <p className="mt-1 text-sm leading-relaxed">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {loading && matches.length === 0 ? (
-        <div className="flex justify-center py-20" role="status" aria-label="Memuat jadwal pertandingan">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" aria-hidden="true" />
-        </div>
-      ) : (
-        <>
-          {/* Date Carousel (Horizontal scroll) */}
-          <div className="flex overflow-x-auto gap-3 pb-4 mb-6 scrollbar-hide">
-            <button
-              onClick={() => setSelectedDate(null)}
-              className={`flex-none flex flex-col items-center justify-center px-6 py-3 rounded-md border transition-all duration-500 ${
-                selectedDate === null
-                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
-                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-600"
-              }`}
-            >
-              <span className={`text-xs font-medium mb-1 ${selectedDate === null ? "text-indigo-100" : "text-slate-400"}`}>
-                Semua
-              </span>
-              <span className="font-bold whitespace-nowrap">Tanggal</span>
-            </button>
-
-            {availableDates.map((dateStr, idx) => (
-              <button
-                key={idx}
-                onClick={() => setSelectedDate(dateStr)}
-                className={`flex-none flex flex-col items-center justify-center px-6 py-3 rounded-md border transition-all duration-500 ${
-                  selectedDate === dateStr
-                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
-                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-600"
-                }`}
-              >
-                <span className={`text-xs font-medium mb-1 ${selectedDate === dateStr ? "text-blue-100" : "text-slate-500 dark:text-slate-400"}`}>
-                  {getDayName(dateStr)}
-                </span>
-                <span className="font-bold whitespace-nowrap">{getShortDate(dateStr)}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Schedule List */}
-          <div className="flex flex-col gap-8">
-            {Object.keys(groupedMatches).length === 0 ? (
-              <div className="bg-slate-50 dark:bg-slate-900 p-12 text-center rounded-2xl border border-slate-200 dark:border-slate-800">
-                <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">{matches.length === 0 ? "Jadwal belum dipublikasikan" : "Tidak ada jadwal ditemukan"}</h3>
-                <p className="text-slate-500">{matches.length === 0 ? "Data akan tampil setelah jadwal pertandingan disahkan oleh panitia." : "Coba ubah tanggal atau kata kunci pencarian Anda."}</p>
-              </div>
-            ) : (
-              Object.keys(groupedMatches).map(caborId => (
-                <div key={caborId} className="flex flex-col gap-3">
-                  <h2 className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                    <div className="w-8 h-8 rounded-md bg-indigo-600/10 text-indigo-600 flex items-center justify-center font-bold text-lg">
-                      {getCaborName(caborId).charAt(0)}
-                    </div>
-                    {getCaborName(caborId)}
-                  </h2>
-
-                  <div className="glass-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 rounded-md shadow dark:shadow-gray-800">
-                    {groupedMatches[caborId].map((match) => (
-                      <div key={match.id} className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        {/* Time & Status */}
-                        <div className="flex flex-row sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-2 sm:w-32 shrink-0 border-b sm:border-b-0 border-slate-100 dark:border-slate-800 pb-3 sm:pb-0">
-                          <div className="flex items-center gap-1.5 text-slate-900 dark:text-slate-100 font-bold">
-                            <Clock className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                            {match.match_time ? new Date(match.match_time).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : 'TBA'}
-                          </div>
-                          {match.status === 'live' ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 uppercase tracking-wider animate-pulse-subtle">Live</span>
-                          ) : match.status === 'completed' ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase tracking-wider">Selesai</span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-wider">{match.status || 'Upcoming'}</span>
-                          )}
-                        </div>
-
-                        {/* Match Details */}
-                        <div className="flex-1 flex flex-col gap-3">
-                          <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{match.match_name}</div>
-                          <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/30 p-3 rounded-md border border-slate-100 dark:border-slate-800/50">
-                            <div className="flex flex-col gap-2 flex-1">
-                              {/* Peserta A */}
-                              <div className="flex items-center gap-2">
-                                <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700"></div>
-                                <span className="font-semibold text-sm">{match.peserta_a || 'Menunggu Lawan'}</span>
-                              </div>
-                              {/* Peserta B */}
-                              <div className="flex items-center gap-2">
-                                <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700"></div>
-                                <span className="font-semibold text-sm">{match.peserta_b || 'Menunggu Lawan'}</span>
-                              </div>
-                            </div>
-
-                            {/* Score if completed or live */}
-                            {(match.status === 'live' || match.status === 'completed') && (
-                              <div className="flex flex-col gap-2 shrink-0 text-right font-mono font-bold text-lg border-l border-slate-200 dark:border-slate-700 pl-4">
-                                <span className={(match.skor_a ?? 0) > (match.skor_b ?? 0) ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 dark:text-slate-400"}>
-                                  {match.skor_a ?? 0}
-                                </span>
-                                <span className={(match.skor_b ?? 0) > (match.skor_a ?? 0) ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 dark:text-slate-400"}>
-                                  {match.skor_b ?? 0}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            <MapPin className="w-3 h-3" /> {match.venue_name || 'Venue TBA'}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </>
-      )}
-    </div>
+      {error && <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="alert"><AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden="true" /><div><h2 className="font-black">Pembaruan jadwal tertunda</h2><p className="mt-1 text-sm">{error}</p></div></div>}
+      {loading && matches.length === 0 ? <div className="flex min-h-64 items-center justify-center" role="status"><Loader2 className="size-8 animate-spin text-primary-500" aria-hidden="true" /><span className="sr-only">Memuat jadwal</span></div> : groupedMatches.length === 0 ? <div className="mt-8 rounded-2xl border border-dashed border-slate-300 p-14 text-center dark:border-slate-700"><Calendar className="mx-auto size-12 text-slate-300" aria-hidden="true" /><h2 className="mt-4 text-xl font-black">{matches.length ? "Tidak ada jadwal yang cocok" : "Jadwal belum dipublikasikan"}</h2><p className="mt-2 text-slate-500">{matches.length ? "Coba ubah atau reset filter Anda." : "Jadwal akan tampil setelah disahkan panitia."}</p></div> : <div className="mt-10 space-y-10">{groupedMatches.map(([caborName, items]) => <section key={caborName} aria-labelledby={`schedule-${items[0].caborId}`}><div className="flex items-center justify-between gap-4"><h2 id={`schedule-${items[0].caborId}`} className="text-2xl font-black">{caborName}</h2><span className="text-sm font-bold text-slate-500">{items.length} pertandingan</span></div><div className="mt-5 grid gap-5 lg:grid-cols-2">{items.map((match) => <ScheduleMatchCard key={match.id} match={match} compact />)}</div></section>)}</div>}
+    </main>
   );
 }

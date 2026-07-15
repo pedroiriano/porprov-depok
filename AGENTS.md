@@ -2,7 +2,7 @@
 
 Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Portal PORPROV XV Jawa Barat 2026.
 
-> **Konteks aktif per 15 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime yang sudah terintegrasi meliputi Admin Web, Public Web v0.2, API Gateway, Master Data Service, Venue Service, Schedule Service, Realtime Gateway, PostgreSQL, Keycloak, Redis, NATS, dan observability berbasis Docker/lokal. Public Web membaca Cabor, Venue, Jadwal, LiveScore SSE, dan Klasemen melalui API Gateway dengan state faktual tanpa data pertandingan/medali tiruan. Soft delete end-to-end beserta Recycle Bin sudah aktif untuk Master Data, Media Library, Venue, dan Jadwal. Mobile, detail konten Public, RBAC granular, audit immutable/outbox, serta hardening realtime dilanjutkan bertahap sesuai `FEATURES.md`.
+> **Konteks aktif per 15 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime terintegrasi mencakup Admin/Public Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, PostgreSQL, Keycloak, Redis, NATS, dan observability Docker/lokal. Data publik membaca detail Cabor/Venue, Jadwal enriched, projection LiveScore persisten, public SSE tersanitasi, serta Medali OFFICIAL tanpa data tiruan. JWT issuer/expiry/client, private Admin SSE, revision koreksi skor, workflow verifikasi, transactional outbox LiveScore/Medali, dan audit immutable sudah diimplementasikan sesuai batas pada `FEATURES.md`. Soft delete/Recycling domain inti tetap aktif; MFA, outbox domain lama, RBAC menyeluruh, scale-out, dan production hardening dilanjutkan bertahap.
 
 ## Mode Kerja Utama
 
@@ -57,6 +57,9 @@ Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tida
 - Implementasi wajib menggunakan komponen React/Next.js dan token PORPROV; source Gulp/HTML tema tidak menjadi runtime aplikasi.
 - Setiap layar wajib mempunyai hierarki visual yang jelas, state loading/empty/error/success, responsif mobile-first, navigasi keyboard, focus state, kontras WCAG 2.2 AA, dan motion yang menghormati `prefers-reduced-motion`.
 - Public Web harus terasa energik dan editorial tanpa mengorbankan kepadatan LiveScore, SEO, atau Core Web Vitals.
+- Stream publik hanya boleh memuat projection tayang tersanitasi; stream operasional Admin wajib melewati JWT/role API Gateway dan secret internal yang aman di luar development.
+- Perubahan LiveScore/Medali yang kritis wajib memakai transaksi state + outbox. Koreksi skor append-only dan publikasi Medali hanya dari status VERIFIED, dengan actor tiap tahap dipertahankan.
+- Data lintas domain yang dibutuhkan satu layar publik wajib disediakan melalui backend read-model dan API Gateway; browser tidak boleh mengorkestrasi port service atau bergantung pada UUID mentah untuk presentasi.
 - Admin Web harus mengutamakan kecepatan kerja, keterbacaan tabel/form, status sistem, konfirmasi aksi, dan konsistensi lintas modul.
 - Asset, logo, copywriting, dan identitas Techwind tidak boleh dipublikasikan sebagai brand PORPROV. Pastikan penggunaan tema mematuhi lisensi yang dimiliki proyek.
 

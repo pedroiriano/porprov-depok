@@ -238,7 +238,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
                     <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{venue.facilities || "Informasi fasilitas sedang diverifikasi."}</p>
 
                     <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-                      <Link href={`/venue#${encodeURIComponent(venue.id)}`} className="inline-flex min-h-11 items-center text-sm font-black text-primary-500 hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500">
+                      <Link href={`/venue/${encodeURIComponent(venue.id)}`} className="inline-flex min-h-11 items-center text-sm font-black text-primary-500 hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500">
                         Detail venue <i className="ri-arrow-right-line ms-1 transition group-hover:translate-x-1" aria-hidden="true" />
                       </Link>
                       {venue.mapRouteUrl && (

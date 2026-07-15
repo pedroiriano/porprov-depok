@@ -17,9 +17,12 @@ import (
 func main() {
 	// INFO: Memuat konfigurasi
 	cfg := config.LoadConfig()
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Konfigurasi API Gateway tidak aman: %v", err)
+	}
 
 	// INFO: Setup JWT Middleware
-	jwtMid, err := middleware.NewJWTMiddleware(cfg.KeycloakJWKSURL)
+	jwtMid, err := middleware.NewJWTMiddleware(cfg.KeycloakJWKSURL, cfg.KeycloakIssuer, cfg.JWTAllowedClients)
 	if err != nil {
 		log.Fatalf("Gagal menginisialisasi JWT Middleware: %v", err)
 	}
@@ -32,9 +35,12 @@ func main() {
 		Addr:    ":" + cfg.Port,
 		Handler: r,
 		// SECURITY: Timeout per request untuk mencegah slowloris attack
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		ReadTimeout: 10 * time.Second,
+		// INFO: WriteTimeout dinonaktifkan karena Gateway melayani koneksi SSE.
+		// Deadline koneksi idle tetap dikendalikan heartbeat dan proxy edge.
+		WriteTimeout:      0,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	// PERFORMANCE: Menjalankan server di goroutine agar tidak blocking saat menunggu sinyal shutdown

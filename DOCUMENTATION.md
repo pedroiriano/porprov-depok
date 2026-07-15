@@ -4,7 +4,7 @@
 
 Portal PORPROV XV Jawa Barat 2026 adalah platform sports event berbasis web dan mobile yang menyediakan informasi PORPROV, cabor, jadwal, venue/maps, LiveScore realtime, standings medali, galeri, Depok Guide, backend admin, dan aplikasi koresponden.
 
-Konteks aktif per 14 Juli 2026: Admin Web, API Gateway, Master Data Service, Venue Service, Schedule Service, serta Media Library telah terintegrasi dalam runtime Docker. Soft delete end-to-end pada Cabor, Nomor Pertandingan, Kontingen, City Guide, Media, Venue, dan Jadwal sudah diterapkan beserta Recycle Bin dan restore. Hardening RBAC granular, durable outbox/audit immutable, serta kebijakan retensi dan purge tetap menjadi pekerjaan lanjutan sesuai `FEATURES.md`.
+Konteks aktif per 15 Juli 2026: Admin/Public Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, dan infrastruktur data/event telah terintegrasi dalam runtime Docker/lokal. LiveScore memakai revision persistence dan transactional outbox; Medali memakai workflow PENDING–VERIFIED–OFFICIAL/REJECTED; Audit memakai durable consumer, dedup, hash, dan immutable trigger; public/private SSE dipisahkan melalui API Gateway. Soft delete domain inti tetap aktif. MFA, RBAC domain lama, outbox delete/restore lama, distributed realtime, WORM/SIEM, retensi/purge, serta deployment production tetap mengikuti status aktual `FEATURES.md`.
 
 ## 2. Stack Final
 
@@ -109,9 +109,12 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 - Mapping implementasi Beranda terbaru tersedia di `docs/uiux/PUBLIC_HOME_TECHWIND_MAPPING.md`: hero 100 viewport dengan parallax 50%, tautan Tuan Rumah, pusat informasi, Venue live melalui API Gateway, dan CTA panduan penonton.
 - Public Web membaca `NEXT_PUBLIC_API_URL` dengan default local-debug `http://localhost:28000/api/v1`. Port `8080` khusus Keycloak dan tidak boleh digunakan sebagai endpoint API Public Web.
 - Canonical/metadata origin Public Web membaca `NEXT_PUBLIC_SITE_URL` dengan default lokal `http://localhost:3000`; deployment wajib mengisinya dengan origin HTTPS resmi.
-- API Gateway membuka operasi baca publik untuk `/master-data/*`, `/schedule/*`, `/venues*`, `/medals/*`, dan `/stream/*`; operasi mutasi tetap wajib JWT. Test router mengunci kontrak GET Jadwal tanpa token.
+- API Gateway membuka operasi baca publik untuk `/master-data/*`, `/schedule/*`, `/venues*`, `/medals/*`, `/livescore/public`, dan `/stream/events`; operasi mutasi, history operasional, Audit, dan private stream tetap wajib JWT/role.
 - Jadwal, LiveScore, dan Klasemen tidak menggunakan data contoh produksi: jika belum ada record, UI menampilkan empty state; jika service gagal, UI menampilkan error yang dapat ditindaklanjuti.
 - URL Media Library lama yang menunjuk port diagnostik `localhost:18xxx/uploads/*` dinormalisasi ke route `/uploads/*` API Gateway agar asset tetap dapat dibaca Public Web tanpa melanggar single-edge policy.
+- Detail Cabor berada di `/cabor/[id]` dan menggabungkan nomor tanding, venue, serta Jadwal aktif. Detail Venue berada di `/venue/[id]` dan menggabungkan fasilitas, cabor, City Guide sekitar, rute/koordinat, serta Jadwal aktif; field kontak internal Venue tidak ditayangkan.
+- `GET /api/v1/schedule/matches/enriched` adalah kontrak read-model publik yang mengembalikan nama/ikon Cabor, Nomor Tanding, peserta/Kontingen, Venue, waktu, ronde, dan status. Schedule Service melakukan batch query peserta lalu mengambil referensi aktif dari Master Data/Venue; kegagalan dependency menghasilkan `503`, dan tombstone tidak pernah masuk projection.
+- Event internal LiveScore/Medali memakai envelope v1 berisi `eventVersion`, `eventId`, `eventType`, sequence database/monotonik, timestamp, actor, dan request correlation. Public SSE hanya meneruskan `LIVESCORE_UPDATED`, `LIVESCORE_CORRECTED`, dan `MEDAL_STANDING_UPDATED` setelah actor/request/alasan koreksi dibuang. Klasemen tetap polling 30 detik sebagai fallback.
 
 ### 4.2 Admin Web Experience
 
@@ -121,6 +124,8 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 - Role-based menu untuk SUPER_ADMIN, ADMIN_ORGANISASI, OPERATOR, VERIFIKATOR, PETUGAS_LAPANGAN, AUDITOR.
 - Gunakan Techwind Dashboard sebagai baseline shell, sidebar/topbar, table, form, calendar, profile, gallery, dan feedback state; jangan memasukkan Gulp/theme JavaScript ke bundle React.
 - Aksi delete harus diberi konfirmasi aksesibel, menjelaskan bahwa data masuk Recycle Bin/arsip, dan menyediakan restore sesuai permission.
+- LiveScore Center memakai private SSE bearer-token, menampilkan current/history, dan mengirim `expectedRevision` agar update operator yang stale menghasilkan `409`.
+- Workspace Medali memisahkan submitter (`koresponden`), verifier (`verifikator`), dan publisher (`super_admin`). Audit Log hanya tampak bagi `auditor`/`super_admin` dan menyediakan export CSV tanpa mengubah record audit.
 
 ### 4.3 Mobile Koresponden Experience
 
@@ -192,6 +197,15 @@ Admin Web menggunakan variabel berikut:
 | `VITE_OIDC_AUTHORITY` | `http://localhost:8080/realms/porprov` | Authority Keycloak |
 | `VITE_OIDC_CLIENT_ID` | `porprov-admin-web` | Client OIDC Admin Web |
 
+API Gateway/Realtime menggunakan variabel keamanan berikut:
+
+| Variabel | Default development | Aturan staging/production |
+|---|---|---|
+| `KEYCLOAK_ISSUER` | `http://localhost:8080/realms/porprov` | Origin issuer HTTPS persis seperti claim token |
+| `JWT_ALLOWED_CLIENTS` | `porprov-admin-web,porprov-mobile-admin` | Daftar `azp`/audience yang memang diizinkan |
+| `CORS_ALLOWED_ORIGINS` | Public/Admin local origins | Origin HTTPS eksplisit, tanpa wildcard |
+| `INTERNAL_STREAM_TOKEN` | Token development lokal | Random secret minimal 32 karakter dari secret manager |
+
 Admin Web membentuk `redirect_uri` dan `post_logout_redirect_uri` dari `window.location.origin`. Client publik `porprov-admin-web` menerima origin development eksplisit `localhost`/`127.0.0.1` pada port `5173` dan fallback Vite `5174`, dengan Authorization Code Flow + PKCE `S256`; wildcard origin global tidak digunakan. Jika Vite berpindah ke `5174` karena `5173` sedang dipakai proses lain, callback login tetap valid.
 
 `npm run dev` memuat `apps/admin-web-react/.env.development` dan mengarah ke Gateway lokal `http://localhost:28000/api/v1`. Build image Docker tetap menginjeksi Gateway `http://localhost:8000/api/v1`. Dengan demikian mode `go run` dan mode Compose tidak tercampur secara diam-diam. Setelah mengubah kode Gateway, hentikan lalu jalankan ulang `go run main.go` karena proses Go tidak melakukan hot reload.
@@ -225,13 +239,13 @@ pnpm install
 pnpm start
 ```
 
-### 5.7 Stack Master Data dalam Docker
+### 5.7 Stack Terintegrasi dalam Docker
 
-Jalankan stack Admin Web, API Gateway, Master Data, Venue, dan Schedule beserta migrasinya:
+Jalankan stack Admin Web, API Gateway, seluruh core domain olahraga, Audit, Realtime, dan migrasinya:
 
 ```powershell
 cd infra/docker
-docker compose up -d master-data-service venue-service schedule-service api-gateway admin-web prometheus
+docker compose up -d master-data-service venue-service schedule-service livescore-service medal-standing-service audit-service realtime-gateway api-gateway admin-web prometheus
 ```
 
 Port Docker development:
@@ -248,6 +262,10 @@ Port Docker development:
 Service browser tidak boleh menggunakan port diagnostik. Port tersebut hanya untuk pemeriksaan lokal; operasi Admin Web selalu melalui API Gateway.
 
 Migration SQL dikemas ke image migration agar berfungsi pada workspace Windows di drive yang tidak dibagikan sebagai bind mount. Aset Media Library disimpan pada named volume `master_data_uploads`; soft delete media hanya menonaktifkan metadata dan delivery publik, tidak menghapus file dari volume.
+
+Migration domain olahraga aktif adalah LiveScore v1, Medal v3, dan Audit v2. Fresh volume membuat `livescore_db`; volume PostgreSQL lama perlu dibuatkan database tersebut sekali sebelum menjalankan `migrate-livescore`, sebagaimana dijelaskan pada runbook lokal.
+
+Volume Audit legacy yang dahulu dimigrasikan memakai SQL manual dapat belum mempunyai baseline `schema_migrations`. Setelah kolom/trigger v2 diverifikasi lengkap dan data dibackup, runbook menyediakan langkah `force 2` yang hanya memperbaiki metadata migration tanpa menghapus row Audit.
 
 Pemeriksaan status:
 
@@ -290,7 +308,7 @@ Venue lokal dijalankan dengan `go run ./cmd/api` dari `services/venue-service`. 
 
 API Gateway merupakan satu-satunya pemilik header CORS untuk request browser. Reverse proxy membuang seluruh header `Access-Control-*` dari response service internal sebelum middleware Gateway menambahkan kebijakan edge. Ini mencegah `Access-Control-Allow-Origin` ganda yang dianggap invalid oleh browser walaupun upstream mengembalikan HTTP `200`.
 
-`realtime-gateway` dapat dijalankan langsung dari folder servicenya dengan `go run main.go`. Saat startup, gateway membuat atau menyelaraskan stream JetStream `LIVESCORE` (`livescore.update.>`) dan `MEDALS` (`realtime.medals`) secara idempotent sebelum membuat durable consumer. Karena itu startup lokal tidak lagi bergantung pada `livescore-service` atau initializer stream dijalankan lebih dahulu. Jika koneksi NATS/JetStream sendiri tidak tersedia, startup tetap gagal secara eksplisit agar realtime tidak berjalan dalam keadaan semu.
+`realtime-gateway` membuat/menyelaraskan stream JetStream `LIVESCORE` dan `MEDALS` secara idempotent sebelum durable consumer dibuat. Public endpoint `/api/v1/stream/events` anonim tetapi tersanitasi; `/api/v1/stream/admin/events` memerlukan actor tepercaya dan `INTERNAL_STREAM_TOKEN` yang hanya disuntikkan Gateway. Redis password dibaca dari environment, replay memakai SCAN, dan connection limit melindungi fanout lokal. NATS yang tidak tersedia membuat startup gagal eksplisit.
 
 Pada hosting, gunakan Nginx `80/443` sebagai satu-satunya entry point, hilangkan publish port diagnostik melalui Compose override/firewall, dan gunakan DNS service internal. Mengganti host port tidak memerlukan perubahan source atau image.
 
@@ -314,26 +332,22 @@ Pada hosting, gunakan Nginx `80/443` sebagai satu-satunya entry point, hilangkan
 ## 7. Realtime Architecture
 
 ```text
-Mobile Koresponden/Admin
-        ↓ POST score event
-API Gateway + Auth
-        ↓
-LiveScore Service
-        ↓ append event
-NATS JetStream
-        ↓ consume durable event
-Projection Worker → PostgreSQL
-        ↓
-Realtime Gateway → WebSocket/SSE → Public Web/Admin/Mobile
-        ↓
-Audit Service
+Admin/Koresponden
+        ↓ JWT issuer/client/role + trusted actor
+API Gateway
+        ↓ POST update/correction
+LiveScore Service → PostgreSQL revision/current + outbox (satu transaksi)
+        ↓ retry + JetStream acknowledgement
+NATS JetStream → Realtime Gateway → Public SSE tersanitasi
+        ↓                         ↘ Private SSE Admin
+Audit Service → PostgreSQL append-only + dedup + SHA-256
 ```
 
 ## 8. Database
 
 Gunakan database per service. Integrasi data antar service dilakukan melalui event NATS JetStream, bukan join lintas database.
 
-`venue-service` adalah pemilik data venue. `schedule-service` menyimpan UUID venue eksternal tanpa foreign key lintas database dan memvalidasi keberadaan venue melalui kontrak internal sebelum membuat atau memperbarui jadwal. Nomor pertandingan dimiliki `master-data-service` dan divalidasi dengan pola yang sama.
+`venue-service` adalah pemilik data venue. `schedule-service` menyimpan UUID venue eksternal tanpa foreign key lintas database dan memvalidasi keberadaan venue melalui kontrak internal. LiveScore memvalidasi match aktif ke Schedule sebelum menulis revisi; Medal Standing memvalidasi Kontingen aktif ke Master Data sebelum membuat submission. Dependency failure bersifat fail-closed.
 
 Keputusan integrasi ini dicatat pada `docs/adr/ADR-0001-master-data-media-integration.md`.
 
@@ -392,6 +406,9 @@ Keputusan integrasi ini dicatat pada `docs/adr/ADR-0001-master-data-media-integr
 - File upload scanning.
 - Dependency dan container scanning.
 - Audit log untuk data kritis.
+- JWT Gateway wajib mempunyai issuer, expiry, subject, serta `azp`/audience client yang valid; role sensitif berasal dari `realm_access.roles` token tervalidasi.
+- `CORS_ALLOWED_ORIGINS` production harus origin HTTPS eksplisit. `INTERNAL_STREAM_TOKEN` production minimal 32 karakter, bukan nilai template/development.
+- Gateway menghapus header actor/IP/credential internal dari klien dan membentuk ulang actor/IP dari context serta socket tepercaya. Public SSE tidak mengekspos metadata operator.
 
 ## 12. Observability
 
@@ -458,6 +475,9 @@ Implementasi aktif memakai `deleted_by TEXT` karena identitas actor berasal dari
 | `master_data_db` / Master Data | v5 | Cabor, Nomor Pertandingan, Kontingen, City Guide, Media |
 | `venue_db` / Venue | v2 | Venue |
 | `schedule_db` / Schedule | v4 | Jadwal/Match serta tabel legacy terkait |
+| `livescore_db` / LiveScore | v1 | Revision append-only, current projection, transactional outbox |
+| `porprov_db` / Medal Standing | v3 | Official standings, submissions/history, separated workflow actors, outbox |
+| `audit_db` / Audit | v2 | Immutable/deduplicated audit event dengan payload hash |
 
 Endpoint Admin melalui API Gateway:
 
@@ -477,11 +497,20 @@ Aturan integritas yang aktif:
 - Nomor Pertandingan dan Venue tidak dapat diarsipkan bila masih dirujuk Jadwal aktif; pemeriksaan lintas service bersifat fail-closed melalui `SCHEDULE_SERVICE_URL`.
 - Jadwal hanya dapat dipulihkan bila Nomor Pertandingan dan Venue referensinya sudah aktif kembali.
 - Media yang diarsipkan hilang dari list/selector dan `/uploads/{file}` mengembalikan `404`; setelah restore delivery kembali `200` tanpa mengunggah ulang file.
-- Delete dan restore bersifat idempotent. Operasi yang benar-benar mengubah state menerbitkan event audit NATS berisi actor, reason/request ID, serta snapshot record/tombstone. Durable outbox, event versioning, dan penyimpanan audit immutable belum diklaim selesai.
+- Delete dan restore bersifat idempotent. Operasi yang benar-benar mengubah state menerbitkan event audit NATS berisi actor, reason/request ID, serta snapshot record/tombstone. Audit Service kini menyimpan event yang diterima secara immutable, tetapi publisher Master/Media/Venue/Jadwal masih best-effort dan belum memakai transactional outbox.
 
 Verifikasi 14 Juli 2026 mencakup `go test ./...` pada Master Data, Venue, Schedule, dan API Gateway; lint dan production build Admin; Compose config/build; runtime test delete–invisibility–restore–dependency guard–media retention; serta migration state `master=5`, `venue=2`, `schedule=4`, seluruhnya `dirty=false`. Keputusan implementasi dicatat pada `docs/adr/ADR-0002-soft-delete-and-port-namespaces.md`.
 
-### 16.5 Strategi Migrasi Implementasi Lama dan Domain Baru
+### 16.5 LiveScore, Medali, Transactional Outbox, dan Audit Immutable
+
+- LiveScore menyimpan `livescore_revisions` yang ditolak trigger bila di-UPDATE/DELETE, serta `livescore_current` untuk projection baca. Sequence berasal dari revision database. `expectedRevision` mencegah operator menimpa state yang sudah berubah; update stale menghasilkan `409`.
+- Update/koreksi LiveScore hanya diterima untuk match Schedule aktif. Submission Medali hanya diterima untuk Kontingen Master Data aktif. Dependency yang gagal menghasilkan `503`; referensi tombstone/tidak ada menghasilkan `422`.
+- Medali menyimpan `medal_submissions` dan history append-only. Hanya `PENDING → VERIFIED → OFFICIAL` yang menambah standings; reject dapat berasal dari PENDING/VERIFIED. Actor submit/verify/reject/publish tidak saling menimpa.
+- LiveScore dan Medali menulis state serta `outbox_events` pada transaksi yang sama. Worker melakukan atomic claim, JetStream publish, acknowledgement, dan retry/backoff. Delivery at-least-once didedup melalui event ID pada Audit Service.
+- Audit migration v2 menambahkan event metadata, actor/request/IP, unique event ID, SHA-256 payload, dan trigger immutable. Legacy event tanpa UUID diberi deterministic ID. Invalid poison message dihentikan; kegagalan database tetap di-NAK untuk retry.
+- Public stream hanya membawa projection aman; private stream melewati JWT/role Gateway dan internal token. Detail keputusan terdapat pada `docs/adr/ADR-0004-secure-realtime-transactional-outbox-and-verification.md`.
+
+### 16.6 Strategi Migrasi Implementasi Lama dan Domain Baru
 
 1. Tambahkan kolom soft delete dan partial indexes melalui migration per service.
 2. Ubah query generated/sqlc agar seluruh read aktif mengecualikan record terhapus.

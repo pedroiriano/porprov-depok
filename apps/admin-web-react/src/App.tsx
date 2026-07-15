@@ -31,8 +31,13 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
   const { theme, setTheme } = useTheme();
 
   // Parsing roles
-  const roles = auth.user?.profile?.realm_access ? (auth.user.profile.realm_access as any).roles : [];
-  const isAdmin = roles.includes('admin') || roles.includes('superadmin');
+  const realmAccess = auth.user?.profile?.realm_access as { roles?: string[] } | undefined;
+  const roles = realmAccess?.roles ?? [];
+  const isAdmin = roles.includes('super_admin');
+  const canAudit = isAdmin || roles.includes('auditor');
+  const canOperateScores = isAdmin || roles.includes('koresponden');
+  const canSubmitMedals = isAdmin || roles.includes('koresponden');
+  const canVerifyMedals = isAdmin || roles.includes('verifikator');
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -48,13 +53,17 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
           <ul className="sidebar-menu border-t border-white/10" style={{ height: 'calc(100% - 70px)' }}>
             <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" isActive={location.pathname === '/'} />
             <SidebarItem icon={Database} label="Master Data" path="/master-data" isActive={location.pathname.startsWith('/master-data')} />
-            <SidebarItem icon={Activity} label="LiveScore Center" path="/livescore" isActive={location.pathname.startsWith('/livescore')} />
-            <SidebarItem icon={Activity} label="Perolehan Medali" path="/medals" isActive={location.pathname.startsWith('/medals')} />
+            {canOperateScores && <SidebarItem icon={Activity} label="LiveScore Center" path="/livescore" isActive={location.pathname.startsWith('/livescore')} />}
+            {canSubmitMedals && <SidebarItem icon={Activity} label="Perolehan Medali" path="/medals" isActive={location.pathname.startsWith('/medals')} />}
             <SidebarItem icon={Database} label="City Guide" path="/city-guide" isActive={location.pathname.startsWith('/city-guide')} />
             <SidebarItem icon={Database} label="Media Library" path="/media" isActive={location.pathname.startsWith('/media')} />
-            {isAdmin && (
+            {canVerifyMedals && (
               <>
                 <SidebarItem icon={FileCheck} label="Verifikasi" path="/verifikasi" isActive={location.pathname.startsWith('/verifikasi')} />
+              </>
+            )}
+            {canAudit && (
+              <>
                 <SidebarItem icon={ShieldAlert} label="Audit Log" path="/audit-log" isActive={location.pathname.startsWith('/audit-log')} />
               </>
             )}
@@ -185,7 +194,7 @@ export default function App() {
           <Route path="/medals" element={<Medals />} />
           <Route path="/city-guide" element={<CityGuide />} />
           <Route path="/media" element={<MediaLibrary />} />
-          <Route path="/verifikasi" element={<div><h1>Verifikasi Kontingen & Atlet</h1></div>} />
+          <Route path="/verifikasi" element={<Medals />} />
         </Routes>
       </AdminLayout>
     </Router>

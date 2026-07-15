@@ -37,6 +37,7 @@ func SetupRouter(matchHandler *handler.MatchHandler) *chi.Mux {
 		r.Route("/matches", func(r chi.Router) {
 			r.Post("/", matchHandler.CreateMatch)
 			r.Get("/", matchHandler.ListMatches)
+			r.Get("/enriched", matchHandler.ListEnrichedMatches)
 			r.Get("/deleted", matchHandler.ListDeletedMatches)
 			r.Post("/{id}/restore", matchHandler.RestoreMatch)
 			r.Get("/{id}", matchHandler.GetMatch)

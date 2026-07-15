@@ -1,70 +1,51 @@
-import { publicApiUrl, readPgText, resolvePublicAssetUrl, unwrapCollection } from "@/lib/public-api";
+import Link from "next/link";
+import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
+import { normalizeCabor, type CaborModel, type RawCabor } from "@/lib/public-models";
 
-interface RawCabor {
-  id: string;
-  name: string;
-  description?: Parameters<typeof readPgText>[0];
-  icon_url?: Parameters<typeof readPgText>[0];
-  type?: string;
-}
-
-// SEO: Listing selalu dirender pada request agar data Master Data terbaru tidak tertahan hasil prerender build.
 export const dynamic = "force-dynamic";
 
-// INFO: Server Component mengambil data publik hanya melalui API Gateway.
 export default async function CaborPage() {
-  let cabors: RawCabor[] = [];
+  let cabors: CaborModel[] = [];
+  let unavailable = false;
   try {
-    const res = await fetch(publicApiUrl("/master-data/cabors"), {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      cabors = unwrapCollection<RawCabor>(await res.json());
-    }
+    const response = await fetch(publicApiUrl("/master-data/cabors"), { cache: "no-store" });
+    if (!response.ok) throw new Error(`API ${response.status}`);
+    cabors = unwrapCollection<RawCabor>(await response.json()).map(normalizeCabor);
   } catch (error) {
+    unavailable = true;
     console.error("Gagal memuat cabor dari API:", error);
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Daftar Cabang Olahraga</h1>
-        <p className="text-slate-700 dark:text-slate-300 mt-2">Seluruh cabang olahraga yang dipertandingkan pada PORPROV XV Jawa Barat 2026 di Kota Depok.</p>
-      </div>
+    <main className="container py-32 md:py-40">
+      <header className="max-w-3xl">
+        <p className="text-sm font-black uppercase tracking-[0.2em] text-primary-500">Master Data Resmi</p>
+        <h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Cabang Olahraga</h1>
+        <p className="mt-4 text-lg leading-relaxed text-slate-600 dark:text-slate-300">Kenali nomor pertandingan, venue, serta agenda setiap cabang olahraga PORPROV XV Jawa Barat 2026 di Kota Depok.</p>
+      </header>
 
       {cabors.length === 0 ? (
-        <div className="glass p-12 text-center rounded-2xl">
-          <h2 className="text-xl font-bold text-slate-500 mb-2">Belum Ada Data</h2>
-          <p className="text-slate-400">Data cabang olahraga belum tersedia di database atau API sedang luring.</p>
+        <div className="mt-10 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center dark:border-slate-700 dark:bg-slate-900/60" role={unavailable ? "alert" : "status"}>
+          <h2 className="text-xl font-black">{unavailable ? "Data cabor belum dapat dihubungi" : "Data cabor belum tersedia"}</h2>
+          <p className="mt-2 text-slate-500 dark:text-slate-400">{unavailable ? "Periksa API Gateway dan Master Data Service." : "Data akan tampil setelah dipublikasikan panitia."}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-[30px]">
+        <div className="mt-10 grid gap-[30px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {cabors.map((cabor) => (
-            <div key={cabor.id} className="group relative rounded-md shadow dark:shadow-gray-800 bg-white dark:bg-slate-900 overflow-hidden text-center p-6 transition duration-500 hover:shadow-md hover:dark:shadow-gray-700">
-              <div className="w-20 h-20 bg-indigo-600/5 text-indigo-600 rounded-full text-3xl flex align-middle justify-center items-center shadow-sm dark:shadow-gray-800 mx-auto">
-                {resolvePublicAssetUrl(cabor.icon_url) ? (
-                  // PERFORMANCE: URL ikon berasal dari Media Library runtime.
+            <Link key={cabor.id} href={`/cabor/${encodeURIComponent(cabor.id)}`} className="group flex min-h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary-300 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:border-slate-800 dark:bg-slate-900">
+              <span className="mx-auto flex size-20 items-center justify-center overflow-hidden rounded-full bg-primary-500/10 text-3xl text-primary-600 dark:text-primary-300">
+                {cabor.iconUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={resolvePublicAssetUrl(cabor.icon_url)} alt={`Ikon ${cabor.name}`} className="w-12 h-12 object-contain" />
-                ) : (
-                  <i className="ri-medal-fill"></i>
-                )}
-              </div>
-              <div className="content mt-6">
-                <h4 className="text-lg font-medium hover:text-indigo-600 mb-2 transition duration-500">
-                  {cabor.name}
-                </h4>
-                <p className="text-slate-400 mb-4 line-clamp-2">
-                  {readPgText(cabor.description) || "Cabang olahraga resmi PORPROV XV Jawa Barat 2026 yang akan dipertandingkan."}
-                </p>
-                <span className="text-indigo-600 text-sm font-semibold uppercase tracking-wider">
-                  {cabor.type || 'Olahraga'}
-                </span>
-              </div>
-            </div>
+                  <img src={cabor.iconUrl} alt="" className="size-12 object-contain" />
+                ) : <i className="ri-medal-fill" aria-hidden="true" />}
+              </span>
+              <h2 className="mt-6 text-xl font-black transition group-hover:text-primary-600 dark:group-hover:text-primary-300">{cabor.name}</h2>
+              <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{cabor.description}</p>
+              <span className="mt-auto pt-5 text-xs font-black uppercase tracking-wider text-primary-600 dark:text-primary-300">{cabor.category} · Lihat detail</span>
+            </Link>
           ))}
         </div>
       )}
-    </div>
+    </main>
   );
 }

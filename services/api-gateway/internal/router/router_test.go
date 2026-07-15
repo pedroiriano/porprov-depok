@@ -40,14 +40,17 @@ func TestSetupProxyForwardsTrustedActorAndRejectsSpoofedActor(t *testing.T) {
 	t.Parallel()
 
 	var receivedActor string
+	var receivedIP string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedActor = r.Header.Get("X-Actor-ID")
+		receivedIP = r.Header.Get("X-Actor-IP")
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer upstream.Close()
 
 	request := httptest.NewRequest(http.MethodDelete, "/resource-id", nil)
 	request.Header.Set("X-Actor-ID", "spoofed-client")
+	request.Header.Set("X-Actor-IP", "203.0.113.250")
 	ctx := context.WithValue(request.Context(), customMiddleware.UserContextKey, jwt.MapClaims{"sub": "keycloak-user-id"})
 	request = request.WithContext(ctx)
 	response := httptest.NewRecorder()
@@ -55,6 +58,26 @@ func TestSetupProxyForwardsTrustedActorAndRejectsSpoofedActor(t *testing.T) {
 
 	if receivedActor != "keycloak-user-id" {
 		t.Fatalf("expected trusted actor, got %q", receivedActor)
+	}
+	if receivedIP == "203.0.113.250" || receivedIP == "" {
+		t.Fatalf("expected socket-derived actor IP, got %q", receivedIP)
+	}
+}
+
+func TestSetupProxyInjectsTrustedInternalStreamToken(t *testing.T) {
+	t.Parallel()
+	var receivedToken string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedToken = r.Header.Get("X-Internal-Stream-Token")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer upstream.Close()
+	request := httptest.NewRequest(http.MethodGet, "/admin/events", nil)
+	request.Header.Set("X-Internal-Stream-Token", "spoofed")
+	response := httptest.NewRecorder()
+	setupProxyWithHeaders(upstream.URL, map[string]string{"X-Internal-Stream-Token": "trusted"}).ServeHTTP(response, request)
+	if receivedToken != "trusted" {
+		t.Fatalf("expected trusted stream token, got %q", receivedToken)
 	}
 }
 
@@ -122,5 +145,23 @@ func TestPublicScheduleReadDoesNotRequireJWT(t *testing.T) {
 	}
 	if receivedPath != "/api/v1/matches" {
 		t.Fatalf("expected upstream path /api/v1/matches, got %q", receivedPath)
+	}
+}
+
+func TestPublicLivescoreProjectionDoesNotRequireJWT(t *testing.T) {
+	t.Parallel()
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/livescore/public" {
+			t.Fatalf("unexpected upstream path %q", r.URL.Path)
+		}
+		_, _ = io.WriteString(w, `[]`)
+	}))
+	defer upstream.Close()
+	cfg := &config.AppConfig{MasterDataURL: upstream.URL, ScheduleURL: upstream.URL, VenueURL: upstream.URL, AuditURL: upstream.URL, LivescoreURL: upstream.URL + "/api/v1/livescore", MedalsURL: upstream.URL, RealtimeURL: upstream.URL, InternalStreamToken: "test"}
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/livescore/public", nil)
+	response := httptest.NewRecorder()
+	SetupRouter(nil, cfg).ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected public livescore status 200, got %d", response.Code)
 	}
 }

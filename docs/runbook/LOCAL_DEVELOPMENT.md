@@ -87,7 +87,7 @@ Periksa container:
 docker --config .\.docker-cli compose ps
 ```
 
-Compose menjalankan PostgreSQL, migrasi core, Redis, NATS, Keycloak, Master Data, Venue, Schedule, API Gateway, Admin Web, Nginx, Prometheus, dan Grafana.
+Compose menjalankan PostgreSQL, seluruh migration container aktif, Redis, NATS, Keycloak, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, API Gateway, Admin Web, Nginx, Prometheus, dan Grafana.
 
 ### 4.3 Bootstrap Keycloak
 
@@ -145,6 +145,9 @@ Masih dari `infra/docker`:
 docker --config .\.docker-cli compose run --rm migrate-master-data
 docker --config .\.docker-cli compose run --rm migrate-venue
 docker --config .\.docker-cli compose run --rm migrate-schedule
+docker --config .\.docker-cli compose run --rm migrate-livescore
+docker --config .\.docker-cli compose run --rm migrate-medals
+docker --config .\.docker-cli compose run --rm migrate-audit
 ```
 
 Jalankan bootstrap Keycloak seperti bagian 4.3, lalu kembali ke root repository:
@@ -163,7 +166,7 @@ if (-not (Test-Path .\services\venue-service\.env)) {
 
 Pastikan file Venue lokal memakai PostgreSQL `15432`, NATS `14222`, Schedule `28082`, dan port service `28087`.
 
-### 5.4 Jalankan lima service core
+### 5.4 Jalankan service referensi core
 
 Buka terminal PowerShell terpisah untuk setiap command. Jalankan Gateway paling akhir.
 
@@ -188,33 +191,24 @@ Set-Location .\services\schedule-service
 go run main.go
 ```
 
-Terminal 4 — Realtime Gateway:
-
-```powershell
-Set-Location .\services\realtime-gateway
-go run main.go
-```
-
-Terminal 5 — API Gateway:
-
-```powershell
-Set-Location .\services\api-gateway
-go run main.go
-```
-
 ### 5.5 Migrasi service tambahan
 
-User, Audit, dan Medal belum memiliki migration container di Compose. Dengan credential development default, jalankan dari root repository:
+Fresh PostgreSQL volume membuat `livescore_db`, `audit_db`, dan database service lain melalui initializer. Pada volume lama, pastikan `livescore_db` tersedia sebelum migration:
 
 ```powershell
-Get-Content -Raw .\services\user-service\migrations\000001_create_users_table.up.sql | docker --config .\infra\docker\.docker-cli exec -i porprov_postgres psql -v ON_ERROR_STOP=1 -U porprov_admin -d user_service_db
+$exists = docker --config .\infra\docker\.docker-cli exec porprov_postgres psql -U porprov_admin -tAc "SELECT 1 FROM pg_database WHERE datname='livescore_db'"
+if (-not $exists.Trim()) {
+    docker --config .\infra\docker\.docker-cli exec porprov_postgres psql -U porprov_admin -c "CREATE DATABASE livescore_db OWNER porprov_admin"
+}
 
-Get-Content -Raw .\services\audit-service\migrations\000001_create_audit_logs.up.sql | docker --config .\infra\docker\.docker-cli exec -i porprov_postgres psql -v ON_ERROR_STOP=1 -U porprov_admin -d audit_db
-
-Get-Content -Raw .\services\medal-standing-service\migrations\000001_create_medals_table.up.sql | docker --config .\infra\docker\.docker-cli exec -i porprov_postgres psql -v ON_ERROR_STOP=1 -U porprov_admin -d porprov_db
+Push-Location .\infra\docker
+docker --config .\.docker-cli compose run --rm migrate-livescore
+docker --config .\.docker-cli compose run --rm migrate-medals
+docker --config .\.docker-cli compose run --rm migrate-audit
+Pop-Location
 ```
 
-Migration SQL menggunakan operasi idempotent hanya pada bagian extension; pembuatan tabel dapat gagal bila dijalankan ulang. Error `relation already exists` berarti tabel sudah tersedia dan tidak perlu dibuat ulang.
+Migration container memakai version table dan aman dijalankan ulang. Versi aktif tahap ini: LiveScore `1`, Medal `3`, dan Audit `2`.
 
 ### 5.6 Jalankan service tambahan yang mempunyai executable
 
@@ -223,6 +217,7 @@ Buka terminal terpisah.
 User Service:
 
 ```powershell
+Get-Content -Raw .\services\user-service\migrations\000001_create_users_table.up.sql | docker --config .\infra\docker\.docker-cli exec -i porprov_postgres psql -v ON_ERROR_STOP=1 -U porprov_admin -d user_service_db
 Set-Location .\services\user-service
 go run ./cmd/server
 ```
@@ -234,11 +229,10 @@ Set-Location .\services\audit-service
 go run ./cmd/server
 ```
 
-LiveScore Service membutuhkan override NATS karena fallback source-nya masih port internal `4222`:
+LiveScore Service:
 
 ```powershell
 Set-Location .\services\livescore-service
-$env:NATS_URL = "nats://localhost:14222"
 go run main.go
 ```
 
@@ -249,9 +243,22 @@ Set-Location .\services\medal-standing-service
 go run main.go
 ```
 
-Status implementasi service tambahan masih mengikuti `FEATURES.md`. Dapat dijalankan bukan berarti fiturnya sudah production-ready.
+Realtime Gateway (Redis Compose memakai password development):
 
-Realtime Gateway saat ini belum membaca password Redis dari environment. Koneksi NATS dan endpoint SSE tetap dapat berjalan, tetapi penulisan cache initial-state akan mencatat error autentikasi ketika memakai Redis Compose yang dilindungi password. Ini adalah gap hardening yang harus diselesaikan sebelum Realtime dinyatakan production-ready.
+```powershell
+Set-Location .\services\realtime-gateway
+$env:REDIS_PASSWORD = "porprov_redis_secret"
+go run main.go
+```
+
+API Gateway dijalankan paling akhir:
+
+```powershell
+Set-Location .\services\api-gateway
+go run main.go
+```
+
+Default lokal memakai issuer Keycloak `http://localhost:8080/realms/porprov`, client `porprov-admin-web,porprov-mobile-admin`, origin `3000/5173/5174`, dan internal stream token development. Untuk staging/production, isi `KEYCLOAK_ISSUER`, `JWT_ALLOWED_CLIENTS`, `CORS_ALLOWED_ORIGINS`, serta random `INTERNAL_STREAM_TOKEN` minimal 32 karakter; startup akan menolak issuer HTTP, wildcard CORS, atau secret template di luar development.
 
 ### 5.7 Folder service yang belum dapat dijalankan
 
@@ -275,7 +282,7 @@ npm.cmd run dev -- --port 3000
 
 Akses `http://localhost:3000`.
 
-Public Web membaca seluruh data melalui API Gateway `28000`. Jadwal, LiveScore, dan Klasemen sudah terhubung pada tahap v0.2, tetapi event versioning, autentikasi stream, workflow verifikasi skor/medali, dan scale-out tetap mengikuti status in-progress di `FEATURES.md`.
+Public Web membaca seluruh data melalui API Gateway `28000`. Pada v0.4, Jadwal memakai read-model enriched, LiveScore membaca PostgreSQL projection dan public SSE tersanitasi, sedangkan Klasemen hanya membaca Medali OFFICIAL serta polling fallback. Distributed scale-out dan production hardening tetap mengikuti `FEATURES.md`.
 
 ## 7. Menjalankan Web Admin
 
@@ -305,6 +312,10 @@ Untuk mode Docker, jangan jalankan Vite; gunakan Admin container pada `http://lo
 curl.exe -f http://localhost:28000/health
 curl.exe -f http://localhost:28081/health
 curl.exe -f http://localhost:28082/health
+curl.exe -f http://localhost:28000/api/v1/schedule/matches/enriched
+curl.exe -f http://localhost:28083/health
+curl.exe -f http://localhost:28084/health
+curl.exe -f http://localhost:28086/health
 curl.exe -f http://localhost:28087/health
 curl.exe -f http://localhost:8080/realms/porprov/.well-known/openid-configuration
 ```
@@ -324,13 +335,14 @@ curl.exe -f http://localhost:28084/health
 curl.exe -f http://localhost:28086/api/v1/medals/standings
 ```
 
-LiveScore dapat diuji dengan event nonpersisten:
+Periksa projection faktual tanpa membuat skor/medali uji:
 
 ```powershell
-curl.exe -f -X POST http://localhost:28083/api/v1/livescore/update `
-  -H "Content-Type: application/json" `
-  -d '{"matchId":"smoke-test","scoreA":0,"scoreB":0,"status":"Uji"}'
+curl.exe -f http://localhost:28000/api/v1/livescore/public
+curl.exe -f http://localhost:28000/api/v1/medals/standings
 ```
+
+Mutasi LiveScore langsung tanpa actor harus menghasilkan `401`; match UUID yang tidak aktif ditolak `422`. Pengujian positif update/koreksi wajib memakai Jadwal staging resmi, bearer token melalui Gateway, dan `expectedRevision`; jangan memasukkan record pertandingan palsu ke database bersama.
 
 ### 8.3 Web
 
@@ -376,6 +388,18 @@ Jalankan ulang bootstrap client pada bagian 4.3. Client development mengizinkan 
 
 Gunakan source terbaru dan jalankan `go run main.go`. Realtime Gateway membuat/menyelaraskan stream `LIVESCORE` dan `MEDALS` sebelum consumer dibuat. Pastikan NATS host `14222` aktif.
 
+### Migration Audit lama gagal `relation "audit_logs" already exists`
+
+Ini hanya terjadi pada volume lama yang membuat tabel melalui SQL manual sebelum migration container tersedia. Jangan drop tabel Audit. Periksa bahwa kolom v2 (`event_id`, `event_version`, `event_type`, `actor_id`, `request_id`, `ip_address`, `payload_hash`) dan trigger `audit_logs_immutable` sudah ada. Jika skema memang lengkap v2, baseline metadata secara non-destruktif lalu jalankan migration lagi:
+
+```powershell
+Set-Location .\infra\docker
+docker --config .\.docker-cli compose run --rm migrate-audit -path /migrations -database "postgres://porprov_admin:porprov_secret@postgres:5432/audit_db?sslmode=disable" force 2
+docker --config .\.docker-cli compose run --rm migrate-audit
+```
+
+Jangan menjalankan `force 2` bila kolom/trigger v2 belum tersedia; terapkan migration SQL sesuai state aktual atau pulihkan backup terlebih dahulu.
+
 ### Gateway mengembalikan `502 Bad Gateway`
 
 Gateway sehat tidak berarti upstream sehat. Cocokkan endpoint dengan service berikut:
@@ -384,6 +408,8 @@ Gateway sehat tidak berarti upstream sehat. Cocokkan endpoint dengan service ber
 |---|---|
 | `/api/v1/master-data/*` | `28081` |
 | `/api/v1/schedule/*` | `28082` |
+| `/api/v1/livescore/*` | `28083` |
+| `/api/v1/audit/*` | `28084` |
 | `/api/v1/stream/*` | `28085` |
 | `/api/v1/medals/*` | `28086` |
 | `/api/v1/venues/*` | `28087` |

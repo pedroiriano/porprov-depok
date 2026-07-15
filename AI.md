@@ -4,7 +4,7 @@
 
 ## Konteks Aplikasi Aktif
 
-Repository `porprov-depok` adalah platform resmi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Sistem menggunakan monorepo aplikasi web/mobile, Golang microservices, database per service, API Gateway, event-driven architecture, serta runtime Docker. Admin Web dan alur Master Data–Media Library–Venue–Schedule telah terintegrasi. Public Web v0.2 sudah membaca Cabor, Venue, Jadwal, LiveScore SSE, dan Klasemen melalui API Gateway tanpa data pertandingan/medali tiruan. Soft delete, dependency guard, media retention, dan restore melalui Recycle Bin sudah aktif untuk domain inti; RBAC granular, audit immutable/outbox, dan retensi purge masih mengikuti status nyata pada `FEATURES.md`.
+Repository `porprov-depok` adalah platform resmi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Sistem menggunakan monorepo aplikasi web/mobile, Golang microservices, database per service, API Gateway, event-driven architecture, serta runtime Docker. Admin Web dan alur Master Data–Media Library–Venue–Schedule telah terintegrasi. Public Web v0.4 membaca detail Cabor/Venue, Jadwal enriched, projection LiveScore persisten, public SSE tersanitasi, dan klasemen Medali OFFICIAL tanpa data tiruan. Hardening aktif mencakup JWT issuer/expiry/client, RBAC domain olahraga, private Admin SSE, revision koreksi skor, workflow Medali, transactional outbox LiveScore/Medali, dan Audit Log immutable. Outbox domain lama, MFA, RBAC menyeluruh, retensi purge, dan production hardening tetap mengikuti status nyata pada `FEATURES.md`.
 
 ## Identitas Agent
 
@@ -84,6 +84,9 @@ Membangun platform web dan mobile PORPROV yang cepat, andal, aman, realtime, SEO
 - Docker memakai port internal tetap serta DNS nama service. Host port selalu configurable pada `infra/docker/.env`.
 - Local debugging memakai namespace `28xxx` agar dapat berjalan berdampingan dengan Docker tanpa bind conflict.
 - Jangan menulis URL service atau port diagnostik langsung di frontend; gunakan environment dan API Gateway.
+- Agregasi referensi lintas service untuk konsumsi publik harus dikerjakan sebagai read-model di backend pemilik alur, bukan rangkaian request langsung dari browser. Jadwal memakai `/schedule/matches/enriched` melalui API Gateway.
+- Data tayang realtime publik boleh anonim hanya melalui API Gateway dan wajib berupa projection tersanitasi. Stream Admin membutuhkan JWT/role di edge serta secret internal yang eksplisit di luar development.
+- Update/koreksi skor dan keputusan Medali harus commit bersama outbox. Koreksi skor append-only; hanya submission Medali VERIFIED yang dapat dipublikasikan menjadi OFFICIAL.
 
 ## Aturan Ringkas yang Tidak Boleh Dilanggar
 

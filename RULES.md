@@ -143,6 +143,7 @@ Sebuah UI hanya boleh disebut masterpiece bila memenuhi seluruh quality bar beri
 - Gunakan Metadata API untuk SEO, Open Graph, Twitter Card, canonical, dan dynamic metadata.
 - Gunakan SSR/SSG/ISR sesuai karakter data.
 - Halaman wajib: Beranda, Informasi PORPROV, Cabor, Detail Cabor, Jadwal, Venue, Detail Venue, LiveScore, Standings Medali, Galeri, Depok Guide, Berita, Press Kit.
+- Data lintas domain untuk layar publik wajib dipublikasikan sebagai read-model backend melalui API Gateway. Browser tidak boleh mengorkestrasi request langsung ke beberapa port service atau menampilkan UUID referensi sebagai informasi pengguna.
 - Gunakan PWA installable untuk kebutuhan "Chrome App".
 - Realtime publik dapat memakai WebSocket atau SSE sesuai kebutuhan.
 
@@ -180,11 +181,19 @@ Sebuah UI hanya boleh disebut masterpiece bila memenuhi seluruh quality bar beri
 - Jangan memakai Redis Pub/Sub sebagai satu-satunya mekanisme event bisnis kritis.
 - Gunakan outbox pattern, idempotency key, retry with backoff, timeout, circuit breaker, dan graceful shutdown.
 - LiveScore harus memiliki event versioning, sequence, timestamp, actor, status, dan audit trail.
+- Event internal LiveScore dan Medali wajib memiliki `eventVersion`, `eventId`, `eventType`, `sequence`, `timestamp`, `actor`, dan request correlation. Projection SSE publik wajib menghapus actor, request ID, alasan koreksi, serta metadata operasional lain; consumer harus mengabaikan event type yang tidak dimilikinya dan menyediakan fallback pembaruan saat SSE terputus.
+- LiveScore persisten wajib memakai revision log append-only, sequence database, projection current, dan optimistic revision check. Koreksi membuat revisi baru dengan alasan; revisi lama dilarang diubah/dihapus.
+- Workflow Medali wajib memisahkan pengaju, verifikator, rejector, dan publisher. Hanya transisi `VERIFIED → OFFICIAL` yang boleh mengubah klasemen publik; publish ulang submission OFFICIAL dilarang agar perolehan tidak terhitung ganda.
+- State domain kritis dan outbox harus ditulis dalam transaksi database yang sama. Delivery JetStream bersifat at-least-once, sehingga event ID wajib stabil dan consumer wajib idempotent/deduplicated.
+- Audit kritis wajib append-only, menyimpan actor/request/IP bila tersedia, event ID, version/type, payload hash, dan menolak UPDATE/DELETE. Poison message tidak boleh diproses ulang tanpa batas.
 
 ## 12. Auth dan Security
 
 - Auth wajib melalui Keycloak + OIDC/OAuth2 + JWT.
 - Web dan mobile gunakan Authorization Code + PKCE.
+- API Gateway wajib memvalidasi signature, issuer, expiry, subject, serta authorized client/audience; verifikasi signature saja tidak cukup. Route sensitif wajib memakai realm role eksplisit.
+- Public SSE anonim hanya berlaku untuk data tayang yang tersanitasi. Private SSE wajib JWT/role di edge dan credential service-to-service pada hop internal; credential development/default wajib ditolak pada staging/production.
+- CORS production wajib berupa daftar origin HTTPS eksplisit tanpa wildcard. Header actor, IP audit, dan credential internal dari klien harus dibuang lalu diturunkan ulang dari context tepercaya.
 - Admin wajib MFA, RBAC ketat, dan audit login.
 - Service-to-service gunakan OAuth2 client credentials, mTLS/internal network policy bila tersedia.
 - Terapkan OWASP Top 10, OWASP ASVS, HTTPS, HSTS, secure cookie, CSRF untuk web session, CORS strict, input validation, output encoding, SQL injection prevention, rate limiting, secret management, token expiry pendek, refresh token rotation, dependency scan, container image scan, dan upload scanning.

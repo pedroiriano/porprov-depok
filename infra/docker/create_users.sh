@@ -6,6 +6,8 @@ kcadm.sh config credentials --server http://localhost:8080 --realm master --user
 kcadm.sh create roles -r porprov -s name=super_admin || true
 kcadm.sh create roles -r porprov -s name=admin_venue || true
 kcadm.sh create roles -r porprov -s name=koresponden || true
+kcadm.sh create roles -r porprov -s name=verifikator || true
+kcadm.sh create roles -r porprov -s name=auditor || true
 
 # Create super admin user
 kcadm.sh create users -r porprov -s username=admin_depok -s enabled=true -s email=admin@porprov.depok.go.id -s firstName=Admin -s lastName=Depok || true

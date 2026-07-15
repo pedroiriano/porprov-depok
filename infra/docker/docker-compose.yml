@@ -58,6 +58,42 @@ services:
       - porprov_network
     restart: "no"
 
+  migrate-livescore:
+    build:
+      context: ../..
+      dockerfile: services/livescore-service/Dockerfile.migrations
+    command: ["-path", "/migrations", "-database", "postgres://${POSTGRES_USER:-porprov_admin}:${POSTGRES_PASSWORD:-porprov_secret}@postgres:5432/livescore_db?sslmode=disable", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - porprov_network
+    restart: "no"
+
+  migrate-medals:
+    build:
+      context: ../..
+      dockerfile: services/medal-standing-service/Dockerfile.migrations
+    command: ["-path", "/migrations", "-database", "postgres://${POSTGRES_USER:-porprov_admin}:${POSTGRES_PASSWORD:-porprov_secret}@postgres:5432/porprov_db?sslmode=disable", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - porprov_network
+    restart: "no"
+
+  migrate-audit:
+    build:
+      context: ../..
+      dockerfile: services/audit-service/Dockerfile.migrations
+    command: ["-path", "/migrations", "-database", "postgres://${POSTGRES_USER:-porprov_admin}:${POSTGRES_PASSWORD:-porprov_secret}@postgres:5432/audit_db?sslmode=disable", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - porprov_network
+    restart: "no"
+
   master-data-service:
     build:
       context: ../..
@@ -143,6 +179,102 @@ services:
       timeout: 3s
       retries: 5
 
+  livescore-service:
+    build:
+      context: ../..
+      dockerfile: services/livescore-service/Dockerfile
+    container_name: porprov_livescore
+    restart: always
+    environment:
+      PORT: "8083"
+      DATABASE_URL: postgres://${POSTGRES_USER:-porprov_admin}:${POSTGRES_PASSWORD:-porprov_secret}@postgres:5432/livescore_db?sslmode=disable
+      NATS_URL: nats://nats:4222
+      SCHEDULE_SERVICE_URL: http://schedule-service:8082/api/v1
+    depends_on:
+      migrate-livescore:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+      schedule-service:
+        condition: service_healthy
+    networks:
+      - porprov_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  medal-standing-service:
+    build:
+      context: ../..
+      dockerfile: services/medal-standing-service/Dockerfile
+    container_name: porprov_medals
+    restart: always
+    environment:
+      PORT: "8086"
+      DATABASE_URL: postgres://${POSTGRES_USER:-porprov_admin}:${POSTGRES_PASSWORD:-porprov_secret}@postgres:5432/porprov_db?sslmode=disable
+      NATS_URL: nats://nats:4222
+      MASTER_DATA_SERVICE_URL: http://master-data-service:8081/api/v1
+    depends_on:
+      migrate-medals:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+      master-data-service:
+        condition: service_healthy
+    networks:
+      - porprov_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8086/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  audit-service:
+    build:
+      context: ../..
+      dockerfile: services/audit-service/Dockerfile
+    container_name: porprov_audit
+    restart: always
+    environment:
+      PORT: "8084"
+      DATABASE_URL: postgres://${POSTGRES_USER:-porprov_admin}:${POSTGRES_PASSWORD:-porprov_secret}@postgres:5432/audit_db?sslmode=disable
+      NATS_URL: nats://nats:4222
+    depends_on:
+      migrate-audit:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+    networks:
+      - porprov_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8084/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  realtime-gateway:
+    build:
+      context: ../..
+      dockerfile: services/realtime-gateway/Dockerfile
+    container_name: porprov_realtime
+    restart: always
+    environment:
+      PORT: "8085"
+      APP_ENV: ${APP_ENV:-development}
+      NATS_URL: nats://nats:4222
+      REDIS_URL: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-porprov_redis_secret}
+      INTERNAL_STREAM_TOKEN: ${INTERNAL_STREAM_TOKEN:-local-development-stream-token}
+    depends_on:
+      nats:
+        condition: service_started
+      redis:
+        condition: service_started
+    networks:
+      - porprov_network
+
   api-gateway:
     build:
       context: ../..
@@ -153,9 +285,17 @@ services:
       PORT: "8000"
       APP_ENV: ${APP_ENV:-development}
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/porprov/protocol/openid-connect/certs
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-http://localhost:8080/realms/porprov}
+      JWT_ALLOWED_CLIENTS: ${JWT_ALLOWED_CLIENTS:-porprov-admin-web,porprov-mobile-admin}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:5174}
       MASTER_DATA_SERVICE_URL: http://master-data-service:8081/api/v1
       SCHEDULE_SERVICE_URL: http://schedule-service:8082/api/v1
       VENUE_SERVICE_URL: http://venue-service:8087/api/v1/venues
+      LIVESCORE_SERVICE_URL: http://livescore-service:8083/api/v1/livescore
+      MEDAL_SERVICE_URL: http://medal-standing-service:8086/api/v1/medals
+      AUDIT_SERVICE_URL: http://audit-service:8084/api/v1
+      REALTIME_GATEWAY_URL: http://realtime-gateway:8085/api/v1/stream
+      INTERNAL_STREAM_TOKEN: ${INTERNAL_STREAM_TOKEN:-local-development-stream-token}
     ports:
       - "${API_GATEWAY_HOST_PORT:-8000}:8000"
     depends_on:
@@ -167,6 +307,14 @@ services:
         condition: service_healthy
       venue-service:
         condition: service_healthy
+      livescore-service:
+        condition: service_healthy
+      medal-standing-service:
+        condition: service_healthy
+      audit-service:
+        condition: service_healthy
+      realtime-gateway:
+        condition: service_started
     networks:
       - porprov_network
 
