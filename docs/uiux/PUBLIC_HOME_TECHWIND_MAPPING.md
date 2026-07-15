@@ -1,0 +1,34 @@
+# Mapping UI/UX Beranda Public Web terhadap Techwind Landing
+
+Tanggal audit: 15 Juli 2026.
+
+## Referensi
+
+- Baseline utama: `theme-reference/HTML/Landing/src/index-event.html`.
+- Pola yang digunakan: hero event, overlay berlapis, CTA primer/sekunder, section host dua kolom, kartu informasi, venue/gallery cards, dan CTA penutup.
+- Implementasi runtime: React/Next.js dan Tailwind CSS v4; HTML/Gulp/JavaScript Techwind tidak dimasukkan ke aplikasi.
+
+## Adaptasi PORPROV
+
+| Bagian | Pola Techwind | Adaptasi PORPROV |
+|---|---|---|
+| Hero | Event hero dengan gambar, overlay, headline, dan CTA | Tinggi 100 viewport, parallax 50%, countdown PORPROV, CTA Jadwal/Venue, reduced-motion fallback |
+| Tuan Rumah | Komposisi gambar dan detail lokasi/waktu | Maskot Toca-Toci, narasi Kota Depok, kartu tautan Venue dan Cabor yang keyboard-accessible |
+| Pusat Informasi | Feature/service cards | Pintasan LiveScore, Jadwal, Medali, dan Cabor dengan identitas status olahraga |
+| Venue | Portfolio/gallery cards | Data live dari API Gateway, polling 30 detik, timestamp, skeleton, empty, error/retry, offline, pagination, dan rute |
+| CTA Penonton | Full-width event CTA | Panduan venue dan agenda pertandingan dengan aset peta PORPROV |
+
+## Keputusan Interaksi dan Aksesibilitas
+
+- Parallax dijalankan dengan `requestAnimationFrame`, faktor pergerakan `0.5`, dan dihentikan untuk pengguna `prefers-reduced-motion`.
+- Venue tidak diklaim event-driven realtime karena Venue Service belum menerbitkan event khusus; data disegarkan saat load, setiap 30 detik, saat tab aktif kembali, dan saat koneksi pulih.
+- Informasi kartu Venue selalu terlihat tanpa bergantung pada hover.
+- Footer hanya memakai route/anchor yang tersedia; tautan `href="#"` dan ikon tanpa accessible name telah dihapus.
+- QA responsif 15 Juli 2026 memverifikasi hero tepat `100dvh` pada viewport mobile 390×844, tanpa horizontal overflow, serta navigasi mobile dapat dibuka dan menuju Jadwal.
+- E2E 15 Juli 2026 memverifikasi Public Web `3000` melalui Gateway `28000`: Cabor, Jadwal, Venue, Klasemen, dan LiveScore/SSE merespons dengan state faktual. Jadwal dan Klasemen yang belum berisi record menampilkan empty state, bukan data tiruan.
+- Target sentuh utama minimal 44 piksel, fokus keyboard terlihat, heading semantik, status koneksi memakai live region, dan zoom viewport tetap diizinkan.
+- URL frontend memakai `NEXT_PUBLIC_API_URL` dan hanya mengakses API Gateway; port Keycloak `8080` tidak dipakai sebagai API.
+
+## Gap Referensi
+
+Tiga dokumen `.docx` yang disebutkan pada `AGENTS.md` belum tersedia di `docs/reference/`. Implementasi ini memakai enam Markdown root dan source Techwind lokal sebagai baseline yang dapat diverifikasi. Mapping harus diaudit ulang bila dokumen resmi tersebut tersedia.

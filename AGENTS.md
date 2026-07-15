@@ -2,7 +2,7 @@
 
 Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Portal PORPROV XV Jawa Barat 2026.
 
-> **Konteks aktif per 14 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime yang sudah terintegrasi meliputi Admin Web, API Gateway, Master Data Service, Venue Service, Schedule Service, PostgreSQL, Keycloak, Redis, NATS, dan observability berbasis Docker. Soft delete end-to-end beserta Recycle Bin sudah aktif untuk Master Data, Media Library, Venue, dan Jadwal. Public Web, mobile, LiveScore, RBAC granular, audit immutable/outbox, serta hardening dilanjutkan bertahap sesuai `FEATURES.md`.
+> **Konteks aktif per 15 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime yang sudah terintegrasi meliputi Admin Web, Public Web v0.2, API Gateway, Master Data Service, Venue Service, Schedule Service, Realtime Gateway, PostgreSQL, Keycloak, Redis, NATS, dan observability berbasis Docker/lokal. Public Web membaca Cabor, Venue, Jadwal, LiveScore SSE, dan Klasemen melalui API Gateway dengan state faktual tanpa data pertandingan/medali tiruan. Soft delete end-to-end beserta Recycle Bin sudah aktif untuk Master Data, Media Library, Venue, dan Jadwal. Mobile, detail konten Public, RBAC granular, audit immutable/outbox, serta hardening realtime dilanjutkan bertahap sesuai `FEATURES.md`.
 
 ## Mode Kerja Utama
 

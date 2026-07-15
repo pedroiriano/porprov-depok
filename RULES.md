@@ -281,6 +281,7 @@ Aturan mutlak:
 - Port internal Docker tetap mengikuti kontrak image/service dan komunikasi antarkontainer memakai DNS nama service, bukan `localhost` atau host port.
 - Seluruh mapping host pada Compose wajib memakai environment variable dengan default terdokumentasi.
 - Frontend hanya menggunakan API Gateway atau same-origin reverse proxy; dilarang mengakses Master/Schedule/Venue melalui port diagnostik.
+- Data tayang publik (Master Data aktif, Jadwal aktif, Venue aktif, Klasemen, dan stream realtime) boleh dibaca tanpa JWT hanya melalui route GET/stream API Gateway; seluruh mutasi, tombstone, restore, dan data audit tetap wajib autentikasi serta otorisasi.
 - Local `go run` menggunakan namespace `28xxx`. Menjalankan Docker dan Go lokal bersamaan diperbolehkan untuk debugging, tetapi hindari concurrent write terhadap database yang sama.
 - Deployment hosting harus dapat mengganti host port tanpa rebuild source. Pada production, tutup port diagnostik melalui Compose override/firewall.
 - Penambahan service/port wajib memperbarui registry ini, `.env.example`, `DOCUMENTATION.md`, dan dokumen root terkait.

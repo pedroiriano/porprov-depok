@@ -4,7 +4,7 @@
 
 ## Konteks Aplikasi Aktif
 
-Repository `porprov-depok` adalah platform resmi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Sistem menggunakan monorepo aplikasi web/mobile, Golang microservices, database per service, API Gateway, event-driven architecture, serta runtime Docker. Admin Web dan alur Master Data–Media Library–Venue–Schedule telah terintegrasi. Soft delete, dependency guard, media retention, dan restore melalui Recycle Bin sudah aktif untuk domain inti tersebut; RBAC granular, audit immutable/outbox, dan retensi purge masih mengikuti status nyata pada `FEATURES.md`.
+Repository `porprov-depok` adalah platform resmi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Sistem menggunakan monorepo aplikasi web/mobile, Golang microservices, database per service, API Gateway, event-driven architecture, serta runtime Docker. Admin Web dan alur Master Data–Media Library–Venue–Schedule telah terintegrasi. Public Web v0.2 sudah membaca Cabor, Venue, Jadwal, LiveScore SSE, dan Klasemen melalui API Gateway tanpa data pertandingan/medali tiruan. Soft delete, dependency guard, media retention, dan restore melalui Recycle Bin sudah aktif untuk domain inti; RBAC granular, audit immutable/outbox, dan retensi purge masih mengikuti status nyata pada `FEATURES.md`.
 
 ## Identitas Agent
 

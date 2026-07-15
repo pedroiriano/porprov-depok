@@ -37,9 +37,9 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | Component blueprint | `[ ] Planned` | v0.1 | `packages/ui/` | Button, Card, Badge, Tabs, FilterBar |
 | Match card | `[ ] Planned` | v0.1 | `packages/ui/MatchCard` | Flashscore-inspired |
 | Editorial card | `[ ] Planned` | v0.1 | `packages/ui/EditorialCard` | ESPN-inspired |
-| Event hero | `[ ] Planned` | v0.1 | `apps/public-web-nextjs/` | Adaptasi Techwind Landing dengan identitas dan konten PORPROV |
-| Skeleton loading | `[ ] Planned` | v0.1 | public/admin/mobile | LiveScore, standings, jadwal |
-| Accessibility baseline | `[ ] Planned` | v0.1 | global | Focus state, ARIA, 44px tap target |
+| Event hero | `[x] Done` | v0.2 | `apps/public-web-nextjs/src/components/HeroSection.tsx` | Hero 100 viewport, parallax 50%, countdown/CTA PORPROV, dan reduced-motion fallback; adaptasi pola `index-event.html` |
+| Skeleton loading | `[~] In Progress` | v0.2 | Public Venue/Jadwal/LiveScore | Venue, Jadwal, dan LiveScore memiliki loading serta empty/error yang faktual; modul publik lain belum seluruhnya diselaraskan |
+| Accessibility baseline | `[~] In Progress` | v0.2 | Public Beranda + route utama | Fokus keyboard, target 44px, heading/ARIA, live region, reduced motion, zoom viewport, menu mobile, footer tanpa tautan mati, dan overflow mobile telah diaudit; audit otomatis WCAG seluruh portal belum selesai |
 
 ## 3. Public Web — Next.js PWA
 
@@ -48,12 +48,12 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | App Router setup | `[ ] Planned` | v0.1 | `apps/public-web-nextjs/` | TypeScript + Tailwind |
 | SEO metadata system | `[ ] Planned` | v0.1 | `app/**/metadata` | Metadata API |
 | PWA installability | `[ ] Planned` | v0.1 | manifest/service worker | Pengganti Chrome App |
-| Beranda | `[ ] Planned` | v0.1 | `/` | Hero, Live Now, Jadwal, Medali, Depok Guide |
-| Cabor listing/detail | `[ ] Planned` | v0.1 | `/cabor` | 11 cabor dari booklet |
-| Jadwal | `[ ] Planned` | v0.1 | `/jadwal` | Filter tanggal/cabor/venue |
-| Venue & Maps | `[ ] Planned` | v0.1 | `/venue` | Peta, rute, fasilitas, rekomendasi |
-| LiveScore | `[ ] Planned` | v0.1 | `/livescore` | Realtime tanpa refresh |
-| Standings Medali | `[ ] Planned` | v0.1 | `/medali` | Official standings |
+| Beranda | `[~] In Progress` | v0.2 | `/` | Hero Techwind masterpiece, Tuan Rumah, pusat informasi, Venue live, dan CTA penonton tersedia; data Live Now/Medali/editorial penuh masih bertahap |
+| Cabor listing/detail | `[~] In Progress` | v0.2 | `/cabor` | Listing melalui API Gateway dan tautan Beranda aktif; detail cabor belum tersedia |
+| Jadwal | `[~] In Progress` | v0.2 | `/jadwal` | GET publik melalui API Gateway, filter tanggal/pencarian, loading, empty, error/retry; enrichment nama venue/nomor dan filter cabor penuh masih bertahap |
+| Venue & Maps | `[~] In Progress` | v0.2 | `/`, `/venue` | Listing live melalui API Gateway dengan refresh 30 detik, rute, fasilitas, status, pagination, dan state lengkap; detail/peta interaktif/rekomendasi sekitar belum final |
+| LiveScore | `[~] In Progress` | v0.2 | `/livescore` | Schedule aktif + SSE melalui API Gateway, status koneksi dan state lengkap tanpa match tiruan; event versioning/auth/scale-out belum final |
+| Standings Medali | `[~] In Progress` | v0.2 | `/medali` | Data resmi Medal Standing + nama/logo Kontingen melalui API Gateway, sorting dan empty/error faktual; workflow input/verifikasi belum final |
 | Galeri | `[ ] Planned` | v0.1 | `/galeri` | Foto/video |
 | Depok Guide | `[ ] Planned` | v0.1 | `/depok-guide` | Coffee shop, kuliner, penginapan, wisata, RS |
 
@@ -85,13 +85,13 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 
 | Fitur | Status | Versi | File/Area | Catatan |
 |---|---|---|---|---|
-| API Gateway | `[~] In Progress` | v0.2 | `services/api-gateway/` | JWT dan routing upstream berbasis environment selesai; rate limit/RBAC rinci belum lengkap |
+| API Gateway | `[~] In Progress` | v0.3 | `services/api-gateway/` | JWT, routing environment, dan public read contract Master/Schedule/Venue/Medals teruji; mutasi tetap terproteksi, rate limit/RBAC rinci belum lengkap |
 | Master Data Service | `[~] In Progress` | v0.4 | `services/master-data-service/` | CRUD serta soft delete/restore Cabor, Nomor, Kontingen, City Guide, dan Media sudah teruji; immutable audit persistence/outbox dan RBAC granular belum selesai |
 | Venue Service | `[~] In Progress` | v0.4 | `services/venue-service/` | CRUD, soft delete/restore, dan fail-closed schedule dependency guard sudah teruji; hardening authorization/audit masih bertahap |
 | Schedule Service | `[~] In Progress` | v0.4 | `services/schedule-service/` | CRUD, validasi referensi, soft delete/restore, dan reference endpoint sudah teruji; bracket belum tersedia |
 | LiveScore Service | `[ ] Planned` | v0.1 | `services/livescore-service/` | Event sourcing |
 | Realtime Gateway | `[~] In Progress` | v0.2 | `services/realtime-gateway/` | SSE fanout, cache Redis, consumer durable LiveScore/Medals, dan bootstrap stream JetStream idempotent tersedia; autentikasi stream, observability, serta scale-out fanout belum final |
-| Medal Standing Service | `[ ] Planned` | v0.1 | `services/medal-standing-service/` | Aggregation |
+| Medal Standing Service | `[~] In Progress` | v0.2 | `services/medal-standing-service/` | Standings dan update event tersedia; migration lokal terverifikasi, tetapi container migration, workflow verifikasi, soft-delete bila domain berkembang, dan hardening belum final |
 | Notification Service | `[ ] Planned` | v0.1 | `services/notification-service/` | Push/in-app |
 | Audit Service | `[ ] Planned` | v0.1 | `services/audit-service/` | Immutable log |
 

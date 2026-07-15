@@ -22,12 +22,15 @@ export function Countdown({ targetDate }: { targetDate: string }) {
       return timeLeft;
     };
 
-    setTimeLeft(calculateTimeLeft());
+    const initialTimer = window.setTimeout(() => setTimeLeft(calculateTimeLeft()), 0);
     const timer = setInterval(() => {
       setTimeLeft(calculateTimeLeft());
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      window.clearTimeout(initialTimer);
+      clearInterval(timer);
+    };
   }, [targetDate]);
 
   return (

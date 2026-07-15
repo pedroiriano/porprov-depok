@@ -59,9 +59,34 @@
 body {
   background-color: var(--color-background-base);
   color: var(--color-text-primary);
+  overflow-x: clip;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* CHANGE: Hero Public Web selalu setinggi viewport dan memakai lapisan media parallax 50%. */
+.hero-section {
+  height: 100vh;
+  height: 100svh;
+}
+
+@supports (height: 100dvh) {
+  .hero-section {
+    height: 100dvh;
+  }
+}
+
+.hero-parallax-media {
+  transform: translate3d(0, 0, 0) scale(1.12);
+  transform-origin: center top;
+  will-change: transform;
+}
+
+/* ACCESSIBILITY: Semua kontrol keyboard memperoleh indikator fokus yang konsisten. */
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-primary-400);
+  outline-offset: 3px;
 }
 
 /* Glassmorphism Utilities */
@@ -106,6 +131,26 @@ body {
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .hero-parallax-media {
+    transform: scale(1.06) !important;
+    will-change: auto;
   }
 }
 

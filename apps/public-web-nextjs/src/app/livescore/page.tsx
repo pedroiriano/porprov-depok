@@ -1,180 +1,206 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Activity, Clock } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Activity, AlertTriangle, Clock, Loader2, Radio } from "lucide-react";
+import { publicApiUrl, readPgText, readPgTimestamp, readResourceId, unwrapCollection } from "@/lib/public-api";
 
-interface LiveScore {
+interface LiveScoreUpdate {
   matchId: string;
   scoreA: number;
   scoreB: number;
   status: string;
 }
 
+interface RawMatch {
+  id?: unknown;
+  cabor_name?: string | null;
+  round?: string | null;
+  peserta_a?: string | null;
+  peserta_b?: string | null;
+  match_date?: Parameters<typeof readPgTimestamp>[0];
+  match_time?: Parameters<typeof readPgTimestamp>[0];
+  status?: string | null;
+}
+
+interface MatchViewModel {
+  id: string;
+  cabor: string;
+  round: string;
+  teamA: string;
+  teamB: string;
+  time: string;
+  initialStatus: string;
+}
+
+function normalizeMatch(raw: RawMatch, index: number): MatchViewModel {
+  const timestamp = readPgTimestamp(raw.match_time) || readPgTimestamp(raw.match_date);
+  return {
+    id: readResourceId(raw.id, `match-${index}`),
+    cabor: raw.cabor_name?.trim() || "Pertandingan PORPROV",
+    round: readPgText(raw.round) || "Tahap pertandingan",
+    teamA: raw.peserta_a?.trim() || "Peserta A menunggu konfirmasi",
+    teamB: raw.peserta_b?.trim() || "Peserta B menunggu konfirmasi",
+    time: timestamp
+      ? new Date(timestamp).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+      : "Waktu menyusul",
+    initialStatus: raw.status?.trim() || "Belum mulai",
+  };
+}
+
 export default function LiveScorePage() {
-  const [scores, setScores] = useState<Record<string, LiveScore>>({});
+  const [matches, setMatches] = useState<MatchViewModel[]>([]);
+  const [scores, setScores] = useState<Record<string, LiveScoreUpdate>>({});
   const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [flashCard, setFlashCard] = useState<string | null>(null);
+  const flashTimerRef = useRef<number | null>(null);
+
+  const loadMatches = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(publicApiUrl("/schedule/matches"), {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) {
+        throw new Error(`API Gateway merespons ${response.status}`);
+      }
+      const payload: unknown = await response.json();
+      setMatches(unwrapCollection<RawMatch>(payload).map(normalizeMatch));
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Kesalahan tidak dikenal";
+      setError(`Pertandingan aktif belum dapat dimuat. ${message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // Menghubungkan ke Realtime Gateway via API Gateway (Port 8080)
-    // Rute yang benar sesuai API Gateway adalah /api/v1/stream/events (proxy ke 8085)
-    const eventSource = new EventSource("http://localhost:8080/api/v1/stream/events");
+    const initialTimer = window.setTimeout(() => void loadMatches(), 0);
+    return () => window.clearTimeout(initialTimer);
+  }, [loadMatches]);
 
-    eventSource.onopen = () => {
-      setConnected(true);
-    };
+  useEffect(() => {
+    // INFO: EventSource memakai API Gateway sebagai satu-satunya edge publik.
+    const eventSource = new EventSource(publicApiUrl("/stream/events"));
 
+    eventSource.onopen = () => setConnected(true);
     eventSource.onmessage = (event) => {
       try {
-        const data: LiveScore = JSON.parse(event.data);
-        if (data.matchId) {
-          setScores((prev) => ({
-            ...prev,
-            [data.matchId]: data
-          }));
-          
-          // Memicu animasi flash pada card yang terupdate
-          setFlashCard(data.matchId);
-          setTimeout(() => setFlashCard(null), 1000); // hilangkan efek setelah 1 detik
+        const data = JSON.parse(event.data) as Partial<LiveScoreUpdate>;
+        if (typeof data.matchId !== "string" || !data.matchId) {
+          return;
         }
-      } catch (err) {
-        console.error("Failed to parse SSE data:", err);
+
+        const update: LiveScoreUpdate = {
+          matchId: data.matchId,
+          scoreA: typeof data.scoreA === "number" ? data.scoreA : 0,
+          scoreB: typeof data.scoreB === "number" ? data.scoreB : 0,
+          status: typeof data.status === "string" && data.status ? data.status : "Berlangsung",
+        };
+        setScores((current) => ({ ...current, [update.matchId]: update }));
+        setFlashCard(update.matchId);
+        if (flashTimerRef.current !== null) {
+          window.clearTimeout(flashTimerRef.current);
+        }
+        flashTimerRef.current = window.setTimeout(() => setFlashCard(null), 1000);
+      } catch {
+        // INFO: Event non-LiveScore (misalnya medali) sengaja diabaikan oleh layar ini.
       }
     };
-
-    eventSource.onerror = (error) => {
-      console.error("SSE error:", error);
-      setConnected(false);
-    };
+    eventSource.onerror = () => setConnected(false);
 
     return () => {
       eventSource.close();
+      if (flashTimerRef.current !== null) {
+        window.clearTimeout(flashTimerRef.current);
+      }
     };
   }, []);
 
-  // Data tiruan yang digabungkan dengan skor real-time
-  const matches = [
-    {
-      id: "m1",
-      cabor: "Sepak Bola",
-      round: "Penyisihan Grup A",
-      teamA: "Kota Depok",
-      teamB: "Kab. Bogor",
-      time: "45+2'",
-    },
-    {
-      id: "m2",
-      cabor: "Bulutangkis",
-      round: "Final Tunggal Putra",
-      teamA: "A. Ginting",
-      teamB: "J. Christie",
-      time: "Set 3",
-    }
-  ];
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3 text-slate-900 dark:text-white">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${connected ? 'bg-red-100 dark:bg-red-900/40 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-slate-100 dark:bg-slate-800'}`}>
-              <Activity className={`w-5 h-5 transition-colors ${connected ? 'text-red-500 animate-pulse' : 'text-slate-400'}`} />
-            </div>
-            LiveScore
-            {!connected && <span className="text-sm font-normal text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">Menghubungkan ke NATS...</span>}
-            {connected && <span className="text-sm font-normal text-red-500 bg-red-50 dark:bg-red-950 px-2 py-1 rounded border border-red-100 dark:border-red-900 animate-fade-in">LIVE</span>}
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2">Pembaruan skor secara real-time dari seluruh venue via NATS JetStream & SSE.</p>
+          <div className="flex items-center gap-3">
+            <span className={`flex size-11 items-center justify-center rounded-full ${connected ? "bg-red-100 text-red-500 shadow-[0_0_18px_rgba(239,68,68,0.25)] dark:bg-red-950" : "bg-slate-100 text-slate-400 dark:bg-slate-800"}`} aria-hidden="true">
+              <Activity className={`size-5 ${connected ? "animate-pulse" : ""}`} />
+            </span>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">LiveScore</h1>
+          </div>
+          <p className="mt-3 text-slate-500 dark:text-slate-400">Skor resmi dan status pertandingan dari seluruh venue PORPROV.</p>
+        </div>
+        <div className={`inline-flex min-h-11 w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${connected ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-300"}`} role="status" aria-live="polite">
+          <Radio className={`size-4 ${connected ? "animate-pulse" : ""}`} aria-hidden="true" />
+          {connected ? "Realtime terhubung" : "Menghubungkan realtime"}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Feed */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
-          {matches.map((match) => {
-            const liveData = scores[match.id];
-            const scoreA = liveData?.scoreA ?? 0;
-            const scoreB = liveData?.scoreB ?? 0;
-            const status = liveData?.status ?? "Belum Mulai";
-            const isFlashing = flashCard === match.id;
-
-            return (
-              <div 
-                key={match.id} 
-                className={`glass-card bg-white dark:bg-slate-900 border-l-4 transition-all duration-700 overflow-hidden relative ${
-                  liveData ? 'border-l-red-500 shadow-md' : 'border-l-slate-300 dark:border-l-slate-700'
-                } border border-slate-200 dark:border-slate-800 rounded-xl ${
-                  isFlashing ? 'bg-yellow-50 dark:bg-yellow-900/20 scale-[1.01] shadow-lg' : ''
-                }`}
-              >
-                {/* Efek kilauan saat skor update */}
-                {isFlashing && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent -translate-x-full animate-[shimmer_0.7s_ease-in-out]"></div>
-                )}
-
-                <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-2">
-                    {match.cabor} <span className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span> {match.round}
-                  </span>
-                  <span className={`text-xs font-bold flex items-center gap-1.5 transition-colors ${liveData ? 'text-red-500' : 'text-slate-400 dark:text-slate-500'}`}>
-                    {liveData && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>}
-                    <Clock className="w-3 h-3" /> {liveData ? status : match.time}
-                  </span>
-                </div>
-                <div className="p-6 flex flex-col gap-5">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4 text-lg">
-                      <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 border-2 border-white dark:border-slate-700 shadow-sm flex items-center justify-center font-bold text-slate-400 text-sm">
-                        {match.teamA.charAt(0)}
-                      </div>
-                      <span className="font-semibold text-slate-900 dark:text-white">{match.teamA}</span>
-                    </div>
-                    <span className={`text-4xl font-black transition-all duration-500 ${isFlashing ? 'text-primary-600 dark:text-primary-400 scale-125' : 'text-slate-900 dark:text-white'}`}>
-                      {scoreA}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4 text-lg">
-                      <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 border-2 border-white dark:border-slate-700 shadow-sm flex items-center justify-center font-bold text-slate-400 text-sm">
-                        {match.teamB.charAt(0)}
-                      </div>
-                      <span className="font-medium text-slate-700 dark:text-slate-300">{match.teamB}</span>
-                    </div>
-                    <span className={`text-4xl font-black transition-all duration-500 ${isFlashing ? 'text-primary-600 dark:text-primary-400 scale-125' : 'text-slate-700 dark:text-slate-300'}`}>
-                      {scoreB}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Sidebar Mini Standings & Updates */}
-        <div className="flex flex-col gap-6">
-          <div className="glass-card p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
-            <h3 className="font-bold mb-5 text-slate-900 dark:text-white flex items-center gap-2">
-              <Activity className="w-4 h-4 text-primary-500" /> Pembaruan Terkini
-            </h3>
-            <div className="flex flex-col gap-5 relative pl-2">
-              <div className="absolute left-3.5 top-2 bottom-2 w-0.5 bg-slate-100 dark:bg-slate-800"></div>
-              {[
-                { time: "Baru saja", text: "SSE Streaming terhubung ke Realtime Gateway." },
-                { time: "14:15", text: "Emas pertama untuk Kota Bandung di cabor Renang 100m." },
-                { time: "14:00", text: "Cuaca buruk, cabor Panahan ditunda sementara." }
-              ].map((ev, i) => (
-                <div key={i} className="flex gap-4 relative z-10 items-start">
-                  <div className={`w-3.5 h-3.5 rounded-full ${i===0 && connected ? 'bg-green-500' : 'bg-primary-500'} mt-1.5 shrink-0 ring-4 ring-white dark:ring-slate-900 shadow-sm`}></div>
-                  <div>
-                    <div className="text-xs font-bold text-primary-600 dark:text-primary-400 mb-1">{ev.time}</div>
-                    <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{ev.text}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+      {error && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="alert">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+          <div className="flex-1">
+            <p className="font-bold">Pembaruan pertandingan tertunda</p>
+            <p className="mt-1 text-sm">{error}</p>
+            <button type="button" onClick={() => void loadMatches()} className="mt-3 min-h-11 rounded-md bg-amber-900 px-4 py-2 text-sm font-bold text-white hover:bg-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-900 dark:bg-amber-300 dark:text-amber-950">Coba lagi</button>
           </div>
         </div>
-      </div>
+      )}
+
+      {loading ? (
+        <div className="flex min-h-64 items-center justify-center" role="status" aria-label="Memuat pertandingan LiveScore">
+          <Loader2 className="size-8 animate-spin text-primary-500" aria-hidden="true" />
+        </div>
+      ) : matches.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900/60">
+          <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary-500/10 text-primary-500"><Activity className="size-8" aria-hidden="true" /></span>
+          <h2 className="mt-5 text-xl font-black">Belum ada pertandingan aktif</h2>
+          <p className="mx-auto mt-2 max-w-lg text-slate-500 dark:text-slate-400">LiveScore akan muncul otomatis setelah jadwal pertandingan dipublikasikan oleh panitia.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="flex flex-col gap-4 lg:col-span-2">
+            {matches.map((match) => {
+              const liveData = scores[match.id];
+              const isFlashing = flashCard === match.id;
+              return (
+                <article key={match.id} className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition duration-500 dark:bg-slate-900 ${liveData ? "border-red-300 dark:border-red-900" : "border-slate-200 dark:border-slate-800"} ${isFlashing ? "scale-[1.01] shadow-lg ring-2 ring-amber-300" : ""}`}>
+                  <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{match.cabor} · {match.round}</p>
+                    <p className={`flex items-center gap-1.5 text-xs font-bold ${liveData ? "text-red-500" : "text-slate-500"}`}><Clock className="size-3.5" aria-hidden="true" /> {liveData?.status || match.initialStatus}</p>
+                  </header>
+                  <div className="space-y-5 p-5 sm:p-6">
+                    {[
+                      { name: match.teamA, score: liveData?.scoreA },
+                      { name: match.teamB, score: liveData?.scoreB },
+                    ].map((team) => (
+                      <div key={team.name} className="flex items-center justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-black text-slate-500 dark:bg-slate-800">{team.name.charAt(0)}</span>
+                          <span className="truncate font-bold text-slate-900 dark:text-white">{team.name}</span>
+                        </div>
+                        <span className="text-4xl font-black tabular-nums text-slate-900 dark:text-white">{team.score ?? "–"}</span>
+                      </div>
+                    ))}
+                    <p className="border-t border-slate-100 pt-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">{match.time}</p>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-labelledby="live-status-title">
+            <h2 id="live-status-title" className="flex items-center gap-2 font-black"><Activity className="size-4 text-primary-500" aria-hidden="true" /> Status Data</h2>
+            <dl className="mt-5 space-y-4 text-sm">
+              <div className="flex items-center justify-between gap-3"><dt className="text-slate-500 dark:text-slate-400">Pertandingan</dt><dd className="font-black">{matches.length}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-slate-500 dark:text-slate-400">Update skor</dt><dd className="font-black">{Object.keys(scores).length}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-slate-500 dark:text-slate-400">Koneksi</dt><dd className={connected ? "font-black text-emerald-600" : "font-black text-amber-600"}>{connected ? "Terhubung" : "Mencoba ulang"}</dd></div>
+            </dl>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

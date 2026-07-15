@@ -130,6 +130,17 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 
 		// Public Master Data Service (GET)
 		r.Get("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)
+
+		// Public Schedule Service (GET)
+		// INFO: Jadwal aktif adalah data publik. Endpoint deleted tetap ditolak oleh
+		// Schedule Service karena proxy publik tidak pernah menyuntikkan X-Actor-ID.
+		r.Get("/schedule/*", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)).ServeHTTP)
+		r.Get("/schedule", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)).ServeHTTP)
+
+		// Public Medal Standing Service (GET)
+		// SECURITY: Mutasi medali tetap melewati route terproteksi di atas.
+		r.Get("/medals/*", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+		r.Get("/medals", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
 	})
 
 	// Rute Static File Uploads (Public)

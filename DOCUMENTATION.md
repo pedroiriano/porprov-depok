@@ -106,6 +106,12 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 - Gunakan venue cards untuk peta, rute, fasilitas, rekomendasi sekitar.
 - Referensi awal yang relevan pada Techwind Landing antara lain pola event, gym, blog/editorial, gallery, auth, dan landing; pilih per komponen, bukan menyalin satu halaman secara utuh.
 - Ubah seluruh pola menjadi design language PORPROV: energi kompetisi, identitas Kota Depok, status realtime, CTA yang jelas, dan kepadatan informasi yang tetap terbaca.
+- Mapping implementasi Beranda terbaru tersedia di `docs/uiux/PUBLIC_HOME_TECHWIND_MAPPING.md`: hero 100 viewport dengan parallax 50%, tautan Tuan Rumah, pusat informasi, Venue live melalui API Gateway, dan CTA panduan penonton.
+- Public Web membaca `NEXT_PUBLIC_API_URL` dengan default local-debug `http://localhost:28000/api/v1`. Port `8080` khusus Keycloak dan tidak boleh digunakan sebagai endpoint API Public Web.
+- Canonical/metadata origin Public Web membaca `NEXT_PUBLIC_SITE_URL` dengan default lokal `http://localhost:3000`; deployment wajib mengisinya dengan origin HTTPS resmi.
+- API Gateway membuka operasi baca publik untuk `/master-data/*`, `/schedule/*`, `/venues*`, `/medals/*`, dan `/stream/*`; operasi mutasi tetap wajib JWT. Test router mengunci kontrak GET Jadwal tanpa token.
+- Jadwal, LiveScore, dan Klasemen tidak menggunakan data contoh produksi: jika belum ada record, UI menampilkan empty state; jika service gagal, UI menampilkan error yang dapat ditindaklanjuti.
+- URL Media Library lama yang menunjuk port diagnostik `localhost:18xxx/uploads/*` dinormalisasi ke route `/uploads/*` API Gateway agar asset tetap dapat dibaca Public Web tanpa melanggar single-edge policy.
 
 ### 4.2 Admin Web Experience
 
@@ -128,6 +134,8 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 
 ## 5. Cara Menjalankan Development
 
+Runbook utama dan langkah troubleshooting tersedia di [`docs/runbook/LOCAL_DEVELOPMENT.md`](docs/runbook/LOCAL_DEVELOPMENT.md). Bagian berikut adalah ringkasan; gunakan runbook tersebut untuk urutan lengkap, migrasi service tambahan, health check, dan penghentian proses.
+
 ### 5.1 Prasyarat
 
 - Node.js LTS
@@ -136,7 +144,7 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 - PostgreSQL client
 - NATS CLI opsional
 - Keycloak admin access
-- pnpm atau npm sesuai keputusan repo
+- npm; aplikasi web saat ini dikunci dengan `package-lock.json`
 
 ### 5.2 Infrastruktur Lokal/Staging
 
@@ -164,23 +172,23 @@ Logout atau restart Windows setelah menambahkan user ke grup `docker-users`.
 
 ```bash
 cd apps/public-web-nextjs
-pnpm install
-pnpm dev
+npm ci
+npm run dev -- --port 3000
 ```
 
 ### 5.4 Admin Web
 
 ```bash
 cd apps/admin-web-react
-pnpm install
-pnpm dev
+npm ci
+npm run dev -- --host 0.0.0.0 --port 5174 --strictPort
 ```
 
 Admin Web menggunakan variabel berikut:
 
 | Variabel | Default lokal | Fungsi |
 |---|---|---|
-| `VITE_API_URL` | `http://localhost:8000/api/v1` | Satu-satunya entry point API browser |
+| `VITE_API_URL` | `http://localhost:28000/api/v1` pada `npm run dev`; `8000` pada image Docker | Satu-satunya entry point API browser |
 | `VITE_OIDC_AUTHORITY` | `http://localhost:8080/realms/porprov` | Authority Keycloak |
 | `VITE_OIDC_CLIENT_ID` | `porprov-admin-web` | Client OIDC Admin Web |
 
@@ -204,8 +212,10 @@ Media Library dan seluruh form Master Data menggunakan API Gateway. Nilai media 
 cd services/livescore-service
 go mod tidy
 go test ./...
-go run ./cmd/server
+NATS_URL=nats://localhost:14222 go run main.go
 ```
+
+Perintah di atas menggunakan sintaks shell Bash. Pada PowerShell, set `$env:NATS_URL = "nats://localhost:14222"` lalu jalankan `go run main.go`. Daftar lengkap entrypoint, migrasi, urutan startup, dan health check seluruh service tersedia di [`docs/runbook/LOCAL_DEVELOPMENT.md`](docs/runbook/LOCAL_DEVELOPMENT.md).
 
 ### 5.6 Mobile
 

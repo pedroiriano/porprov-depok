@@ -6,7 +6,7 @@ Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker un
 
 - Admin Web, API Gateway, Master Data Service, Venue Service, Schedule Service, Media Library, PostgreSQL, Keycloak, Redis, NATS, dan monitoring telah mempunyai runtime Docker terintegrasi.
 - CRUD Master Data, pemilihan Media Library, soft delete, dan pemulihan melalui Recycle Bin Admin sudah tersedia end-to-end untuk Cabor, Nomor Pertandingan, Kontingen, City Guide, Media, Venue, dan Jadwal. Hardening RBAC granular serta kebijakan retensi/purge tetap mengikuti `FEATURES.md`.
-- Public Web, mobile, LiveScore event-driven, RBAC granular, security hardening, dan deployment production dilanjutkan berdasarkan status pada `FEATURES.md`.
+- Public Web tahap v0.2 sudah memiliki beranda Techwind PORPROV, listing Cabor/Venue, Jadwal publik, LiveScore SSE, serta Klasemen Medali melalui API Gateway dengan state loading/empty/error yang faktual. Detail konten, mobile, hardening realtime/RBAC, dan deployment production dilanjutkan berdasarkan status pada `FEATURES.md`.
 - Kondisi dan quality gate aktual tidak boleh disimpulkan dari README saja; `FEATURES.md` adalah tracker status implementasi.
 
 ## File
@@ -19,6 +19,7 @@ Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker un
 | `FEATURES.md` | Tracking fitur dan status |
 | `DOCUMENTATION.md` | Dokumentasi teknis dan operasional |
 | `README.md` | Orientasi repository, baseline, dan quick start |
+| `docs/runbook/LOCAL_DEVELOPMENT.md` | Runbook menjalankan Docker, seluruh service Go yang tersedia, Public Web, dan Admin Web |
 
 ## Stack Final
 
@@ -78,6 +79,8 @@ Semua host port dapat diubah melalui `infra/docker/.env` berdasarkan template `.
 2. Simpan dokumen kebutuhan/desain resmi di `docs/reference/` dan laporkan bila belum tersedia.
 3. Gunakan `theme-reference/HTML/Landing/` untuk audit UI Public dan `theme-reference/HTML/Dashboard/` untuk audit Admin.
 4. Jalankan pekerjaan sesuai tahap yang telah dikonfirmasi dan perbarui dokumen/status terkait.
+
+Panduan startup lengkap tersedia di [`docs/runbook/LOCAL_DEVELOPMENT.md`](docs/runbook/LOCAL_DEVELOPMENT.md). Pilih mode Docker Compose atau mode local development; jangan mencampur Admin dev `5174`/Gateway `28000` dengan Admin Docker `5173`/Gateway `8000` tanpa override environment yang disengaja.
 
 ## Catatan Orisinalitas
 

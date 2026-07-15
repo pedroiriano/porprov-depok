@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/cors"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/porprov-xv/porprov-depok/services/api-gateway/internal/config"
 	customMiddleware "github.com/porprov-xv/porprov-depok/services/api-gateway/internal/middleware"
 )
 
@@ -88,5 +89,38 @@ func TestSetupProxyKeepsSingleGatewayCORSOrigin(t *testing.T) {
 	}
 	if origins[0] != "http://localhost:5174" {
 		t.Fatalf("expected gateway origin http://localhost:5174, got %q", origins[0])
+	}
+}
+
+func TestPublicScheduleReadDoesNotRequireJWT(t *testing.T) {
+	t.Parallel()
+
+	var receivedPath string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `[]`)
+	}))
+	defer upstream.Close()
+
+	cfg := &config.AppConfig{
+		MasterDataURL: upstream.URL,
+		ScheduleURL:   upstream.URL + "/api/v1",
+		VenueURL:      upstream.URL,
+		AuditURL:      upstream.URL,
+		LivescoreURL:  upstream.URL,
+		MedalsURL:     upstream.URL,
+		RealtimeURL:   upstream.URL,
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/schedule/matches", nil)
+	response := httptest.NewRecorder()
+	SetupRouter(nil, cfg).ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected public schedule status 200, got %d", response.Code)
+	}
+	if receivedPath != "/api/v1/matches" {
+		t.Fatalf("expected upstream path /api/v1/matches, got %q", receivedPath)
 	}
 }

@@ -6,6 +6,7 @@ use (
 	./services/audit-service
 	./services/livescore-service
 	./services/master-data-service
+	./services/medal-standing-service
 	./services/realtime-gateway
 	./services/schedule-service
 	./services/user-service

@@ -11,7 +11,8 @@ export function ThemeToggle() {
 
   // Mencegah hydration mismatch dengan menunggu komponen di-mount di klien
   useEffect(() => {
-    setMounted(true);
+    const mountedTimer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(mountedTimer);
   }, []);
 
   if (!mounted) {

@@ -17,7 +17,6 @@ export function CountdownTimer({ targetDate }: CountdownProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const target = new Date(targetDate).getTime();
 
     const calculateTimeLeft = () => {
@@ -36,8 +35,11 @@ export function CountdownTimer({ targetDate }: CountdownProps) {
       };
     };
 
-    // Set immediately on mount
-    setTimeLeft(calculateTimeLeft());
+    // PERFORMANCE: Jadwalkan state awal di luar body effect agar sesuai kontrak React 19.
+    const mountedTimer = window.setTimeout(() => {
+      setMounted(true);
+      setTimeLeft(calculateTimeLeft());
+    }, 0);
 
     const interval = setInterval(() => {
       const newTimeLeft = calculateTimeLeft();
@@ -48,7 +50,10 @@ export function CountdownTimer({ targetDate }: CountdownProps) {
       }
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(mountedTimer);
+      clearInterval(interval);
+    };
   }, [targetDate]);
 
   if (!mounted) {

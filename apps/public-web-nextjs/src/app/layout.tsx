@@ -11,6 +11,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: {
     default: "Portal PORPROV XV Jawa Barat 2026",
     template: "%s | PORPROV XV 2026",
@@ -52,8 +53,8 @@ export const viewport: Viewport = {
   themeColor: "#3b82f6",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
 };
 
 export default function RootLayout({
@@ -64,7 +65,9 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${nunito.variable} antialiased h-full`} suppressHydrationWarning dir="ltr">
       <head>
+        {/* eslint-disable-next-line @next/next/no-css-tags */}
         <link href="/assets/libs/remixicon/fonts/remixicon.css" rel="stylesheet" />
+        {/* eslint-disable-next-line @next/next/no-css-tags */}
         <link href="/assets/css/tailwind.css" rel="stylesheet" />
       </head>
       <body className="min-h-full flex flex-col bg-background-base dark:bg-slate-950 text-text-primary dark:text-slate-100 transition-colors duration-300">
