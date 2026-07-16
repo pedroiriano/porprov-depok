@@ -1,0 +1,2121 @@
+DOKUMEN ANALISIS DAN DESAIN TERPADU
+Portal PORPROV XV Jawa Barat 2026 Kota Depok
+BRD · PRD · SRS · SDD Terpadu | v0.1 Draft Rekomendasi | 29 Juni 2026
+Sumber Utama
+(draft 6) Booklet PORPROV XV.pdf; Custom-GPT-BRD-PRD-SRS-SDD-Knowledge-Upload.md
+Klasifikasi
+Internal panitia sebelum dipublikasikan
+Pemilik Dokumen
+[TBD — perlu keputusan: Dispora/KONI/Panitia Besar PORPROV XV]
+Fokus
+Portal web dan mobile, LiveScore realtime, standings, venue, rekomendasi tempat, dan CMS admin
+Catatan
+Dokumen ini adalah blueprint awal dan perlu validasi resmi panitia.
+Dokumen Analisis dan Desain Terpadu: Portal PORPROV XV Jawa Barat 2026 Kota Depok
+Jenis: BRD · PRD · SRS · SDD Terpadu Versi: v0.1 Draft Rekomendasi Tanggal: 29 Juni 2026 Sumber utama: `(draft 6) Booklet PORPROV XV.pdf` dan `Custom-GPT-BRD-PRD-SRS-SDD-Knowledge-Upload.md`
+Dokumen ini disusun sebagai blueprint analisis dan desain sistem elektronik digital berbasis web dan mobile untuk Portal PORPROV XV Jawa Barat 2026 Kota Depok. Dokumen memuat kebutuhan bisnis, kebutuhan produk, spesifikasi perangkat lunak, rancangan arsitektur, rancangan LiveScore realtime, rekomendasi teknologi, matriks ketertelusuran, dan rekomendasi implementasi.
+0.1 Sampul & Metadata
+Atribut
+Isi
+Judul
+Dokumen Analisis dan Desain Terpadu Portal PORPROV XV Jawa Barat 2026
+Nama Sistem
+Portal PORPROV XV Jawa Barat 2026 Kota Depok
+Jenis Dokumen
+BRD, PRD, SRS, SDD Terpadu
+Versi
+v0.1 Draft Rekomendasi
+Tanggal
+29 Juni 2026
+Penyusun
+Arsitek Dokumen Rekayasa Kebutuhan Terpadu
+Pemilik Dokumen
+[TBD — perlu keputusan: Dispora/KONI/Panitia Besar PORPROV XV]
+Status
+Draft untuk reviu pemangku kepentingan
+Klasifikasi
+Internal panitia sebelum dipublikasikan
+0.2 Riwayat Revisi
+Versi
+Tanggal
+Penulis
+Ringkasan Perubahan
+Disetujui Oleh
+v0.1
+29 Juni 2026
+Arsitek Dokumen Rekayasa Kebutuhan Terpadu
+Penyusunan awal berdasarkan booklet dan kebutuhan portal
+[TBD — perlu keputusan: pejabat pemberi persetujuan]
+0.3 Lembar Persetujuan
+Nama
+Jabatan
+Peran
+Tanda Tangan
+Tanggal
+[TBD]
+Ketua Panitia
+Pemilik bisnis
+[TBD]
+[TBD]
+[TBD]
+Sekretariat PORPROV
+Pemilik data
+[TBD]
+[TBD]
+[TBD]
+Koordinator TI
+Pemilik teknis
+[TBD]
+[TBD]
+[TBD]
+Koordinator Pertandingan
+Validator jadwal dan hasil
+[TBD]
+[TBD]
+[TBD]
+Pejabat PPID/Humas
+Validator publikasi
+[TBD]
+[TBD]
+0.4 Daftar Isi
+1. Bagian Umum Dokumen
+2. Ringkasan untuk Pemangku Kepentingan
+3. Analisis Dokumen Booklet
+4. BRD — Business Requirements Document
+5. PRD — Product Requirements Document
+6. SRS — Software Requirements Specification
+7. SDD — Software Design Document
+8. Rekomendasi Teknologi Stack
+9. Rancangan Realtime LiveScore
+10. Rekomendasi Tempat dan Data Tambahan
+11. Matriks Ketertelusuran
+12. Status Kelengkapan, Risiko, dan Langkah Berikutnya
+13. Lampiran Daftar Rekomendasi Tempat
+0.5 Ringkasan untuk Pemangku Kepentingan Awam [UMUM]
+Portal PORPROV XV Jawa Barat 2026 dirancang sebagai kanal resmi informasi pertandingan, venue, jadwal, LiveScore, klasemen medali, galeri, dan rekomendasi tempat bagi atlet, ofisial, penonton, media, serta masyarakat. Sistem harus mudah dipakai, cepat, aman, ramah perangkat mobile, dan mampu memperbarui skor secara realtime tanpa refresh halaman. Backend admin digunakan untuk mengelola konten, jadwal, venue, bracket, galeri, rekomendasi tempat, dan validasi hasil. Aplikasi mobile koresponden digunakan untuk input skor langsung dari setiap venue dan cabang olahraga.
+0.6 Daftar Istilah, Definisi & Singkatan
+Istilah
+Definisi Sederhana
+Padanan Inggris
+PORPROV
+Pekan Olahraga Provinsi
+Provincial Sports Week
+LiveScore
+Pembaruan skor pertandingan secara langsung
+Live Score
+Standings
+Urutan peringkat atau klasemen
+Standings
+Bracket
+Bagan pertandingan
+Tournament Bracket
+Venue
+Lokasi pertandingan
+Venue
+Koresponden LiveScore
+Petugas input skor di venue
+LiveScore Correspondent
+CMS
+Sistem pengelolaan konten
+Content Management System
+RBAC
+Hak akses berdasarkan peran
+Role-Based Access Control
+Audit Log
+Catatan aktivitas sistem
+Audit Log
+PWA
+Aplikasi web yang dapat dipakai seperti aplikasi mobile
+Progressive Web App
+WebSocket
+Kanal komunikasi realtime dua arah
+WebSocket
+0.7 Referensi & Dasar Hukum
+ID
+Referensi
+Kegunaan
+Lokasi/URL
+REF-01
+(draft 6) Booklet PORPROV XV.pdf
+Sumber data PORPROV: informasi umum, maskot, cabang olahraga, jadwal, venue, peta, dan rekomendasi tempat.
+Dokumen pengguna, halaman 1–32
+REF-02
+Custom-GPT-BRD-PRD-SRS-SDD-Knowledge-Upload.md
+Struktur baku BRD, PRD, SRS, SDD, skema ID, RTM, dan requirement quality.
+Knowledge upload
+REF-03
+Perpres Nomor 95 Tahun 2018 tentang SPBE
+Rujukan SPBE untuk konteks sistem elektronik pemerintahan.
+https://peraturan.bpk.go.id/Details/96913/perpres-no-95-tahun-2018
+REF-04
+UU Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi
+Rujukan privacy-by-design dan pengelolaan data pribadi.
+https://peraturan.bpk.go.id/Details/229798/uu-no-27-tahun-2022
+REF-05
+OWASP Top 10
+Rujukan risiko keamanan aplikasi web.
+https://owasp.org/www-project-top-ten/
+REF-06
+WCAG 2.2
+Rujukan aksesibilitas web.
+https://www.w3.org/TR/WCAG22/
+REF-07
+Google Core Web Vitals
+Rujukan metrik performa LCP, INP, CLS.
+https://developers.google.com/search/docs/appearance/core-web-vitals
+REF-08
+Next.js Metadata API
+Rujukan SEO dan metadata aplikasi Next.js.
+https://nextjs.org/docs/app/getting-started/metadata-and-og-images
+REF-09
+NestJS WebSocket Gateways
+Rujukan gateway realtime pada backend.
+https://docs.nestjs.com/websockets/gateways
+REF-10
+Socket.IO Documentation
+Rujukan komunikasi realtime low-latency dua arah.
+https://socket.io/docs/v4/
+REF-11
+Redis Streams Documentation
+Rujukan event log untuk score event realtime.
+https://redis.io/docs/latest/develop/data-types/streams/
+REF-12
+PostGIS
+Rujukan dukungan geospasial untuk PostgreSQL.
+https://postgis.net/
+REF-13
+Flutter
+Rujukan pengembangan multi-platform dari satu codebase.
+https://flutter.dev/
+REF-14
+Kubernetes
+Rujukan orkestrasi container, deployment, dan scaling.
+https://kubernetes.io/
+REF-15
+OpenAPI Specification
+Rujukan standar deskripsi HTTP API.
+https://www.openapis.org/
+REF-16
+Google Maps JavaScript API
+Rujukan peta interaktif dan marker venue.
+https://developers.google.com/maps/documentation/javascript/overview
+1. [ASUMSI], Kendala, dan Batasan Awal
+ID
+Asumsi/Kendala
+Status
+ASM-01
+Portal melayani publik, panitia, kontingen, media, koresponden LiveScore, pengelola venue, dan administrator.
+Draft
+ASM-02
+Data resmi jadwal, kontingen, atlet, nomor pertandingan, dan hasil akhir disahkan oleh panitia/KONI.
+[TBD — perlu keputusan: mekanisme pengesahan data resmi]
+ASM-03
+Koresponden LiveScore tersedia di setiap venue dan setiap cabang olahraga aktif.
+Draft
+ASM-04
+Portal harus dapat berjalan di web, PWA, dan mobile app koresponden.
+Draft
+ASM-05
+Data lokasi pada booklet belum memuat koordinat, tautan Maps final, jam operasional tempat, nomor kontak, dan aksesibilitas venue.
+[TBD — perlu keputusan: verifikasi lapangan dan validasi Maps]
+CON-01
+Venue Selancar Ombak berada di Pantai Cimaja, Kabupaten Sukabumi, bukan Kota Depok, sehingga sistem harus mendukung venue lintas wilayah.
+Draft
+CON-02
+Bracket dan rundown pada halaman venue booklet masih berbentuk area kosong, sehingga perlu modul input bracket resmi.
+[TBD — perlu keputusan: format bracket per cabang olahraga]
+2. Ringkasan untuk Pemangku Kepentingan [UMUM]
+Portal ini harus menjadi pusat informasi resmi PORPROV XV Jawa Barat 2026. Pengunjung dapat melihat jadwal pertandingan, lokasi venue, petunjuk rute, informasi cabang olahraga, maskot Toca dan Toci, LiveScore, klasemen medali, galeri foto-video, serta rekomendasi coffee shop, tempat makan, penginapan, wisata, pusat belanja, dan rumah sakit yang tercantum pada booklet.
+Hal-hal Kunci:
+1. Realtime: skor dan klasemen tampil otomatis tanpa refresh.
+2. Mobile-first: penonton, atlet, media, dan koresponden lebih banyak memakai ponsel.
+3. Mudah dikelola: admin dapat memperbarui berita, jadwal, venue, galeri, dan rekomendasi tempat.
+4. Akurat: skor harus memiliki status draft, submitted, verified, official, corrected, dan rejected.
+5. Aman: akses backend, input skor, dan data pribadi harus dilindungi.
+6. SEO kuat: informasi publik mudah ditemukan melalui mesin pencari.
+3. Hasil Utama [TEKNIS]
+3.1 Audit Informasi dari Booklet
+Area Booklet
+Data Tersedia
+Kesenjangan untuk Sistem
+Informasi Umum PORPROV
+Definisi PORPROV, konteks multi-event tingkat provinsi, slogan “Bergerak Bersama Menuju Depok Maju”.
+Perlu narasi resmi panitia, logo final, kontak resmi, kanal media sosial, dan dokumen publikasi resmi.
+Maskot
+Toca dan Toci beserta makna warna, sportivitas, prestasi, dan keharmonisan.
+Perlu file aset resmi resolusi tinggi, panduan warna, larangan penggunaan, dan format maskot untuk web.
+Cabang Olahraga
+Sepak Bola Putri, Selancar Ombak, Hockey Indoor, Hockey Outdoor, Sepak Takraw, Menembak Outdoor, Karate, Floorball, Basketball, Gateball, Golf.
+Perlu nomor pertandingan, kelas, kategori, format kompetisi, dan aturan skor per cabor.
+Jadwal
+Jadwal per cabor dari 30 Oktober sampai 16 November 2026 pada booklet.
+Perlu status jadwal: tentative, final, postponed, completed, cancelled. Perlu klarifikasi tanggal pra-event.
+Venue
+Venue dan alamat tersedia pada halaman venue.
+Perlu koordinat, kapasitas, akses parkir, akses disabilitas, PIC venue, fasilitas medis, layout venue, dan gate masuk.
+Rute ke Venue
+Booklet memuat tombol “Lihat Petunjuk Arah”.
+Perlu tautan Maps final, integrasi peta, rute dari titik populer, dan estimasi waktu tempuh.
+Rundown/Bracket
+Area bracket/rundown tersedia tetapi belum berisi data rinci.
+Perlu modul bracket builder dan jadwal pertandingan per match.
+Rekomendasi Tempat
+Coffee shop 62, kuliner 10, penginapan 42, wisata buatan 17, situ 12, mall 11, rumah sakit 11.
+Perlu geocoding, jam buka, kontak, foto, kategori harga, rating, jarak dari venue, dan verifikasi kelayakan.
+Galeri
+Belum dirinci pada booklet.
+Perlu modul foto, video, album, kurasi media, hak cipta, dan moderasi.
+LiveScore & Standings
+Belum dirinci pada booklet.
+Perlu model skor per cabor, mekanisme verifikasi, klasemen medali, dan kanal realtime.
+3.2 Jadwal Cabang Olahraga Berdasarkan Booklet
+Tanggal
+Cabang Olahraga
+Venue
+Catatan Sistem
+30 Okt 2026
+Basketball
+GOR Kota Depok / Depok Sport Hall
+Perlu klarifikasi apakah pra-event atau bagian resmi kompetisi.
+01 Nov 2026
+Hockey Indoor
+Eden Sport Center
+Perlu detail rundown dan bracket.
+08 Nov 2026
+Hockey Outdoor
+Lapangan PSP Sawangan
+Perlu detail rundown dan bracket.
+09 Nov 2026
+Sepak Bola Putri
+Stadion Merpati dan Stadion Mahakam
+Perlu match list dan pembagian venue.
+10 Nov 2026
+Golf
+Emeralda Golf
+Perlu format round dan leaderboard.
+10 Nov 2026
+Sepak Takraw
+GOR Kartika
+Perlu set scoring rules.
+11 Nov 2026
+Menembak Outdoor
+Lapangan Tembak Kostrad Cilodong
+Perlu aspek keamanan venue dan akses terbatas.
+13 Nov 2026
+Selancar Ombak
+Pantai Cimaja
+Venue luar Kota Depok, perlu rute lintas wilayah.
+13 Nov 2026
+Floorball
+Eden Sport Center
+Perlu pembagian court.
+15 Nov 2026
+Gateball
+Lapangan Kukusan
+Perlu format group/knockout.
+16 Nov 2026
+Karate
+GOR Kota Depok / Depok Sport Hall
+Perlu format kelas dan scoring.
+4. BRD — Business Requirements Document
+4.1 Latar Belakang
+Kota Depok menjadi salah satu tuan rumah PORPROV XV Jawa Barat 2026. Booklet memuat informasi dasar acara, maskot, cabang olahraga, jadwal, venue, peta, dan rekomendasi tempat. Portal digital dibutuhkan agar informasi tersebut dapat diakses cepat, terstruktur, realtime, mudah dicari, dan mudah dikelola oleh panitia.
+4.2 Tujuan Bisnis
+ID
+Tujuan Bisnis
+Sasaran SMART
+Indikator Keberhasilan
+BG-01
+Menyediakan kanal informasi resmi PORPROV XV Jawa Barat 2026.
+Seluruh informasi publik utama tersedia minimal 30 hari sebelum pembukaan.
+100% cabor, venue, jadwal, dan rekomendasi tempat terpublikasi.
+BG-02
+Mempercepat distribusi hasil pertandingan.
+Skor terverifikasi tampil di portal maksimal 10 detik setelah disahkan petugas.
+p95 latensi publikasi skor ≤ 10 detik.
+BG-03
+Mendukung mobilitas pengunjung dan kontingen.
+Setiap venue memiliki halaman Maps, rute, fasilitas, dan rekomendasi terdekat.
+100% venue memiliki koordinat dan rute tervalidasi.
+BG-04
+Meningkatkan citra Kota Depok sebagai tuan rumah digital-ready.
+Portal memiliki performa baik, desain menarik, dan SEO kuat.
+LCP ≤ 2,5 detik, INP ≤ 200 ms, CLS ≤ 0,1 untuk halaman utama.
+BG-05
+Menjaga akurasi, keamanan, dan auditabilitas data pertandingan.
+Semua perubahan skor memiliki audit log dan status verifikasi.
+100% perubahan skor tercatat dengan user, waktu, perangkat, dan alasan koreksi.
+4.3 Pemangku Kepentingan
+ID
+Nama/Peran
+Kepentingan
+Pengaruh
+Kebutuhan Utama
+STK-01
+Panitia Besar
+Publikasi resmi dan koordinasi acara
+Tinggi
+Dashboard admin, approval, audit log
+STK-02
+KONI/Pengurus Cabor
+Validitas jadwal dan hasil
+Tinggi
+Validasi hasil, bracket, klasemen
+STK-03
+Koresponden LiveScore
+Input skor dari venue
+Tinggi
+Mobile app cepat, offline queue, bukti foto
+STK-04
+Atlet dan Ofisial
+Jadwal, venue, hasil
+Sedang
+Jadwal personal, rute, notifikasi
+STK-05
+Penonton dan Masyarakat
+Informasi pertandingan dan rekomendasi tempat
+Sedang
+Portal mobile-first, LiveScore, Maps
+STK-06
+Media
+Data cepat dan akurat
+Sedang
+Press kit, galeri, hasil resmi
+STK-07
+Tim Medis dan Keamanan
+Respons insiden
+Tinggi
+Daftar RS, kontak darurat, venue info
+STK-08
+Administrator TI
+Operasional sistem
+Tinggi
+Monitoring, backup, deploy, security
+4.4 Kebutuhan Bisnis
+ID
+Deskripsi Kebutuhan Bisnis
+Prioritas
+Pemilik
+Tertelusur dari
+BR-01
+Portal harus menampilkan informasi umum PORPROV, maskot, cabor, jadwal, venue, dan rekomendasi tempat.
+Must
+Panitia
+BG-01
+BR-02
+Portal harus menyediakan LiveScore realtime dan klasemen medali.
+Must
+Koordinator Pertandingan
+BG-02
+BR-03
+Sistem harus mendukung input skor oleh koresponden dari setiap venue dan cabor.
+Must
+Koordinator LiveScore
+BG-02
+BR-04
+Setiap venue harus memiliki halaman peta, alamat, rute, cabor, jadwal, bracket, fasilitas, dan kontak.
+Must
+Koordinator Venue
+BG-03
+BR-05
+Sistem harus menyediakan CMS untuk berita, galeri, rekomendasi tempat, dan informasi publik.
+Should
+Humas
+BG-01
+BR-06
+Sistem harus memiliki audit log dan mekanisme koreksi hasil pertandingan.
+Must
+Panitia/KONI
+BG-05
+BR-07
+Portal harus memenuhi performa, keamanan, aksesibilitas, dan SEO.
+Must
+Koordinator TI
+BG-04, BG-05
+BR-08
+Sistem harus dapat menampung data lintas wilayah, termasuk Pantai Cimaja untuk Selancar Ombak.
+Must
+Koordinator Venue
+BG-03
+5. PRD — Product Requirements Document
+5.1 Visi Produk
+Portal PORPROV XV Jawa Barat 2026 adalah platform informasi olahraga realtime yang menggabungkan publikasi resmi, navigasi venue, LiveScore, standings medali, galeri, rekomendasi tempat, dan backend operasional panitia dalam satu ekosistem web dan mobile.
+5.2 Modul Produk
+ID
+Modul
+Deskripsi
+Prioritas
+Tertelusur dari
+PR-01
+Beranda Publik
+Highlight acara, countdown, cabor, jadwal hari ini, LiveScore, medali, galeri.
+Must
+BR-01
+PR-02
+Informasi PORPROV
+Definisi PORPROV, slogan, logo, maskot Toca dan Toci.
+Must
+BR-01
+PR-03
+Cabang Olahraga
+Daftar cabor, nomor pertandingan, jadwal, hasil, venue, bracket.
+Must
+BR-01, BR-02
+PR-04
+Jadwal Pertandingan
+Kalender, filter tanggal, cabor, venue, kontingen, status match.
+Must
+BR-01
+PR-05
+Venue & Maps
+Detail venue, alamat, koordinat, rute, fasilitas, event aktif, rekomendasi sekitar.
+Must
+BR-04, BR-08
+PR-06
+LiveScore
+Skor realtime, match clock, status, koreksi, bukti input, validasi.
+Must
+BR-02, BR-03
+PR-07
+Standings Medali
+Peringkat medali, filter kabupaten/kota, cabor, hari, tren.
+Must
+BR-02
+PR-08
+Bracket & Rundown
+Bagan pertandingan, rundown per venue, heat, pool, knockout, final.
+Must
+BR-04
+PR-09
+Galeri Foto dan Video
+Album event, venue, cabor, maskot, press kit, kurasi media.
+Should
+BR-05
+PR-10
+Rekomendasi Tempat
+Coffee shop, kuliner, penginapan, wisata, mall, rumah sakit.
+Should
+BR-01, BR-04
+PR-11
+Backend Admin Web
+CRUD data master, approval, publikasi, audit, export.
+Must
+BR-05, BR-06
+PR-12
+Mobile Koresponden
+Input skor realtime dari venue, offline queue, foto bukti, geotag.
+Must
+BR-03
+PR-13
+Notifikasi
+Jadwal, perubahan venue, skor final, medali baru.
+Should
+BR-02, BR-03
+PR-14
+Analytics & Monitoring
+Trafik publik, latensi LiveScore, error, performa API.
+Must
+BR-07
+5.3 Venue dan Cabang Olahraga dari Booklet
+Gambar 0. Peta venue pertandingan berdasarkan booklet halaman 8.
+ID Venue
+Venue
+Alamat Ringkas
+Cabang Olahraga
+Tanggal pada Booklet
+Catatan Sistem
+VEN-01
+Lapangan Kukusan
+Jl. Palakali, Kukusan, Beji, Kota Depok
+Gateball
+15 Nov 2026
+Perlu koordinat dan layout lapangan
+VEN-02
+Depok Sport Hall / GOR Kota Depok
+Jl. Boulevard Grand Depok City, Tirtajaya, Sukmajaya
+Basketball, Karate
+30 Okt 2026, 16 Nov 2026
+Nama venue perlu diseragamkan
+VEN-03
+Eden Sports Center
+Jl. Raya Pengasinan, Sawangan
+Hockey Indoor, Floorball
+1 Nov 2026, 13 Nov 2026
+Perlu pembagian court
+VEN-04
+Lapangan Bola PSP
+Jl. Abdul Wahab No.19, Sawangan Lama
+Hockey Outdoor
+8 Nov 2026
+Perlu field map
+VEN-05
+Stadion Merpati
+Jl. Gelatik Raya No.43, Depok Jaya, Pancoran Mas
+Sepak Bola Putri
+9 Nov 2026
+Dipakai bersama Stadion Mahakam
+VEN-06
+Stadion Mahakam
+Jl. Rasamala Raya No.1, Baktijaya, Sukmajaya
+Sepak Bola Putri
+9 Nov 2026
+Dipakai bersama Stadion Merpati
+VEN-07
+Lapangan Tembak Kostrad Cilodong
+KOSTRAD 328, Cilodong
+Menembak Outdoor
+11 Nov 2026
+Perlu aturan keamanan venue
+VEN-08
+Emeralda Golf
+Jl. Emeralda Raya, Tapos
+Golf
+10 Nov 2026
+Perlu format round dan hole
+VEN-09
+GOR Kartika
+Jl. Asrama Cilodong No.80, Cilodong
+Sepak Takraw
+10 Nov 2026
+Perlu pembagian court
+VEN-10
+Pantai Cimaja
+Desa Cimaja, Cikakak, Kabupaten Sukabumi
+Selancar Ombak
+13 Nov 2026
+Venue luar Depok, perlu rute dan informasi cuaca/ombak
+5.4 Persona
+ID
+Persona
+Kebutuhan Utama
+PER-01
+Pengunjung Publik
+Melihat jadwal, venue, rute, LiveScore, medali, galeri
+PER-02
+Atlet/Ofisial
+Jadwal pertandingan, hasil, venue, penginapan, fasilitas medis
+PER-03
+Koresponden LiveScore
+Input skor cepat, aman, dan tetap bekerja saat koneksi tidak stabil
+PER-04
+Verifikator Cabor
+Mengesahkan hasil dan koreksi skor
+PER-05
+Admin Humas
+Publikasi berita, galeri, informasi maskot, rekomendasi tempat
+PER-06
+Admin TI
+Monitoring, keamanan, backup, audit, deployment
+PER-07
+Media
+Akses hasil resmi, foto, video, dan press release
+5.5 User Story dan Acceptance Criteria Gherkin
+ID
+Judul
+Cerita Pengguna
+Acceptance Criteria
+Prioritas
+Tertelusur dari
+US-01
+Melihat LiveScore
+Sebagai pengunjung publik, saya ingin melihat skor pertandingan secara realtime, sehingga saya dapat mengikuti perkembangan pertandingan tanpa refresh halaman.
+Sukses: skor tampil maksimal 2 detik setelah event diterima frontend. Validasi: payload skor tidak valid ditolak. Edge case: koneksi putus harus mengambil snapshot terbaru saat tersambung kembali. Keamanan: pengguna publik tidak dapat mengirim skor.
+Must
+PR-06, BR-02
+US-02
+Input Skor oleh Koresponden
+Sebagai koresponden LiveScore, saya ingin memasukkan skor dari venue melalui aplikasi mobile, sehingga skor dapat dikirim cepat dan dapat diverifikasi.
+Sukses: event skor tersimpan sebagai submitted atau verified sesuai aturan. Validasi: match final tidak boleh menerima skor baru tanpa koreksi resmi. Edge case: offline queue mengirim ulang saat koneksi pulih. Keamanan: perangkat belum terdaftar memerlukan verifikasi.
+Must
+PR-12, BR-03
+US-03
+Melihat Venue dan Rute
+Sebagai penonton, saya ingin melihat venue, peta, rute, jadwal, dan rekomendasi tempat terdekat, sehingga saya dapat merencanakan kunjungan.
+Sukses: halaman venue menampilkan peta, alamat, cabor, jadwal, fasilitas, dan tombol rute. Validasi: koordinat belum diverifikasi diberi peringatan. Edge case: Pantai Cimaja diberi label luar wilayah. Keamanan: API key peta dibatasi domain dan kuota.
+Must
+PR-05, PR-10, BR-04
+US-04
+Melihat Standings Medali
+Sebagai masyarakat, saya ingin melihat peringkat medali per kontingen, sehingga saya mengetahui posisi terbaru secara realtime.
+Sukses: standings diperbarui otomatis dari hasil final. Validasi: aturan tie-break belum disetujui menahan status resmi. Edge case: nilai medali sama memakai aturan tie-break. Keamanan: perubahan medali tanpa role verifikator ditolak.
+Must
+PR-07, BR-02
+US-05
+Mengelola Galeri
+Sebagai admin humas, saya ingin mengunggah dan mengkurasi foto/video, sehingga dokumentasi acara dapat dipublikasikan dengan aman.
+Sukses: media diterbitkan setelah kurasi. Validasi: format dan ukuran tidak sesuai ditolak. Edge case: hak cipta tidak jelas menahan publikasi. Keamanan: upload memakai signed URL dan antivirus scanning.
+Should
+PR-09, BR-05
+6. SRS — Software Requirements Specification
+6.1 Kebutuhan Fungsional
+ID
+Deskripsi Normatif
+Input
+Proses
+Output
+Validasi
+Prioritas
+Tertelusur dari
+Cara Verifikasi
+FR-01
+Sistem HARUS menampilkan informasi umum PORPROV, maskot Toca dan Toci, slogan, logo, dan narasi acara.
+Konten CMS
+Render halaman publik
+Halaman Informasi PORPROV
+Status published
+Must
+US-03, PR-02
+UAT konten
+FR-02
+Sistem HARUS menampilkan daftar cabor dan venue sesuai data resmi.
+Master cabor, venue
+Query dan filter
+Daftar cabor dan venue
+ID unik, status aktif
+Must
+PR-03, PR-05
+Functional test
+FR-03
+Sistem HARUS menampilkan jadwal pertandingan dengan filter tanggal, cabor, venue, kontingen, dan status.
+Jadwal match
+Filtering, sorting
+Kalender pertandingan
+Tanggal valid, timezone Asia/Jakarta
+Must
+PR-04
+Functional test
+FR-04
+Sistem HARUS menyediakan halaman detail venue berisi peta, alamat, rute, cabor, jadwal, fasilitas, dan rekomendasi sekitar.
+Data venue, Maps, rekomendasi
+Geospatial query
+Halaman venue
+Koordinat tervalidasi
+Must
+US-03
+UAT dan geolocation test
+FR-05
+Sistem HARUS menerima input LiveScore dari koresponden yang ditugaskan.
+Score event
+Authorize, validate, persist, stream
+Skor submitted/verified
+Role, match assignment, schema skor
+Must
+US-02
+API test dan mobile UAT
+FR-06
+Sistem HARUS memperbarui LiveScore publik tanpa refresh halaman.
+Score event verified
+Publish event
+Update UI realtime
+Event ID unik, urutan event
+Must
+US-01
+Realtime test
+FR-07
+Sistem HARUS menghitung standings medali otomatis dari hasil final yang disahkan.
+Medal event
+Aggregation
+Tabel standings
+Aturan medali dan tie-break
+Must
+US-04
+Unit test aggregator
+FR-08
+Sistem HARUS menyediakan bracket dan rundown per cabor, venue, dan tanggal.
+Match, pool, round, bracket node
+Bracket generation
+Bagan pertandingan
+Format kompetisi per cabor
+Must
+PR-08
+Functional test
+FR-09
+Sistem HARUS menyediakan galeri foto dan video dengan workflow kurasi.
+File media, metadata
+Upload, moderation, publish
+Album publik
+Format file, ukuran, hak akses
+Should
+PR-09
+Media upload test
+FR-10
+Sistem HARUS mengelola rekomendasi tempat berdasarkan kategori, lokasi, jarak venue, status verifikasi, dan tag.
+Place data
+Geocoding, tagging
+Daftar rekomendasi
+Koordinat, kategori, status
+Should
+PR-10
+UAT rekomendasi
+FR-11
+Sistem HARUS mencatat audit log untuk perubahan data kritis.
+User action
+Audit capture
+Audit trail
+Immutable log
+Must
+BR-06
+Audit test
+FR-12
+Sistem HARUS menyediakan export data hasil pertandingan dan standings.
+Filter data
+Generate export
+CSV/XLSX/PDF
+Hak akses dan watermark
+Should
+PR-11
+Export test
+6.2 Model Skor per Cabang Olahraga
+Cabor
+Model Skor Minimum
+Event Realtime
+Catatan Validasi
+Sepak Bola Putri
+Babak, menit, gol, kartu, penalti, status match
+goal, yellow_card, red_card, substitution, halftime, fulltime
+Koreksi gol harus memiliki alasan
+Basketball
+Quarter, clock, poin, foul, timeout
+two_points, three_points, free_throw, foul, timeout
+Clock dan quarter wajib
+Hockey Indoor/Outdoor
+Period, gol, kartu, penalty corner
+goal, card, penalty_corner
+Indoor dan outdoor dapat memakai konfigurasi field berbeda
+Floorball
+Period, gol, penalti
+goal, penalty, period_end
+Nomor pemain [TBD — perlu keputusan: data roster dan nomor punggung]
+Sepak Takraw
+Set, poin, service, result
+point, set_end, match_end
+Batas poin per set [TBD — perlu keputusan: aturan cabor resmi]
+Gateball
+Game, point, group, result
+score_update, game_end
+Format pertandingan [TBD — perlu keputusan: regulasi kompetisi]
+Golf
+Round, hole, stroke, par, leaderboard
+hole_score, round_end
+Perlu konfigurasi course dan hole
+Karate
+Kata/kumite, kelas, skor juri, penalti
+score_update, penalty, bout_end
+Format kelas dan scoring [TBD — perlu keputusan: aturan pertandingan]
+Menembak Outdoor
+Series, nilai tembakan, total
+shot_score, series_end
+Perlu integrasi alat scoring bila ada
+Selancar Ombak
+Heat, wave score, total best waves
+wave_score, heat_end
+Perlu aturan best waves [TBD — perlu keputusan: aturan juri]
+6.3 Kebutuhan Non-Fungsional
+ID
+Kategori
+Requirement Terukur
+Tertelusur dari
+Cara Verifikasi
+NFR-01
+Kinerja
+Halaman publik utama HARUS mencapai LCP ≤ 2,5 detik, INP ≤ 200 ms, dan CLS ≤ 0,1 pada koneksi 10 Mbps untuk p75 pengguna.
+BG-04
+Lighthouse dan RUM
+NFR-02
+Realtime
+Event skor verified HARUS tampil di browser publik p95 ≤ 2 detik dari broker event.
+BG-02
+Load test WebSocket
+NFR-03
+Skalabilitas
+Sistem HARUS mendukung minimal 10.000 koneksi realtime bersamaan saat pertandingan populer.
+BG-02
+Stress test
+NFR-04
+Ketersediaan
+Sistem HARUS memiliki availability minimal 99,9% selama periode PORPROV.
+BG-04
+Monitoring SLA
+NFR-05
+Keamanan
+Sistem HARUS menerapkan MFA untuk admin, RBAC, rate limiting, CSRF protection, validasi input, enkripsi TLS, dan audit log.
+BG-05
+Security test
+NFR-06
+Privasi
+Sistem HARUS mengklasifikasikan data pribadi atlet, ofisial, dan koresponden sesuai prinsip PDP.
+BG-05
+Privacy review
+NFR-07
+Aksesibilitas
+Antarmuka publik HARUS menargetkan WCAG 2.2 Level AA.
+BG-04
+Accessibility audit
+NFR-08
+Observability
+API, WebSocket, database, dan job queue HARUS memiliki metrics, log, trace, dan alert.
+BG-05
+Observability test
+NFR-09
+Recovery
+RPO maksimal 15 menit dan RTO maksimal 1 jam untuk database utama.
+BG-05
+Backup restore drill
+NFR-10
+SEO
+Halaman cabor, venue, jadwal, berita, dan galeri HARUS memiliki metadata, canonical, sitemap, robots, dan structured data.
+BG-04
+SEO audit
+6.4 Kebutuhan Data
+ID
+Entitas
+Klasifikasi
+Retensi
+Validasi
+Tertelusur dari
+DR-01
+Sport
+Publik
+Permanen arsip
+Nama unik, ikon, status
+FR-02
+DR-02
+Venue
+Publik
+Permanen arsip
+Alamat, koordinat, status verifikasi
+FR-04
+DR-03
+Match
+Publik
+Permanen arsip
+Cabor, peserta, jadwal, venue
+FR-03
+DR-04
+ScoreEvent
+Data operasional
+Permanen arsip hasil
+Event ID, timestamp, user, match, payload
+FR-05
+DR-05
+MedalStanding
+Publik
+Permanen arsip
+Kontingen, emas, perak, perunggu
+FR-07
+DR-06
+User
+Data pribadi
+Sesuai kebijakan panitia
+Email/ponsel unik, role, status
+FR-05, FR-11
+DR-07
+MediaAsset
+Publik/terbatas
+Sesuai hak cipta
+File type, ukuran, lisensi, persetujuan
+FR-09
+DR-08
+PlaceRecommendation
+Publik
+Selama relevan
+Kategori, koordinat, status verifikasi
+FR-10
+DR-09
+AuditLog
+Rahasia operasional
+Minimal 5 tahun atau sesuai kebijakan
+Immutable, actor, action, timestamp
+FR-11
+7. SDD — Software Design Document
+7.1 Arsitektur Konteks
+Gambar 1. Arsitektur konteks portal.
+7.2 Komponen
+ID
+Komponen
+Tanggung Jawab
+Tertelusur dari
+CMP-01
+Public Web Portal
+Beranda, informasi, cabor, venue, jadwal, LiveScore, standings, galeri, rekomendasi
+FR-01 sampai FR-10
+CMP-02
+Admin Dashboard
+CRUD data master, approval, publikasi, koreksi, audit
+FR-02, FR-03, FR-08, FR-11
+CMP-03
+Mobile Correspondent App
+Input skor, offline queue, geotag, foto bukti, notifikasi tugas
+FR-05
+CMP-04
+API Gateway
+REST API, auth, validation, rate limit, OpenAPI
+FR-01 sampai FR-12
+CMP-05
+LiveScore Service
+Event validation, event sourcing, score projection, correction flow
+FR-05, FR-06
+CMP-06
+Standings Service
+Perhitungan medali dan leaderboard cabor
+FR-07
+CMP-07
+Venue & Maps Service
+Venue, route, geospatial query, rekomendasi sekitar
+FR-04, FR-10
+CMP-08
+Media Service
+Upload, transcoding, thumbnail, moderation
+FR-09
+CMP-09
+Notification Service
+Push notification, email, in-app notification
+PR-13
+CMP-10
+Audit & Compliance Service
+Audit log, export, keamanan, pelaporan
+FR-11, FR-12
+7.3 Keputusan Arsitektur
+ID
+Keputusan
+Alternatif
+Konsekuensi
+Tertelusur dari
+ADR-01
+Memakai Next.js untuk portal publik.
+SPA React biasa, Laravel Blade
+SEO dan performa publik lebih baik, tetapi perlu tim memahami SSR/ISR.
+NFR-01, NFR-10
+ADR-02
+Memakai NestJS untuk backend API dan realtime gateway.
+Express manual, Laravel, Go Fiber
+Struktur modular kuat, cocok TypeScript end-to-end.
+FR-05, FR-06
+ADR-03
+Memakai PostgreSQL + PostGIS sebagai DBMS utama.
+MySQL, MongoDB
+Relasional kuat dan mendukung geospasial; perlu tuning indeks.
+DR-01 sampai DR-09
+ADR-04
+Memakai Redis Streams untuk event LiveScore.
+Redis Pub/Sub murni, polling database
+Event lebih tahan gangguan dibanding Pub/Sub murni; perlu consumer group management.
+FR-05, FR-06
+ADR-05
+Memakai Flutter untuk aplikasi koresponden.
+Native Android, React Native
+Satu codebase multi-platform; perlu disiplin manajemen state offline.
+PR-12
+ADR-06
+Memakai object storage S3-compatible.
+Simpan file di server lokal
+Lebih scalable untuk galeri; perlu lifecycle policy dan CDN.
+FR-09
+ADR-07
+Memakai Kubernetes untuk produksi.
+VPS tunggal, Docker Compose
+Mendukung autoscaling dan HA; perlu kemampuan DevOps.
+NFR-03, NFR-04
+7.4 Rancangan Realtime LiveScore
+Gambar 2. Alur realtime LiveScore.
+7.5 Status Event Skor
+Status
+Makna
+Siapa yang Dapat Mengubah
+draft
+Input lokal belum terkirim
+Koresponden
+submitted
+Event sudah masuk server
+Koresponden, sistem
+verified
+Event sudah lolos validasi/verifikasi
+Verifikator cabor
+official
+Hasil disahkan sebagai hasil resmi
+Koordinator pertandingan
+corrected
+Ada koreksi resmi dengan alasan
+Verifikator dan koordinator
+rejected
+Event ditolak karena salah atau tidak valid
+Verifikator
+7.6 API Design Ringkas
+ID
+Metode
+Path
+Deskripsi
+Otorisasi
+Tertelusur dari
+API-01
+GET
+/api/public/sports
+Daftar cabang olahraga
+Publik
+FR-02
+API-02
+GET
+/api/public/schedules
+Jadwal dengan filter tanggal, cabor, venue
+Publik
+FR-03
+API-03
+GET
+/api/public/venues/{venueId}
+Detail venue, peta, cabor, jadwal
+Publik
+FR-04
+API-04
+GET
+/api/public/live-scores
+Snapshot LiveScore aktif
+Publik
+FR-06
+API-05
+WS
+/ws/live-score
+Subscribe update skor realtime
+Publik
+FR-06
+API-06
+POST
+/api/correspondent/matches/{matchId}/events
+Kirim event skor
+Koresponden
+FR-05
+API-07
+POST
+/api/verification/score-events/{eventId}/verify
+Verifikasi event skor
+Verifikator
+FR-05
+API-08
+GET
+/api/public/medal-standings
+Klasemen medali
+Publik
+FR-07
+API-09
+POST
+/api/admin/media/upload-url
+Membuat signed upload URL
+Admin/Humas
+FR-09
+API-10
+GET
+/api/public/place-recommendations
+Rekomendasi tempat berdasarkan kategori dan venue
+Publik
+FR-10
+API-11
+GET
+/api/admin/audit-logs
+Audit log aktivitas
+Admin Auditor
+FR-11
+API-12
+POST
+/api/admin/exports/results
+Export hasil pertandingan
+Admin
+FR-12
+7.7 Entitas Data Utama
+ID
+Entitas
+Atribut Kunci
+ENT-01
+Event
+id, name, year, hostCity, startDate, endDate, status
+ENT-02
+Mascot
+id, name, description, colorMeaning, imageAssetId
+ENT-03
+Sport
+id, name, type, scoringModel, iconAssetId
+ENT-04
+Venue
+id, name, address, latitude, longitude, city, facilities, status
+ENT-05
+Competition
+id, sportId, category, gender, format, medalEligible
+ENT-06
+Contingent
+id, regencyCityName, logo, status
+ENT-07
+Athlete
+id, contingentId, name, gender, sportId, category
+ENT-08
+Match
+id, competitionId, venueId, startTime, status, round, bracketNodeId
+ENT-09
+MatchParticipant
+id, matchId, participantType, athleteId, teamId, contingentId
+ENT-10
+ScoreEvent
+id, matchId, eventType, payload, status, createdBy, verifiedBy, timestamp
+ENT-11
+ScoreProjection
+id, matchId, currentScore, clock, status, version
+ENT-12
+Medal
+id, competitionId, contingentId, medalType, officialAt
+ENT-13
+BracketNode
+id, competitionId, parentNodeId, round, matchId, order
+ENT-14
+MediaAsset
+id, type, url, title, license, status
+ENT-15
+PlaceRecommendation
+id, category, name, address, latitude, longitude, tags, verificationStatus
+ENT-16
+User
+id, name, email, phone, role, assignedVenueId, assignedSportId
+ENT-17
+AuditLog
+id, actorId, action, entityType, entityId, before, after, timestamp
+7.8 Rancangan Keamanan
+ID
+Kontrol
+Desain
+Tertelusur dari
+SEC-01
+Autentikasi
+OIDC/Keycloak, MFA untuk admin dan verifikator, device binding untuk koresponden
+NFR-05
+SEC-02
+Otorisasi
+RBAC berbasis role: Super Admin, Admin Humas, Admin Cabor, Verifikator, Koresponden, Auditor
+NFR-05
+SEC-03
+Keamanan API
+Rate limit, schema validation, CSRF protection untuk web admin, CORS ketat, signed URL upload
+NFR-05
+SEC-04
+Enkripsi
+TLS 1.2+, enkripsi rahasia, hash password menggunakan standar modern
+NFR-05
+SEC-05
+Audit
+Audit log immutable untuk skor, hasil, medali, jadwal, venue, user, publikasi
+NFR-08
+SEC-06
+Privasi
+Minimasi data pribadi, consent publikasi atlet, retensi, hak akses terbatas
+NFR-06
+SEC-07
+Proteksi Media
+Moderasi file, antivirus scanning, pembatasan ukuran, metadata sanitization
+FR-09
+SEC-08
+Operasional
+Backup terenkripsi, drill recovery, vulnerability scanning, SAST, DAST, dependency scan
+NFR-09
+8. Rekomendasi Teknologi Stack
+Lapisan
+Rekomendasi Utama
+Alasan
+Frontend Web Publik
+Next.js + React + TypeScript
+Cocok untuk SEO, SSR/SSG, halaman jadwal, venue, galeri, berita, dan metadata.
+UI Styling
+Tailwind CSS + Design System PORPROV
+Mempercepat UI konsisten, responsif, dan mudah dipelihara.
+Mobile Koresponden
+Flutter
+Satu codebase untuk Android, iOS, web, dan desktop; cocok untuk aplikasi koresponden lapangan.
+Backend API
+NestJS + TypeScript
+Modular, enterprise-friendly, dan mendukung WebSocket gateway.
+Realtime
+Socket.IO/WebSocket + Redis Streams
+Komunikasi dua arah low-latency dan event log untuk score event.
+DBMS Utama
+PostgreSQL + PostGIS
+Relasional kuat dan mendukung data geospasial venue/rekomendasi.
+Object Storage
+S3-compatible object storage, contoh MinIO atau layanan cloud S3
+Menyimpan foto, video, dokumen, ikon cabor, dan bukti score sheet.
+Maps
+Google Maps Platform untuk rute publik; MapLibre/OSM untuk opsi kendali biaya
+Mendukung peta interaktif, marker venue, rute, dan rekomendasi sekitar.
+Infrastruktur
+Docker + Kubernetes + CDN + WAF
+Mendukung deployment, scaling, proteksi trafik, dan distribusi konten cepat.
+API Standard
+REST + OpenAPI + WebSocket event contract
+Memudahkan integrasi, pengujian, dokumentasi, dan pengadaan.
+Monitoring
+Prometheus + Grafana + Loki/ELK
+Metrics, log, alert, dan observability untuk operasi event.
+8.1 Prinsip UI/UX
+Prinsip
+Penerapan pada Portal
+Mobile-first
+Prioritaskan tampilan ponsel untuk jadwal, LiveScore, venue, dan rute.
+Realtime clarity
+Tampilkan indikator live, waktu update terakhir, status verified/official, dan fallback snapshot.
+Visual identity
+Gunakan warna PORPROV, maskot Toca dan Toci, ikon cabang olahraga, dan elemen lokal Kota Depok.
+Aksesibilitas
+Kontras cukup, navigasi keyboard, teks alternatif gambar, label form, dan ukuran target sentuh memadai.
+Konten terstruktur
+Halaman cabor, venue, jadwal, dan berita memiliki URL stabil, metadata, breadcrumb, dan schema data.
+Mode event
+Sediakan mode layar besar untuk venue: jadwal hari ini, match aktif, hasil final, dan medali terbaru.
+9. Rekomendasi Implementasi Bertahap
+Fase
+Target
+Modul
+Sprint 0
+Validasi data dan desain
+Data cabor, venue, jadwal, kontingen, scoring model, role matrix
+Sprint 1
+Portal publik dasar
+Beranda, informasi PORPROV, maskot, cabor, jadwal, venue
+Sprint 2
+CMS dan admin
+CRUD konten, jadwal, venue, rekomendasi tempat, galeri
+Sprint 3
+LiveScore MVP
+Mobile koresponden, input skor, WebSocket, snapshot skor
+Sprint 4
+Standings dan bracket
+Medali, bracket, rundown, halaman cabor
+Sprint 5
+SEO, keamanan, dan load test
+CDN, cache, WAF, audit, stress test, accessibility test
+Sprint 6
+Simulasi event
+Simulasi per venue, training koresponden, SOP koreksi hasil
+9.1 Fitur Lanjutan yang Sangat Direkomendasikan
+Fitur
+Manfaat
+Personal schedule bookmark
+Pengunjung dapat menyimpan pertandingan favorit.
+Push notification
+Notifikasi skor final, perubahan jadwal, dan medali baru.
+QR code venue
+Akses cepat ke halaman venue dan rundown.
+Mode venue display
+Tampilan layar besar di venue untuk jadwal dan skor.
+Media center
+Unduhan press kit, foto resmi, dan hasil pertandingan.
+Heatmap pengunjung digital
+Analitik trafik halaman venue dan cabang olahraga.
+Multi-language
+Bahasa Indonesia dan Inggris untuk tamu luar daerah.
+Open data publik terbatas
+Endpoint publik hasil resmi dengan rate limit.
+10. Rekomendasi Tempat dan Data Tambahan
+Booklet sudah memuat daftar besar tempat. Sistem sebaiknya tidak hanya menyalin daftar, tetapi membuat rekomendasi berbasis konteks venue, jarak, kebutuhan pengunjung, jam buka, kapasitas, dan status verifikasi panitia.
+Kategori
+Desain Rekomendasi Terbaik
+Coffee Shop
+Filter: dekat venue, cocok meeting kontingen, buka malam, parkir, Wi-Fi, ramah keluarga.
+Tempat Makan
+Filter: kuliner lokal, kapasitas rombongan, halal, dekat venue, kisaran harga.
+Tempat Menginap
+Filter: dekat venue, dekat transportasi, family room, bus parking, official partner.
+Wisata
+Filter: keluarga, edukasi, religi, air, situ, mall, waktu kunjungan singkat.
+Rumah Sakit
+Prioritaskan jarak ke venue, IGD 24 jam, nomor kontak, rute tercepat, PIC medis.
+Mall
+Filter: pusat belanja dekat venue, tempat makan, akses transportasi, toilet, ATM.
+Data tambahan wajib untuk setiap tempat: koordinat, alamat terverifikasi, tautan Maps final, jam buka, nomor telepon, foto, website, kategori harga, rating, jarak dari venue, estimasi waktu tempuh, fasilitas parkir, aksesibilitas, dan status verifikasi panitia.
+11. Matriks Ketertelusuran
+BG
+BR
+PR/EP
+US/KPI
+FR/NFR/IF/BRule/DR
+CMP/ADR/API/ENT/SEC/DEP
+Status
+Catatan
+BG-01
+BR-01
+PR-01, PR-02, PR-03
+KPI-01, US-03
+FR-01, FR-02, DR-01, DR-02
+CMP-01, API-01, ENT-01, ENT-02, ENT-03
+Draft
+Perlu aset resmi
+BG-02
+BR-02
+PR-06, PR-07
+US-01, US-04
+FR-06, FR-07, NFR-02
+CMP-05, CMP-06, API-05, API-08, ADR-04
+Draft
+Perlu aturan medali resmi
+BG-02
+BR-03
+PR-12
+US-02
+FR-05, DR-04, NFR-02
+CMP-03, API-06, SEC-01, SEC-02
+Draft
+Perlu penugasan koresponden
+BG-03
+BR-04
+PR-05, PR-10
+US-03
+FR-04, FR-10, DR-02, DR-08
+CMP-07, API-03, API-10, ENT-04, ENT-15
+Draft
+Koordinat perlu verifikasi
+BG-05
+BR-06
+PR-11
+KPI-05
+FR-11, DR-09, NFR-05
+CMP-10, API-11, SEC-05
+Draft
+Audit log wajib immutable
+BG-04
+BR-07
+PR-14
+KPI-04
+NFR-01, NFR-03, NFR-04, NFR-10
+ADR-01, ADR-07, DEP-01
+Draft
+Perlu load test
+BG-03
+BR-08
+PR-05
+US-03
+FR-04, DR-02
+CMP-07, ENT-04
+Draft
+Pantai Cimaja perlu label luar wilayah
+12. Status Kelengkapan
+Area
+Status
+Catatan
+Bagian Umum 0.1–0.7
+Lengkap awal
+Perlu nama pemilik dokumen dan pejabat persetujuan
+Struktur Dokumen
+Lengkap awal
+BRD, PRD, SRS, SDD tersedia sebagai blueprint
+Traceability
+Parsial
+Sudah ada RTM utama; backlog detail per nomor pertandingan perlu lokakarya
+Requirement Quality
+Lulus awal
+Requirement sudah verifiable, tetapi scoring rules per cabor masih TBD
+Regulasi & Standar
+Perlu Verifikasi
+SPBE dan PDP sudah dirujuk; klausul internal panitia perlu validasi
+Kesiapan Implementasi
+Siap untuk Sprint 0
+Perlu data resmi, tim teknis, dan SOP operasional
+13. Risiko dan Catatan Verifikasi
+ID
+Risiko
+Dampak
+Mitigasi
+RSK-01
+Jadwal pada booklet berbeda dengan periode utama 7–20 November 2026.
+Kebingungan publik
+Tetapkan status pra-event atau jadwal resmi.
+RSK-02
+Bracket dan rundown belum tersedia.
+Modul pertandingan tidak bisa final
+Lokakarya format kompetisi per cabor.
+RSK-03
+Koresponden kurang terlatih.
+Skor terlambat atau salah
+Training, simulasi venue, SOP koreksi.
+RSK-04
+Koneksi venue tidak stabil.
+LiveScore terputus
+Offline queue, retry, multi-provider internet, operator cadangan.
+RSK-05
+Lonjakan trafik saat final.
+Portal lambat
+CDN, cache, autoscaling, load test.
+RSK-06
+Kesalahan data medali.
+Menurunkan kepercayaan publik
+Status verified dan official, audit log, approval berlapis.
+RSK-07
+Data pribadi tidak dikelola sesuai PDP.
+Risiko hukum dan reputasi
+Privacy-by-design, minimasi data, role-based access.
+RSK-08
+API Maps boros biaya atau melanggar kebijakan tile.
+Biaya tinggi atau peta diblokir
+Kuota, caching, pemilihan provider resmi, own tile provider bila memakai OSM.
+14. Langkah Berikutnya
+1. Tetapkan pemilik produk, koordinator data, koordinator LiveScore, dan koordinator teknis.
+2. Finalisasi data resmi: cabang olahraga, nomor pertandingan, venue, koordinat, jadwal, kontingen, atlet, bracket, scoring rules, dan SOP hasil resmi.
+3. Bangun MVP dengan prioritas: portal publik, CMS, venue maps, jadwal, LiveScore, standings medali, dan mobile koresponden.
+4. Lakukan simulasi minimal satu kali untuk setiap tipe cabang olahraga: skor cepat, skor set, bracket, heat, round, leaderboard, dan hasil final.
+5. Jalankan security test, load test, SEO audit, accessibility audit, backup restore drill, dan gladi bersih publikasi data.
+15. Lampiran Daftar Rekomendasi Tempat dari Booklet
+No
+Kategori
+Nama Tempat
+Data yang Perlu Dilengkapi
+1
+Coffee Shop
+Tamelo Rooftop Cafe
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+2
+Coffee Shop
+JPW Cafe
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+3
+Coffee Shop
+Kopi Nako
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+4
+Coffee Shop
+Coffee Toffee
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+5
+Coffee Shop
+D'Clan
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+6
+Coffee Shop
+Kopitagram
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+7
+Coffee Shop
+Sedjuk Bakmi & Kopi
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+8
+Coffee Shop
+Dadi's Cafe
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+9
+Coffee Shop
+Artivator
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+10
+Coffee Shop
+Louis Cafe
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+11
+Coffee Shop
+Starbucks
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+12
+Coffee Shop
+D’Juntos Cafe
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+13
+Coffee Shop
+Kopi Bajawa Flores NTT Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+14
+Coffee Shop
+Tomoro Coffee
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+15
+Coffee Shop
+Ol'Pops Coffee
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+16
+Coffee Shop
+A Lot of Coffe Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+17
+Coffee Shop
+Coffith Coffee & Kitchen
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+18
+Coffee Shop
+Titik Rindu Coffee & Venue
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+19
+Coffee Shop
+Kopi Konnichiwa Siliwangi Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+20
+Coffee Shop
+Bemo Cafe
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+21
+Coffee Shop
+Unclehouse.Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+22
+Coffee Shop
+Temu Kamu Depok Coffee & Eatery
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+23
+Coffee Shop
+Nationalism Coffee Brewers (Kedai Kopi Depok)
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+24
+Coffee Shop
+Saturday Coffee
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+25
+Coffee Shop
+Roemah - Coffee, Eatery and Hub
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+26
+Coffee Shop
+Savio Coffee and Eatery
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+27
+Coffee Shop
+Jacob Koffie Huis
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+28
+Coffee Shop
+The Gade Coffee & Gold Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+29
+Coffee Shop
+Hype Cafe, Billiard & Live Music
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+30
+Coffee Shop
+Emily Listening Space
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+31
+Coffee Shop
+Cornelis Koffie
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+32
+Coffee Shop
+Naqy's Cafe & Bakery
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+33
+Coffee Shop
+Meet Up Cafe Sawangan
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+34
+Coffee Shop
+Ruangnamu
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+35
+Coffee Shop
+Oi Coffee & Eatery
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+36
+Coffee Shop
+Walking Drums Margonda Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+37
+Coffee Shop
+Kopi Djoe Billiard & Meeting Margonda
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+38
+Coffee Shop
+Green Coffee House
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+39
+Coffee Shop
+Ouwie Coffee and Eatery
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+40
+Coffee Shop
+Sajun Cafe Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+41
+Coffee Shop
+Kopi Oey Margonda
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+42
+Coffee Shop
+Signal Coffee
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+43
+Coffee Shop
+JPG Cafe & Eatery
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+44
+Coffee Shop
+The Coffee Bean & Tea Leaf
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+45
+Coffee Shop
+Serab Coffee Brewery
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+46
+Coffee Shop
+D'Jill Resto & Cafe
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+47
+Coffee Shop
+Warung Kopi Tepi Sungai
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+48
+Coffee Shop
+Kalimulya Jati Cafe & Resto
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+49
+Coffee Shop
+Semusim Coffee
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+50
+Coffee Shop
+Dream Coffee and Resto by Lnarayen
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+51
+Coffee Shop
+Mangata Coffee & Eatery
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+52
+Coffee Shop
+Dinamis Cafe & Lounge
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+53
+Coffee Shop
+Privilege Coffee Aceh & Cuisine
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+54
+Coffee Shop
+Siliwangi Coffee Space
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+55
+Coffee Shop
+Boothcin Coffee
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+56
+Coffee Shop
+Kopisatubang Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+57
+Coffee Shop
+Sapulidi Coffee
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+58
+Coffee Shop
+Interaksi Margonda
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+59
+Coffee Shop
+3Sons Coffee
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+60
+Coffee Shop
+Coffee Lovers Cafe Jatijajar
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+61
+Coffee Shop
+Kongdjie Coffee
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+62
+Coffee Shop
+Lekkers Cafe
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+1
+Wisata Kuliner
+Bakoel Samara Resto
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+2
+Wisata Kuliner
+Saung Gandasari
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+3
+Wisata Kuliner
+RM. Kampung Kecil
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+4
+Wisata Kuliner
+Saung Telaga
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+5
+Wisata Kuliner
+Pecak Sawangan
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+6
+Wisata Kuliner
+Pecak Bu Lilis
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+7
+Wisata Kuliner
+Gabus Pucung Tapos
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+8
+Wisata Kuliner
+Betawi Ngoempoel
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+9
+Wisata Kuliner
+Pecak Hj. Sadiah
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+10
+Wisata Kuliner
+Sate Pribumi
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+1
+Tempat Menginap
+Pondok Zidane
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+2
+Tempat Menginap
+Hotel Nonies Huis
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+3
+Tempat Menginap
+Apartemen Royal Garden
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+4
+Tempat Menginap
+Newly Hotel Indonesia
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+5
+Tempat Menginap
+Daima Suites Margonda
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+6
+Tempat Menginap
+Taman Herbal Insani
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+7
+Tempat Menginap
+Hotel Santika
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+8
+Tempat Menginap
+Hotel Savero Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+9
+Tempat Menginap
+Fave Hotel
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+10
+Tempat Menginap
+Margo Hotel
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+11
+Tempat Menginap
+Serua Green Village
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+12
+Tempat Menginap
+PT. Graha Wisata Pramuka
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+13
+Tempat Menginap
+Hotel Uli Arta
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+14
+Tempat Menginap
+Hotel Bumi Wiyata
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+15
+Tempat Menginap
+Taman Rekreasi Pramuka
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+16
+Tempat Menginap
+Pusdiklat Graha Insan Cita
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+17
+Tempat Menginap
+PT. Graha Asih Lestari (Kinasih Resort Depok)
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+18
+Tempat Menginap
+Hotel Mutiara
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+19
+Tempat Menginap
+PT. Pakuan
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+20
+Tempat Menginap
+Hotel Sifaana
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+21
+Tempat Menginap
+Wisma Semarang
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+22
+Tempat Menginap
+Wisma Hijau
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+23
+Tempat Menginap
+Sasono Mulyo
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+24
+Tempat Menginap
+Wisma Anggrek
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+25
+Tempat Menginap
+Wisma Anton Soedjarwo
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+26
+Tempat Menginap
+Wisma Kost Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+27
+Tempat Menginap
+Cinere Inn & Residence
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+28
+Tempat Menginap
+Casa Uno
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+29
+Tempat Menginap
+Denz Syariah Depok / Urban 24 Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+30
+Tempat Menginap
+Graha HSC
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+31
+Tempat Menginap
+RedLiving Apartemen Margonda Residence 5 - Ens Room with Netflix & Breakfast
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+32
+Tempat Menginap
+Apartemen Margonda Residence 2 by Andrew
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+33
+Tempat Menginap
+RedLiving Apartemen Margonda Residence 2 - Pridama Room
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+34
+Tempat Menginap
+Sartika Apartemen Harian Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+35
+Tempat Menginap
+Apartemen Margonda Residence 2 by Patrick
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+36
+Tempat Menginap
+NRR Margonda Residence 2 & 5
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+37
+Tempat Menginap
+Alin Apartemen
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+38
+Tempat Menginap
+Grand Taman Melati 2
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+39
+Tempat Menginap
+Marespremium
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+40
+Tempat Menginap
+RedLiving Apartemen Cinere Resort - Gold Room
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+41
+Tempat Menginap
+Cinere Resort Apartement
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+42
+Tempat Menginap
+Wendy Syariah Mansion
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+1
+Wisata Buatan
+D'Kandang Amazing
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+2
+Wisata Buatan
+Godong Ijo
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+3
+Wisata Buatan
+Taman Herbal Insani
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+4
+Wisata Buatan
+Telaga Arwana Cibubur
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+5
+Wisata Buatan
+Taman Rekreasi Wiladatika
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+6
+Wisata Buatan
+Rumah Keramik F. Widayanto
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+7
+Wisata Buatan
+Kolam Renang Pasir Putih
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+8
+Wisata Buatan
+Kolam Renang Putri Duyung
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+9
+Wisata Buatan
+Green Lake View Waterpark
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+10
+Wisata Buatan
+Taman Rekreasi & Edukasi Pondok Zidane
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+11
+Wisata Buatan
+Waterpark Ceria
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+12
+Wisata Buatan
+Kolam Renang Paragon
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+13
+Wisata Buatan
+Tropicana Waterpark
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+14
+Wisata Buatan
+Cimanggis Golf Avenue
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+15
+Wisata Buatan
+Masjid At Thohir
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+16
+Wisata Buatan
+Masjid Kubah Emas Dian Al Mahri
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+17
+Wisata Buatan
+Taman Doa Rumah Pengorbanan
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+1
+Wisata Situ/Danau Kecil
+Situ Jatijajar
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+2
+Wisata Situ/Danau Kecil
+Situ Cilodong
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+3
+Wisata Situ/Danau Kecil
+Situ Sidamukti
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+4
+Wisata Situ/Danau Kecil
+Situ Pedongkelan
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+5
+Wisata Situ/Danau Kecil
+Situ Pulo Asih
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+6
+Wisata Situ/Danau Kecil
+Situ Sawangan
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+7
+Wisata Situ/Danau Kecil
+Situ Pengasinan
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+8
+Wisata Situ/Danau Kecil
+Situ Citayam
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+9
+Wisata Situ/Danau Kecil
+Situ Bojongsari
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+10
+Wisata Situ/Danau Kecil
+Situ Rawa Besar
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+11
+Wisata Situ/Danau Kecil
+Situ Rawa Kalong
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+12
+Wisata Situ/Danau Kecil
+Ekowisata Ciliwung
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+1
+Pusat Perbelanjaan
+ITC Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+2
+Pusat Perbelanjaan
+Depok Mall
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+3
+Pusat Perbelanjaan
+Depok Town Square
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+4
+Pusat Perbelanjaan
+Margo City
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+5
+Pusat Perbelanjaan
+Pesona Square
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+6
+Pusat Perbelanjaan
+City Plaza
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+7
+Pusat Perbelanjaan
+Depok Town Center
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+8
+Pusat Perbelanjaan
+Cinere Mall
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+9
+Pusat Perbelanjaan
+Cinere Bellevue
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+10
+Pusat Perbelanjaan
+Trans Studio Mall Cibubur
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+11
+Pusat Perbelanjaan
+The Park Sawangan
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+1
+Rumah Sakit
+Rumah Sakit Brawijaya
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+2
+Rumah Sakit
+Mitra Keluarga Cibubur
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+3
+Rumah Sakit
+Rumah Sakit Universitas Indonesia
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+4
+Rumah Sakit
+Rumah Sakit Bunda Margonda
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+5
+Rumah Sakit
+RSUD Khidmat Sehat Afiat (KISA)
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+6
+Rumah Sakit
+RSUD Anugerah Sehat Afiat
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+7
+Rumah Sakit
+Eka Hospital Kota Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+8
+Rumah Sakit
+Mitra Keluarga Kota Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+9
+Rumah Sakit
+Hermina Kota Depok
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+10
+Rumah Sakit
+Rumah Sakit Bhakti Yudha
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]
+11
+Rumah Sakit
+Rumah Sakit Primaya
+[TBD — perlu verifikasi: koordinat, jam buka, kontak, rating, dan jarak dari venue]

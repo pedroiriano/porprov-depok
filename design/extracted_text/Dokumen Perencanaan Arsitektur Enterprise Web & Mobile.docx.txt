@@ -1,0 +1,266 @@
+Dokumen Perencanaan Arsitektur Enterprise Web & Mobile
+Target: Kecepatan, Keandalan, Keamanan, UI/UX, SEO, Realtime, dan Skalabilitas Tertinggi
+1. Ringkasan Keputusan Teknologi
+Keputusan Final Stack
+Area
+Stack Terpilih
+Alasan Utama
+Arsitektur
+Microservices + Event-Driven Architecture
+Skalabel, modular, mudah dipisah per domain bisnis
+Frontend Pengguna Umum Web
+Next.js + React + TypeScript + PWA
+SEO terbaik, SSR/SSG, cocok untuk realtime, kuat untuk enterprise
+Frontend Admin Web
+React + TypeScript + Tailwind + Dashboard Layout
+Cepat, ringan, fleksibel, ideal untuk dashboard realtime
+Frontend Pengguna Umum Mobile
+React Native + TypeScript
+Native Android/iOS, satu ekosistem dengan React web
+Frontend Admin Mobile
+React Native + TypeScript
+Reuse logic, cocok untuk approval, monitoring, notifikasi, dan dashboard ringan
+Chrome App
+PWA Installable Web App, bukan Chrome Apps klasik
+Chrome Apps lama sedang dihentikan; jalur modern adalah web app/PWA
+Backend
+Golang
+Cepat, ringan, kuat untuk microservices dan concurrency
+Database
+PostgreSQL
+Relasional, ACID, stabil, cocok untuk data enterprise
+Cache
+Redis
+Cache, session, rate limit, queue ringan, realtime presence
+Event Broker
+NATS JetStream
+Lebih tepat untuk event microservices yang butuh durable message
+Auth
+Keycloak + OpenID Connect/OAuth2 + JWT
+SSO enterprise, RBAC, OAuth2, OIDC, token-based access
+Deployment
+Docker + Nginx + SSL, naik ke Kubernetes jika skala enterprise besar
+Cocok untuk staging-production, reverse proxy, containerized deployment
+2. Catatan Penting tentang “Chrome App”
+Untuk kebutuhan “Chrome App”, pilihan enterprise yang benar pada 2026 adalah PWA installable, bukan Chrome Apps klasik. Google menyatakan Chrome Apps mulai dihentikan bertahap sejak Juli 2025 dan mencapai end-of-life pada Oktober 2028; jalur migrasi yang direkomendasikan adalah web applications atau Chrome Extensions, dan web applications adalah jalur utama untuk mayoritas kasus.
+Maka keputusan arsitektur:
+Android     : React Native AppiOS         : React Native AppChrome App  : Next.js PWA yang bisa di-install dari ChromeWeb Desktop : Next.js Responsive Web AppAdmin Web   : React Dashboard
+3. Mengapa Next.js Dipilih untuk Frontend Pengguna Umum Web?
+Next.js dipilih dibanding Nuxt/Vue untuk aplikasi pengguna umum karena kebutuhan Anda menekankan SEO, performa, realtime, enterprise maintainability, dan mobile/PWA. Next.js App Router mendukung fitur React modern seperti Server Components, Suspense, dan Server Functions, sedangkan Metadata API dapat digunakan untuk SEO dan web shareability.
+Kriteria Pemilihan
+Kriteria
+Next.js + React
+Nuxt + Vue
+Keputusan
+SEO
+10
+9
+Next.js
+Enterprise ecosystem
+10
+8
+Next.js
+Realtime web UI
+9
+9
+Seimbang
+PWA
+9
+9
+Seimbang
+Integrasi mobile native
+10
+7
+Next.js karena bisa satu ekosistem dengan React Native
+Talent pool
+10
+8
+Next.js
+Long-term scalability
+10
+9
+Next.js
+Kesimpulan
+Frontend Pengguna Umum Web:Next.js + React + TypeScript + PWA
+Realtime bukan ditentukan oleh Next.js atau Nuxt saja, tetapi oleh arsitektur koneksi: WebSocket, Server-Sent Events, push notification, event broker, cache, dan API gateway. Next.js dipilih karena lebih unggul untuk gabungan SEO + enterprise + mobile ecosystem.
+4. Mengapa React Dipilih untuk Frontend Admin Web?
+Untuk admin dashboard, SEO tidak terlalu penting. Yang paling penting adalah:
+Realtime dataData table besarFilter kompleksRole-based UIGrafik monitoringApproval workflowNotification centerAudit logExport Excel/PDF
+Maka admin web sebaiknya dibuat sebagai React SPA/dashboard dengan TypeScript, Tailwind, TanStack Query, WebSocket client, dan charting library.
+Keputusan
+Frontend Admin Web:React + TypeScript + Tailwind CSS + Dashboard Layout
+Catatan
+Untuk admin dashboard, tidak wajib menggunakan Next.js. React + Vite lebih ringan dan cepat untuk dashboard internal. Namun jika ingin semua web berada dalam satu framework, admin juga boleh dibuat dengan Next.js.
+5. Frontend Mobile Pengguna Umum
+Keputusan
+React Native + TypeScript
+React Native dipilih karena dapat membuat aplikasi native Android dan iOS menggunakan React, sehingga tim bisa berbagi pola, komponen logika, validasi, state management, dan standar TypeScript dengan aplikasi web. Dokumentasi resmi React Native menjelaskan bahwa React Native digunakan untuk membuat native apps Android dan iOS menggunakan React.
+Fitur Mobile Pengguna Umum
+Login / registerProfil penggunaBooking / transaksi / layananRealtime statusPush notificationRiwayat aktivitasUpload foto/dokumenQR codeOffline cache terbatasPeta/lokasi bila diperlukan
+Rekomendasi Library
+React NativeTypeScriptExpo atau React Native CLIReact NavigationTanStack QueryZustandNativeWindFirebase Cloud MessagingSecure Store / KeychainSentry
+6. Frontend Mobile Admin
+Keputusan
+React Native + TypeScript
+Admin mobile tidak perlu memuat seluruh fitur dashboard desktop. Fokusnya adalah fitur lapangan dan approval cepat.
+Fitur Admin Mobile
+Login SSODashboard ringkasNotifikasi realtimeApproval / rejectScan QRValidasi dataMonitoring antrian/statusInput cepat di lapanganUpload foto/dokumenRiwayat aktivitas
+Batasan
+Fitur berat seperti laporan analitik besar, konfigurasi role kompleks, master data besar, dan ekspor laporan tetap lebih ideal di Admin Web Dashboard.
+7. Backend Enterprise
+Keputusan
+Golang
+Go dipilih karena cocok untuk microservices, API cepat, concurrency, dan deployment ringan. Dokumentasi resmi Go menyebut Go sebagai bahasa untuk membangun sistem yang sederhana, aman, dan skalabel; Go juga dirancang untuk pengembangan web yang scalable dan secure.
+Framework Backend yang Direkomendasikan
+API Framework:- Gin atau Fiber untuk API cepat- Chi untuk pendekatan minimalis dan idiomatikDatabase Access:- sqlc untuk type-safe SQL- pgx untuk PostgreSQL driver- GORM hanya jika butuh ORM cepat, tetapi sqlc lebih enterprise-safeValidation:- go-playground/validatorConfig:- Viper atau envconfigLogging:- Zap atau ZerologObservability:- OpenTelemetry- Prometheus- Grafana- Loki
+8. Database
+Keputusan
+PostgreSQL
+PostgreSQL cocok untuk aplikasi enterprise karena kuat untuk data relasional, transaksi, integritas data, indexing, JSONB, full-text search, dan ekstensi. PostgreSQL juga dikenal memiliki reputasi kuat untuk reliability, data integrity, extensibility, dan ACID compliance.
+Pola Database Microservices
+Gunakan prinsip:
+Database per service, bukan satu database besar untuk semua service.
+Contoh:
+user_service_dbbooking_service_dbpayment_service_dbnotification_service_dbaudit_service_dbreporting_service_db
+Untuk integrasi data antar service, gunakan event broker, bukan join langsung lintas database.
+9. Cache dan Realtime Layer
+Redis
+Redis digunakan untuk:
+Cache APISession cacheRate limitingTemporary tokenOTP cacheRealtime presenceDistributed lock ringanQueue ringan non-kritis
+Redis sangat baik untuk cache dan data cepat. Namun Redis Pub/Sub memiliki sifat at-most-once delivery, artinya pesan bisa hilang jika subscriber gagal menerima pesan. Karena itu, Redis Pub/Sub tidak boleh menjadi satu-satunya mekanisme untuk event bisnis penting.
+Event Broker Enterprise
+Untuk microservices yang benar-benar enterprise, tambahkan:
+NATS JetStream
+NATS JetStream menyediakan persistence, message replay, dan konfigurasi high availability; dokumentasi NATS menyebut JetStream dapat menyimpan pesan dan memutar ulang pesan ke consumer saat diperlukan.
+Pola Realtime
+Browser/Mobile    ↓ WebSocket / SSERealtime Gateway    ↓NATS JetStream    ↓Microservices    ↓PostgreSQL + Redis
+Kapan Pakai WebSocket?
+ChatLive statusLive trackingNotifikasi realtimeDashboard monitoringPresence online/offline
+Kapan Pakai Server-Sent Events?
+Feed notifikasi satu arahLive dashboard read-onlyProgress statusMonitoring log ringan
+10. Authentication dan Authorization
+Keputusan
+Keycloak + OpenID Connect/OAuth2 + JWT
+Keycloak dipilih karena mendukung OpenID Connect, OAuth2, SAML, Single Sign-On, dan authorization services.
+Kenapa Bukan JWT Manual Saja?
+JWT manual cukup untuk aplikasi kecil, tetapi kurang ideal untuk enterprise karena perlu membangun sendiri:
+SSORefresh token rotationRole managementClient managementSession revocationMulti-tenant realmIdentity federationAudit loginPassword policyMFAOAuth2/OIDC compliance
+Pola Auth yang Direkomendasikan
+Web Public:OIDC Authorization Code + PKCEAdmin Web:OIDC Authorization Code + PKCE + RBAC ketatMobile:OIDC Authorization Code + PKCEBackend Service-to-Service:OAuth2 Client Credentials + mTLS/internal network policyAPI Access:JWT access token divalidasi di API Gateway dan masing-masing service
+Model Role
+SUPER_ADMINADMIN_ORGANISASIOPERATORVERIFIKATORPETUGAS_LAPANGANPENGGUNA_UMUMAUDITOR
+11. Arsitektur Microservices
+Komponen Utama
+API GatewayAuth / Identity ProviderUser ServiceProfile ServiceMaster Data ServiceTransaction / Booking ServiceNotification ServiceFile ServiceSearch ServiceAudit Log ServiceReporting ServiceRealtime GatewayAdmin ServicePublic Web AppAdmin Web AppMobile Public AppMobile Admin App
+Diagram Sederhana
+[Public Web - Next.js PWA][Admin Web - React Dashboard][Android/iOS Public - React Native][Android/iOS Admin - React Native]             ↓        [Nginx / API Gateway]             ↓      [Keycloak / OIDC SSO]             ↓ ┌────────────────────────────────────┐ │          Golang Microservices       │ │ User | Booking | File | Report      │ │ Notification | Audit | Realtime     │ └────────────────────────────────────┘             ↓ ┌────────────────────────────────────┐ │ PostgreSQL | Redis | NATS JetStream │ └────────────────────────────────────┘
+12. API Design
+Standar API
+REST API untuk CRUD umumWebSocket untuk realtime dua arahSSE untuk realtime satu arahgRPC untuk komunikasi internal antar service jika diperlukanOpenAPI/Swagger untuk dokumentasi API
+Format Response
+{  "success": true,  "message": "Data berhasil diproses",  "data": {},  "meta": {    "request_id": "uuid",    "timestamp": "2026-07-06T13:00:00+07:00"  }}
+Error Standard
+{  "success": false,  "message": "Validasi gagal",  "errors": {    "email": ["Email wajib diisi"]  },  "meta": {    "request_id": "uuid"  }}
+13. UI/UX Enterprise
+Prinsip UI/UX
+Mobile-first untuk pengguna umumResponsive desktop untuk adminAccessible designFast loadingClear navigationConsistent design systemLow cognitive loadDark mode optionalSkeleton loadingEmpty state informatifError state jelas
+Public Web
+Homepage SEO-friendlyLanding page cepatForm ringkasCTA jelasInstall PWA promptStatus realtimeRiwayat mudah dicari
+Admin Web
+Sidebar navigationGlobal searchRole-based menuRealtime notificationData table advancedFilter multi-kriteriaExport Excel/PDFAudit trailDashboard KPI
+Mobile
+Bottom tab navigationPush notificationOffline-friendly screenLarge tap targetForm sederhanaBiometric login optional
+14. SEO Optimization
+SEO berlaku terutama untuk Frontend Pengguna Umum Web.
+Strategi SEO
+Server-side renderingStatic generation untuk halaman publikDynamic metadataOpen Graph imageSchema.org structured dataSitemap.xmlRobots.txtCanonical URLFast Core Web VitalsImage optimizationSemantic HTMLAccessible heading structure
+Next.js menyediakan Metadata API untuk mendefinisikan metadata aplikasi yang mendukung SEO dan web shareability.
+15. Security Baseline
+Gunakan OWASP Top 10 dan OWASP ASVS sebagai standar keamanan aplikasi. OWASP Top 10 adalah dokumen rujukan untuk risiko keamanan aplikasi web paling kritis, dan versi saat ini adalah OWASP Top 10 2025.
+Kontrol Keamanan Wajib
+HTTPS everywhereHSTSSecure cookieCSRF protection untuk web sessionCORS strictInput validationOutput encodingSQL injection preventionRate limitingPassword policyMFA untuk adminRBAC/ABACAudit logSecret managementToken expiry pendekRefresh token rotationDevice session managementFile upload scanningDependency scanningContainer image scanning
+Header Keamanan
+Content-Security-PolicyX-Frame-OptionsX-Content-Type-OptionsReferrer-PolicyPermissions-PolicyStrict-Transport-Security
+16. Deployment
+Minimum Production
+DockerDocker Compose untuk stagingNginx reverse proxySSL/TLSPostgreSQL managed/self-hostedRedisNATS JetStreamCI/CD pipelineBackup otomatisMonitoringLog aggregation
+Enterprise Production
+KubernetesNginx IngressCert ManagerHorizontal Pod AutoscalerPostgreSQL HARedis Sentinel/ClusterNATS JetStream ClusterObject StorageSecrets ManagerBlue-green deploymentCanary releaseCentralized monitoring
+Struktur Deployment
+apps/  public-web-nextjs/  admin-web-react/  mobile-public-react-native/  mobile-admin-react-native/services/  user-service/  auth-adapter-service/  booking-service/  notification-service/  file-service/  reporting-service/  audit-service/  realtime-gateway/infra/  docker/  nginx/  postgres/  redis/  nats/  keycloak/  monitoring/
+17. Observability dan Reliability
+Monitoring Wajib
+PrometheusGrafanaLokiOpenTelemetrySentryUptime KumaAlertmanager
+Metrik yang Dipantau
+API latency p95/p99Error rateDatabase query timeRedis hit ratioWebSocket connection countQueue lagCPU/memory usageDisk usageLogin failure rateFailed payment/transaction rateBackground job failure
+Reliability Pattern
+Retry with backoffCircuit breakerTimeout per requestBulkhead patternOutbox patternIdempotency keySaga pattern untuk transaksi lintas serviceGraceful shutdownHealth checkReadiness probeLiveness probe
+18. Testing Strategy
+Backend
+Unit testIntegration testContract testLoad testStress testSecurity testDatabase migration testAPI regression test
+Frontend
+Component testE2E testAccessibility testVisual regression testPerformance testPWA installability test
+Mobile
+Device compatibility testOffline testPush notification testDeep link testBiometric testApp store compliance testCrash reporting test
+19. CI/CD Pipeline
+Pipeline Minimal
+LintType checkUnit testBuildSecurity scanDocker buildPush imageDeploy stagingRun migrationSmoke testManual approvalDeploy production
+Tools
+GitHub Actions / GitLab CIDocker RegistryTrivySnyk optionalSonarQubePlaywrightk6Sentry Release Tracking
+20. Skor Akhir Rekomendasi Stack
+Aspek
+Skor
+Catatan
+Kecepatan backend
+10/10
+Golang sangat kuat untuk API dan concurrency
+Keandalan
+9.5/10
+Perlu NATS JetStream, observability, HA database
+Keamanan
+9.5/10
+Keycloak + OIDC + OWASP baseline
+UI/UX Web Public
+9.5/10
+Next.js + PWA + SSR
+UI/UX Admin
+9/10
+React dashboard sangat fleksibel
+Mobile Android/iOS
+9/10
+React Native kuat dan konsisten dengan web
+SEO
+10/10
+Next.js unggul untuk SSR/metadata
+Realtime
+9.5/10
+WebSocket/SSE + NATS JetStream + Redis
+Maintainability
+9/10
+Satu ekosistem TypeScript di frontend/mobile
+Scalability
+9.5/10
+Microservices + event-driven
+Deployment
+9/10
+Docker + Nginx cukup, Kubernetes untuk enterprise besar
+21. Keputusan Final
+Stack enterprise terbaik yang direkomendasikan:
+Architecture:Microservices + Event-Driven ArchitecturePublic Web:Next.js + React + TypeScript + PWAAdmin Web:React + TypeScript + Tailwind CSS + Dashboard LayoutPublic Mobile:React Native + TypeScriptAdmin Mobile:React Native + TypeScriptChrome App:Installable PWA, bukan Chrome Apps klasikBackend:GolangDatabase:PostgreSQLCache:RedisEvent Broker:NATS JetStreamAuthentication:Keycloak + OpenID Connect/OAuth2 + JWTDeployment:Docker + Nginx + SSLOptional Enterprise Upgrade:Kubernetes + Nginx Ingress + Cert Manager
+22. Rekomendasi Tahapan Implementasi
+Tahap 1 — Foundation
+Setup repositorySetup DockerSetup PostgreSQLSetup RedisSetup KeycloakSetup NATS JetStreamSetup Nginx SSLSetup CI/CD
+Tahap 2 — Core Backend
+API GatewayUser ServiceAuth AdapterMaster Data ServiceAudit ServiceNotification ServiceFile Service
+Tahap 3 — Frontend Web
+Next.js Public WebReact Admin DashboardDesign SystemPWA InstallabilitySEO SetupRealtime Notification
+Tahap 4 — Mobile
+React Native Public AppReact Native Admin AppPush NotificationSecure StorageOffline CacheQR/Camera Integration
+Tahap 5 — Enterprise Hardening
+Load testStress testPenetration testOWASP checklistMonitoringBackup/restore drillDisaster recovery planBlue-green deployment
+Tahap 6 — Production Readiness
+SLA/SLORunbookIncident responseAccess reviewSecurity auditPerformance benchmarkUser acceptance testGo-live checklist
+23. Prinsip Penutup
+Arsitektur ini tidak hanya cocok untuk aplikasi Puskeswan, tetapi juga untuk aplikasi enterprise lain seperti portal layanan, LMS, sistem antrian, dashboard pemerintahan, marketplace layanan, aplikasi booking, sistem pengaduan, manajemen dokumen, dan aplikasi mobile layanan publik.
+Keputusan paling penting adalah:
+Gunakan Next.js untuk public web karena SEO dan PWA.Gunakan React untuk admin dashboard karena realtime dan fleksibilitas.Gunakan React Native untuk Android/iOS karena satu ekosistem dengan React.Gunakan Golang untuk backend karena cepat dan scalable.Gunakan PostgreSQL untuk data utama karena relasional dan reliable.Gunakan Redis untuk cache, bukan event bisnis kritis.Gunakan NATS JetStream untuk event-driven microservices.Gunakan Keycloak untuk enterprise SSO.Gunakan PWA sebagai pengganti Chrome App.
