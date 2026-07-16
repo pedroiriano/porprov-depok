@@ -4,7 +4,7 @@
 
 Portal PORPROV XV Jawa Barat 2026 adalah platform sports event berbasis web dan mobile yang menyediakan informasi PORPROV, cabor, jadwal, venue/maps, LiveScore realtime, standings medali, galeri, Depok Guide, backend admin, dan aplikasi koresponden.
 
-Konteks aktif per 15 Juli 2026: Admin/Public Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, dan infrastruktur data/event telah terintegrasi dalam runtime Docker/lokal. LiveScore memakai revision persistence dan transactional outbox; Medali memakai workflow PENDING–VERIFIED–OFFICIAL/REJECTED; Audit memakai durable consumer, dedup, hash, dan immutable trigger; public/private SSE dipisahkan melalui API Gateway. Soft delete domain inti tetap aktif. MFA, RBAC domain lama, outbox delete/restore lama, distributed realtime, WORM/SIEM, retensi/purge, serta deployment production tetap mengikuti status aktual `FEATURES.md`.
+Konteks aktif per 16 Juli 2026: Public/Admin Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, dan infrastruktur data/event terintegrasi dalam satu runtime Docker Compose canonical. Keycloak client/role/user development di-bootstrap otomatis, Public Web memakai DNS Gateway internal untuk Server Components, dan Media Library memakai named volume tunggal. Namespace `28xxx` hanya untuk debugging komponen terisolasi. Batas fitur lain tetap mengikuti status aktual `FEATURES.md`.
 
 ## 2. Stack Final
 
@@ -107,7 +107,7 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 - Referensi awal yang relevan pada Techwind Landing antara lain pola event, gym, blog/editorial, gallery, auth, dan landing; pilih per komponen, bukan menyalin satu halaman secara utuh.
 - Ubah seluruh pola menjadi design language PORPROV: energi kompetisi, identitas Kota Depok, status realtime, CTA yang jelas, dan kepadatan informasi yang tetap terbaca.
 - Mapping implementasi Beranda terbaru tersedia di `docs/uiux/PUBLIC_HOME_TECHWIND_MAPPING.md`: hero 100 viewport dengan parallax 50%, tautan Tuan Rumah, pusat informasi, Venue live melalui API Gateway, dan CTA panduan penonton.
-- Public Web membaca `NEXT_PUBLIC_API_URL` dengan default local-debug `http://localhost:28000/api/v1`. Port `8080` khusus Keycloak dan tidak boleh digunakan sebagai endpoint API Public Web.
+- Public Web membaca `NEXT_PUBLIC_API_URL` dengan default canonical `http://localhost:8000/api/v1`. Server Components dalam Compose membaca `API_INTERNAL_URL=http://api-gateway:8000/api/v1`; browser dan server tetap hanya melewati API Gateway. Port `8080` khusus Keycloak.
 - Canonical/metadata origin Public Web membaca `NEXT_PUBLIC_SITE_URL` dengan default lokal `http://localhost:3000`; deployment wajib mengisinya dengan origin HTTPS resmi.
 - API Gateway membuka operasi baca publik untuk `/master-data/*`, `/schedule/*`, `/venues*`, `/medals/*`, `/livescore/public`, dan `/stream/events`; operasi mutasi, history operasional, Audit, dan private stream tetap wajib JWT/role.
 - Jadwal, LiveScore, dan Klasemen tidak menggunakan data contoh produksi: jika belum ada record, UI menampilkan empty state; jika service gagal, UI menampilkan error yang dapat ditindaklanjuti.
@@ -151,19 +151,19 @@ Runbook utama dan langkah troubleshooting tersedia di [`docs/runbook/LOCAL_DEVEL
 - Keycloak admin access
 - npm; aplikasi web saat ini dikunci dengan `package-lock.json`
 
-### 5.2 Infrastruktur Lokal/Staging
+### 5.2 Full Stack Development Canonical
 
-```bash
-cd infra/docker
-docker compose up -d postgres redis nats keycloak nginx
+```powershell
+Set-Location .\infra\docker
+Copy-Item .\.env.example .\.env -ErrorAction SilentlyContinue
+.\compose-up.ps1
 ```
+
+Perintah tersebut membangun dan menjalankan Public Web, Admin Web, Gateway, seluruh core service, migration jobs, Keycloak beserta bootstrap, PostgreSQL, Redis, NATS, Nginx, Prometheus, dan Grafana. File `.env` bersifat lokal/ignored; `.env.example` adalah template tunggal.
 
 Jika Docker CLI di Windows menampilkan `Access is denied` saat membaca `C:\Users\<user>\.docker\config.json`, gunakan helper lokal berikut agar konfigurasi Docker CLI disimpan di folder proyek:
 
-```powershell
-cd infra/docker
-.\compose-up.ps1 postgres redis nats keycloak nginx
-```
+Helper `compose-up.ps1` menyimpan konfigurasi CLI Docker di `.docker-cli` dalam workspace agar tidak bergantung pada `C:\Users\<user>\.docker\config.json`.
 
 Jika muncul `permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine`, Docker Engine belum berjalan atau user Windows belum memiliki akses ke Docker Desktop. Buka Docker Desktop sampai engine aktif. Bila masih gagal, jalankan PowerShell sebagai Administrator:
 
@@ -175,25 +175,17 @@ Logout atau restart Windows setelah menambahkan user ke grup `docker-users`.
 
 ### 5.3 Public Web
 
-```bash
-cd apps/public-web-nextjs
-npm ci
-npm run dev -- --port 3000
-```
+Public Web canonical tersedia di `http://localhost:3000` dari service `public-web`. Docker image memakai Next.js standalone output dan tidak bergantung pada unduhan Google Fonts saat build.
 
 ### 5.4 Admin Web
 
-```bash
-cd apps/admin-web-react
-npm ci
-npm run dev -- --host 0.0.0.0 --port 5174 --strictPort
-```
+Admin Web canonical tersedia di `http://localhost:5173` dari service `admin-web`. Jangan menjalankan Vite kedua pada port alternatif ketika full stack aktif.
 
 Admin Web menggunakan variabel berikut:
 
 | Variabel | Default lokal | Fungsi |
 |---|---|---|
-| `VITE_API_URL` | `http://localhost:28000/api/v1` pada `npm run dev`; `8000` pada image Docker | Satu-satunya entry point API browser |
+| `VITE_API_URL` | `http://localhost:8000/api/v1` | Satu-satunya entry point API browser |
 | `VITE_OIDC_AUTHORITY` | `http://localhost:8080/realms/porprov` | Authority Keycloak |
 | `VITE_OIDC_CLIENT_ID` | `porprov-admin-web` | Client OIDC Admin Web |
 
@@ -206,15 +198,11 @@ API Gateway/Realtime menggunakan variabel keamanan berikut:
 | `CORS_ALLOWED_ORIGINS` | Public/Admin local origins | Origin HTTPS eksplisit, tanpa wildcard |
 | `INTERNAL_STREAM_TOKEN` | Token development lokal | Random secret minimal 32 karakter dari secret manager |
 
-Admin Web membentuk `redirect_uri` dan `post_logout_redirect_uri` dari `window.location.origin`. Client publik `porprov-admin-web` menerima origin development eksplisit `localhost`/`127.0.0.1` pada port `5173` dan fallback Vite `5174`, dengan Authorization Code Flow + PKCE `S256`; wildcard origin global tidak digunakan. Jika Vite berpindah ke `5174` karena `5173` sedang dipakai proses lain, callback login tetap valid.
+Admin Web membentuk `redirect_uri` dan `post_logout_redirect_uri` dari `window.location.origin`. Client publik `porprov-admin-web` menerima origin development eksplisit `localhost`/`127.0.0.1` pada port canonical `5173`, dengan Authorization Code Flow + PKCE `S256`; wildcard origin global tidak digunakan.
 
-`npm run dev` memuat `apps/admin-web-react/.env.development` dan mengarah ke Gateway lokal `http://localhost:28000/api/v1`. Build image Docker tetap menginjeksi Gateway `http://localhost:8000/api/v1`. Dengan demikian mode `go run` dan mode Compose tidak tercampur secara diam-diam. Setelah mengubah kode Gateway, hentikan lalu jalankan ulang `go run main.go` karena proses Go tidak melakukan hot reload.
+File `apps/admin-web-react/.env.development` telah dihapus agar tidak ada perpindahan Gateway diam-diam. Menu Admin membaca realm role dari ID token dan access token; API Gateway tetap melakukan otorisasi final.
 
-Bootstrap client bersifat idempotent dan dapat dijalankan ulang setelah Keycloak siap. Dari PowerShell pada folder `infra/docker`:
-
-```powershell
-Get-Content -Raw .\create_clients.sh | docker --config .\.docker-cli exec -i porprov_keycloak sh -c "tr -d '\r' | bash"
-```
+Service one-shot `keycloak-bootstrap` menjalankan `create_clients.sh` dan `create_users.sh` secara idempotent sebelum API Gateway dimulai. Login ulang diperlukan setelah perubahan role agar browser memperoleh token baru.
 
 Untuk deployment, override `ADMIN_REDIRECT_URIS` dan `ADMIN_WEB_ORIGINS` ketika menjalankan script dengan origin HTTPS resmi. Jangan menambahkan `webOrigins=["+"]` atau wildcard port pada client browser.
 
@@ -241,17 +229,18 @@ pnpm start
 
 ### 5.7 Stack Terintegrasi dalam Docker
 
-Jalankan stack Admin Web, API Gateway, seluruh core domain olahraga, Audit, Realtime, dan migrasinya:
+Jalankan seluruh stack canonical:
 
 ```powershell
-cd infra/docker
-docker compose up -d master-data-service venue-service schedule-service livescore-service medal-standing-service audit-service realtime-gateway api-gateway admin-web prometheus
+Set-Location .\infra\docker
+.\compose-up.ps1
 ```
 
 Port Docker development:
 
 | Komponen | URL |
 |---|---|
+| Public Web | `http://localhost:3000` |
 | Admin Web | `http://localhost:5173` |
 | API Gateway | `http://localhost:8000` |
 | Keycloak | `http://localhost:8080` |
@@ -261,7 +250,7 @@ Port Docker development:
 
 Service browser tidak boleh menggunakan port diagnostik. Port tersebut hanya untuk pemeriksaan lokal; operasi Admin Web selalu melalui API Gateway.
 
-Migration SQL dikemas ke image migration agar berfungsi pada workspace Windows di drive yang tidak dibagikan sebagai bind mount. Aset Media Library disimpan pada named volume `master_data_uploads`; soft delete media hanya menonaktifkan metadata dan delivery publik, tidak menghapus file dari volume.
+Migration SQL dikemas ke image migration agar berfungsi pada workspace Windows di drive yang tidak dibagikan sebagai bind mount. Aset Media Library disimpan pada named volume canonical `master_data_uploads`; soft delete media hanya menonaktifkan metadata dan delivery publik, tidak menghapus file dari volume. Upload lokal legacy 15 Juli 2026 telah dimigrasikan non-destruktif dan 16 URL aktif diverifikasi HTTP `200`.
 
 Migration domain olahraga aktif adalah LiveScore v1, Medal v3, dan Audit v2. Fresh volume membuat `livescore_db`; volume PostgreSQL lama perlu dibuatkan database tersebut sekali sebelum menjalankan `migrate-livescore`, sebagaimana dijelaskan pada runbook lokal.
 
@@ -282,7 +271,7 @@ Host port Compose dibaca dari `infra/docker/.env` dengan fallback pada `.env.exa
 
 | Kategori | Variabel | Default |
 |---|---|---|
-| Public dev | `ADMIN_WEB_HOST_PORT`, `API_GATEWAY_HOST_PORT`, `KEYCLOAK_HOST_PORT` | `5173`, `8000`, `8080` |
+| Public dev | `PUBLIC_WEB_HOST_PORT`, `ADMIN_WEB_HOST_PORT`, `API_GATEWAY_HOST_PORT`, `KEYCLOAK_HOST_PORT` | `3000`, `5173`, `8000`, `8080` |
 | Diagnostic | `MASTER_DATA_HOST_PORT`, `SCHEDULE_HOST_PORT`, `VENUE_HOST_PORT` | `18081`, `18082`, `18087` |
 | Data/event | `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT`, `NATS_CLIENT_HOST_PORT`, `NATS_MONITOR_HOST_PORT` | `15432`, `16379`, `14222`, `18222` |
 | Observability | `PROMETHEUS_HOST_PORT`, `GRAFANA_HOST_PORT` | `19090`, `13000` |
@@ -302,9 +291,9 @@ Default `go run` sengaja berada pada namespace terpisah:
 | Medal Standing | `28086` |
 | Venue | `28087` |
 
-Dengan demikian `go run .` tidak berebut port dengan container Docker. Service lokal mengakses PostgreSQL `15432`, NATS `14222`, dan Redis `16379`. Admin `npm run dev` otomatis memakai Gateway lokal `28000` melalui `.env.development`, sedangkan image Admin Docker tetap memakai Gateway `8000` dari build argument Compose.
+Namespace `28xxx` dipertahankan untuk debugging satu komponen, bukan full-stack kedua. Sebelum `go run`, hentikan container domain yang sama dan berikan environment secara eksplisit. Jangan menjalankan Master Data lokal terhadap database Docker karena local folder upload dan named volume mempunyai lifecycle berbeda.
 
-Venue lokal dijalankan dengan `go run ./cmd/api` dari `services/venue-service`. Gunakan `.env.example` sebagai baseline: port `28087`, PostgreSQL `15432`, NATS `14222`, dan Schedule `28082`. File `.env` lama yang masih memakai `8087`, PostgreSQL `5433`, atau NATS `4222` harus diselaraskan agar tidak keluar dari registry port lokal.
+Venue lokal hanya boleh dijalankan sebagai debug terisolasi dengan `go run ./cmd/api` setelah container Venue dihentikan. Gunakan `.env.example` sebagai referensi dan set environment pada terminal; file `.env` service aktual tidak dipertahankan sebagai konfigurasi kedua.
 
 API Gateway merupakan satu-satunya pemilik header CORS untuk request browser. Reverse proxy membuang seluruh header `Access-Control-*` dari response service internal sebelum middleware Gateway menambahkan kebijakan edge. Ini mencegah `Access-Control-Allow-Origin` ganda yang dianggap invalid oleh browser walaupun upstream mengembalikan HTTP `200`.
 
@@ -430,10 +419,11 @@ Pastikan tidak ada secret di repository, backup restore drill dilakukan, domain 
 
 ## 15. Dokumen Referensi
 
-Simpan di `docs/reference/`:
+Simpan di `docs/reference/` dan `design/`:
 - BRD/PRD/SRS/SDD Portal PORPROV.
 - ASCII Wireframe Portal PORPROV.
 - Dokumen Perencanaan Arsitektur Enterprise Web & Mobile.
+- PORPROV_ENTERPRISE_BLUEPRINT.md (Master Specification Document).
 - Custom GPT Instructions/Knowledge.
 - Keputusan arsitektur/ADR.
 

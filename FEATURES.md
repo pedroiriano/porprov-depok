@@ -22,7 +22,7 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | Struktur monorepo enterprise | `[ ] Planned` | v0.1 | `apps/`, `services/`, `packages/`, `infra/`, `docs/` | Sesuai RULES v4 |
 | README root | `[x] Done` | v4.0 | `README.md` | Orientasi aplikasi, baseline UI/UX, soft delete, dan sinkronisasi pedoman |
 | AI/Codex docs | `[x] Done` | v4.0 | enam Markdown root | Identitas produk, Techwind, masterpiece quality bar, soft delete, dan aturan sinkronisasi sudah diselaraskan |
-| Reference docs | `[?] TBD` | v0.1 | `docs/reference/` | Salin BRD/PRD/SRS/SDD dan wireframe |
+| Reference docs | `[x] Done` | v0.1 | `docs/reference/`, `design/PORPROV_ENTERPRISE_BLUEPRINT.md` | Unified Enterprise Blueprint Document telah dibuat berdasarkan BRD/PRD/SRS/SDD dan arsitektur aktif |
 
 ## 2. Design System & UI/UX
 
@@ -62,7 +62,7 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | Fitur | Status | Versi | File/Area | Catatan |
 |---|---|---|---|---|
 | Vite React setup | `[x] Done` | v0.2 | `apps/admin-web-react/` | TypeScript + Tailwind v4; build produksi dan image Nginx teruji |
-| Role-based sidebar | `[~] In Progress` | v0.4 | admin layout | LiveScore, submit/verifikasi Medali, dan Audit disaring menurut realm role; Master Data/domain lama belum seluruhnya memakai matrix granular |
+| Role-based sidebar | `[~] In Progress` | v0.5 | admin layout | Menu Dashboard, Master Data, LiveScore, Medali, City Guide, Media Library, Verifikasi, Audit, dan Profil memakai realm role dari ID/access token; matrix granular domain lama masih bertahap |
 | Master data | `[x] Done` | v0.4 | cabor, nomor pertandingan, venue, kontingen, jadwal, City Guide | CRUD, pencarian, referensi, Media Selector, soft delete beralasan, dependency guard, dan restore melalui Recycle Bin teruji end-to-end; RBAC granular dilanjutkan pada tahap hardening |
 | Media Library | `[x] Done` | v0.4 | `components/media/`, master-data-service | Upload/selector/URL relatif, soft delete metadata, penyembunyian delivery publik, retensi file, dan restore teruji; kebijakan purge tetap TBD |
 | Recycle Bin Admin | `[x] Done` | v0.4 | `components/master-data/RecycleBin.tsx` | Menggabungkan tombstone Master Data, Media, Venue, dan Jadwal dengan pencarian, status, actor/alasan, serta restore aksesibel |
@@ -99,11 +99,13 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 
 | Fitur | Status | Versi | File/Area | Catatan |
 |---|---|---|---|---|
-| Docker Compose staging | `[~] In Progress` | v0.4 | `infra/docker/` | Admin, Gateway, Master, Venue, Schedule, LiveScore, Medal, Audit, Realtime beserta migration image dan dependency health tersedia; production override/secret/edge hardening belum final |
+| Docker Compose staging | `[~] In Progress` | v0.5 | `infra/docker/` | Satu baseline mencakup Public, Admin, Gateway, seluruh core domain, migration, Keycloak bootstrap, Nginx, dan observability; production override/secret/edge hardening belum final |
 | Registry port portable | `[x] Done` | v0.3 | Compose, config service, `.env.example`, enam Markdown root | Public, diagnostic, local debug `28xxx`, dan infra host dipisahkan; seluruh host mapping configurable |
-| Gateway CORS ownership | `[x] Done` | v0.3 | API Gateway router + Admin development env | Header CORS downstream dibuang sebelum kebijakan Gateway diterapkan; regression test menjamin satu origin dan Admin `npm run dev` otomatis memakai Gateway lokal `28000` |
+| Gateway CORS ownership | `[x] Done` | v0.5 | API Gateway router + Compose frontend config | Header CORS downstream dibuang sebelum kebijakan Gateway diterapkan; origin canonical hanya Public `3000` dan Admin `5173` pada development |
 | Nginx SSL | `[ ] Planned` | v0.1 | `infra/nginx/` | Reverse proxy |
-| Keycloak realm dan Admin OIDC | `[~] In Progress` | v0.2 | `infra/docker/create_clients.sh`, Admin Web | Realm/client bootstrap idempotent, callback lokal 5173/5174, origin eksplisit, dan Authorization Code + PKCE S256 aktif; role granular, theme PORPROV, rotasi secret, serta konfigurasi production belum final |
+| Keycloak realm dan Admin OIDC | `[~] In Progress` | v0.5 | Compose bootstrap, Admin Web | Realm/client/role/user bootstrap otomatis-idempotent, callback canonical 5173, PKCE S256, dan pembacaan role ID/access token aktif; theme PORPROV, rotasi secret, serta konfigurasi production belum final |
+| Canonical full-stack launcher | `[x] Done` | v0.5 | `infra/docker/compose-up.ps1`, ADR-0005 | Public/Admin dan seluruh backend berjalan dalam satu Compose; launcher campuran serta Admin env 5174/28000 dihapus |
+| Media storage convergence | `[x] Done` | v0.5 | `master_data_uploads`, runtime migration | Metadata dan 16 asset aktif terverifikasi HTTP 200 dari Gateway; file lokal legacy dipindahkan ke backup non-Git tanpa purge |
 | NATS JetStream | `[~] In Progress` | v0.4 | LiveScore/Medal/Audit/Realtime | Stream bootstrap, durable consumer, ack, retry, dan at-least-once outbox tersedia untuk domain olahraga; cluster/monitoring/DLQ operasional belum final |
 | PostgreSQL per service | `[~] In Progress` | v0.4 | `infra/postgres/` | Database core termasuk `livescore_db`, `porprov_db`, dan `audit_db` aktif; backup/HA/retention belum final |
 | Redis | `[~] In Progress` | v0.4 | Realtime cache | Password environment, replay cache, dan TTL aktif; distributed rate limit/presence belum final |
