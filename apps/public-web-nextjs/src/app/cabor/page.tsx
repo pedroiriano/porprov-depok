@@ -18,10 +18,10 @@ export default async function CaborPage() {
 
   return (
     <main className="container py-32 md:py-40">
-      <header className="max-w-3xl">
+      <header className="mx-auto max-w-3xl text-center mb-8">
         <p className="text-sm font-black uppercase tracking-[0.2em] text-primary-500">Master Data Resmi</p>
         <h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Cabang Olahraga</h1>
-        <p className="mt-4 text-lg leading-relaxed text-slate-600 dark:text-slate-300">Kenali nomor pertandingan, venue, serta agenda setiap cabang olahraga PORPROV XV Jawa Barat 2026 di Kota Depok.</p>
+        <p className="mt-4 mx-auto max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-300">Kenali nomor pertandingan, venue, serta agenda setiap cabang olahraga PORPROV XV Jawa Barat 2026 di Kota Depok.</p>
       </header>
 
       {cabors.length === 0 ? (

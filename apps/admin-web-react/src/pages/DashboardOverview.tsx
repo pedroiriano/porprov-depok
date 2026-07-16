@@ -1,4 +1,7 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Users, Trophy, Activity, AlertTriangle } from 'lucide-react';
+import { useAuth } from 'react-oidc-context';
+import { apiClient, authConfig, unwrapApiData } from '../lib/api';
 
 const StatCard = ({ title, value, icon: Icon, trend, colorClass }: any) => (
   <div className="card p-6 flex items-start justify-between">
@@ -16,6 +19,31 @@ const StatCard = ({ title, value, icon: Icon, trend, colorClass }: any) => (
 );
 
 export default function DashboardOverview() {
+  const auth = useAuth();
+  const token = auth.user?.access_token;
+  
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(true);
+  const [logsError, setLogsError] = useState('');
+
+  const loadLogs = useCallback(async () => {
+    if (!token) return;
+    setLogsLoading(true);
+    setLogsError('');
+    try {
+      const response = await apiClient.get('/audit/logs?limit=10', authConfig(token));
+      setLogs(unwrapApiData<any[]>(response.data) || []);
+    } catch (error) {
+      setLogsError('Gagal memuat log sistem terkini.');
+    } finally {
+      setLogsLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    loadLogs();
+  }, [loadLogs]);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Stats Grid */}
@@ -97,21 +125,22 @@ export default function DashboardOverview() {
         <div className="card p-5 flex flex-col h-full">
           <h3 className="font-bold text-lg mb-4">Log Sistem Terkini</h3>
           <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-4">
-            {[
-              { action: 'CREATE', entity: 'Cabor', user: 'Admin Depok', time: '5 mnt lalu' },
-              { action: 'UPDATE', entity: 'Venue', user: 'Panitia Pusat', time: '12 mnt lalu' },
-              { action: 'DELETE', entity: 'Atlet', user: 'Superadmin', time: '1 jam lalu' },
-              { action: 'CREATE', entity: 'User', user: 'Superadmin', time: '2 jam lalu' },
-            ].map((log, i) => (
-              <div key={i} className="flex gap-3 items-start">
+            {logsLoading ? (
+              <div className="flex justify-center py-4"><span className="text-sm text-text-muted">Memuat log...</span></div>
+            ) : logsError ? (
+              <div className="flex justify-center py-4"><span className="text-sm text-danger-500">{logsError}</span></div>
+            ) : logs.length === 0 ? (
+              <div className="flex justify-center py-4"><span className="text-sm text-text-muted">Tidak ada log terbaru.</span></div>
+            ) : logs.map((log) => (
+              <div key={log.id} className="flex gap-3 items-start">
                 <div className={`mt-0.5 shrink-0 w-2 h-2 rounded-full ${
-                  log.action === 'CREATE' ? 'bg-success-500' : log.action === 'UPDATE' ? 'bg-warning-500' : 'bg-danger-500'
+                  log.action === 'CREATE' ? 'bg-success-500' : log.action === 'UPDATE' ? 'bg-warning-500' : log.action === 'DELETE' ? 'bg-danger-500' : 'bg-blue-500'
                 }`}></div>
                 <div>
                   <p className="text-sm font-medium">
-                    <span className="font-bold">{log.user}</span> melakukan {log.action} pada data {log.entity}
+                    <span className="font-bold">{log.actor_id || 'Sistem'}</span> melakukan {log.action} pada data {log.entity_name}
                   </p>
-                  <p className="text-xs text-text-muted mt-1">{log.time}</p>
+                  <p className="text-xs text-text-muted mt-1">{new Date(log.created_at).toLocaleString('id-ID')}</p>
                 </div>
               </div>
             ))}

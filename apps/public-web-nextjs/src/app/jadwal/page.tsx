@@ -71,9 +71,9 @@ export default function JadwalPage() {
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-32 sm:px-6 md:py-40 lg:px-8">
-      <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-3xl"><p className="text-sm font-black uppercase tracking-[0.2em] text-primary-500">Agenda Resmi</p><h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Jadwal Pertandingan</h1><p className="mt-4 text-lg text-slate-600 dark:text-slate-300">Telusuri jadwal berdasarkan tanggal, cabor, venue, dan status pertandingan.</p></div>
-        <div className="flex flex-wrap items-center gap-3"><span className="text-sm text-slate-500" role="status" aria-live="polite">{lastUpdated ? `Diperbarui ${lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}` : "Menunggu data"}</span><button type="button" onClick={() => void loadMatches()} disabled={loading} className="inline-flex min-h-11 items-center rounded-xl bg-primary-500 px-4 font-black text-white hover:bg-primary-600 disabled:opacity-60"><RefreshCw className={`me-2 size-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />Perbarui</button></div>
+      <header className="flex flex-col items-center text-center gap-5 mb-8">
+        <div className="max-w-3xl mx-auto"><p className="text-sm font-black uppercase tracking-[0.2em] text-primary-500">Agenda Resmi</p><h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Jadwal Pertandingan</h1><p className="mt-4 mx-auto max-w-2xl text-lg text-slate-600 dark:text-slate-300">Telusuri jadwal berdasarkan tanggal, cabor, venue, dan status pertandingan.</p></div>
+        <div className="flex flex-wrap justify-center items-center gap-3 mt-2"><span className="text-sm text-slate-500" role="status" aria-live="polite">{lastUpdated ? `Diperbarui ${lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}` : "Menunggu data"}</span><button type="button" onClick={() => void loadMatches()} disabled={loading} className="inline-flex min-h-11 items-center rounded-xl bg-primary-500 px-4 font-black text-white hover:bg-primary-600 disabled:opacity-60"><RefreshCw className={`me-2 size-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />Perbarui</button></div>
       </header>
 
       <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-labelledby="filter-title">

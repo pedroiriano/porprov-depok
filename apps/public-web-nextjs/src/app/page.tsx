@@ -54,8 +54,8 @@ export default function Home() {
                     <Image src="/assets/images/maskot-toca.png" width={400} height={500} className="h-72 w-full object-contain md:h-96" alt="Toca, maskot PORPROV XV Jawa Barat 2026" />
                     <p className="mt-3 text-center text-sm font-black uppercase tracking-[0.18em] text-primary-500">Toca</p>
                   </div>
-                  <div className="mb-8 overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-4 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-                    <Image src="/assets/images/maskot-toci.png" width={400} height={500} className="h-64 w-full object-contain md:h-80" alt="Toci, maskot PORPROV XV Jawa Barat 2026" />
+                  <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-4 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+                    <Image src="/assets/images/maskot-toci.png" width={400} height={500} className="h-72 w-full object-contain md:h-96" alt="Toci, maskot PORPROV XV Jawa Barat 2026" />
                     <p className="mt-3 text-center text-sm font-black uppercase tracking-[0.18em] text-amber-500">Toci</p>
                   </div>
                 </div>

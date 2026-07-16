@@ -146,20 +146,20 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
   return (
     <section id="venue-section" className={`relative scroll-mt-24 ${isPage ? "pb-20 pt-32 md:pb-24 md:pt-40" : "py-16 md:py-24"}`} aria-labelledby="venue-heading">
       <div className="container relative">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
+        <div className="flex flex-col items-center justify-center text-center gap-6 mb-8 md:mb-12">
+          <div className="max-w-3xl mx-auto">
             <p className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-primary-500">Data Langsung dari Panitia</p>
             {isPage ? (
               <h1 id="venue-heading" className="text-3xl font-black tracking-tight md:text-5xl">Venue & Lokasi Pertandingan</h1>
             ) : (
               <h2 id="venue-heading" className="text-3xl font-black tracking-tight md:text-4xl">Arena para juara bertanding.</h2>
             )}
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-300">
+            <p className="mt-4 mx-auto max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-300">
               Informasi alamat, kapasitas, fasilitas, cabang olahraga, dan kesiapan venue diperbarui melalui API Gateway PORPROV.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3" role="status" aria-live="polite">
+          <div className="flex flex-wrap items-center justify-center gap-3" role="status" aria-live="polite">
             <span className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${online && !error ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400"}`}>
               <span className={`size-2.5 rounded-full ${online && !error ? "animate-pulse bg-emerald-500" : "bg-amber-500"}`} aria-hidden="true" />
               {online && !error ? "Terhubung live" : online ? "Koneksi terganggu" : "Offline"}
