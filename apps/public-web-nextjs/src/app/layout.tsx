@@ -1,14 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Nunito } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-
-const nunito = Nunito({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
@@ -63,7 +57,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${nunito.variable} antialiased h-full`} suppressHydrationWarning dir="ltr">
+    <html lang="id" className="antialiased h-full" suppressHydrationWarning dir="ltr">
       <head>
         {/* eslint-disable-next-line @next/next/no-css-tags */}
         <link href="/assets/libs/remixicon/fonts/remixicon.css" rel="stylesheet" />

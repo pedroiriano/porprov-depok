@@ -1,4 +1,4 @@
-const DEFAULT_PUBLIC_API_URL = "http://localhost:28000/api/v1";
+const DEFAULT_PUBLIC_API_URL = "http://localhost:8000/api/v1";
 
 type NullablePgText =
   | string
@@ -43,7 +43,12 @@ type NullablePgTimestamp =
     };
 
 export function getPublicApiBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_API_URL || DEFAULT_PUBLIC_API_URL).replace(/\/$/, "");
+  const browserUrl = process.env.NEXT_PUBLIC_API_URL || DEFAULT_PUBLIC_API_URL;
+  const serverUrl = process.env.API_INTERNAL_URL || browserUrl;
+
+  // INFO: Browser memakai origin host API Gateway, sedangkan Server Components
+  // di dalam Docker memakai DNS Compose. Keduanya tetap melalui API Gateway.
+  return (typeof window === "undefined" ? serverUrl : browserUrl).replace(/\/$/, "");
 }
 
 export function publicApiUrl(path: string): string {

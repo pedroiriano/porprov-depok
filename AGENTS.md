@@ -2,7 +2,7 @@
 
 Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Portal PORPROV XV Jawa Barat 2026.
 
-> **Konteks aktif per 15 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime terintegrasi mencakup Admin/Public Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, PostgreSQL, Keycloak, Redis, NATS, dan observability Docker/lokal. Data publik membaca detail Cabor/Venue, Jadwal enriched, projection LiveScore persisten, public SSE tersanitasi, serta Medali OFFICIAL tanpa data tiruan. JWT issuer/expiry/client, private Admin SSE, revision koreksi skor, workflow verifikasi, transactional outbox LiveScore/Medali, dan audit immutable sudah diimplementasikan sesuai batas pada `FEATURES.md`. Soft delete/Recycling domain inti tetap aktif; MFA, outbox domain lama, RBAC menyeluruh, scale-out, dan production hardening dilanjutkan bertahap.
+> **Konteks aktif per 16 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime full-stack canonical memakai Docker Compose dan mencakup Public/Admin Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, PostgreSQL, Keycloak beserta bootstrap role/client, Redis, NATS, Nginx, dan observability. Namespace `28xxx` hanya untuk debugging satu komponen, bukan full-stack kedua. Data publik membaca detail Cabor/Venue, Jadwal enriched, projection LiveScore persisten, public SSE tersanitasi, serta Medali OFFICIAL tanpa data tiruan. Soft delete/Recycling domain inti tetap aktif; MFA, outbox domain lama, RBAC menyeluruh, scale-out, dan production hardening dilanjutkan bertahap.
 
 ## Mode Kerja Utama
 
@@ -79,9 +79,11 @@ Setiap perubahan aturan, stack, arsitektur, standar UI/UX, keamanan, data, quali
 ## Namespace Port Wajib
 
 - Production hanya mengekspos Nginx `80/443`; browser tidak boleh mengakses port diagnostik service.
-- Public development memakai Admin `5173`, API Gateway `8000`, dan Keycloak `8080`.
+- Public development canonical memakai Public Web `3000`, Admin `5173`, API Gateway `8000`, dan Keycloak `8080` melalui Docker Compose.
 - Diagnostik Docker host memakai Master `18081`, Schedule `18082`, dan Venue `18087`.
-- Local `go run` memakai namespace `28xxx`: Gateway `28000`, User `28001`, Master `28081`, Schedule `28082`, LiveScore `28083`, Audit `28084`, Realtime `28085`, Medal `28086`, dan Venue `28087`.
+- Local `go run` memakai namespace `28xxx` hanya untuk debugging komponen terisolasi: Gateway `28000`, User `28001`, Master `28081`, Schedule `28082`, LiveScore `28083`, Audit `28084`, Realtime `28085`, Medal `28086`, dan Venue `28087`. Container domain yang sama wajib dihentikan lebih dahulu.
+- `infra/docker/compose-up.ps1` adalah launcher full-stack tunggal. Dilarang menghidupkan kembali script yang mencampur service Docker dan `go run` atau frontend pada port alternatif.
+- Storage runtime Media Library wajib memakai named volume `master_data_uploads`; file lokal legacy hanya backup dan bukan sumber runtime.
 - Infrastruktur host memakai port configurable dari `infra/docker/.env`: PostgreSQL `15432`, Redis `16379`, NATS `14222/18222`, Prometheus `19090`, dan Grafana `13000`.
 - Port internal Docker tetap stabil dan komunikasi antarkontainer wajib memakai DNS nama service. Semua host port harus configurable melalui environment, bukan hardcoded untuk hosting.
 

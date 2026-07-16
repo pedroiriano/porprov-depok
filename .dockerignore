@@ -4,9 +4,12 @@
 **/.env
 **/.docker-cli
 **/node_modules
+**/.next
 **/dist
 **/build
 **/*.exe
 **/tmp_build
 **/uploads
+**/public/sw.js
+runtime-backups
 **/*.log

@@ -1,5 +1,6 @@
 import { useAuth } from "react-oidc-context";
 import { User, Mail, Shield, Key } from "lucide-react";
+import { getRealmRoles } from '../lib/auth';
 
 export default function Profile() {
   const auth = useAuth();
@@ -8,9 +9,8 @@ export default function Profile() {
     return <div className="text-slate-500 dark:text-slate-400">Silakan login.</div>;
   }
 
-  // INFO: Keycloak realm_access is an extension claim outside the base OIDC profile type.
-  const realmAccess = auth.user?.profile.realm_access as { roles?: string[] } | undefined;
-  const roles = realmAccess?.roles ?? [];
+  // INFO: Use getRealmRoles to parse from both ID token and Access Token
+  const roles = getRealmRoles(auth.user);
 
   return (
     <div className="max-w-4xl mx-auto">

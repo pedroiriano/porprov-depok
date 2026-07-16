@@ -4,7 +4,7 @@ Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker un
 
 ## Kondisi Aplikasi Saat Ini
 
-- Admin Web, API Gateway, Master Data Service, Venue Service, Schedule Service, Media Library, PostgreSQL, Keycloak, Redis, NATS, dan monitoring telah mempunyai runtime Docker terintegrasi.
+- Public Web, Admin Web, API Gateway, seluruh core service, PostgreSQL, Keycloak, Redis, NATS, dan monitoring mempunyai satu runtime Docker Compose terintegrasi.
 - CRUD Master Data, pemilihan Media Library, soft delete, dan pemulihan melalui Recycle Bin Admin sudah tersedia end-to-end untuk Cabor, Nomor Pertandingan, Kontingen, City Guide, Media, Venue, dan Jadwal. Hardening RBAC granular serta kebijakan retensi/purge tetap mengikuti `FEATURES.md`.
 - Public Web tahap v0.4 sudah memiliki beranda Techwind PORPROV, listing serta detail Cabor/Venue, Jadwal teragregasi, LiveScore persisten dengan public SSE tersanitasi, dan Klasemen Medali yang hanya membaca submission OFFICIAL. Seluruh state loading/empty/error bersifat faktual tanpa data tiruan; peta interaktif, distributed realtime, dan deployment production dilanjutkan berdasarkan `FEATURES.md`.
 - Hardening olahraga tahap v0.4 mencakup JWT issuer/expiry/client validation, role guard, private Admin SSE, revision/koreksi LiveScore append-only, workflow Medali PENDING–VERIFIED–OFFICIAL/REJECTED, transactional outbox LiveScore/Medali, serta Audit Log immutable dan deduplicated. Outbox domain lama, MFA, RBAC menyeluruh, dan hardening production tetap berstatus sesuai `FEATURES.md`.
@@ -66,12 +66,12 @@ Setiap perubahan aturan atau standar wajib diterapkan pada keenam Markdown root 
 | Mode | Endpoint |
 |---|---|
 | Production | Nginx `80/443`; service domain tidak dipublikasikan |
-| Docker development | Admin `5173`, API Gateway `8000`, Keycloak `8080` |
+| Docker development | Public `3000`, Admin `5173`, API Gateway `8000`, Keycloak `8080` |
 | Docker diagnostic | Master `18081`, Schedule `18082`, Venue `18087` |
 | Local Go debug | Gateway `28000`, Master `28081`, Schedule `28082`, Venue `28087`; service lain mengikuti registry `28xxx` |
 | Infrastruktur host | PostgreSQL `15432`, Redis `16379`, NATS `14222/18222`, Prometheus `19090`, Grafana `13000` |
 
-Semua host port dapat diubah melalui `infra/docker/.env` berdasarkan template `.env.example`. Port internal Docker tidak perlu diubah saat migrasi hosting karena service berkomunikasi melalui DNS Compose.
+Semua host port dapat diubah melalui file `.env` lokal yang dibuat dari `infra/docker/.env.example`. File `.env` aktual tidak dilacak Git. Port internal Docker tidak perlu diubah saat migrasi hosting karena service berkomunikasi melalui DNS Compose.
 
 Read-model publik Jadwal tersedia pada `GET /api/v1/schedule/matches/enriched`. Endpoint ini memperkaya match aktif dengan Cabor, Nomor Tanding, Kontingen/peserta, dan Venue pada Schedule Service; browser tetap hanya berkomunikasi melalui API Gateway.
 
@@ -83,9 +83,18 @@ Stream realtime publik berada di `GET /api/v1/stream/events` dan sengaja anonim 
 1. Baca `AI.md`, lalu `RULES.md`, `FEATURES.md`, `DOCUMENTATION.md`, `AGENTS.md`, dan README ini.
 2. Simpan dokumen kebutuhan/desain resmi di `docs/reference/` dan laporkan bila belum tersedia.
 3. Gunakan `theme-reference/HTML/Landing/` untuk audit UI Public dan `theme-reference/HTML/Dashboard/` untuk audit Admin.
-4. Jalankan pekerjaan sesuai tahap yang telah dikonfirmasi dan perbarui dokumen/status terkait.
+4. Jalankan full stack hanya melalui baseline berikut:
 
-Panduan startup lengkap tersedia di [`docs/runbook/LOCAL_DEVELOPMENT.md`](docs/runbook/LOCAL_DEVELOPMENT.md). Pilih mode Docker Compose atau mode local development; jangan mencampur Admin dev `5174`/Gateway `28000` dengan Admin Docker `5173`/Gateway `8000` tanpa override environment yang disengaja.
+```powershell
+Set-Location .\infra\docker
+Copy-Item .\.env.example .\.env -ErrorAction SilentlyContinue
+.\compose-up.ps1
+```
+
+5. Akses Public `http://localhost:3000` dan Admin `http://localhost:5173`. Bootstrap realm/client/role Keycloak berjalan otomatis dan idempotent.
+6. Jalankan pekerjaan sesuai tahap yang telah dikonfirmasi dan perbarui dokumen/status terkait.
+
+Panduan startup lengkap tersedia di [`docs/runbook/LOCAL_DEVELOPMENT.md`](docs/runbook/LOCAL_DEVELOPMENT.md). Namespace `28xxx` hanya untuk debugging satu komponen secara eksplisit; hentikan container domain yang sama sebelum menjalankan `go run` agar database dan storage tidak menerima concurrent writer.
 
 ## Catatan Orisinalitas
 

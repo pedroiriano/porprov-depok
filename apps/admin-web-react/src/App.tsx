@@ -3,6 +3,7 @@ import { LayoutDashboard, Database, Activity, FileCheck, ShieldAlert, User } fro
 import { useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useTheme } from './components/ThemeProvider';
+import { canAccessRole, getRealmRoles } from './lib/auth';
 
 // Mockup Pages
 import DashboardOverview from './pages/DashboardOverview';
@@ -31,13 +32,14 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
   const { theme, setTheme } = useTheme();
 
   // Parsing roles
-  const realmAccess = auth.user?.profile?.realm_access as { roles?: string[] } | undefined;
-  const roles = realmAccess?.roles ?? [];
-  const isAdmin = roles.includes('super_admin');
-  const canAudit = isAdmin || roles.includes('auditor');
-  const canOperateScores = isAdmin || roles.includes('koresponden');
-  const canSubmitMedals = isAdmin || roles.includes('koresponden');
-  const canVerifyMedals = isAdmin || roles.includes('verifikator');
+  // SECURITY: Keycloak dapat menaruh realm_access pada ID token, access token,
+  // atau keduanya. Navigasi membaca keduanya agar role Admin tidak hilang hanya
+  // karena mapper client berbeda, sementara otorisasi final tetap di API Gateway.
+  const roles = getRealmRoles(auth.user);
+  const canAudit = canAccessRole(roles, ['auditor']);
+  const canOperateScores = canAccessRole(roles, ['koresponden']);
+  const canSubmitMedals = canAccessRole(roles, ['koresponden']);
+  const canVerifyMedals = canAccessRole(roles, ['verifikator']);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -51,6 +53,11 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
           </div>
           
           <ul className="sidebar-menu border-t border-white/10" style={{ height: 'calc(100% - 70px)' }}>
+            {/* DEBUG ROLES */}
+            <li className="px-4 py-2 text-xs text-emerald-400 font-mono break-all">
+              Roles: {roles.length > 0 ? roles.join(', ') : 'No roles found'}
+            </li>
+            
             <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" isActive={location.pathname === '/'} />
             <SidebarItem icon={Database} label="Master Data" path="/master-data" isActive={location.pathname.startsWith('/master-data')} />
             {canOperateScores && <SidebarItem icon={Activity} label="LiveScore Center" path="/livescore" isActive={location.pathname.startsWith('/livescore')} />}

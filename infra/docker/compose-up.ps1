@@ -1,5 +1,5 @@
 param(
-    [switch]$NoForceRecreate,
+    [switch]$NoBuild,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$Services
 )
@@ -43,8 +43,8 @@ $dockerVersionOutput
 
 $composeArgs = @("compose", "up", "-d")
 
-if (-not $NoForceRecreate) {
-    $composeArgs += "--force-recreate"
+if (-not $NoBuild) {
+    $composeArgs += "--build"
 }
 
 if ($Services.Count -gt 0) {
@@ -52,4 +52,13 @@ if ($Services.Count -gt 0) {
 }
 
 & docker @composeArgs
-exit $LASTEXITCODE
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
+Write-Host "PORPROV stack siap:" -ForegroundColor Green
+Write-Host "- Public Web : http://localhost:3000"
+Write-Host "- Admin Web  : http://localhost:5173"
+Write-Host "- API Gateway: http://localhost:8000"
+Write-Host "- Keycloak   : http://localhost:8080"
+exit 0

@@ -8,3 +8,4 @@ services/**/uploads/
 !**/.env.example
 infra/docker/.docker-cli/
 theme-reference/
+runtime-backups/

@@ -1,69 +1,43 @@
-# Runbook Menjalankan Portal PORPROV Depok di Lingkungan Lokal
+# Runbook Menjalankan Portal PORPROV Depok
 
-> Diverifikasi untuk struktur repository per 15 Juli 2026. Jalankan perintah dari root repository `porprov-depok`, kecuali dinyatakan lain.
+> Baseline canonical per 16 Juli 2026. Jalankan perintah dari root repository `porprov-depok`, kecuali dinyatakan lain.
 
-## 1. Pilih Satu Mode
+## 1. Prinsip Runtime
 
-| Mode | Kapan dipakai | Admin | API Gateway | Service domain |
-|---|---|---:|---:|---|
-| Docker Compose | Demo integrasi paling cepat dan stabil | `5173` | `8000` | Port internal Docker; diagnostik `18081/18082/18087` |
-| Local development | Mengubah dan debug Go/React/Next.js | `5174` | `28000` | Namespace `28xxx` |
+Full stack hanya dijalankan dengan Docker Compose. Jangan menyalakan rangkaian service `go run`, Vite pada port alternatif, atau launcher campuran bersamaan dengan stack Docker.
 
-Jangan mengharapkan Admin dev terhubung ke Gateway Docker secara otomatis. `npm run dev` pada Admin memuat `.env.development` dan memakai `http://localhost:28000/api/v1`. Admin container Docker memakai Gateway Docker `http://localhost:8000/api/v1`.
+| Komponen | Endpoint canonical |
+|---|---|
+| Public Web | `http://localhost:3000` |
+| Admin Web | `http://localhost:5173` |
+| API Gateway | `http://localhost:8000` |
+| Keycloak | `http://localhost:8080` |
+| Master/Schedule/Venue diagnostik | `18081` / `18082` / `18087` |
+| PostgreSQL | `localhost:15432` |
+| Redis | `localhost:16379` |
+| NATS client/monitor | `localhost:14222` / `http://localhost:18222` |
+| Prometheus/Grafana | `http://localhost:19090` / `http://localhost:13000` |
+
+Browser hanya boleh membaca API melalui Gateway `8000`, bukan port diagnostik.
 
 ## 2. Prasyarat
 
-- Windows 10/11 dengan PowerShell.
-- Docker Desktop dan Docker Compose v2.
-- Go yang memenuhi versi tertinggi pada seluruh `go.mod` service; baseline repository saat ini adalah Go `1.26.4`.
-- Node.js dan npm.
-- Port pada registry di bagian berikut belum dipakai aplikasi lain.
+- Windows 10/11 dan PowerShell.
+- Docker Desktop dengan Docker Compose v2.
+- Node.js/npm dan Go hanya diperlukan untuk lint, build, test, atau debug komponen.
+- Port pada tabel di atas tidak sedang digunakan proses lain.
 
-Periksa versi:
+Periksa:
 
 ```powershell
 docker version
 docker compose version
-go version
 node --version
 npm.cmd --version
+go version
 ```
 
-Jika Docker Desktop menolak `C:\Users\<user>\.docker\config.json`, gunakan helper dan Docker config lokal repository seperti contoh di bawah.
-
-## 3. Registry Port
-
-### Infrastruktur dan Web
-
-| Komponen | URL/port host |
-|---|---:|
-| Public Web Next.js | `http://localhost:3000` |
-| Admin Web Docker | `http://localhost:5173` |
-| Admin Web local/Vite | `http://localhost:5174` |
-| Keycloak | `http://localhost:8080` |
-| PostgreSQL | `localhost:15432` |
-| Redis | `localhost:16379` |
-| NATS client/monitor | `localhost:14222` / `http://localhost:18222` |
-| Prometheus | `http://localhost:19090` |
-| Grafana | `http://localhost:13000` |
-
-### Service Lokal (`go run`)
-
-| Service | Port | Entry point |
-|---|---:|---|
-| API Gateway | `28000` | `services/api-gateway/main.go` |
-| User Service | `28001` | `services/user-service/cmd/server` |
-| Master Data Service | `28081` | `services/master-data-service/main.go` |
-| Schedule Service | `28082` | `services/schedule-service/main.go` |
-| LiveScore Service | `28083` | `services/livescore-service/main.go` |
-| Audit Service | `28084` | `services/audit-service/cmd/server` |
-| Realtime Gateway | `28085` | `services/realtime-gateway/main.go` |
-| Medal Standing Service | `28086` | `services/medal-standing-service/main.go` |
-| Venue Service | `28087` | `services/venue-service/cmd/api` |
-
-## 4. Mode A — Seluruh Stack Core dengan Docker Compose
-
-### 4.1 Siapkan environment
+## 3. Menyiapkan Environment
 
 ```powershell
 Set-Location .\infra\docker
@@ -73,353 +47,183 @@ if (-not (Test-Path .\.env)) {
 }
 ```
 
-Nilai dalam `.env.example` hanya untuk development. Ganti seluruh password dan origin sebelum staging/production.
+`.env.example` hanya berisi default development. File `.env` aktual diabaikan Git. Ganti password, internal token, issuer, origin, dan secret lain sebelum staging/production.
 
-### 4.2 Jalankan Compose
+Konfigurasi service/frontend terpusat di Compose. File berikut sengaja tidak lagi dipakai:
+
+- root `start_all.sh`;
+- `apps/admin-web-react/.env.development`;
+- `.env` per service sebagai cara menjalankan full stack;
+- callback Admin port `5174`.
+
+## 4. Menjalankan Seluruh Stack
+
+Masih dari `infra/docker`:
 
 ```powershell
 .\compose-up.ps1
 ```
 
-Periksa container:
+Script menjalankan `docker compose up -d --build` dengan Docker config lokal `.docker-cli`. Stack mencakup:
+
+- PostgreSQL dan seluruh migration job;
+- Redis dan NATS JetStream;
+- Keycloak serta bootstrap realm/client/role/user;
+- Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, dan Realtime Gateway;
+- API Gateway;
+- Public Web dan Admin Web;
+- Nginx, Prometheus, dan Grafana.
+
+Untuk startup tanpa rebuild image yang sudah tersedia:
 
 ```powershell
-docker --config .\.docker-cli compose ps
+.\compose-up.ps1 -NoBuild
 ```
 
-Compose menjalankan PostgreSQL, seluruh migration container aktif, Redis, NATS, Keycloak, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, API Gateway, Admin Web, Nginx, Prometheus, dan Grafana.
-
-### 4.3 Bootstrap Keycloak
-
-Client bootstrap aman dijalankan berulang kali:
+Periksa container dan migration job:
 
 ```powershell
-Get-Content -Raw .\create_clients.sh | docker --config .\.docker-cli exec -i porprov_keycloak sh -c "tr -d '\r' | bash"
+docker --config .\.docker-cli compose ps -a
 ```
 
-Untuk database development baru, buat role dan user contoh:
+Status `Exited (0)` pada service `migrate-*` dan `keycloak-bootstrap` adalah normal: keduanya one-shot job yang sudah selesai.
+
+## 5. Login Admin dan Menu
+
+Bootstrap development membuat akun berikut secara idempotent:
+
+| Kegunaan | Username | Password | Role |
+|---|---|---|---|
+| Admin aplikasi | `admin_depok` | `password` | `super_admin` |
+| Koresponden | `koresponden_1` | `password` | `koresponden` |
+
+Nilai akun dapat dioverride melalui `.env`. Kredensial contoh tidak boleh digunakan pada staging/production.
+
+Admin `super_admin` melihat:
+
+- Dashboard;
+- Master Data;
+- LiveScore Center;
+- Perolehan Medali;
+- City Guide;
+- Media Library;
+- Verifikasi;
+- Audit Log;
+- Profil Akun.
+
+Role lain hanya melihat menu operasional yang diizinkan. Admin membaca role dari ID token dan access token untuk navigasi; API Gateway tetap memvalidasi JWT dan role untuk otorisasi sesungguhnya. Setelah role berubah, logout lalu login kembali agar token diperbarui.
+
+## 6. Media Library
+
+Metadata Media Library berada di PostgreSQL Master Data dan file runtime berada di named volume Docker `master_data_uploads`. Jangan menjalankan Master Data lokal terhadap database Docker karena folder upload lokal bukan volume tersebut.
+
+Periksa metadata dan delivery asset:
 
 ```powershell
-Get-Content -Raw .\create_users.sh | docker --config .\.docker-cli exec -i porprov_keycloak sh -c "tr -d '\r' | bash"
+curl.exe -f http://localhost:8000/api/v1/master-data/media
+curl.exe -I http://localhost:8000/uploads/<nama-file>
 ```
 
-Akun contoh hanya untuk lokal:
+Soft delete media hanya menonaktifkan metadata/delivery. File fisik tidak dihapus sampai purge terkontrol berdasarkan kebijakan retensi.
 
-| Kegunaan | Username | Password |
-|---|---|---|
-| Admin aplikasi | `admin_depok` | `password` |
-| Koresponden | `koresponden_1` | `password` |
+Backup migrasi upload lokal 15 Juli 2026 berada di `runtime-backups/master-data-uploads-local-20260716` dan sengaja diabaikan Git/Docker build. Jangan menghapus backup sampai backup volume resmi diverifikasi.
 
-### 4.4 Akses Docker stack
-
-| Komponen | URL |
-|---|---|
-| Admin Web | `http://localhost:5173` |
-| API Gateway health | `http://localhost:8000/health` |
-| Keycloak | `http://localhost:8080` |
-| Master diagnostik | `http://localhost:18081/health` |
-| Schedule diagnostik | `http://localhost:18082/health` |
-| Venue diagnostik | `http://localhost:18087/health` |
-
-Browser aplikasi harus memakai API Gateway, bukan port diagnostik service.
-
-## 5. Mode B — Infrastructure Docker + Semua Service Go Lokal
-
-### 5.1 Jalankan infrastructure saja
-
-```powershell
-Set-Location .\infra\docker
-
-if (-not (Test-Path .\.env)) {
-    Copy-Item .\.env.example .\.env
-}
-
-.\compose-up.ps1 postgres redis nats keycloak prometheus grafana
-```
-
-### 5.2 Jalankan migrasi service core
-
-Masih dari `infra/docker`:
-
-```powershell
-docker --config .\.docker-cli compose run --rm migrate-master-data
-docker --config .\.docker-cli compose run --rm migrate-venue
-docker --config .\.docker-cli compose run --rm migrate-schedule
-docker --config .\.docker-cli compose run --rm migrate-livescore
-docker --config .\.docker-cli compose run --rm migrate-medals
-docker --config .\.docker-cli compose run --rm migrate-audit
-```
-
-Jalankan bootstrap Keycloak seperti bagian 4.3, lalu kembali ke root repository:
-
-```powershell
-Set-Location ..\..
-```
-
-### 5.3 Siapkan Venue lokal
-
-```powershell
-if (-not (Test-Path .\services\venue-service\.env)) {
-    Copy-Item .\services\venue-service\.env.example .\services\venue-service\.env
-}
-```
-
-Pastikan file Venue lokal memakai PostgreSQL `15432`, NATS `14222`, Schedule `28082`, dan port service `28087`.
-
-### 5.4 Jalankan service referensi core
-
-Buka terminal PowerShell terpisah untuk setiap command. Jalankan Gateway paling akhir.
-
-Terminal 1 — Master Data:
-
-```powershell
-Set-Location .\services\master-data-service
-go run main.go
-```
-
-Terminal 2 — Venue:
-
-```powershell
-Set-Location .\services\venue-service
-go run ./cmd/api
-```
-
-Terminal 3 — Schedule:
-
-```powershell
-Set-Location .\services\schedule-service
-go run main.go
-```
-
-### 5.5 Migrasi service tambahan
-
-Fresh PostgreSQL volume membuat `livescore_db`, `audit_db`, dan database service lain melalui initializer. Pada volume lama, pastikan `livescore_db` tersedia sebelum migration:
-
-```powershell
-$exists = docker --config .\infra\docker\.docker-cli exec porprov_postgres psql -U porprov_admin -tAc "SELECT 1 FROM pg_database WHERE datname='livescore_db'"
-if (-not $exists.Trim()) {
-    docker --config .\infra\docker\.docker-cli exec porprov_postgres psql -U porprov_admin -c "CREATE DATABASE livescore_db OWNER porprov_admin"
-}
-
-Push-Location .\infra\docker
-docker --config .\.docker-cli compose run --rm migrate-livescore
-docker --config .\.docker-cli compose run --rm migrate-medals
-docker --config .\.docker-cli compose run --rm migrate-audit
-Pop-Location
-```
-
-Migration container memakai version table dan aman dijalankan ulang. Versi aktif tahap ini: LiveScore `1`, Medal `3`, dan Audit `2`.
-
-### 5.6 Jalankan service tambahan yang mempunyai executable
-
-Buka terminal terpisah.
-
-User Service:
-
-```powershell
-Get-Content -Raw .\services\user-service\migrations\000001_create_users_table.up.sql | docker --config .\infra\docker\.docker-cli exec -i porprov_postgres psql -v ON_ERROR_STOP=1 -U porprov_admin -d user_service_db
-Set-Location .\services\user-service
-go run ./cmd/server
-```
-
-Audit Service:
-
-```powershell
-Set-Location .\services\audit-service
-go run ./cmd/server
-```
-
-LiveScore Service:
-
-```powershell
-Set-Location .\services\livescore-service
-go run main.go
-```
-
-Medal Standing Service:
-
-```powershell
-Set-Location .\services\medal-standing-service
-go run main.go
-```
-
-Realtime Gateway (Redis Compose memakai password development):
-
-```powershell
-Set-Location .\services\realtime-gateway
-$env:REDIS_PASSWORD = "porprov_redis_secret"
-go run main.go
-```
-
-API Gateway dijalankan paling akhir:
-
-```powershell
-Set-Location .\services\api-gateway
-go run main.go
-```
-
-Default lokal memakai issuer Keycloak `http://localhost:8080/realms/porprov`, client `porprov-admin-web,porprov-mobile-admin`, origin `3000/5173/5174`, dan internal stream token development. Untuk staging/production, isi `KEYCLOAK_ISSUER`, `JWT_ALLOWED_CLIENTS`, `CORS_ALLOWED_ORIGINS`, serta random `INTERNAL_STREAM_TOKEN` minimal 32 karakter; startup akan menolak issuer HTTP, wildcard CORS, atau secret template di luar development.
-
-### 5.7 Folder service yang belum dapat dijalankan
-
-Folder berikut belum mempunyai `go.mod` dan entrypoint executable:
-
-- `services/auth-adapter-service`
-- `services/file-service`
-- `services/notification-service`
-
-Jangan membuat command startup fiktif untuk ketiganya. Implementasinya masih tahap berikutnya.
-
-## 6. Menjalankan Web Publik
-
-Buka terminal baru dari root repository:
-
-```powershell
-Set-Location .\apps\public-web-nextjs
-npm.cmd ci
-npm.cmd run dev -- --port 3000
-```
-
-Akses `http://localhost:3000`.
-
-Public Web membaca seluruh data melalui API Gateway `28000`. Pada v0.4, Jadwal memakai read-model enriched, LiveScore membaca PostgreSQL projection dan public SSE tersanitasi, sedangkan Klasemen hanya membaca Medali OFFICIAL serta polling fallback. Distributed scale-out dan production hardening tetap mengikuti `FEATURES.md`.
-
-## 7. Menjalankan Web Admin
-
-Mode local development membutuhkan API Gateway lokal `28000` dan Keycloak `8080`.
-
-```powershell
-Set-Location .\apps\admin-web-react
-npm.cmd ci
-npm.cmd run dev -- --host 0.0.0.0 --port 5174 --strictPort
-```
-
-Akses `http://localhost:5174` dan login melalui Keycloak. `.env.development` sudah berisi:
-
-```dotenv
-VITE_API_URL=http://localhost:28000/api/v1
-VITE_OIDC_AUTHORITY=http://localhost:8080/realms/porprov
-VITE_OIDC_CLIENT_ID=porprov-admin-web
-```
-
-Untuk mode Docker, jangan jalankan Vite; gunakan Admin container pada `http://localhost:5173`.
-
-## 8. Pemeriksaan Kesehatan
-
-### 8.1 Core lokal
-
-```powershell
-curl.exe -f http://localhost:28000/health
-curl.exe -f http://localhost:28081/health
-curl.exe -f http://localhost:28082/health
-curl.exe -f http://localhost:28000/api/v1/schedule/matches/enriched
-curl.exe -f http://localhost:28083/health
-curl.exe -f http://localhost:28084/health
-curl.exe -f http://localhost:28086/health
-curl.exe -f http://localhost:28087/health
-curl.exe -f http://localhost:8080/realms/porprov/.well-known/openid-configuration
-```
-
-Realtime Gateway belum mempunyai `/health`. Periksa listener dan koneksi SSE:
-
-```powershell
-netstat -ano | findstr ":28085"
-curl.exe -N --max-time 5 http://localhost:28085/api/v1/stream/events
-```
-
-### 8.2 Service tambahan
-
-```powershell
-curl.exe -f http://localhost:28001/health
-curl.exe -f http://localhost:28084/health
-curl.exe -f http://localhost:28086/api/v1/medals/standings
-```
-
-Periksa projection faktual tanpa membuat skor/medali uji:
-
-```powershell
-curl.exe -f http://localhost:28000/api/v1/livescore/public
-curl.exe -f http://localhost:28000/api/v1/medals/standings
-```
-
-Mutasi LiveScore langsung tanpa actor harus menghasilkan `401`; match UUID yang tidak aktif ditolak `422`. Pengujian positif update/koreksi wajib memakai Jadwal staging resmi, bearer token melalui Gateway, dan `expectedRevision`; jangan memasukkan record pertandingan palsu ke database bersama.
-
-### 8.3 Web
+## 7. Health Check
 
 ```powershell
 curl.exe -f http://localhost:3000
-curl.exe -f http://localhost:5174
+curl.exe -f http://localhost:5173
+curl.exe -f http://localhost:8000/health
+curl.exe -f http://localhost:8080/realms/porprov/.well-known/openid-configuration
+curl.exe -f http://localhost:18081/health
+curl.exe -f http://localhost:18082/health
+curl.exe -f http://localhost:18087/health
+curl.exe -f http://localhost:8000/api/v1/master-data/cabors
+curl.exe -f http://localhost:8000/api/v1/venues
+curl.exe -f http://localhost:8000/api/v1/schedule/matches/enriched
+curl.exe -f http://localhost:8000/api/v1/livescore/public
+curl.exe -f http://localhost:8000/api/v1/medals/standings
+curl.exe -f http://localhost:18222/healthz
+curl.exe -f http://localhost:19090/-/ready
+curl.exe -f http://localhost:13000/api/health
 ```
 
-## 9. Menghentikan Aplikasi
+## 8. Debug Satu Komponen
 
-- Service/web yang dijalankan di foreground: tekan `Ctrl+C` pada terminal masing-masing.
-- Docker Compose:
+Namespace `28xxx` tetap tersedia hanya untuk debugging terisolasi:
+
+| Service | Port debug |
+|---|---:|
+| API Gateway | `28000` |
+| User | `28001` |
+| Master Data | `28081` |
+| Schedule | `28082` |
+| LiveScore | `28083` |
+| Audit | `28084` |
+| Realtime Gateway | `28085` |
+| Medal Standing | `28086` |
+| Venue | `28087` |
+
+Sebelum debug, hentikan container domain yang sama. Contoh Venue:
+
+```powershell
+Set-Location .\infra\docker
+docker --config .\.docker-cli compose stop venue-service
+Set-Location ..\..\services\venue-service
+$env:PORT = "28087"
+$env:DATABASE_URL = "postgres://porprov_admin:porprov_secret@localhost:15432/venue_db?sslmode=disable"
+$env:NATS_URL = "nats://localhost:14222"
+$env:SCHEDULE_SERVICE_URL = "http://localhost:28082/api/v1"
+go run .\cmd\api
+```
+
+Jangan menjadikan rangkaian debug ini sebagai full-stack kedua. Setelah selesai, hapus environment terminal atau tutup terminal, lalu hidupkan kembali container.
+
+## 9. Menghentikan Stack
 
 ```powershell
 Set-Location .\infra\docker
 docker --config .\.docker-cli compose down
 ```
 
-Jangan memakai `docker compose down -v` kecuali memang berniat menghapus seluruh database, Redis, NATS, dan file Media Library lokal.
+Jangan memakai `down -v`. Opsi tersebut menghapus database, state Redis/NATS, Grafana/Prometheus, dan file Media Library.
 
 ## 10. Troubleshooting
 
-### Port already in use
-
-```powershell
-netstat -ano | findstr ":5174 :28000 :28081 :28082 :28085 :28087"
-```
-
-Hentikan proses lama melalui terminal asalnya. Jangan menjalankan dua instance service pada port yang sama.
-
-### Admin menampilkan “Tidak dapat terhubung ke API”
-
-1. Pastikan Admin dev memuat Gateway `28000`.
-2. Pastikan `http://localhost:28000/health` merespons `200`.
-3. Restart `go run main.go` API Gateway setelah perubahan kode; Go tidak hot reload.
-4. Pastikan Master `28081`, Schedule `28082`, dan Venue `28087` aktif.
-
-### Keycloak `Invalid parameter: redirect_uri`
-
-Jalankan ulang bootstrap client pada bagian 4.3. Client development mengizinkan `localhost`/`127.0.0.1` port `5173` dan `5174`.
-
-### Realtime gagal dengan `stream not found`
-
-Gunakan source terbaru dan jalankan `go run main.go`. Realtime Gateway membuat/menyelaraskan stream `LIVESCORE` dan `MEDALS` sebelum consumer dibuat. Pastikan NATS host `14222` aktif.
-
-### Migration Audit lama gagal `relation "audit_logs" already exists`
-
-Ini hanya terjadi pada volume lama yang membuat tabel melalui SQL manual sebelum migration container tersedia. Jangan drop tabel Audit. Periksa bahwa kolom v2 (`event_id`, `event_version`, `event_type`, `actor_id`, `request_id`, `ip_address`, `payload_hash`) dan trigger `audit_logs_immutable` sudah ada. Jika skema memang lengkap v2, baseline metadata secara non-destruktif lalu jalankan migration lagi:
-
-```powershell
-Set-Location .\infra\docker
-docker --config .\.docker-cli compose run --rm migrate-audit -path /migrations -database "postgres://porprov_admin:porprov_secret@postgres:5432/audit_db?sslmode=disable" force 2
-docker --config .\.docker-cli compose run --rm migrate-audit
-```
-
-Jangan menjalankan `force 2` bila kolom/trigger v2 belum tersedia; terapkan migration SQL sesuai state aktual atau pulihkan backup terlebih dahulu.
-
-### Gateway mengembalikan `502 Bad Gateway`
-
-Gateway sehat tidak berarti upstream sehat. Cocokkan endpoint dengan service berikut:
-
-| Route Gateway | Upstream lokal |
-|---|---|
-| `/api/v1/master-data/*` | `28081` |
-| `/api/v1/schedule/*` | `28082` |
-| `/api/v1/livescore/*` | `28083` |
-| `/api/v1/audit/*` | `28084` |
-| `/api/v1/stream/*` | `28085` |
-| `/api/v1/medals/*` | `28086` |
-| `/api/v1/venues/*` | `28087` |
-
 ### Docker permission denied
 
-Pastikan Docker Desktop aktif. Jika user belum tergabung dalam grup Docker:
+Buka Docker Desktop sampai engine aktif. Bila user Windows belum menjadi anggota grup Docker:
 
 ```powershell
 net localgroup docker-users $env:USERNAME /add
 ```
 
-Logout atau restart Windows setelah perubahan grup.
+Logout atau restart Windows sesudahnya.
+
+### Admin berbeda atau menu hilang
+
+1. Pastikan URL Admin adalah `http://localhost:5173`, bukan port Vite lain.
+2. Pastikan `keycloak-bootstrap` berstatus `Exited (0)`.
+3. Logout lalu login sebagai `admin_depok` agar token membawa `super_admin`.
+4. Hard refresh browser bila service worker/cache lama masih aktif.
+
+### Media Library menampilkan gambar rusak
+
+1. Periksa metadata melalui Gateway.
+2. Pastikan URL `/uploads/*` merespons `200`.
+3. Pastikan container `porprov_master_data` memasang volume `master_data_uploads` pada `/app/uploads`.
+4. Jangan mengunggah melalui Master Data `go run` ketika database Docker digunakan.
+
+### Keycloak `Invalid parameter: redirect_uri`
+
+Periksa bahwa URL Admin adalah port `5173`, lalu jalankan ulang stack. Bootstrap client otomatis menyelaraskan callback `localhost`/`127.0.0.1:5173` dengan PKCE S256.
+
+### Realtime `stream not found`
+
+Pastikan NATS sehat dan `porprov_realtime` memakai source terbaru. Realtime Gateway membuat stream `LIVESCORE` dan `MEDALS` secara idempotent sebelum durable consumer dibuat.
+
+### Gateway `502 Bad Gateway`
+
+Periksa `docker compose ps` dan log upstream terkait. Gateway sehat tidak berarti seluruh upstream sehat.
+
+Keputusan penyatuan runtime dan storage dicatat pada [`ADR-0005`](../adr/ADR-0005-canonical-compose-runtime-and-media-storage.md).

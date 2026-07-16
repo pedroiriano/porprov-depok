@@ -81,8 +81,11 @@ Membangun platform web dan mobile PORPROV yang cepat, andal, aman, realtime, SEO
 ## Prinsip Portabilitas Runtime
 
 - Production hanya mengekspos Nginx `80/443`; aplikasi browser masuk melalui origin resmi dan API Gateway.
-- Docker memakai port internal tetap serta DNS nama service. Host port selalu configurable pada `infra/docker/.env`.
-- Local debugging memakai namespace `28xxx` agar dapat berjalan berdampingan dengan Docker tanpa bind conflict.
+- Full-stack development memakai satu baseline `infra/docker/docker-compose.yml`, termasuk Public Web `3000`, Admin `5173`, Gateway `8000`, Keycloak, seluruh core service, migration, data/event infrastructure, dan observability.
+- Docker memakai port internal tetap serta DNS nama service. Host port configurable melalui `.env` lokal dari `infra/docker/.env.example`; `.env` aktual tidak dilacak Git.
+- Local debugging memakai namespace `28xxx` hanya untuk satu komponen yang disengaja. Hentikan container domain yang sama dan jangan memakai mode lokal sebagai full-stack kedua.
+- Named volume `master_data_uploads` adalah storage runtime Media Library; jangan menjalankan Master Data lokal terhadap database Docker karena folder uploadnya berbeda.
+- Bootstrap Keycloak client/role/user development harus otomatis dan idempotent sebelum Gateway/Admin dipakai.
 - Jangan menulis URL service atau port diagnostik langsung di frontend; gunakan environment dan API Gateway.
 - Agregasi referensi lintas service untuk konsumsi publik harus dikerjakan sebagai read-model di backend pemilik alur, bukan rangkaian request langsung dari browser. Jadwal memakai `/schedule/matches/enriched` melalui API Gateway.
 - Data tayang realtime publik boleh anonim hanya melalui API Gateway dan wajib berupa projection tersanitasi. Stream Admin membutuhkan JWT/role di edge serta secret internal yang eksplisit di luar development.

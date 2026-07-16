@@ -280,7 +280,7 @@ Perubahan arsitektur tetap membutuhkan ADR. Perubahan fitur tetap memperbarui `F
 | Lapisan | Port Standar | Aturan |
 |---|---|---|
 | Production edge | `80`, `443` | Hanya Nginx/reverse proxy yang diekspos publik |
-| Public development | Admin `5173`, Gateway `8000`, Keycloak `8080` | Entry point browser dan SSO lokal |
+| Public development | Public `3000`, Admin `5173`, Gateway `8000`, Keycloak `8080` | Entry point browser dan SSO lokal melalui Compose |
 | Docker diagnostic | Master `18081`, Schedule `18082`, Venue `18087` | Hanya health check/troubleshooting lokal |
 | Local Go debug | Gateway `28000`, User `28001`, Master `28081`, Schedule `28082`, LiveScore `28083`, Audit `28084`, Realtime `28085`, Medal `28086`, Venue `28087` | Tidak bentrok dengan port host Docker |
 | Infrastruktur host | PostgreSQL `15432`, Redis `16379`, NATS `14222/18222`, Prometheus `19090`, Grafana `13000` | Dapat diubah melalui `infra/docker/.env` |
@@ -291,6 +291,10 @@ Aturan mutlak:
 - Seluruh mapping host pada Compose wajib memakai environment variable dengan default terdokumentasi.
 - Frontend hanya menggunakan API Gateway atau same-origin reverse proxy; dilarang mengakses Master/Schedule/Venue melalui port diagnostik.
 - Data tayang publik (Master Data aktif, Jadwal aktif, Venue aktif, Klasemen, dan stream realtime) boleh dibaca tanpa JWT hanya melalui route GET/stream API Gateway; seluruh mutasi, tombstone, restore, dan data audit tetap wajib autentikasi serta otorisasi.
-- Local `go run` menggunakan namespace `28xxx`. Menjalankan Docker dan Go lokal bersamaan diperbolehkan untuk debugging, tetapi hindari concurrent write terhadap database yang sama.
+- Full stack wajib dijalankan dari satu baseline `infra/docker/docker-compose.yml` melalui `infra/docker/compose-up.ps1`; script campuran Docker/`go run` dan port Admin alternatif dilarang.
+- Local `go run` menggunakan namespace `28xxx` hanya untuk debugging satu komponen. Container domain yang sama wajib dihentikan; concurrent writer terhadap database/storage yang sama dilarang.
+- File `.env` aktual tidak boleh dilacak Git. Template tunggal berada di `infra/docker/.env.example` dan secret staging/production berasal dari secret manager.
+- Named volume `master_data_uploads` adalah sumber storage runtime Media Library. Migrasi file wajib non-destruktif dan file tidak boleh dipurge tanpa kebijakan retensi.
+- Bootstrap realm, client, role, dan user development Keycloak harus idempotent serta selesai sebelum Gateway/Admin menerima traffic.
 - Deployment hosting harus dapat mengganti host port tanpa rebuild source. Pada production, tutup port diagnostik melalui Compose override/firewall.
 - Penambahan service/port wajib memperbarui registry ini, `.env.example`, `DOCUMENTATION.md`, dan dokumen root terkait.
