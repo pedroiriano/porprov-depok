@@ -1,7 +1,7 @@
 FROM node:24-alpine AS dependencies
 WORKDIR /app
 COPY apps/public-web-nextjs/package.json apps/public-web-nextjs/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm install --no-audit --no-fund
 
 FROM node:24-alpine AS builder
 WORKDIR /app
