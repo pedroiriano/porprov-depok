@@ -2,7 +2,7 @@
 
 Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Portal PORPROV XV Jawa Barat 2026.
 
-> **Konteks aktif per 16 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime full-stack canonical memakai Docker Compose dan mencakup Public/Admin Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, PostgreSQL, Keycloak beserta bootstrap role/client, Redis, NATS, Nginx, dan observability. Namespace `28xxx` hanya untuk debugging satu komponen, bukan full-stack kedua. Data publik membaca detail Cabor/Venue, Jadwal enriched, projection LiveScore persisten, public SSE tersanitasi, serta Medali OFFICIAL tanpa data tiruan. Soft delete/Recycling domain inti tetap aktif; MFA, outbox domain lama, RBAC menyeluruh, scale-out, dan production hardening dilanjutkan bertahap.
+> **Konteks aktif per 22 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime full-stack canonical memakai Docker Compose dan mencakup Public/Admin Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, PostgreSQL, Keycloak beserta bootstrap role/client, Redis, NATS, Nginx, dan observability. Namespace `28xxx` hanya untuk debugging satu komponen, bukan full-stack kedua. Data publik membaca detail Cabor/Venue, Jadwal enriched, projection LiveScore persisten, public SSE tersanitasi, serta Medali OFFICIAL tanpa data tiruan. Soft delete/Recycling domain inti tetap aktif; MFA, outbox domain lama, RBAC menyeluruh, scale-out, dan production hardening dilanjutkan bertahap.
 
 ## Mode Kerja Utama
 
@@ -38,24 +38,24 @@ Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tida
 | Event Broker | NATS JetStream untuk durable event bisnis |
 | Auth | Keycloak + OpenID Connect/OAuth2 + JWT |
 | Deployment | Docker + Nginx + SSL pada VM Diskominfo Kota Depok; Kubernetes bila skala enterprise besar |
-| UI System | Techwind 3.3.0 sebagai baseline visual, Tailwind CSS v4.x, design tokens PORPROV, mobile-first, accessible components |
+| UI System | Techwind 3.3.0 sebagai tema tunggal wajib, Tailwind CSS v4.x hanya sebagai mesin implementasi, design tokens PORPROV, mobile-first, accessible components |
 
 
-## Baseline UI/UX yang Harus Dipakai
+## Tema Tunggal UI/UX yang Harus Dipakai
 
-| Sumber Inspirasi | Prinsip yang Diambil | Adaptasi PORPROV |
+| Area | Sumber Tema Wajib | Adaptasi PORPROV |
 |---|---|---|
-| `theme-reference/HTML/Landing/` | Baseline Techwind untuk Public Web: navigation, hero, section rhythm, cards, editorial, event, gallery, CTA, footer | Diubah menjadi pengalaman PORPROV yang orisinal, energik, SEO-ready, realtime, dan beridentitas Kota Depok |
-| `theme-reference/HTML/Dashboard/` | Baseline Techwind untuk Admin Web: sidebar, topbar, dashboard, forms, tables, profile, calendar, gallery, responsive shell | Diubah menjadi workspace operator olahraga yang padat, cepat, role-aware, audit-friendly, dan aksesibel |
-| Flashscore | Kepadatan LiveScore, filter cabor/tanggal, match card, standings, detail match, status realtime | LiveScore per cabor, venue, kontingen, ronde, status official, timeline event, standings medali |
-| ESPN | Sports media storytelling, highlights, news cards, video/editorial hub, coverage berbasis narasi olahraga | Berita PORPROV, highlight atlet, galeri, press release, profil venue, cerita maskot Toca-Toci |
-| Tailwind CSS v4.x | Utility-first, CSS-first token, responsive utilities, scrollbar/logical utilities modern | Design system PORPROV dengan token warna, spacing, status badges, skeleton loading, dark mode opsional |
+| Public Web | Techwind 3.3.0 `theme-reference/HTML/Landing/dist/`: navigation, hero, section rhythm, cards, editorial, event, gallery, CTA, footer | Diubah menjadi pengalaman PORPROV yang orisinal, energik, SEO-ready, realtime, dan beridentitas Kota Depok |
+| Admin Web | Techwind 3.3.0 `theme-reference/HTML/Dashboard/dist/`: sidebar, topbar, dashboard, forms, tables, profile, calendar, gallery, responsive shell | Diubah menjadi workspace operator olahraga yang padat, cepat, role-aware, audit-friendly, dan aksesibel |
+| Web/Mobile baru | Pola terdekat dari dua folder `dist` Techwind canonical | Diadaptasi responsif dengan identitas PORPROV; tema/template/design system visual lain dilarang |
 
 ### Standar “Masterpiece” PORPROV
 
-- Techwind adalah baseline komposisi dan interaksi, bukan hasil akhir yang disalin mentah.
+- Techwind adalah satu-satunya tema komposisi dan interaksi yang wajib dipakai, bukan hasil akhir yang disalin mentah.
 - Implementasi wajib menggunakan komponen React/Next.js dan token PORPROV; source Gulp/HTML tema tidak menjadi runtime aplikasi.
+- Dilarang mengambil tema, template, komponen bergaya, layout, warna, tipografi, atau interaction language dari sumber visual lain. Tailwind CSS dan library komponen hanya alat implementasi perilaku teknis.
 - Setiap layar wajib mempunyai hierarki visual yang jelas, state loading/empty/error/success, responsif mobile-first, navigasi keyboard, focus state, kontras WCAG 2.2 AA, dan motion yang menghormati `prefers-reduced-motion`.
+- Tailwind CSS v4 wajib memakai class `.dark` sebagai satu-satunya pemicu utility `dark:*`; preferensi sistem hanya menentukan tema awal. Rasio kontras minimal adalah 4,5:1 untuk teks normal dan 3:1 untuk teks besar atau komponen grafis esensial pada kedua tema.
 - Public Web harus terasa energik dan editorial tanpa mengorbankan kepadatan LiveScore, SEO, atau Core Web Vitals.
 - Stream publik hanya boleh memuat projection tayang tersanitasi; stream operasional Admin wajib melewati JWT/role API Gateway dan secret internal yang aman di luar development.
 - Perubahan LiveScore/Medali yang kritis wajib memakai transaksi state + outbox. Koreksi skor append-only dan publikasi Medali hanya dari status VERIFIED, dengan actor tiap tahap dipertahankan.
@@ -150,7 +150,7 @@ Konfirmasi: lanjut ke Tahap berikutnya?
 - Semua delete data persisten wajib soft delete; hard delete hanya purge terkontrol.
 - Jangan menambah port host baru di luar registry tanpa memperbarui enam dokumen root dan `.env.example`.
 - Semua implementasi harus mobile-first, aksesibel, SEO-ready untuk public web, aman, observable, dan testable.
-- Jangan menyalin UI/brand Techwind, Flashscore, atau ESPN secara identik. Gunakan Techwind sebagai baseline berlisensi dan adaptasikan menjadi design system PORPROV yang orisinal.
+- Gunakan hanya tema Techwind berlisensi dan adaptasikan menjadi design system PORPROV yang orisinal; tema/template/visual language lain dilarang.
 
 
 ## Perilaku Saat Ada Konflik

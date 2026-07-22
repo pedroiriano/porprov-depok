@@ -32,7 +32,7 @@ Aplikasi dibangun dengan prinsip **Enterprise Microservices**, *Event-Driven Arc
 
 ### 2.1. Teknologi Stack Final
 *   **Arsitektur:** Microservices + Event-Driven.
-*   **Public Web:** Next.js (App Router), React, TypeScript, PWA, Tailwind CSS v4.x (menggunakan Techwind sebagai *baseline* UI).
+*   **Public Web:** Next.js (App Router), React, TypeScript, PWA, Tailwind CSS v4.x sebagai mesin implementasi; Techwind adalah tema tunggal wajib.
 *   **Admin Web:** React (Vite), TypeScript, Tailwind CSS, Dashboard Layout.
 *   **Mobile Apps:** React Native + TypeScript.
 *   **Backend Services:** Golang (Go 1.22+).
@@ -73,11 +73,12 @@ Untuk memudahkan *debugging* secara terisolasi via *local host*, alokasi port di
 
 ## 3. STANDAR UI/UX DAN WIREFRAME KONSEP
 
-### 3.1. Baseline UI/UX
-*   **Framework UI:** Mengadopsi struktur `Techwind` (Landing untuk *Public*, Dashboard untuk *Admin*) yang dimodifikasi menjadi identitas desain olahraga (energik, dinamis, *SEO-ready*).
+### 3.1. Tema Tunggal UI/UX
+*   **Tema UI Wajib:** Hanya menggunakan `Techwind`—`theme-reference/HTML/Landing/dist/` untuk *Public* dan `theme-reference/HTML/Dashboard/dist/` untuk *Admin*—yang diadaptasi menjadi identitas desain olahraga PORPROV (energik, dinamis, *SEO-ready*).
+*   **Larangan Tema Ganda:** Tema, template, design system visual, layout, tipografi, komponen bergaya, atau interaction language dari sumber lain dilarang. Tailwind CSS dan library hanya alat teknis; seluruh tampilan akhirnya wajib mengikuti Techwind.
 *   **Prinsip Desain:**
     *   *Mobile-First* & Responsif.
-    *   Kepadatan Data (Tingkat kepadatan layaknya *Flashscore* untuk detail pertandingan).
+    *   Kepadatan data olahraga diwujudkan melalui pola card, table, tabs, filter, dan hierarchy Techwind.
     *   *Micro-animations* interaktif tanpa mengurangi performa (*Core Web Vitals*: LCP < 2.5s).
     *   Aksesibilitas (WCAG 2.2 AA).
 *   **Warna Utama:** Menggunakan token warna resmi PORPROV Depok (Merah, Emas, dan warna sekunder kontras tinggi).

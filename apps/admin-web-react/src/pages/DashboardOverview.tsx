@@ -1,9 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Trophy, Activity, AlertTriangle } from 'lucide-react';
+import { Users, Trophy, Activity, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import { apiClient, authConfig, unwrapApiData } from '../lib/api';
 
-const StatCard = ({ title, value, icon: Icon, trend, colorClass }: any) => (
+interface StatCardProps {
+  title: string;
+  value: string;
+  icon: LucideIcon;
+  trend: string;
+  colorClass: string;
+}
+
+const StatCard = ({ title, value, icon: Icon, trend, colorClass }: StatCardProps) => (
   <div className="card p-6 flex items-start justify-between">
     <div>
       <p className="text-sm font-medium text-text-muted mb-1">{title}</p>
@@ -33,7 +41,7 @@ export default function DashboardOverview() {
     try {
       const response = await apiClient.get('/audit/logs?limit=10', authConfig(token));
       setLogs(unwrapApiData<any[]>(response.data) || []);
-    } catch (error) {
+    } catch {
       setLogsError('Gagal memuat log sistem terkini.');
     } finally {
       setLogsLoading(false);
@@ -46,6 +54,12 @@ export default function DashboardOverview() {
 
   return (
     <div className="flex flex-col gap-6">
+      <header>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">Workspace Panitia</p>
+        <h1 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Dashboard Operasional</h1>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Pantau pertandingan, aktivitas sistem, dan pekerjaan penting dalam satu layar.</p>
+      </header>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
@@ -53,62 +67,61 @@ export default function DashboardOverview() {
           value="4,210" 
           icon={Users} 
           trend="+12%" 
-          colorClass="bg-blue-100 text-blue-600" 
+          colorClass="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
         />
         <StatCard 
           title="Medali Didistribusikan" 
           value="156" 
           icon={Trophy} 
           trend="+45" 
-          colorClass="bg-yellow-100 text-yellow-600" 
+          colorClass="bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300"
         />
         <StatCard 
           title="Skor Masuk (Hari Ini)" 
           value="892" 
           icon={Activity} 
           trend="+210" 
-          colorClass="bg-emerald-100 text-emerald-600" 
+          colorClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
         />
         <StatCard 
           title="Insiden Sistem" 
           value="3" 
           icon={AlertTriangle} 
           trend="-2" 
-          colorClass="bg-red-100 text-red-600" 
+          colorClass="bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Matches */}
-        <div className="card col-span-2">
-          <div className="p-5 border-b border-slate-200 flex justify-between items-center">
-            <h3 className="font-bold text-lg">Pertandingan Sedang Berlangsung</h3>
-            <button className="text-sm text-indigo-600 font-medium hover:underline">Lihat Semua</button>
+        <section className="card lg:col-span-2" aria-labelledby="active-match-title">
+          <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+            <h2 id="active-match-title" className="font-bold text-lg">Pertandingan Sedang Berlangsung</h2>
+            <button type="button" className="min-h-11 rounded-md px-3 text-sm text-indigo-600 dark:text-indigo-400 font-bold hover:bg-indigo-50 dark:hover:bg-indigo-500/10">Lihat Semua</button>
           </div>
-          <div className="p-0">
-            <div className="table-container border-none rounded-none">
-              <table className="table-base">
-                <thead className="table-header">
+          <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                   <tr>
-                    <th className="table-cell">Waktu</th>
-                    <th className="table-cell">Cabang Olahraga</th>
-                    <th className="table-cell">Pertandingan</th>
-                    <th className="table-cell">Status</th>
+                    <th className="p-4">Waktu</th>
+                    <th className="p-4">Cabang Olahraga</th>
+                    <th className="p-4">Pertandingan</th>
+                    <th className="p-4">Status</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                   {[
                     { time: '14:00', cabor: 'Sepak Bola', match: 'Depok vs Bogor', status: 'Live' },
                     { time: '14:30', cabor: 'Bulutangkis', match: 'Ginting vs Jojo', status: 'Live' },
                     { time: '15:00', cabor: 'Renang', match: 'Final 100m Gaya Bebas', status: 'Menunggu' },
                   ].map((item, i) => (
-                    <tr key={i} className="table-row">
-                      <td className="table-cell font-medium">{item.time}</td>
-                      <td className="table-cell text-text-secondary">{item.cabor}</td>
-                      <td className="table-cell font-semibold">{item.match}</td>
-                      <td className="table-cell">
+                    <tr key={i} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                      <td className="p-4 font-medium">{item.time}</td>
+                      <td className="p-4 text-text-secondary">{item.cabor}</td>
+                      <td className="p-4 font-semibold">{item.match}</td>
+                      <td className="p-4">
                         <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
-                          item.status === 'Live' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'
+                          item.status === 'Live' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
                         }`}>
                           {item.status}
                         </span>
@@ -117,13 +130,12 @@ export default function DashboardOverview() {
                   ))}
                 </tbody>
               </table>
-            </div>
           </div>
-        </div>
+        </section>
 
         {/* System Logs */}
-        <div className="card p-5 flex flex-col h-full">
-          <h3 className="font-bold text-lg mb-4">Log Sistem Terkini</h3>
+        <section className="card p-5 flex flex-col h-full" aria-labelledby="system-log-title">
+          <h2 id="system-log-title" className="font-bold text-lg mb-4">Log Sistem Terkini</h2>
           <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-4">
             {logsLoading ? (
               <div className="flex justify-center py-4"><span className="text-sm text-text-muted">Memuat log...</span></div>
@@ -145,7 +157,7 @@ export default function DashboardOverview() {
               </div>
             ))}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

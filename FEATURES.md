@@ -2,7 +2,7 @@
 
 Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality gates. Agent wajib membaca dan memperbarui dokumen ini sebelum dan sesudah pekerjaan.
 
-> **Baseline aktif per 15 Juli 2026:** Techwind 3.3.0 pada `theme-reference/HTML/Landing/` menjadi referensi utama Public Web dan `theme-reference/HTML/Dashboard/` menjadi referensi utama Admin Web. Semua delete data persisten wajib soft delete. Status di bawah harus mencerminkan implementasi nyata, bukan hanya target desain.
+> **Aturan aktif per 22 Juli 2026:** Techwind 3.3.0 pada `theme-reference/HTML/Landing/dist/` adalah satu-satunya tema Public Web dan `theme-reference/HTML/Dashboard/dist/` adalah satu-satunya tema Admin Web. Tema/template/design system visual lain dilarang. Semua delete data persisten wajib soft delete. Status di bawah harus mencerminkan implementasi nyata, bukan hanya target desain.
 
 ## Status Legend
 
@@ -28,15 +28,15 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 
 | Fitur | Status | Versi | File/Area | Catatan |
 |---|---|---|---|---|
-| Benchmark UI/UX Flashscore | `[x] Done` | v4.0 | enam Markdown root | Ambil pola LiveScore, filter, standings, bukan clone |
-| Benchmark UI/UX ESPN | `[x] Done` | v4.0 | enam Markdown root | Ambil pola editorial, highlights, sports media |
-| Baseline Techwind Public | `[~] In Progress` | v4.0 | `theme-reference/HTML/Landing/`, `apps/public-web-nextjs/` | Referensi ditetapkan; audit dan adaptasi komponen Public Web belum selesai |
-| Baseline Techwind Admin | `[~] In Progress` | v4.0 | `theme-reference/HTML/Dashboard/`, `apps/admin-web-react/` | Referensi ditetapkan; penyelarasan masterpiece seluruh modul belum selesai |
-| Masterpiece quality gate | `[~] In Progress` | v4.0 | public/admin/design system | State lengkap, WCAG 2.2 AA, responsive, performance, visual regression, dan konsistensi token harus diverifikasi per modul |
+| Kebijakan tema tunggal Techwind | `[x] Done` | v4.0 | seluruh dokumentasi UI/UX | Sumber visual non-Techwind dihapus; Tailwind/library hanya alat teknis dan style bawaan tidak boleh menjadi tema kedua |
+| Tema wajib Techwind Public | `[x] Done` | v4.0 | `theme-reference/HTML/Landing/dist/`, `apps/public-web-nextjs/` | Seluruh rute aktif dipetakan dan diaudit; rute baru wajib mengikuti pola `Landing/dist` |
+| Tema wajib Techwind Admin | `[x] Done` | v4.0 | `theme-reference/HTML/Dashboard/dist/`, `apps/admin-web-react/` | Shell, navigasi, dashboard, workspace, form, tabel, status, dan profile aktif mengikuti `Dashboard/dist` |
+| Strategi tema terang/gelap | `[x] Done` | v4.0 | Public/Admin CSS + Theme Provider | Class `.dark` menjadi single source of truth; preferensi sistem hanya tema awal; token semantik dan fallback contrast-safe tersedia |
+| Masterpiece quality gate | `[~] In Progress` | v4.0 | public/admin/design system | Audit rute aktif desktop/mobile, lint, dan build selesai; visual regression otomatis serta audit WCAG otomatis penuh masih perlu diintegrasikan ke CI |
 | Tailwind v4.x design tokens | `[ ] Planned` | v0.1 | `packages/design-tokens/` | Warna PORPROV, status badge, typography |
 | Component blueprint | `[ ] Planned` | v0.1 | `packages/ui/` | Button, Card, Badge, Tabs, FilterBar |
-| Match card | `[ ] Planned` | v0.1 | `packages/ui/MatchCard` | Flashscore-inspired |
-| Editorial card | `[ ] Planned` | v0.1 | `packages/ui/EditorialCard` | ESPN-inspired |
+| Match card | `[ ] Planned` | v0.1 | `packages/ui/MatchCard` | Wajib memakai pola event/card Techwind `Landing/dist` |
+| Editorial card | `[ ] Planned` | v0.1 | `packages/ui/EditorialCard` | Wajib memakai pola blog/editorial Techwind `Landing/dist` |
 | Event hero | `[x] Done` | v0.2 | `apps/public-web-nextjs/src/components/HeroSection.tsx` | Hero 100 viewport, parallax 50%, countdown/CTA PORPROV, dan reduced-motion fallback; adaptasi pola `index-event.html` |
 | Skeleton loading | `[~] In Progress` | v0.2 | Public Venue/Jadwal/LiveScore | Venue, Jadwal, dan LiveScore memiliki loading serta empty/error yang faktual; modul publik lain belum seluruhnya diselaraskan |
 | Accessibility baseline | `[~] In Progress` | v0.2 | Public Beranda + route utama | Fokus keyboard, target 44px, heading/ARIA, live region, reduced motion, zoom viewport, menu mobile, footer tanpa tautan mati, dan overflow mobile telah diaudit; audit otomatis WCAG seluruh portal belum selesai |
@@ -52,7 +52,7 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | Cabor listing/detail | `[x] Done` | v0.3 | `/cabor`, `/cabor/[id]` | Listing, dynamic metadata, detail, nomor tanding, venue terkait, dan jadwal aktif melalui API Gateway; lint/build/E2E desktop teruji |
 | Jadwal | `[x] Done` | v0.3 | `/jadwal`, `ScheduleMatchCard` | Read-model enriched, filter tanggal/cabor/venue/status/pencarian, grouping, loading/empty/error, serta E2E mobile teruji |
 | Venue & Maps | `[~] In Progress` | v0.3 | `/`, `/venue`, `/venue/[id]` | Listing live dan detail dengan fasilitas, kapasitas, cabor, City Guide sekitar, rute, koordinat, serta jadwal tersedia; peta interaktif dan rekomendasi berbasis jarak belum final |
-| LiveScore | `[~] In Progress` | v0.4 | `/livescore` | Projection PostgreSQL, history append-only, koreksi beralasan, optimistic revision, validasi Jadwal, public SSE tersanitasi, dan fallback faktual tersedia; distributed fanout, observability, dan E2E pertandingan staging belum final |
+| LiveScore | `[~] In Progress` | v0.4 | `/livescore` | Projection PostgreSQL, history append-only, koreksi beralasan, optimistic revision, validasi Jadwal, public SSE tersanitasi, fallback faktual, dan hero judul terpusat responsif tersedia; distributed fanout, observability, dan E2E pertandingan staging belum final |
 | Standings Medali | `[~] In Progress` | v0.4 | `/medali` | Hanya data OFFICIAL, sorting, public SSE v1, fallback polling, dan empty/error faktual; workflow backend/Admin tersedia, sedangkan E2E data kompetisi staging dan koreksi Medali official belum final |
 | Galeri | `[ ] Planned` | v0.1 | `/galeri` | Foto/video |
 | Depok Guide | `[ ] Planned` | v0.1 | `/depok-guide` | Coffee shop, kuliner, penginapan, wisata, RS |
@@ -103,7 +103,7 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | Registry port portable | `[x] Done` | v0.3 | Compose, config service, `.env.example`, enam Markdown root | Public, diagnostic, local debug `28xxx`, dan infra host dipisahkan; seluruh host mapping configurable |
 | Gateway CORS ownership | `[x] Done` | v0.5 | API Gateway router + Compose frontend config | Header CORS downstream dibuang sebelum kebijakan Gateway diterapkan; origin canonical hanya Public `3000` dan Admin `5173` pada development |
 | Nginx SSL | `[ ] Planned` | v0.1 | `infra/nginx/` | Reverse proxy |
-| Keycloak realm dan Admin OIDC | `[~] In Progress` | v0.5 | Compose bootstrap, Admin Web | Realm/client/role/user bootstrap otomatis-idempotent, callback canonical 5173, PKCE S256, dan pembacaan role ID/access token aktif; theme PORPROV, rotasi secret, serta konfigurasi production belum final |
+| Keycloak realm dan Admin OIDC | `[~] In Progress` | v0.5 | Compose bootstrap, Admin Web | Realm/client/role/user bootstrap otomatis-idempotent, callback canonical 5173, PKCE S256, dan pembacaan role ID/access token aktif; adaptasi login Techwind PORPROV, rotasi secret, serta konfigurasi production belum final |
 | Canonical full-stack launcher | `[x] Done` | v0.5 | `infra/docker/compose-up.ps1`, ADR-0005 | Public/Admin dan seluruh backend berjalan dalam satu Compose; launcher campuran serta Admin env 5174/28000 dihapus |
 | Media storage convergence | `[x] Done` | v0.5 | `master_data_uploads`, runtime migration | Metadata dan 16 asset aktif terverifikasi HTTP 200 dari Gateway; file lokal legacy dipindahkan ke backup non-Git tanpa purge |
 | NATS JetStream | `[~] In Progress` | v0.4 | LiveScore/Medal/Audit/Realtime | Stream bootstrap, durable consumer, ack, retry, dan at-least-once outbox tersedia untuk domain olahraga; cluster/monitoring/DLQ operasional belum final |
@@ -137,7 +137,7 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 - [ ] Redis tidak dipakai sebagai satu-satunya event broker kritis.
 - [ ] Semua delete data persisten menggunakan soft delete dan memiliki alur restore/audit.
 - [ ] Hard delete hanya tersedia sebagai purge terkontrol sesuai retensi dan role khusus.
-- [ ] UI Public/Admin mengikuti baseline Techwind yang relevan dan quality bar masterpiece.
+- [x] UI seluruh rute aktif Public/Admin menggunakan tema tunggal Techwind `dist`, strategi class `.dark`, dan quality bar kontras; route baru wajib mengulang mapping serta matriks QA.
 - [ ] Test relevan dijalankan atau dijelaskan.
 - [ ] Enam Markdown root yang terdampak aturan/standar telah sinkron.
 - [ ] Dokumentasi, ADR, dan feature tracking diperbarui sesuai perubahan.

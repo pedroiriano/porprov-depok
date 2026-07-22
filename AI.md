@@ -30,20 +30,20 @@ Membangun platform web dan mobile PORPROV yang cepat, andal, aman, realtime, SEO
 | Event Broker | NATS JetStream untuk durable event bisnis |
 | Auth | Keycloak + OpenID Connect/OAuth2 + JWT |
 | Deployment | Docker + Nginx + SSL pada VM Diskominfo Kota Depok; Kubernetes bila skala enterprise besar |
-| UI System | Techwind 3.3.0 sebagai baseline visual, Tailwind CSS v4.x, design tokens PORPROV, mobile-first, accessible components |
+| UI System | Techwind 3.3.0 sebagai tema tunggal wajib, Tailwind CSS v4.x hanya sebagai mesin implementasi, design tokens PORPROV, mobile-first, accessible components |
 
 
-## Prinsip UI/UX Wajib
+## Tema Tunggal UI/UX Wajib
 
-| Sumber Inspirasi | Prinsip yang Diambil | Adaptasi PORPROV |
+| Area | Sumber Tema Wajib | Adaptasi PORPROV |
 |---|---|---|
-| `theme-reference/HTML/Landing/` | Baseline Techwind Public Web | Navigasi, hero, event sections, editorial cards, galeri, CTA, dan footer diimplementasikan ulang sebagai komponen Next.js PORPROV |
-| `theme-reference/HTML/Dashboard/` | Baseline Techwind Admin Web | Sidebar, topbar, KPI, forms, tables, calendar, gallery, dan profile diimplementasikan ulang sebagai komponen React PORPROV |
-| Flashscore | Kepadatan LiveScore, filter cabor/tanggal, match card, standings, detail match, status realtime | LiveScore per cabor, venue, kontingen, ronde, status official, timeline event, standings medali |
-| ESPN | Sports media storytelling, highlights, news cards, video/editorial hub, coverage berbasis narasi olahraga | Berita PORPROV, highlight atlet, galeri, press release, profil venue, cerita maskot Toca-Toci |
-| Tailwind CSS v4.x | Utility-first, CSS-first token, responsive utilities, scrollbar/logical utilities modern | Design system PORPROV dengan token warna, spacing, status badges, skeleton loading, dark mode opsional |
+| Public Web | Techwind 3.3.0 `theme-reference/HTML/Landing/dist/` | Navigasi, hero, event sections, editorial cards, galeri, CTA, footer, dan penyajian data olahraga diimplementasikan ulang sebagai komponen Next.js PORPROV |
+| Admin Web | Techwind 3.3.0 `theme-reference/HTML/Dashboard/dist/` | Sidebar, topbar, KPI, forms, tables, calendar, gallery, profile, dan workflow operator diimplementasikan ulang sebagai komponen React PORPROV |
+| Web/Mobile baru | Pola terdekat dari dua folder `dist` Techwind canonical | Adaptasi responsif dengan identitas PORPROV; dilarang memakai tema/template/design system visual lain |
 
-“Masterpiece” berarti hasil adaptasi yang orisinal dan terukur: hierarki visual kuat, konsistensi token/komponen, state lengkap, WCAG 2.2 AA, mobile-first, performa tinggi, SEO Public Web, efisiensi kerja Admin, serta motion yang aman. Menyalin halaman tema secara mentah tidak memenuhi standar ini.
+“Masterpiece” berarti hasil adaptasi Techwind yang orisinal dan terukur: hierarki visual kuat, konsistensi token/komponen, state lengkap, WCAG 2.2 AA, mobile-first, performa tinggi, SEO Public Web, efisiensi kerja Admin, serta motion yang aman. Tema lain, campuran visual language, atau penyalinan halaman mentah tidak memenuhi standar ini. Tailwind CSS dan library komponen adalah alat teknis, bukan sumber tema.
+
+Tailwind CSS v4 wajib mengikat utility `dark:*` hanya ke class `.dark`, selaras dengan toggle Techwind. Preferensi sistem hanya menentukan pilihan awal; token semantik dan pasangan warna harus memenuhi kontras WCAG 2.2 AA pada tema terang maupun gelap. Audit rute dicatat di `docs/uiux/TECHWIND_DIST_LIGHT_DARK_AUDIT.md`.
 
 
 ## Urutan Membaca Wajib
@@ -101,7 +101,7 @@ Membangun platform web dan mobile PORPROV yang cepat, andal, aman, realtime, SEO
 - Setiap perubahan aturan/standar wajib memperbarui Markdown root yang relevan.
 - Semua delete data persisten wajib soft delete.
 - Semua implementasi harus mobile-first, aksesibel, SEO-ready untuk public web, aman, observable, dan testable.
-- Jangan menyalin UI/brand Techwind, Flashscore, atau ESPN secara identik. Adaptasikan baseline menjadi pengalaman PORPROV yang orisinal dan patuh lisensi.
+- Gunakan hanya tema Techwind; jangan mengambil tema/template/visual language lain. Adaptasikan pola Techwind menjadi pengalaman PORPROV yang orisinal dan patuh lisensi.
 
 
 ## Orientasi Produk
@@ -113,4 +113,4 @@ Membangun platform web dan mobile PORPROV yang cepat, andal, aman, realtime, SEO
 
 ## Prinsip Hak Cipta dan Orisinalitas
 
-Techwind dalam `theme-reference/` adalah baseline UI lokal proyek. Flashscore dan ESPN tetap menjadi benchmark heuristik sports experience. Jangan menyalin brand, logo, copywriting, atau identitas pihak ketiga; hasil akhir harus menggunakan identitas dan design tokens PORPROV.
+Techwind pada dua folder `dist` canonical adalah satu-satunya tema UI/UX proyek. Produk lain tidak boleh dijadikan benchmark visual, sumber komponen, atau acuan interaksi. Jangan menyalin brand, logo, copywriting, atau identitas pihak ketiga; hasil akhir wajib memakai pola Techwind yang diadaptasi dengan identitas dan design tokens PORPROV.

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash, Loader2 } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import SearchableSelect from '../common/SearchableSelect';
@@ -31,13 +31,6 @@ export default function JadwalPertandingan() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    fetchMatches();
-    fetchVenues();
-    fetchCabors();
-    fetchNomorTandings();
-  }, []);
-
-  useEffect(() => {
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -48,9 +41,9 @@ export default function JadwalPertandingan() {
     };
   }, [isModalOpen]);
 
-  const getAuthConfig = () => authConfig(auth.user?.access_token);
+  const getAuthConfig = useCallback(() => authConfig(auth.user?.access_token), [auth.user?.access_token]);
 
-  const fetchMatches = async () => {
+  const fetchMatches = useCallback(async () => {
     try {
       setLoading(true);
       const res = await apiClient.get<MatchSchedule[] | { data: MatchSchedule[] }>('/schedule/matches', getAuthConfig());
@@ -62,9 +55,9 @@ export default function JadwalPertandingan() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAuthConfig]);
 
-  const fetchVenues = async () => {
+  const fetchVenues = useCallback(async () => {
     try {
       const res = await apiClient.get<Venue[] | { data: Venue[] }>('/venues', getAuthConfig());
       setVenues(unwrapApiData(res.data) || []);
@@ -72,18 +65,18 @@ export default function JadwalPertandingan() {
       console.error('Failed to fetch venues:', error);
       setErrorMessage(getApiErrorMessage(error, 'Gagal memuat referensi venue.'));
     }
-  };
+  }, [getAuthConfig]);
 
-  const fetchCabors = async () => {
+  const fetchCabors = useCallback(async () => {
     try {
       const res = await apiClient.get<Cabor[] | { data: Cabor[] }>('/master-data/cabors', getAuthConfig());
       setCabors(unwrapApiData(res.data) || []);
     } catch (error) {
       console.error('Failed to fetch cabors:', error);
     }
-  };
+  }, [getAuthConfig]);
 
-  const fetchNomorTandings = async () => {
+  const fetchNomorTandings = useCallback(async () => {
     try {
       const res = await apiClient.get<NomorTanding[] | { data: NomorTanding[] }>('/master-data/nomor-tandings', getAuthConfig());
       setNomorTandings(unwrapApiData(res.data) || []);
@@ -91,7 +84,14 @@ export default function JadwalPertandingan() {
       console.error('Failed to fetch nomor tanding:', error);
       setErrorMessage(getApiErrorMessage(error, 'Gagal memuat referensi nomor pertandingan.'));
     }
-  };
+  }, [getAuthConfig]);
+
+  useEffect(() => {
+    void fetchMatches();
+    void fetchVenues();
+    void fetchCabors();
+    void fetchNomorTandings();
+  }, [fetchCabors, fetchMatches, fetchNomorTandings, fetchVenues]);
 
   const resetForm = () => setFormData({ id: '', nomor_tanding_id: '', venue_id: '', match_date: '', status: 'scheduled', round: 'penyisihan' });
 

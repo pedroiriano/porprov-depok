@@ -15,9 +15,9 @@ export default function Profile() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800 dark:text-white">
+        <h1 className="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800 dark:text-white">
           <User className="text-indigo-600" /> Profil Pengguna
-        </h2>
+        </h1>
         
         <div className="flex flex-col md:flex-row gap-8">
           <div className="flex-1 space-y-6">

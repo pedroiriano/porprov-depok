@@ -8,7 +8,7 @@ Dokumen ini mengikat semua agent AI/Codex saat membuat, mengubah, menguji, atau 
 - Kondisi implementasi aktual wajib dibaca dari `FEATURES.md`; jangan menganggap fitur planned sebagai tersedia atau fitur yang hanya compile sebagai final.
 - `RULES.md` adalah sumber normatif. `README.md`, `AI.md`, `AGENTS.md`, `FEATURES.md`, dan `DOCUMENTATION.md` wajib konsisten dengannya.
 - Setiap perubahan aturan atau standar wajib memperbarui semua Markdown root yang terdampak dalam pekerjaan yang sama.
-- Techwind 3.3.0 di `theme-reference/` adalah baseline UI lokal. Source tema adalah referensi desain, bukan runtime aplikasi dan bukan identitas brand PORPROV.
+- Techwind 3.3.0 adalah satu-satunya tema UI/UX yang wajib digunakan. Public hanya merujuk `theme-reference/HTML/Landing/dist/` dan Admin hanya merujuk `theme-reference/HTML/Dashboard/dist/`; tema, template, design system visual, atau sumber gaya lain dilarang.
 
 ## 1. Keputusan Final Stack
 
@@ -26,7 +26,7 @@ Dokumen ini mengikat semua agent AI/Codex saat membuat, mengubah, menguji, atau 
 | Event Broker | NATS JetStream untuk durable event bisnis |
 | Auth | Keycloak + OpenID Connect/OAuth2 + JWT |
 | Deployment | Docker + Nginx + SSL pada VM Diskominfo Kota Depok; Kubernetes bila skala enterprise besar |
-| UI System | Techwind 3.3.0 sebagai baseline visual, Tailwind CSS v4.x, design tokens PORPROV, mobile-first, accessible components |
+| UI System | Techwind 3.3.0 sebagai tema tunggal wajib, Tailwind CSS v4.x hanya sebagai mesin implementasi, design tokens PORPROV, mobile-first, accessible components |
 
 
 ## 2. Arsitektur Repositori Wajib
@@ -95,24 +95,23 @@ porprov-xv/
 
 Agent wajib berhenti dan bertanya: **"Konfirmasi: lanjut ke Tahap X?"** setelah menyelesaikan foundation, infra, auth, backend, public web, admin web, mobile, realtime, testing, hardening, atau deployment.
 
-## 5. Baseline UI/UX Techwind dan Benchmark Olahraga
+## 5. Tema Tunggal Wajib UI/UX Techwind
 
-| Sumber Inspirasi | Prinsip yang Diambil | Adaptasi PORPROV |
+| Area | Sumber Tema Wajib | Adaptasi PORPROV |
 |---|---|---|
-| `theme-reference/HTML/Landing/` | Baseline Public Web Techwind: navigation, hero, event/feature sections, editorial, gallery, CTA, footer | Implementasi ulang di Next.js dengan konten PORPROV, SEO, LiveScore, venue, medali, berita, dan Depok Guide |
-| `theme-reference/HTML/Dashboard/` | Baseline Admin Techwind: application shell, sidebar, topbar, KPI, form, table, calendar, profile, gallery | Implementasi ulang di React sebagai workspace operator yang role-aware, realtime, audit-friendly, dan efisien |
-| Flashscore | Kepadatan LiveScore, filter cabor/tanggal, match card, standings, detail match, status realtime | LiveScore per cabor, venue, kontingen, ronde, status official, timeline event, standings medali |
-| ESPN | Sports media storytelling, highlights, news cards, video/editorial hub, coverage berbasis narasi olahraga | Berita PORPROV, highlight atlet, galeri, press release, profil venue, cerita maskot Toca-Toci |
-| Tailwind CSS v4.x | Utility-first, CSS-first token, responsive utilities, scrollbar/logical utilities modern | Design system PORPROV dengan token warna, spacing, status badges, skeleton loading, dark mode opsional |
+| Public Web | Techwind 3.3.0 `theme-reference/HTML/Landing/dist/` | Navigation, hero, event/feature sections, editorial, gallery, CTA, footer, LiveScore, venue, medali, berita, dan Depok Guide diimplementasikan ulang sebagai komponen Next.js PORPROV |
+| Admin Web | Techwind 3.3.0 `theme-reference/HTML/Dashboard/dist/` | Application shell, sidebar, topbar, KPI, form, table, calendar, profile, gallery, dan workflow operator diimplementasikan ulang sebagai komponen React PORPROV |
+| Web/Mobile baru | Pola terdekat dari salah satu `dist` Techwind canonical | Adaptasi responsif menggunakan identitas PORPROV; dilarang mengambil tema, template, atau visual language lain |
 
 
 Aturan:
-- Techwind adalah baseline utama Public/Admin, tetapi HTML/Gulp tema tidak boleh ditempel langsung ke runtime React/Next.js.
+- Techwind adalah tema tunggal dan wajib untuk seluruh UI/UX Public, Admin, mobile, PWA, halaman autentikasi, serta layar baru.
+- Hanya folder `dist/` masing-masing Techwind yang menjadi referensi visual canonical. Source Gulp, demo JavaScript, identitas, dan copy Techwind tidak boleh masuk runtime aplikasi.
+- Dilarang menggunakan atau menyebut tema/template/design system visual pihak lain sebagai inspirasi, fallback, alternatif, atau campuran. Kebutuhan kepadatan data, editorial, realtime, dan workflow harus diwujudkan memakai pola Techwind.
+- Tailwind CSS v4.x adalah alat implementasi utility dan token, bukan tema alternatif. Library komponen hanya boleh dipakai untuk perilaku teknis tanpa membawa style bawaan yang menyimpang dari Techwind.
+- Tailwind CSS v4 wajib mendefinisikan variant `dark:*` berbasis class `.dark`; `prefers-color-scheme` hanya boleh menentukan nilai awal dan tidak boleh menimpa pilihan eksplisit pengguna.
 - Telaah halaman referensi yang relevan sebelum mengubah UI; dokumentasikan mapping komponen dan keputusan besar pada docs UI/UX atau ADR.
-- Ambil pola terbaik, bukan menyalin tampilan identik.
-- Flashscore-inspired: match card, filter, standings, compact dense data, realtime connection state.
-- ESPN-inspired: editorial card, highlights, sports news, media center, athlete/venue story.
-- Tailwind v4.x digunakan untuk membangun design system, bukan styling acak.
+- Adaptasikan pola Techwind, bukan menyalin tampilan identik atau membangun visual language baru di luar Techwind.
 - Gunakan identitas visual PORPROV/Kota Depok, asset resmi, copywriting Indonesia, dan token aplikasi. Jangan mengekspos logo, nama, demo content, atau identitas Techwind.
 - Pastikan penggunaan dan distribusi asset tema sesuai lisensi proyek.
 
@@ -123,12 +122,13 @@ Sebuah UI hanya boleh disebut masterpiece bila memenuhi seluruh quality bar beri
 - Hierarki visual, grid, density, spacing, typography, warna, dan motion konsisten melalui design tokens.
 - Semua state tersedia: loading/skeleton, empty, error/retry, success, disabled, permission denied, offline, dan realtime reconnect bila relevan.
 - Responsif mobile-first tanpa overflow atau informasi kritis tersembunyi.
-- WCAG 2.2 AA: semantic HTML, keyboard navigation, visible focus, label/ARIA benar, kontras cukup, target sentuh minimal 44px, dan `prefers-reduced-motion`.
+- WCAG 2.2 AA: semantic HTML, keyboard navigation, visible focus, label/ARIA benar, kontras minimal 4,5:1 untuk teks normal dan 3:1 untuk teks besar/komponen grafis esensial, target sentuh minimal 44px, dan `prefers-reduced-motion`.
+- Perubahan token, komponen shared, route, atau tema wajib menjalankan audit terang/gelap dan desktop/mobile; matriks baseline disimpan di `docs/uiux/TECHWIND_DIST_LIGHT_DARK_AUDIT.md`.
 - Public Web memenuhi SEO teknis dan target Core Web Vitals; Admin memprioritaskan task completion, scanability, bulk-safe actions, filter, pagination, dan feedback yang jelas.
 - Tidak ada placeholder generik, demo copy, asset pecah, inkonsistensi icon, atau duplikasi komponen tanpa alasan.
 - Visual regression, accessibility check, lint, type check, dan build menjadi quality gate sesuai risiko perubahan.
 
-## 6. Design System Tailwind v4.x
+## 6. Implementasi Teknis Tema Techwind dengan Tailwind v4.x
 
 - Gunakan token terpusat untuk warna, radius, spacing, shadow, z-index, typography, status badge, dan motion.
 - Mobile-first: gunakan breakpoint `sm`, `md`, `lg`, `xl`, `2xl` secara naik.

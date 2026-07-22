@@ -159,7 +159,7 @@ export default function LiveScoreCenter() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">Official Scoring Workspace</p><h1 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">LiveScore Center</h1><p className="mt-1 text-sm text-slate-500">Persistence PostgreSQL, revision history, correction reason, audit, dan outbox delivery.</p></div>
+        <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">Official Scoring Workspace</p><h1 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">LiveScore Center</h1><p className="mt-1 text-sm text-slate-500">Persistence PostgreSQL, revision history, correction reason, audit, dan outbox delivery.</p></div>
         <div className="flex items-center gap-3"><span className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold ${connected ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`} role="status"><Radio className={`h-4 w-4 ${connected ? 'animate-pulse' : ''}`} />{connected ? 'Private SSE aktif' : 'Menghubungkan SSE'}</span><button type="button" onClick={() => void loadData()} className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-4 font-bold"><RefreshCw className="mr-2 h-4 w-4" />Perbarui</button></div>
       </header>
 

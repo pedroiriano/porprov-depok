@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { Search, Plus, Edit, Trash, Loader2, X, Check, ChevronDown } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import MediaSelectorModal from '../media/MediaSelectorModal';
@@ -34,11 +34,6 @@ export default function VenueDepok() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchVenues();
-    fetchCabors();
-  }, []);
-
-  useEffect(() => {
     if (isModalOpen || isMediaSelectorOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -60,7 +55,7 @@ export default function VenueDepok() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchVenues = async () => {
+  const fetchVenues = useCallback(async () => {
     try {
       setLoading(true);
       const res = await apiClient.get<Venue[] | { data: Venue[] }>('/venues', authConfig(auth.user?.access_token));
@@ -72,9 +67,9 @@ export default function VenueDepok() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [auth.user?.access_token]);
 
-  const fetchCabors = async () => {
+  const fetchCabors = useCallback(async () => {
     try {
       const res = await apiClient.get<Cabor[] | { data: Cabor[] }>('/master-data/cabors', authConfig(auth.user?.access_token));
       setCabors(unwrapApiData(res.data) || []);
@@ -82,7 +77,12 @@ export default function VenueDepok() {
       console.error('Failed to fetch cabors:', error);
       setErrorMessage(getApiErrorMessage(error, 'Gagal memuat referensi cabang olahraga.'));
     }
-  };
+  }, [auth.user?.access_token]);
+
+  useEffect(() => {
+    void fetchVenues();
+    void fetchCabors();
+  }, [fetchCabors, fetchVenues]);
 
   const toggleCaborSelection = (id: string) => {
     setFormData(prev => {

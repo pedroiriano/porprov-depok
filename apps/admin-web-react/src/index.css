@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/*
+ * CHANGE: Dashboard Techwind dist memakai class `.dark`. Tanpa deklarasi ini,
+ * Tailwind v4 mengikuti preferensi OS dan menghasilkan mode hybrid.
+ */
+/* ACCESSIBILITY: Pertahankan specificity `.dark` agar pasangan dark:* aplikasi
+ * menang atas utility terang pada stylesheet Techwind dist yang dimuat sesudahnya. */
+@custom-variant dark (&:is(.dark, .dark *));
+
 @theme {
   /* Techwind Primary Color (Vibrant Indigo/Purple) */
   --color-primary-50: #eef2ff;
@@ -28,12 +36,16 @@
   /* Theme mappings */
   --color-background-base: var(--bg-base);
   --color-background-surface: var(--bg-surface);
+  --color-background-elevated: var(--bg-elevated);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
 }
 
 :root {
+  color-scheme: light;
   font-family: 'Nunito', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -46,18 +58,96 @@
   /* Light Mode */
   --bg-base: #f8fafc;
   --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
   --text-primary: #0f172a;
   --text-secondary: #334155;
   --text-muted: #64748b;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
 }
 
 .dark {
-  /* Dark Mode */
-  --bg-base: #020617; /* Slate 950 */
-  --bg-surface: #0f172a; /* Slate 900 */
+  /* Dark Mode mengikuti hierarchy slate milik Dashboard Techwind. */
+  color-scheme: dark;
+  --bg-base: #1e293b;
+  --bg-surface: #0f172a;
+  --bg-elevated: #111c31;
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
+  --border-subtle: #334155;
+  --border-strong: #475569;
+}
+
+/*
+ * ACCESSIBILITY: Lindungi halaman lama dari teks gelap pada surface gelap.
+ * Komponen yang sudah memiliki dark:text-* atau dark:border-* tetap menang.
+ */
+.dark .text-slate-900:not([class*="dark:text-"]),
+.dark .text-slate-800:not([class*="dark:text-"]),
+.dark .text-gray-900:not([class*="dark:text-"]),
+.dark .text-gray-800:not([class*="dark:text-"]) {
+  color: var(--text-primary);
+}
+
+.dark .text-slate-700:not([class*="dark:text-"]),
+.dark .text-slate-600:not([class*="dark:text-"]),
+.dark .text-gray-700:not([class*="dark:text-"]),
+.dark .text-gray-600:not([class*="dark:text-"]) {
+  color: var(--text-secondary);
+}
+
+.dark .text-slate-500:not([class*="dark:text-"]),
+.dark .text-gray-500:not([class*="dark:text-"]) {
+  color: var(--text-muted);
+}
+
+.dark .bg-slate-50:not([class*="dark:bg-"]),
+.dark .bg-gray-50:not([class*="dark:bg-"]) {
+  background-color: #1e293b;
+}
+
+.dark .border-slate-200:not([class*="dark:border-"]),
+.dark .border-slate-300:not([class*="dark:border-"]),
+.dark .border-gray-100:not([class*="dark:border-"]),
+.dark .border-gray-200:not([class*="dark:border-"]) {
+  border-color: var(--border-strong);
+}
+
+.dark .bg-red-50:not([class*="dark:bg-"]) { background-color: rgb(69 10 10 / 0.42); }
+.dark .bg-emerald-50:not([class*="dark:bg-"]) { background-color: rgb(2 44 34 / 0.48); }
+.dark .bg-amber-50:not([class*="dark:bg-"]) { background-color: rgb(69 26 3 / 0.42); }
+.dark .bg-indigo-50:not([class*="dark:bg-"]) { background-color: rgb(49 46 129 / 0.32); }
+.dark .bg-red-100:not([class*="dark:bg-"]) { background-color: rgb(127 29 29 / 0.38); }
+.dark .bg-emerald-100:not([class*="dark:bg-"]) { background-color: rgb(6 78 59 / 0.42); }
+.dark .bg-amber-100:not([class*="dark:bg-"]),
+.dark .bg-yellow-100:not([class*="dark:bg-"]) { background-color: rgb(113 63 18 / 0.42); }
+.dark .bg-blue-100:not([class*="dark:bg-"]) { background-color: rgb(30 64 175 / 0.36); }
+.dark .bg-indigo-100:not([class*="dark:bg-"]) { background-color: rgb(55 48 163 / 0.38); }
+.dark .text-red-700:not([class*="dark:text-"]) { color: #fca5a5; }
+.dark .text-emerald-700:not([class*="dark:text-"]) { color: #6ee7b7; }
+.dark .text-amber-700:not([class*="dark:text-"]),
+.dark .text-amber-800:not([class*="dark:text-"]) { color: #fcd34d; }
+.dark .text-indigo-700:not([class*="dark:text-"]) { color: #a5b4fc; }
+.dark .text-blue-700:not([class*="dark:text-"]),
+.dark .text-blue-600:not([class*="dark:text-"]) { color: #93c5fd; }
+.dark .text-yellow-700:not([class*="dark:text-"]),
+.dark .text-yellow-600:not([class*="dark:text-"]) { color: #fde047; }
+.dark .text-red-600:not([class*="dark:text-"]) { color: #fca5a5; }
+.dark .text-emerald-600:not([class*="dark:text-"]) { color: #6ee7b7; }
+.dark .border-red-200:not([class*="dark:border-"]) { border-color: #991b1b; }
+.dark .border-emerald-200:not([class*="dark:border-"]) { border-color: #065f46; }
+.dark .border-indigo-200:not([class*="dark:border-"]) { border-color: #4338ca; }
+
+.dark :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) {
+  background-color: #1e293b;
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.dark option {
+  background-color: #1e293b;
+  color: var(--text-primary);
 }
 
 body, html, #root {
@@ -69,9 +159,24 @@ body, html, #root {
   color: var(--color-text-primary);
 }
 
+body {
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* ACCESSIBILITY: Fokus keyboard konsisten di seluruh Dashboard Techwind. */
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 3px;
+}
+
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
 /* Base Card Style */
 .card {
-  @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm;
+  @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm;
 }
 
 /* Base Form Input Style */
@@ -86,5 +191,16 @@ body, html, #root {
 }
 
 .top-header {
-  @apply bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40;
+  @apply bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-40;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Edit, Loader2, Plus, Search, Trash } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../../lib/api';
@@ -28,9 +28,9 @@ export default function NomorTanding() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const requestConfig = () => authConfig(auth.user?.access_token);
+  const requestConfig = useCallback(() => authConfig(auth.user?.access_token), [auth.user?.access_token]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [itemsResponse, caborsResponse] = await Promise.all([
@@ -45,11 +45,11 @@ export default function NomorTanding() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [requestConfig]);
 
   useEffect(() => {
     void fetchData();
-  }, []);
+  }, [fetchData]);
 
   const caborById = useMemo(() => new Map(cabors.map((item) => [item.id, item.name])), [cabors]);
   const caborOptions: SelectOption[] = cabors.map((item) => ({ value: item.id, label: item.name, subLabel: item.kategori || undefined }));

@@ -160,7 +160,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3" role="status" aria-live="polite">
-            <span className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${online && !error ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400"}`}>
+            <span className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${online && !error ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400"}`}>
               <span className={`size-2.5 rounded-full ${online && !error ? "animate-pulse bg-emerald-500" : "bg-amber-500"}`} aria-hidden="true" />
               {online && !error ? "Terhubung live" : online ? "Koneksi terganggu" : "Offline"}
             </span>
@@ -226,11 +226,11 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
 
                     <dl className="mt-5 grid grid-cols-2 gap-3 border-y border-slate-100 py-4 dark:border-slate-800">
                       <div>
-                        <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Kapasitas</dt>
+                        <dt className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">Kapasitas</dt>
                         <dd className="mt-1 font-black">{venue.capacity > 0 ? new Intl.NumberFormat("id-ID").format(venue.capacity) : "—"}</dd>
                       </div>
                       <div>
-                        <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Cabor</dt>
+                        <dt className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">Cabor</dt>
                         <dd className="mt-1 font-black">{venue.caborCount > 0 ? `${venue.caborCount} cabang` : "Menunggu"}</dd>
                       </div>
                     </dl>

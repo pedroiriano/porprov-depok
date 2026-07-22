@@ -43,15 +43,16 @@ export function Navbar() {
   const closeMenu = () => setIsOpen(false);
 
   const isHomePage = pathname === '/';
+  const isCurrent = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   return (
-    <nav id="topnav" className={`defaultscroll is-sticky ${isSticky ? 'nav-sticky' : ''}`}>
+    <nav id="topnav" className={`defaultscroll is-sticky ${isSticky ? 'nav-sticky' : ''}`} aria-label="Navigasi utama PORPROV">
       <div className="container relative">
         {/* Logo container*/}
         <Link className="logo" href="/">
           <span className="inline-block dark:hidden">
             <Image src="/assets/images/logo-porprov-dan-tulisan.png" className={`${(!isHomePage || isSticky) ? 'inline-block' : 'hidden'} h-[40px] w-auto object-contain mt-3`} width={200} height={40} alt="PORPROV XV Jawa Barat 2026" priority />
-            <Image src="/assets/images/logo-porprov-dan-tulisan.png" className={`${(isHomePage && !isSticky) ? 'inline-block' : 'hidden'} h-[40px] w-auto object-contain mt-3 brightness-0 invert`} width={200} height={40} alt="" priority />
+            <Image src="/assets/images/logo-porprov-dan-tulisan.png" className={`${(isHomePage && !isSticky) ? 'inline-block' : 'hidden'} h-[40px] w-auto object-contain mt-3 brightness-0 invert`} width={200} height={40} alt="PORPROV XV Jawa Barat 2026" priority />
           </span>
           <Image src="/assets/images/logo-porprov-dan-tulisan.png" width={200} height={40} className="hidden dark:inline-block h-[40px] w-auto object-contain mt-3 brightness-0 invert" alt="PORPROV XV Jawa Barat 2026" priority />
         </Link>
@@ -92,11 +93,11 @@ export function Navbar() {
         <div id="navigation" style={{ display: isOpen ? 'block' : '' }}>
           {/* Navigation Menu*/}   
           <ul className={`navigation-menu ${isHomePage ? 'nav-light' : ''} font-bold`}>
-            <li><Link href="/" className="sub-menu-item" onClick={closeMenu}>Beranda</Link></li>
-            <li><Link href="/cabor" className="sub-menu-item" onClick={closeMenu}>Cabor</Link></li>
-            <li><Link href="/venue" className="sub-menu-item" onClick={closeMenu}>Venue</Link></li>
-            <li><Link href="/jadwal" className="sub-menu-item" onClick={closeMenu}>Jadwal</Link></li>
-            <li><Link href="/medali" className="sub-menu-item" onClick={closeMenu}>Klasemen</Link></li>
+            <li className={isCurrent('/') ? 'active' : ''}><Link href="/" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/') ? 'page' : undefined}>Beranda</Link></li>
+            <li className={isCurrent('/cabor') ? 'active' : ''}><Link href="/cabor" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/cabor') ? 'page' : undefined}>Cabor</Link></li>
+            <li className={isCurrent('/venue') ? 'active' : ''}><Link href="/venue" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/venue') ? 'page' : undefined}>Venue</Link></li>
+            <li className={isCurrent('/jadwal') ? 'active' : ''}><Link href="/jadwal" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/jadwal') ? 'page' : undefined}>Jadwal</Link></li>
+            <li className={isCurrent('/medali') ? 'active' : ''}><Link href="/medali" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/medali') ? 'page' : undefined}>Klasemen</Link></li>
           </ul>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash, Loader2, Image as PhotoIcon } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import MediaSelectorModal from '../media/MediaSelectorModal';
@@ -28,10 +28,6 @@ export default function Kontingen() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    fetchKontingens();
-  }, []);
-
-  useEffect(() => {
     if (isModalOpen || isMediaSelectorOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -42,7 +38,7 @@ export default function Kontingen() {
     };
   }, [isModalOpen, isMediaSelectorOpen]);
 
-  const fetchKontingens = async () => {
+  const fetchKontingens = useCallback(async () => {
     try {
       setLoading(true);
       const res = await apiClient.get<KontingenRecord[] | { data: KontingenRecord[] }>('/master-data/kontingens', authConfig(auth.user?.access_token));
@@ -54,7 +50,11 @@ export default function Kontingen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [auth.user?.access_token]);
+
+  useEffect(() => {
+    void fetchKontingens();
+  }, [fetchKontingens]);
 
   const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();

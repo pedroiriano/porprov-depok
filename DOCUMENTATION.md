@@ -4,7 +4,7 @@
 
 Portal PORPROV XV Jawa Barat 2026 adalah platform sports event berbasis web dan mobile yang menyediakan informasi PORPROV, cabor, jadwal, venue/maps, LiveScore realtime, standings medali, galeri, Depok Guide, backend admin, dan aplikasi koresponden.
 
-Konteks aktif per 16 Juli 2026: Public/Admin Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, dan infrastruktur data/event terintegrasi dalam satu runtime Docker Compose canonical. Keycloak client/role/user development di-bootstrap otomatis, Public Web memakai DNS Gateway internal untuk Server Components, dan Media Library memakai named volume tunggal. Namespace `28xxx` hanya untuk debugging komponen terisolasi. Batas fitur lain tetap mengikuti status aktual `FEATURES.md`.
+Konteks aktif per 22 Juli 2026: Public/Admin Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, dan infrastruktur data/event terintegrasi dalam satu runtime Docker Compose canonical. Keycloak client/role/user development di-bootstrap otomatis, Public Web memakai DNS Gateway internal untuk Server Components, dan Media Library memakai named volume tunggal. Namespace `28xxx` hanya untuk debugging komponen terisolasi. Batas fitur lain tetap mengikuti status aktual `FEATURES.md`.
 
 ## 2. Stack Final
 
@@ -22,7 +22,7 @@ Konteks aktif per 16 Juli 2026: Public/Admin Web v0.4, API Gateway, Master Data,
 | Event Broker | NATS JetStream untuk durable event bisnis |
 | Auth | Keycloak + OpenID Connect/OAuth2 + JWT |
 | Deployment | Docker + Nginx + SSL pada VM Diskominfo Kota Depok; Kubernetes bila skala enterprise besar |
-| UI System | Techwind 3.3.0 sebagai baseline visual, Tailwind CSS v4.x, design tokens PORPROV, mobile-first, accessible components |
+| UI System | Techwind 3.3.0 sebagai tema tunggal wajib, Tailwind CSS v4.x hanya sebagai mesin implementasi, design tokens PORPROV, mobile-first, accessible components |
 
 
 ## 3. Struktur Repositori
@@ -80,17 +80,19 @@ porprov-xv/
     └── runbook/
 ```
 
-## 4. Prinsip UI/UX
+## 4. Tema Tunggal dan Prinsip UI/UX
 
-| Sumber Inspirasi | Prinsip yang Diambil | Adaptasi PORPROV |
+| Area | Sumber Tema Wajib | Adaptasi PORPROV |
 |---|---|---|
-| `theme-reference/HTML/Landing/` | Baseline Techwind Public Web | Navigasi, hero, event sections, editorial, gallery, CTA, auth, dan footer dipetakan ke komponen Next.js PORPROV |
-| `theme-reference/HTML/Dashboard/` | Baseline Techwind Admin Web | Application shell, sidebar, topbar, KPI, form, table, calendar, gallery, dan profile dipetakan ke komponen React PORPROV |
-| Flashscore | Kepadatan LiveScore, filter cabor/tanggal, match card, standings, detail match, status realtime | LiveScore per cabor, venue, kontingen, ronde, status official, timeline event, standings medali |
-| ESPN | Sports media storytelling, highlights, news cards, video/editorial hub, coverage berbasis narasi olahraga | Berita PORPROV, highlight atlet, galeri, press release, profil venue, cerita maskot Toca-Toci |
-| Tailwind CSS v4.x | Utility-first, CSS-first token, responsive utilities, scrollbar/logical utilities modern | Design system PORPROV dengan token warna, spacing, status badges, skeleton loading, dark mode opsional |
+| Public Web | Techwind 3.3.0 `theme-reference/HTML/Landing/dist/` | Navigasi, hero, event sections, editorial, gallery, CTA, auth, footer, dan penyajian informasi olahraga dipetakan ke komponen Next.js PORPROV |
+| Admin Web | Techwind 3.3.0 `theme-reference/HTML/Dashboard/dist/` | Application shell, sidebar, topbar, KPI, form, table, calendar, gallery, profile, dan workflow operator dipetakan ke komponen React PORPROV |
+| Web/Mobile baru | Pola terdekat dari dua folder `dist` Techwind canonical | Diadaptasi responsif dengan identitas PORPROV; sumber tema, template, dan visual language lain dilarang |
 
-Techwind 3.3.0 adalah baseline visual lokal, bukan runtime atau brand aplikasi. HTML/Gulp pada `theme-reference/` dipakai untuk membaca struktur, ritme, responsive behavior, dan pola komponen, lalu diimplementasikan ulang sebagai React/Next.js dengan design tokens, asset, serta copywriting resmi PORPROV. Distribusi asset harus mematuhi lisensi yang dimiliki proyek.
+Techwind 3.3.0 adalah satu-satunya tema visual proyek, bukan runtime atau brand aplikasi. Hanya HTML/CSS pada dua folder `dist` canonical yang boleh dipakai untuk membaca struktur, ritme, responsive behavior, dan pola komponen, lalu diimplementasikan ulang sebagai React/Next.js dengan design tokens, asset, serta copywriting resmi PORPROV. Tema, template, design system visual, layout, tipografi, atau interaction language dari sumber lain dilarang. Distribusi asset harus mematuhi lisensi yang dimiliki proyek.
+
+Tailwind CSS v4.x dan library UI hanya berfungsi sebagai mesin implementasi. Komponen library yang diperlukan untuk perilaku teknis wajib dinormalisasi sampai seluruh tampilannya mengikuti Techwind dan token PORPROV; style bawaan library tidak boleh muncul sebagai tema kedua.
+
+Implementasi tema memakai class `.dark` pada root sebagai single source of truth untuk utility `dark:*` Tailwind CSS v4. Preferensi warna sistem hanya menentukan nilai awal; pilihan pengguna disimpan dan selalu menang. Token surface, text, border, form, feedback, dan status mempunyai pasangan terang/gelap dengan target kontras WCAG 2.2 AA. Matriks halaman dan prosedur audit tersedia di `docs/uiux/TECHWIND_DIST_LIGHT_DARK_AUDIT.md`.
 
 Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type yang konsisten, seluruh state loading/empty/error/success/disabled/offline/reconnect, mobile-first, WCAG 2.2 AA, reduced motion, performa, visual regression, dan tidak adanya demo content atau komponen duplikat tanpa alasan.
 
@@ -104,7 +106,7 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 - Gunakan match card padat untuk LiveScore.
 - Gunakan editorial card untuk berita, highlight atlet, dan galeri.
 - Gunakan venue cards untuk peta, rute, fasilitas, rekomendasi sekitar.
-- Referensi awal yang relevan pada Techwind Landing antara lain pola event, gym, blog/editorial, gallery, auth, dan landing; pilih per komponen, bukan menyalin satu halaman secara utuh.
+- Referensi wajib pada Techwind Landing antara lain pola event, gym, blog/editorial, gallery, auth, dan landing; pilih per komponen hanya dari `Landing/dist`, bukan menyalin satu halaman secara utuh.
 - Ubah seluruh pola menjadi design language PORPROV: energi kompetisi, identitas Kota Depok, status realtime, CTA yang jelas, dan kepadatan informasi yang tetap terbaca.
 - Mapping implementasi Beranda terbaru tersedia di `docs/uiux/PUBLIC_HOME_TECHWIND_MAPPING.md`: hero 100 viewport dengan parallax 50%, tautan Tuan Rumah, pusat informasi, Venue live melalui API Gateway, dan CTA panduan penonton.
 - Public Web membaca `NEXT_PUBLIC_API_URL` dengan default canonical `http://localhost:8000/api/v1`. Server Components dalam Compose membaca `API_INTERNAL_URL=http://api-gateway:8000/api/v1`; browser dan server tetap hanya melewati API Gateway. Port `8080` khusus Keycloak.
@@ -122,7 +124,7 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 - KPI cards, realtime notification, queue panel, approval panel.
 - Data table besar dengan server-side pagination, filter, sort, search, export.
 - Role-based menu untuk SUPER_ADMIN, ADMIN_ORGANISASI, OPERATOR, VERIFIKATOR, PETUGAS_LAPANGAN, AUDITOR.
-- Gunakan Techwind Dashboard sebagai baseline shell, sidebar/topbar, table, form, calendar, profile, gallery, dan feedback state; jangan memasukkan Gulp/theme JavaScript ke bundle React.
+- Gunakan hanya Techwind `Dashboard/dist` untuk shell, sidebar/topbar, table, form, calendar, profile, gallery, dan feedback state; jangan memasukkan Gulp/theme JavaScript atau style dari tema lain ke bundle React.
 - Aksi delete harus diberi konfirmasi aksesibel, menjelaskan bahwa data masuk Recycle Bin/arsip, dan menyediakan restore sesuai permission.
 - LiveScore Center memakai private SSE bearer-token, menampilkan current/history, dan mengirim `expectedRevision` agar update operator yang stale menghasilkan `409`.
 - Workspace Medali memisahkan submitter (`koresponden`), verifier (`verifikator`), dan publisher (`super_admin`). Audit Log hanya tampak bagi `auditor`/`super_admin` dan menyediakan export CSV tanpa mengubah record audit.

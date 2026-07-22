@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash, Loader2 } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import MediaSelectorModal from '../media/MediaSelectorModal';
@@ -29,10 +29,6 @@ export default function CabangOlahraga() {
   const auth = useAuth();
 
   useEffect(() => {
-    fetchCabors();
-  }, []);
-
-  useEffect(() => {
     if (isModalOpen || isMediaSelectorOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -43,7 +39,7 @@ export default function CabangOlahraga() {
     };
   }, [isModalOpen, isMediaSelectorOpen]);
 
-  const fetchCabors = async () => {
+  const fetchCabors = useCallback(async () => {
     try {
       setLoading(true);
       const res = await apiClient.get<Cabor[] | { data: Cabor[] }>('/master-data/cabors', authConfig(auth.user?.access_token));
@@ -55,7 +51,11 @@ export default function CabangOlahraga() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [auth.user?.access_token]);
+
+  useEffect(() => {
+    void fetchCabors();
+  }, [fetchCabors]);
 
   const resetForm = () => {
     setFormData({ id: '', name: '', description: '', icon_url: '', kategori: 'Tanding', total_medali: 0, technical_delegate: '', status: 'Aktif' });

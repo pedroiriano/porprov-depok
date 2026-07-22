@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/*
+ * CHANGE: Techwind dist memakai class `.dark` sebagai satu-satunya pemicu
+ * tema. Tailwind v4 harus memakai strategi yang sama agar preferensi warna OS
+ * tidak mengaktifkan utility dark saat aplikasi sedang berada pada mode light.
+ */
+/* `:is()` mempertahankan specificity `.dark` agar pasangan dark:* aplikasi
+ * menang atas utility terang Techwind dist yang dimuat sesudah bundle. */
+@custom-variant dark (&:is(.dark, .dark *));
+
 @theme {
   /* Brand Colors (Vibrant Sports Theme) */
   --color-primary-50: #e6f4fe;
@@ -7,9 +16,9 @@
   --color-primary-200: #80c4f8;
   --color-primary-300: #4dacf5;
   --color-primary-400: #208aef;
-  --color-primary-500: #1a71c5; /* Base Primary - PORPROV Blue */
-  --color-primary-600: #13579b;
-  --color-primary-700: #0d3e71;
+  --color-primary-500: #13579b; /* Base Primary - WCAG AA PORPROV Blue */
+  --color-primary-600: #0f4c81;
+  --color-primary-700: #0a365f;
   --color-primary-800: #062447;
   --color-primary-900: #031326;
 
@@ -18,6 +27,9 @@
   --color-background-base: var(--bg-base);
   --color-background-surface: var(--bg-surface);
   --color-background-elevated: var(--bg-elevated);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
 
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
@@ -38,6 +50,23 @@
 
 :root {
   /* Light Mode */
+  color-scheme: light;
+  /*
+   * CHANGE: Techwind dist dimuat sebagai stylesheet referensi setelah bundle
+   * Next.js dan turut mendeklarasikan token primary. Importance pada custom
+   * properties menjaga identitas PORPROV tanpa memodifikasi file dist canonical.
+   */
+  --color-primary-50: #e6f4fe !important;
+  --color-primary: #13579b !important;
+  --color-primary-100: #b3dcfb !important;
+  --color-primary-200: #80c4f8 !important;
+  --color-primary-300: #4dacf5 !important;
+  --color-primary-400: #208aef !important;
+  --color-primary-500: #13579b !important;
+  --color-primary-600: #0f4c81 !important;
+  --color-primary-700: #0a365f !important;
+  --color-primary-800: #062447 !important;
+  --color-primary-900: #031326 !important;
   --font-sans: "Nunito", "Segoe UI", Arial, sans-serif;
   --bg-base: #f8fafc;
   --bg-surface: #ffffff;
@@ -45,17 +74,69 @@
   --text-primary: #0f172a;
   --text-secondary: #334155;
   --text-muted: #64748b;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
 }
 
 .dark {
-  /* Dark Mode - ESPN / Flashscore inspired */
-  --bg-base: #020617; /* Very dark slate */
-  --bg-surface: #0f172a; 
+  /* Dark Mode mengikuti surface hierarchy Techwind slate. */
+  color-scheme: dark;
+  --color-primary: #7dd3fc !important;
+  --bg-base: #0f172a;
+  --bg-surface: #111c31;
   --bg-elevated: rgba(15, 23, 42, 0.7);
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
-  --text-muted: #64748b;
+  --text-muted: #94a3b8;
+  --border-subtle: #334155;
+  --border-strong: #475569;
 }
+
+/*
+ * ACCESSIBILITY: Safety net untuk markup legacy Techwind yang belum memiliki
+ * pasangan dark:* eksplisit. Selector mengabaikan elemen yang sudah menentukan
+ * warna dark sendiri sehingga badge dan hero tidak kehilangan intent visual.
+ */
+.dark .text-slate-900:not([class*="dark:text-"]),
+.dark .text-slate-800:not([class*="dark:text-"]) {
+  color: var(--text-primary);
+}
+
+.dark .text-slate-700:not([class*="dark:text-"]),
+.dark .text-slate-600:not([class*="dark:text-"]) {
+  color: var(--text-secondary);
+}
+
+.dark .text-slate-500:not([class*="dark:text-"]),
+.dark .text-gray-500:not([class*="dark:text-"]) {
+  color: var(--text-muted);
+}
+
+.dark .text-primary-500:not([class*="dark:text-"]) {
+  color: #7dd3fc;
+}
+
+.dark .text-primary-600:not([class*="dark:text-"]),
+.dark .text-primary-700:not([class*="dark:text-"]) {
+  color: #7dd3fc;
+}
+
+.dark .bg-slate-50:not([class*="dark:bg-"]) {
+  background-color: #1e293b;
+}
+
+.dark .border-slate-200:not([class*="dark:border-"]),
+.dark .border-slate-300:not([class*="dark:border-"]) {
+  border-color: var(--border-strong);
+}
+
+.dark .bg-red-50:not([class*="dark:bg-"]) { background-color: rgb(69 10 10 / 0.42); }
+.dark .bg-emerald-50:not([class*="dark:bg-"]) { background-color: rgb(2 44 34 / 0.48); }
+.dark .bg-amber-50:not([class*="dark:bg-"]) { background-color: rgb(69 26 3 / 0.42); }
+.dark .text-red-700:not([class*="dark:text-"]) { color: #fca5a5; }
+.dark .text-emerald-700:not([class*="dark:text-"]) { color: #6ee7b7; }
+.dark .text-amber-700:not([class*="dark:text-"]),
+.dark .text-amber-800:not([class*="dark:text-"]) { color: #fcd34d; }
 
 body {
   background-color: var(--color-background-base);
@@ -64,6 +145,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 /* CHANGE: Hero Public Web selalu setinggi viewport dan memakai lapisan media parallax 50%. */
@@ -95,14 +177,14 @@ body {
   background: var(--color-background-elevated);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-border-subtle);
 }
 
 .glass-card {
   background: var(--color-background-elevated);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-2xl);
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   transition-property: all;
@@ -177,6 +259,10 @@ body {
 .dark .nav-sticky .nav-light .sub-menu-item { color: white; }
 .dark .nav-sticky .nav-light .sub-menu-item:hover { color: var(--color-primary-200); }
 
+.dark #topnav .navigation-menu > li.active > .sub-menu-item {
+  color: var(--color-primary-300);
+}
+
 /* Ensure navbar background behaves nicely on scroll */
 #topnav {
   position: absolute;
@@ -199,16 +285,10 @@ body {
   box-shadow: 0 0 3px rgb(255 255 255 / 10%);
 }
 
-/* Alternating Section Backgrounds (Techwind Base Theme) */
-section:nth-of-type(even) {
+/*
+ * CHANGE: Section Techwind menentukan surface secara eksplisit. Selector
+ * nth-of-type global sebelumnya menimpa hero, detail, dan section bersarang.
+ */
+.techwind-section-alt {
   background-color: var(--bg-surface);
-}
-
-section:nth-of-type(odd) {
-  background-color: var(--bg-base);
-}
-
-section[class*="bg-[url"],
-section.bg-transparent {
-  background-color: transparent !important;
 }

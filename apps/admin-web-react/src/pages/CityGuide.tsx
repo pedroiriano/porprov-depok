@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Plus, Trash, Loader2 } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import ModalForm from '../components/common/ModalForm';
@@ -25,23 +25,23 @@ export default function CityGuide() {
   const [submitting, setSubmitting] = useState(false);
   const auth = useAuth();
 
-  useEffect(() => {
-    fetchGuides();
-  }, []);
-
   const getAuthConfig = () => authConfig(auth.user?.access_token);
 
-  const fetchGuides = async () => {
+  const fetchGuides = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get<CityGuideRecord[] | { data: CityGuideRecord[] }>('/master-data/city-guides', getAuthConfig());
+      const res = await apiClient.get<CityGuideRecord[] | { data: CityGuideRecord[] }>('/master-data/city-guides', authConfig(auth.user?.access_token));
       setGuides(unwrapApiData(res.data) || []);
     } catch (error) {
       console.error('Failed to fetch city guides:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [auth.user?.access_token]);
+
+  useEffect(() => {
+    void fetchGuides();
+  }, [fetchGuides]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +75,7 @@ export default function CityGuide() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">City Guide Kota Depok</h2>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">City Guide Kota Depok</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Kelola panduan wisata, kuliner, dan lokasi penting di Depok.</p>
         </div>
         <button
