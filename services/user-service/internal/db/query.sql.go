@@ -17,7 +17,7 @@ INSERT INTO users (
 ) VALUES (
   $1, $2, $3, $4, $5
 )
-RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at
+RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason
 `
 
 type CreateUserParams struct {
@@ -46,22 +46,35 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
 
 const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users WHERE id = $1
+UPDATE users
+SET deleted_at = NOW(),
+    deleted_by = $2::text,
+    delete_reason = COALESCE(NULLIF($3::text, ''), delete_reason)
+WHERE id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteUser, id)
+type DeleteUserParams struct {
+	ID           pgtype.UUID `json:"id"`
+	DeletedBy    string      `json:"deleted_by"`
+	DeleteReason string      `json:"delete_reason"`
+}
+
+func (q *Queries) DeleteUser(ctx context.Context, arg DeleteUserParams) error {
+	_, err := q.db.Exec(ctx, deleteUser, arg.ID, arg.DeletedBy, arg.DeleteReason)
 	return err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at FROM users
-WHERE id = $1 LIMIT 1
+SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM users
+WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -76,13 +89,16 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
 
 const getUserByKeycloakID = `-- name: GetUserByKeycloakID :one
-SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at FROM users
-WHERE keycloak_id = $1 LIMIT 1
+SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM users
+WHERE keycloak_id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByKeycloakID(ctx context.Context, keycloakID string) (User, error) {
@@ -97,12 +113,16 @@ func (q *Queries) GetUserByKeycloakID(ctx context.Context, keycloakID string) (U
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at FROM users
+SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM users
+WHERE deleted_at IS NULL
 ORDER BY created_at DESC
 `
 
@@ -124,6 +144,9 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.Role,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
 		); err != nil {
 			return nil, err
 		}
@@ -143,25 +166,25 @@ SET
   full_name = COALESCE(NULLIF($4::text, ''), full_name),
   role = COALESCE(NULLIF($5::text, ''), role),
   updated_at = NOW()
-WHERE id = $1
-RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason
 `
 
 type UpdateUserParams struct {
-	ID      pgtype.UUID `json:"id"`
-	Column2 string      `json:"column_2"`
-	Column3 string      `json:"column_3"`
-	Column4 string      `json:"column_4"`
-	Column5 string      `json:"column_5"`
+	ID       pgtype.UUID `json:"id"`
+	Username string      `json:"username"`
+	Email    string      `json:"email"`
+	FullName string      `json:"full_name"`
+	Role     string      `json:"role"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, updateUser,
 		arg.ID,
-		arg.Column2,
-		arg.Column3,
-		arg.Column4,
-		arg.Column5,
+		arg.Username,
+		arg.Email,
+		arg.FullName,
+		arg.Role,
 	)
 	var i User
 	err := row.Scan(
@@ -173,6 +196,9 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }

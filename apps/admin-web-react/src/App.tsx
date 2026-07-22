@@ -13,6 +13,7 @@ import AuditLog from './pages/AuditLog';
 import Profile from './pages/Profile';
 import Medals from './pages/Medals';
 import CityGuide from './pages/CityGuide';
+import UserManagement from './pages/UserManagement';
 import MediaLibrary from './components/media/MediaLibrary';
 
 // Sidebar Item Component
@@ -72,6 +73,11 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
             {canAudit && (
               <>
                 <SidebarItem icon={ShieldAlert} label="Audit Log" path="/audit-log" isActive={location.pathname.startsWith('/audit-log')} />
+              </>
+            )}
+            {canAccessRole(roles, ['super_admin']) && (
+              <>
+                <SidebarItem icon={User} label="Manajemen Akun" path="/user-management" isActive={location.pathname.startsWith('/user-management')} />
               </>
             )}
             <SidebarItem icon={User} label="Profil Akun" path="/profile" isActive={location.pathname === '/profile'} />
@@ -202,6 +208,7 @@ export default function App() {
           <Route path="/city-guide" element={<CityGuide />} />
           <Route path="/media" element={<MediaLibrary />} />
           <Route path="/verifikasi" element={<Medals />} />
+          <Route path="/user-management" element={<UserManagement />} />
         </Routes>
       </AdminLayout>
     </Router>

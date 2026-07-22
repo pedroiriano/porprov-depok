@@ -9,4 +9,4 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_users_keycloak_id ON users(keycloak_id);
+CREATE INDEX IF NOT EXISTS idx_users_keycloak_id ON users(keycloak_id);

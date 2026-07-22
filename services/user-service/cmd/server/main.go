@@ -41,7 +41,7 @@ func main() {
 	}
 
 	// INFO: Menginisialisasi Handler
-	userHandler := handler.NewUserHandler(queries)
+	userHandler := handler.NewUserHandler(queries, cfg)
 
 	// INFO: Setup Chi Router
 	r := router.SetupRouter(userHandler)

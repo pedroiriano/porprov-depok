@@ -41,10 +41,10 @@ export function ScheduleMatchCard({ match, compact = false }: ScheduleMatchCardP
           <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider ${statusStyles[statusKey] || "bg-primary-500/10 text-primary-700 dark:text-primary-300"}`}>{match.status}</span>
         </div>
 
-        <div className="grid gap-2 rounded-xl bg-slate-50 p-4 dark:bg-slate-950/50">
+        <div className="grid gap-2 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
           {(participants.length ? participants : [{ id: "tba-1", display_name: "Peserta menunggu konfirmasi" }, { id: "tba-2", display_name: "Lawan menunggu konfirmasi" }]).map((participant) => (
             <div key={participant.id} className="flex items-center gap-3">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-slate-500 shadow-sm dark:bg-slate-800">{participant.display_name.charAt(0)}</span>
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-slate-500 shadow-sm dark:bg-slate-700 dark:text-slate-300">{participant.display_name.charAt(0)}</span>
               <span className="font-bold text-slate-800 dark:text-slate-100">{participant.display_name}</span>
             </div>
           ))}

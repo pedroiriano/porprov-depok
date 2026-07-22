@@ -12,7 +12,7 @@ import (
 
 type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
-	DeleteUser(ctx context.Context, id pgtype.UUID) error
+	DeleteUser(ctx context.Context, arg DeleteUserParams) error
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByKeycloakID(ctx context.Context, keycloakID string) (User, error)
 	ListUsers(ctx context.Context) ([]User, error)

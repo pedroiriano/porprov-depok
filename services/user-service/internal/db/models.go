@@ -9,12 +9,15 @@ import (
 )
 
 type User struct {
-	ID         pgtype.UUID        `json:"id"`
-	KeycloakID string             `json:"keycloak_id"`
-	Username   string             `json:"username"`
-	Email      string             `json:"email"`
-	FullName   pgtype.Text        `json:"full_name"`
-	Role       string             `json:"role"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	ID           pgtype.UUID        `json:"id"`
+	KeycloakID   string             `json:"keycloak_id"`
+	Username     string             `json:"username"`
+	Email        string             `json:"email"`
+	FullName     pgtype.Text        `json:"full_name"`
+	Role         string             `json:"role"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy    pgtype.Text        `json:"deleted_by"`
+	DeleteReason pgtype.Text        `json:"delete_reason"`
 }

@@ -39,5 +39,7 @@ func SetupRouter(userHandler *handler.UserHandler) *chi.Mux {
 		r.Delete("/{id}", userHandler.DeleteUser)
 	})
 
+	r.Get("/api/v1/roles", userHandler.GetRoles)
+
 	return r
 }

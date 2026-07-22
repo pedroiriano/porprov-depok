@@ -168,6 +168,12 @@ export function readPgTimestamp(value: NullablePgTimestamp): string {
   return timestamp && !Number.isNaN(Date.parse(timestamp)) ? timestamp : "";
 }
 
+// INFO: Selalu mengembalikan URL API yang dapat diakses browser.
+// Digunakan oleh resolvePublicAssetUrl agar <img src> tidak mengarah ke hostname Docker internal.
+export function getBrowserApiBaseUrl(): string {
+  return (process.env.NEXT_PUBLIC_API_URL || DEFAULT_PUBLIC_API_URL).replace(/\/$/, "");
+}
+
 export function resolvePublicAssetUrl(value: NullablePgText): string {
   const path = readPgText(value);
   if (!path) {
@@ -185,7 +191,8 @@ export function resolvePublicAssetUrl(value: NullablePgText): string {
       const absolute = new URL(path);
       const legacyLocalHost = absolute.hostname === "localhost" || absolute.hostname === "127.0.0.1";
       if (legacyLocalHost && absolute.pathname.startsWith("/uploads/")) {
-        const apiBase = getPublicApiBaseUrl();
+        // INFO: Gunakan URL browser-accessible, bukan internal Docker
+        const apiBase = getBrowserApiBaseUrl();
         return /^https?:\/\//i.test(apiBase)
           ? new URL(`${absolute.pathname}${absolute.search}`, apiBase).toString()
           : `${absolute.pathname}${absolute.search}`;
@@ -200,7 +207,9 @@ export function resolvePublicAssetUrl(value: NullablePgText): string {
     return path;
   }
 
-  const apiBase = getPublicApiBaseUrl();
+  // INFO: Asset URL (img src, dll.) harus selalu menggunakan origin yang dapat dijangkau browser,
+  // bukan API_INTERNAL_URL Docker yang hanya bisa diakses dari dalam jaringan Docker.
+  const apiBase = getBrowserApiBaseUrl();
   if (/^https?:\/\//i.test(apiBase)) {
     try {
       return new URL(path, apiBase).toString();

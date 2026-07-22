@@ -46,6 +46,7 @@ func main() {
 	// 4. Start HTTP Server for Healthcheck/API
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		if err := conn.Ping(r.Context()); err != nil {
+			log.Printf("Ping failed: %v", err)
 			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
 			return
 		}

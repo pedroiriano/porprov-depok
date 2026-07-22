@@ -1,0 +1,4 @@
+ALTER TABLE users 
+ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN deleted_by VARCHAR(255),
+ADD COLUMN delete_reason TEXT;

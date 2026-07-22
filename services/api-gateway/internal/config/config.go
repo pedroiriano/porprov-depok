@@ -22,6 +22,7 @@ type AppConfig struct {
 	MedalsURL           string
 	RealtimeURL         string
 	InternalStreamToken string
+	UserURL             string
 }
 
 func csvValues(value string, fallback []string) []string {
@@ -101,5 +102,6 @@ func LoadConfig() *AppConfig {
 		MedalsURL:           envOrDefault("MEDAL_SERVICE_URL", "http://localhost:28086/api/v1/medals"),
 		RealtimeURL:         envOrDefault("REALTIME_GATEWAY_URL", "http://localhost:28085/api/v1/stream"),
 		InternalStreamToken: envOrDefault("INTERNAL_STREAM_TOKEN", "local-development-stream-token"),
+		UserURL:             envOrDefault("USER_SERVICE_URL", "http://localhost:28001/api/v1/users"),
 	}
 }

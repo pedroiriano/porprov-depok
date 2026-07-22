@@ -99,6 +99,12 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 			r.Use(jwtMid.RequireAuth)
 			r.Get("/profile", handler.ProfileHandler)
 
+			// User Management Service - Hanya Super Admin
+			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/users/*", setupProxy(cfg.UserURL))
+			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/users", setupProxy(cfg.UserURL))
+			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/roles/*", setupProxy(cfg.UserURL))
+			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/roles", setupProxy(cfg.UserURL))
+
 			// Reverse Proxy ke Microservices
 			// Master Data Service melalui DNS dan port internal Docker.
 			r.Handle("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)))

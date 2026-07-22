@@ -8,26 +8,31 @@ RETURNING *;
 
 -- name: GetUserByID :one
 SELECT * FROM users
-WHERE id = $1 LIMIT 1;
+WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: GetUserByKeycloakID :one
 SELECT * FROM users
-WHERE keycloak_id = $1 LIMIT 1;
+WHERE keycloak_id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: ListUsers :many
 SELECT * FROM users
+WHERE deleted_at IS NULL
 ORDER BY created_at DESC;
 
 -- name: UpdateUser :one
 UPDATE users
 SET 
-  username = COALESCE(NULLIF($2::text, ''), username),
-  email = COALESCE(NULLIF($3::text, ''), email),
-  full_name = COALESCE(NULLIF($4::text, ''), full_name),
-  role = COALESCE(NULLIF($5::text, ''), role),
+  username = COALESCE(NULLIF(sqlc.arg('username')::text, ''), username),
+  email = COALESCE(NULLIF(sqlc.arg('email')::text, ''), email),
+  full_name = COALESCE(NULLIF(sqlc.arg('full_name')::text, ''), full_name),
+  role = COALESCE(NULLIF(sqlc.arg('role')::text, ''), role),
   updated_at = NOW()
-WHERE id = $1
+WHERE id = sqlc.arg('id') AND deleted_at IS NULL
 RETURNING *;
 
 -- name: DeleteUser :exec
-DELETE FROM users WHERE id = $1;
+UPDATE users
+SET deleted_at = NOW(),
+    deleted_by = sqlc.arg('deleted_by')::varchar,
+    delete_reason = COALESCE(NULLIF(sqlc.arg('delete_reason')::text, ''), delete_reason)
+WHERE id = sqlc.arg('id');
