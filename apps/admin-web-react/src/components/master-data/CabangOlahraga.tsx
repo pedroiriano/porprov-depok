@@ -217,6 +217,7 @@ export default function CabangOlahraga() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <SortableHeader
                     field="kategori"
@@ -224,6 +225,7 @@ export default function CabangOlahraga() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <SortableHeader
                     field="total_medali"
@@ -231,6 +233,7 @@ export default function CabangOlahraga() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <SortableHeader
                     field="technical_delegate"
@@ -238,6 +241,7 @@ export default function CabangOlahraga() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <SortableHeader
                     field="status"
@@ -245,6 +249,7 @@ export default function CabangOlahraga() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <th className="p-4 font-medium text-right">Aksi</th>
                 </tr>

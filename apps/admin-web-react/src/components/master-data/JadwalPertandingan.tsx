@@ -351,12 +351,12 @@ export default function JadwalPertandingan() {
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
-                  <SortableHeader sortKey="match_date" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort}>Waktu</SortableHeader>
-                  <SortableHeader sortKey="nomor_tanding" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort}>Cabor / Nomor</SortableHeader>
+                  <SortableHeader sortKey="match_date" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort} className="p-4 font-medium">Waktu</SortableHeader>
+                  <SortableHeader sortKey="nomor_tanding" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort} className="p-4 font-medium">Cabor / Nomor</SortableHeader>
                   <th className="p-4 font-medium">Peserta</th>
-                  <SortableHeader sortKey="venue" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort}>Venue</SortableHeader>
-                  <SortableHeader sortKey="round" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort}>Babak</SortableHeader>
-                  <SortableHeader sortKey="status" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort}>Status</SortableHeader>
+                  <SortableHeader sortKey="venue" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort} className="p-4 font-medium">Venue</SortableHeader>
+                  <SortableHeader sortKey="round" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort} className="p-4 font-medium">Babak</SortableHeader>
+                  <SortableHeader sortKey="status" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort} className="p-4 font-medium">Status</SortableHeader>
                   <th className="p-4 text-right font-medium">Aksi</th>
                 </tr>
               </thead>

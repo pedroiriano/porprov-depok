@@ -212,6 +212,7 @@ export default function NomorTanding() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <SortableHeader
                     field="name"
@@ -219,6 +220,7 @@ export default function NomorTanding() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <SortableHeader
                     field="gender_category"
@@ -226,6 +228,7 @@ export default function NomorTanding() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <SortableHeader
                     field="match_type"
@@ -233,6 +236,7 @@ export default function NomorTanding() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <th className="p-4 font-medium text-right">Aksi</th>
                 </tr>

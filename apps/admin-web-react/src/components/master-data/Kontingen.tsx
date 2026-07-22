@@ -216,6 +216,7 @@ export default function Kontingen() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <SortableHeader
                     field="region_type"
@@ -223,6 +224,7 @@ export default function Kontingen() {
                     sortKey={table.sortKey}
                     sortDirection={table.sortDirection}
                     onSort={table.handleSort}
+                    className="p-4 font-medium"
                   />
                   <th className="p-4 font-medium text-right">Aksi</th>
                 </tr>
