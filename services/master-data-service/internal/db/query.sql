@@ -73,8 +73,8 @@ WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: CreateCityGuide :one
-INSERT INTO city_guides (title, category, description, address, image_url)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO city_guides (title, category, description, address, image_url, latitude, longitude)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: ListCityGuides :many
@@ -89,11 +89,13 @@ SELECT * FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 -- name: UpdateCityGuide :one
 UPDATE city_guides
 SET
-  title = COALESCE(NULLIF($2::text, ''), title),
-  category = COALESCE(NULLIF($3::text, ''), category),
-  description = COALESCE(NULLIF($4::text, ''), description),
-  address = COALESCE(NULLIF($5::text, ''), address),
-  image_url = COALESCE(NULLIF($6::text, ''), image_url),
+  title = $2,
+  category = $3,
+  description = NULLIF($4::text, ''),
+  address = NULLIF($5::text, ''),
+  image_url = NULLIF($6::text, ''),
+  latitude = $7,
+  longitude = $8,
   updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;

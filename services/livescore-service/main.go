@@ -72,6 +72,7 @@ var (
 	uuidPattern         = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$`)
 	errRevisionConflict = errors.New("score revision has changed; reload before submitting")
 	errMatchNotActive   = errors.New("match does not exist or is not active")
+	errParticipantsOpen = errors.New("match participants A/B are incomplete")
 	errScheduleDown     = errors.New("schedule service is unavailable")
 )
 
@@ -89,14 +90,49 @@ func (s *server) validateActiveMatch(ctx context.Context, matchID string) error 
 	if err != nil {
 		return fmt.Errorf("%w: %v", errScheduleDown, err)
 	}
-	defer response.Body.Close()
-	if response.StatusCode == http.StatusOK {
-		return nil
-	}
+	response.Body.Close()
 	if response.StatusCode == http.StatusNotFound {
 		return errMatchNotActive
 	}
-	return fmt.Errorf("%w: HTTP %d", errScheduleDown, response.StatusCode)
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("%w: HTTP %d", errScheduleDown, response.StatusCode)
+	}
+
+	// INFO: Scoring A/B hanya boleh dimulai ketika Schedule memiliki dua sisi
+	// terurut. Validasi server ini melengkapi guard UI Admin.
+	participantRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, s.scheduleURL+"/matches/"+matchID+"/participants", nil)
+	if err != nil {
+		return fmt.Errorf("%w: %v", errScheduleDown, err)
+	}
+	participantResponse, err := s.httpClient.Do(participantRequest)
+	if err != nil {
+		return fmt.Errorf("%w: %v", errScheduleDown, err)
+	}
+	defer participantResponse.Body.Close()
+	if participantResponse.StatusCode != http.StatusOK {
+		return fmt.Errorf("%w: participants HTTP %d", errScheduleDown, participantResponse.StatusCode)
+	}
+	var participants []struct {
+		ParticipantType string `json:"participant_type"`
+		Slot            int16  `json:"slot"`
+	}
+	if err := json.NewDecoder(participantResponse.Body).Decode(&participants); err != nil {
+		return fmt.Errorf("%w: invalid participant response", errScheduleDown)
+	}
+	if len(participants) != 2 {
+		return errParticipantsOpen
+	}
+	validSlots := map[int16]bool{1: false, 2: false}
+	for _, participant := range participants {
+		if _, validType := map[string]struct{}{"individual": {}, "team": {}, "contingent": {}}[participant.ParticipantType]; !validType {
+			return errParticipantsOpen
+		}
+		if _, validSlot := validSlots[participant.Slot]; !validSlot || validSlots[participant.Slot] {
+			return errParticipantsOpen
+		}
+		validSlots[participant.Slot] = true
+	}
+	return nil
 }
 
 func envOrDefault(key, fallback string) string {
@@ -251,7 +287,7 @@ func (s *server) updateScore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.validateActiveMatch(r.Context(), payload.MatchID); err != nil {
-		if errors.Is(err, errMatchNotActive) {
+		if errors.Is(err, errMatchNotActive) || errors.Is(err, errParticipantsOpen) {
 			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 			return
 		}
@@ -290,7 +326,7 @@ func (s *server) correctScore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.validateActiveMatch(r.Context(), payload.MatchID); err != nil {
-		if errors.Is(err, errMatchNotActive) {
+		if errors.Is(err, errMatchNotActive) || errors.Is(err, errParticipantsOpen) {
 			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 			return
 		}

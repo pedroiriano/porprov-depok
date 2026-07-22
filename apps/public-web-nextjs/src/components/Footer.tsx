@@ -11,7 +11,8 @@ const primaryLinks = [
 
 const informationLinks = [
   { href: "/#panduan-penonton", label: "Panduan Penonton" },
-  { href: "/#tuan-rumah", label: "Tuan Rumah & Maskot" },
+  { href: "/#tentang-porprov", label: "Tentang PORPROV XV" },
+  { href: "/#maskot", label: "Maskot Toca & Toci" },
   { href: "/#informasi", label: "Pusat Informasi" },
   { href: "/livescore", label: "LiveScore Center" },
 ];

@@ -20,13 +20,30 @@ WHERE deleted_at IS NULL
 ORDER BY match_date ASC;
 
 -- name: AddMatchParticipant :one
-INSERT INTO match_participants (match_id, kontingen_id, athlete_name)
-VALUES ($1, $2, $3)
+INSERT INTO match_participants (match_id, kontingen_id, participant_type, athlete_name, team_name, slot)
+VALUES (
+  sqlc.arg(match_id),
+  sqlc.arg(kontingen_id),
+  sqlc.arg(participant_type),
+  NULLIF(BTRIM(sqlc.arg(athlete_name)::text), ''),
+  NULLIF(BTRIM(sqlc.arg(team_name)::text), ''),
+  sqlc.arg(slot)
+)
 RETURNING *;
 
 -- name: ListMatchParticipants :many
 SELECT * FROM match_participants
-WHERE match_id = $1 AND deleted_at IS NULL;
+WHERE match_id = $1 AND deleted_at IS NULL
+ORDER BY slot ASC, created_at ASC;
+
+-- name: SoftDeleteMatchParticipants :exec
+UPDATE match_participants
+SET deleted_at = NOW(),
+    deleted_by = sqlc.arg(deleted_by),
+    delete_reason = sqlc.arg(delete_reason),
+    updated_at = NOW()
+WHERE match_id = sqlc.arg(match_id)
+  AND deleted_at IS NULL;
 
 -- name: GetVenueByID :one
 SELECT * FROM venues WHERE id = $1 AND deleted_at IS NULL LIMIT 1;

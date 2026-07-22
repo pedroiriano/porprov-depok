@@ -41,12 +41,15 @@ type venueReference struct {
 }
 
 type enrichedParticipant struct {
-	ID            string `json:"id"`
-	KontingenID   string `json:"kontingen_id"`
-	KontingenName string `json:"kontingen_name"`
-	KontingenLogo string `json:"kontingen_logo_url"`
-	AthleteName   string `json:"athlete_name"`
-	DisplayName   string `json:"display_name"`
+	ID              string `json:"id"`
+	ParticipantType string `json:"participant_type"`
+	KontingenID     string `json:"kontingen_id"`
+	KontingenName   string `json:"kontingen_name"`
+	KontingenLogo   string `json:"kontingen_logo_url"`
+	AthleteName     string `json:"athlete_name"`
+	TeamName        string `json:"team_name"`
+	Slot            int16  `json:"slot"`
+	DisplayName     string `json:"display_name"`
 }
 
 type enrichedMatch struct {
@@ -187,20 +190,29 @@ func (h *MatchHandler) ListEnrichedMatches(w http.ResponseWriter, r *http.Reques
 		kontingenID := uuidString(participant.KontingenID)
 		kontingen := kontingenMap[kontingenID]
 		athleteName := strings.TrimSpace(participant.AthleteName.String)
-		displayName := athleteName
-		if displayName == "" {
+		teamName := strings.TrimSpace(participant.TeamName.String)
+		displayName := ""
+		switch participant.ParticipantType {
+		case "individual":
+			displayName = athleteName
+		case "team":
+			displayName = teamName
+		case "contingent":
 			displayName = kontingen.Name
 		}
 		if displayName == "" {
 			displayName = "Peserta menunggu konfirmasi"
 		}
 		participantsByMatch[matchID] = append(participantsByMatch[matchID], enrichedParticipant{
-			ID:            uuidString(participant.ID),
-			KontingenID:   kontingenID,
-			KontingenName: kontingen.Name,
-			KontingenLogo: kontingen.LogoURL,
-			AthleteName:   athleteName,
-			DisplayName:   displayName,
+			ID:              uuidString(participant.ID),
+			ParticipantType: participant.ParticipantType,
+			KontingenID:     kontingenID,
+			KontingenName:   kontingen.Name,
+			KontingenLogo:   kontingen.LogoURL,
+			AthleteName:     athleteName,
+			TeamName:        teamName,
+			Slot:            participant.Slot,
+			DisplayName:     displayName,
 		})
 	}
 

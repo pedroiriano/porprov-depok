@@ -24,15 +24,18 @@ type Match struct {
 }
 
 type MatchParticipant struct {
-	ID           pgtype.UUID        `json:"id"`
-	MatchID      pgtype.UUID        `json:"match_id"`
-	KontingenID  pgtype.UUID        `json:"kontingen_id"`
-	AthleteName  pgtype.Text        `json:"athlete_name"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
-	DeletedBy    pgtype.Text        `json:"deleted_by"`
-	DeleteReason pgtype.Text        `json:"delete_reason"`
+	ID              pgtype.UUID        `json:"id"`
+	MatchID         pgtype.UUID        `json:"match_id"`
+	KontingenID     pgtype.UUID        `json:"kontingen_id"`
+	AthleteName     pgtype.Text        `json:"athlete_name"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy       pgtype.Text        `json:"deleted_by"`
+	DeleteReason    pgtype.Text        `json:"delete_reason"`
+	ParticipantType string             `json:"participant_type"`
+	TeamName        pgtype.Text        `json:"team_name"`
+	Slot            int16              `json:"slot"`
 }
 
 type Venue struct {

@@ -5,8 +5,9 @@ Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker un
 ## Kondisi Aplikasi Saat Ini
 
 - Public Web, Admin Web, API Gateway, seluruh core service, PostgreSQL, Keycloak, Redis, NATS, dan monitoring mempunyai satu runtime Docker Compose terintegrasi.
-- CRUD Master Data, pemilihan Media Library, soft delete, dan pemulihan melalui Recycle Bin Admin sudah tersedia end-to-end untuk Cabor, Nomor Pertandingan, Kontingen, City Guide, Media, Venue, dan Jadwal. Hardening RBAC granular serta kebijakan retensi/purge tetap mengikuti `FEATURES.md`.
-- Public Web tahap v0.4 sudah memiliki beranda Techwind PORPROV, listing serta detail Cabor/Venue, Jadwal teragregasi, LiveScore persisten dengan public SSE tersanitasi, dan Klasemen Medali yang hanya membaca submission OFFICIAL. Seluruh state loading/empty/error bersifat faktual tanpa data tiruan; peta interaktif, distributed realtime, dan deployment production dilanjutkan berdasarkan `FEATURES.md`.
+- CRUD Master Data, pemilihan Media Library, soft delete, dan pemulihan melalui Recycle Bin Admin sudah tersedia end-to-end untuk Cabor, Nomor Pertandingan, Kontingen, City Guide, Media, Venue, dan Jadwal. City Guide memiliki latitude/longitude terverifikasi, edit data, pengambilan lokasi perangkat, serta tautan titik peta pada Admin dan detail Venue publik; 165 rekomendasi resmi Booklet halaman 21–32 telah tersedia dalam tujuh kategori melalui importer API idempoten. Hardening RBAC granular serta kebijakan retensi/purge tetap mengikuti `FEATURES.md`.
+- Susunan Peserta A/B kini dikelola bersama Jadwal sebagai dua sisi berjenis sama: Individu, Tim, atau Kontingen. Schedule Service menyimpan identitas peserta dan afiliasi kontingen secara transaksional; LiveScore hanya membaca susunan tersebut lalu mencatat skor/status, sehingga operator tidak menginput peserta dua kali.
+- Public Web tahap v0.5 sudah memiliki beranda Techwind PORPROV dengan pengantar resmi PORPROV XV dan section Maskot Toca-Toci dari booklet, listing serta detail Cabor/Venue, Jadwal teragregasi, LiveScore persisten dengan public SSE tersanitasi, dan Klasemen Medali yang hanya membaca submission OFFICIAL. Seluruh state loading/empty/error bersifat faktual tanpa data tiruan; peta interaktif, distributed realtime, dan deployment production dilanjutkan berdasarkan `FEATURES.md`.
 - Seluruh rute aktif Public dan Admin telah diselaraskan terhadap Techwind `dist`, memakai satu strategi tema berbasis class `.dark`, token semantik terang/gelap, serta quality gate kontras WCAG 2.2 AA yang didokumentasikan di `docs/uiux/TECHWIND_DIST_LIGHT_DARK_AUDIT.md`.
 - Hardening olahraga tahap v0.4 mencakup JWT issuer/expiry/client validation, role guard, private Admin SSE, revision/koreksi LiveScore append-only, workflow Medali PENDING–VERIFIED–OFFICIAL/REJECTED, transactional outbox LiveScore/Medali, serta Audit Log immutable dan deduplicated. Outbox domain lama, MFA, RBAC menyeluruh, dan hardening production tetap berstatus sesuai `FEATURES.md`.
 - Kondisi dan quality gate aktual tidak boleh disimpulkan dari README saja; `FEATURES.md` adalah tracker status implementasi.
@@ -58,6 +59,8 @@ Tema runtime wajib memakai class `.dark` sebagai satu-satunya pemicu utility `da
 
 Semua penghapusan data persisten wajib menggunakan soft delete. Record menyimpan waktu, actor, dan alasan yang relevan; query aktif menyembunyikan data terhapus; restore harus terotorisasi dan diaudit. File Media Library tetap disimpan selama masa retensi. Hard delete hanya diperbolehkan sebagai purge terkontrol, bukan aksi delete biasa.
 
+Lokasi City Guide wajib menyimpan pasangan koordinat desimal `latitude` dan `longitude`, bukan URL peta sebagai sumber data. Latitude berada pada rentang `-90..90` dan longitude `-180..180`; tautan aplikasi peta dibentuk dari kedua nilai tersebut agar portabel lintas deployment.
+
 ## Sinkronisasi Pedoman
 
 Setiap perubahan aturan atau standar wajib diterapkan pada keenam Markdown root yang relevan dalam pekerjaan yang sama. `RULES.md` adalah sumber normatif, `FEATURES.md` menyimpan status aktual, dan perubahan arsitektur tetap membutuhkan ADR.
@@ -74,7 +77,7 @@ Setiap perubahan aturan atau standar wajib diterapkan pada keenam Markdown root 
 
 Semua host port dapat diubah melalui file `.env` lokal yang dibuat dari `infra/docker/.env.example`. File `.env` aktual tidak dilacak Git. Port internal Docker tidak perlu diubah saat migrasi hosting karena service berkomunikasi melalui DNS Compose.
 
-Read-model publik Jadwal tersedia pada `GET /api/v1/schedule/matches/enriched`. Endpoint ini memperkaya match aktif dengan Cabor, Nomor Tanding, Kontingen/peserta, dan Venue pada Schedule Service; browser tetap hanya berkomunikasi melalui API Gateway.
+Read-model publik Jadwal tersedia pada `GET /api/v1/schedule/matches/enriched`. Endpoint ini memperkaya match aktif dengan Cabor, Nomor Tanding, Peserta A/B terurut (`individual`, `team`, atau `contingent`), Kontingen, dan Venue pada Schedule Service; browser tetap hanya berkomunikasi melalui API Gateway. Kontrak kepemilikan peserta dijelaskan di [`docs/adr/ADR-0006-schedule-participant-ownership.md`](docs/adr/ADR-0006-schedule-participant-ownership.md).
 
 Stream realtime publik berada di `GET /api/v1/stream/events` dan sengaja anonim untuk data tayang, tetapi tidak memuat actor/request/alasan koreksi. Workspace Admin menggunakan `GET /api/v1/stream/admin/events` dengan JWT di API Gateway dan secret internal pada hop service. Keputusan persistence, outbox, workflow, dan audit dicatat di [`docs/adr/ADR-0004-secure-realtime-transactional-outbox-and-verification.md`](docs/adr/ADR-0004-secure-realtime-transactional-outbox-and-verification.md).
 

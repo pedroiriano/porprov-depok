@@ -4,6 +4,10 @@ Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Porta
 
 > **Konteks aktif per 22 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime full-stack canonical memakai Docker Compose dan mencakup Public/Admin Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, PostgreSQL, Keycloak beserta bootstrap role/client, Redis, NATS, Nginx, dan observability. Namespace `28xxx` hanya untuk debugging satu komponen, bukan full-stack kedua. Data publik membaca detail Cabor/Venue, Jadwal enriched, projection LiveScore persisten, public SSE tersanitasi, serta Medali OFFICIAL tanpa data tiruan. Soft delete/Recycling domain inti tetap aktif; MFA, outbox domain lama, RBAC menyeluruh, scale-out, dan production hardening dilanjutkan bertahap.
 
+> **Kontrak peserta aktif:** Master Data memiliki referensi Kontingen; Schedule memiliki susunan Peserta A/B dengan satu jenis yang sama—Individu, Tim, atau Kontingen; LiveScore hanya memiliki revisi skor/status untuk match tersebut. Form peserta berada pada Jadwal Pertandingan dan penggantian susunan lama selalu soft delete.
+
+> **Kontrak lokasi City Guide:** Master Data menyimpan latitude dan longitude desimal sebagai pasangan wajib untuk create/update. Latitude harus `-90..90`, longitude `-180..180`; URL peta dibentuk oleh consumer dari koordinat, bukan disimpan sebagai sumber data vendor-spesifik.
+
 ## Mode Kerja Utama
 
 Agent wajib bekerja sebagai **enterprise pair programmer** yang membaca dokumen dahulu, membuat rencana singkat, meminta konfirmasi sebelum lanjut tahap, menulis full code lengkap, menjaga keamanan, performa, SEO, aksesibilitas, realtime reliability, dan memperbarui dokumentasi.
@@ -60,6 +64,7 @@ Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tida
 - Stream publik hanya boleh memuat projection tayang tersanitasi; stream operasional Admin wajib melewati JWT/role API Gateway dan secret internal yang aman di luar development.
 - Perubahan LiveScore/Medali yang kritis wajib memakai transaksi state + outbox. Koreksi skor append-only dan publikasi Medali hanya dari status VERIFIED, dengan actor tiap tahap dipertahankan.
 - Data lintas domain yang dibutuhkan satu layar publik wajib disediakan melalui backend read-model dan API Gateway; browser tidak boleh mengorkestrasi port service atau bergantung pada UUID mentah untuk presentasi.
+- Jadwal yang siap LiveScore wajib memiliki tepat dua sisi terurut A/B dengan jenis peserta yang sama. Individu menyimpan nama atlet dan afiliasi Kontingen, Tim menyimpan nama tim dan afiliasi Kontingen, sedangkan Kontingen memakai nama referensi Kontingen; LiveScore tidak boleh menyediakan sumber input peserta kedua.
 - Admin Web harus mengutamakan kecepatan kerja, keterbacaan tabel/form, status sistem, konfirmasi aksi, dan konsistensi lintas modul.
 - Asset, logo, copywriting, dan identitas Techwind tidak boleh dipublikasikan sebagai brand PORPROV. Pastikan penggunaan tema mematuhi lisensi yang dimiliki proyek.
 
@@ -71,6 +76,7 @@ Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tida
 - File Media Library tidak boleh langsung dihapus dari storage ketika metadata di-soft-delete. Penghapusan fisik hanya dilakukan proses purge terkontrol setelah masa retensi.
 - Dilarang memakai cascade hard delete lintas domain. Publikasikan event delete/restore bila perubahan perlu diketahui service lain.
 - Implementasi lama yang masih hard delete wajib dicatat sebagai technical debt di `FEATURES.md` dan dimigrasikan sebelum fitur dinyatakan final.
+- City Guide wajib mempunyai koordinat desimal berpasangan dan tervalidasi. Migrasi skema boleh mempertahankan nilai null untuk record legacy, tetapi form edit harus meminta pelengkapannya dan query normal tidak boleh mengarang koordinat fallback.
 
 ## Sinkronisasi Enam Dokumen Root
 

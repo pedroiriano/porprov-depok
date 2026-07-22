@@ -19,6 +19,7 @@ type Querier interface {
 	ListMatchParticipants(ctx context.Context, matchID pgtype.UUID) ([]MatchParticipant, error)
 	ListMatches(ctx context.Context) ([]Match, error)
 	ListVenues(ctx context.Context, dollar_1 string) ([]Venue, error)
+	SoftDeleteMatchParticipants(ctx context.Context, arg SoftDeleteMatchParticipantsParams) error
 	UpdateMatch(ctx context.Context, arg UpdateMatchParams) (Match, error)
 	UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue, error)
 }

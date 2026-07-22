@@ -19,7 +19,7 @@ func TestReferenceExists(t *testing.T) {
 	}))
 	defer server.Close()
 
-	handler := NewMatchHandler(nil, server.URL, server.URL)
+	handler := NewMatchHandler(nil, nil, server.URL, server.URL)
 	exists, err := handler.referenceExists(context.Background(), server.URL+"/exists")
 	if err != nil || !exists {
 		t.Fatalf("expected existing reference, exists=%v err=%v", exists, err)

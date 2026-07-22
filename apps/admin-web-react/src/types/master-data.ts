@@ -57,6 +57,20 @@ export interface Venue {
   updated_at: string;
 }
 
+export type ParticipantType = 'individual' | 'team' | 'contingent';
+
+export interface MatchParticipant {
+  id?: string;
+  participant_type: ParticipantType;
+  kontingen_id: string;
+  kontingen_name?: string;
+  kontingen_logo_url?: string;
+  athlete_name: string;
+  team_name: string;
+  slot: number;
+  display_name?: string;
+}
+
 export interface MatchSchedule {
   id: string;
   nomor_tanding_id: string;
@@ -64,6 +78,10 @@ export interface MatchSchedule {
   match_date: string;
   status: string;
   round: string;
+  cabor_name?: string;
+  nomor_tanding_name?: string;
+  venue_name?: string;
+  participants?: MatchParticipant[];
   created_at: string;
   updated_at: string;
 }

@@ -10,6 +10,7 @@ interface ModalFormProps {
   submitting: boolean;
   submitText: string;
   children: React.ReactNode;
+  size?: 'default' | 'large';
 }
 
 export default function ModalForm({
@@ -19,7 +20,8 @@ export default function ModalForm({
   onSubmit,
   submitting,
   submitText,
-  children
+  children,
+  size = 'default'
 }: ModalFormProps) {
   const [mounted, setMounted] = useState(false);
   const generatedFormId = useId();
@@ -60,7 +62,7 @@ export default function ModalForm({
       onClick={onClose}
     >
       <div 
-        className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh]"
+        className={`bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] ${size === 'large' ? 'max-w-4xl' : 'max-w-lg'}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

@@ -108,14 +108,17 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 - Gunakan venue cards untuk peta, rute, fasilitas, rekomendasi sekitar.
 - Referensi wajib pada Techwind Landing antara lain pola event, gym, blog/editorial, gallery, auth, dan landing; pilih per komponen hanya dari `Landing/dist`, bukan menyalin satu halaman secara utuh.
 - Ubah seluruh pola menjadi design language PORPROV: energi kompetisi, identitas Kota Depok, status realtime, CTA yang jelas, dan kepadatan informasi yang tetap terbaca.
-- Mapping implementasi Beranda terbaru tersedia di `docs/uiux/PUBLIC_HOME_TECHWIND_MAPPING.md`: hero 100 viewport dengan parallax 50%, tautan Tuan Rumah, pusat informasi, Venue live melalui API Gateway, dan CTA panduan penonton.
+- Mapping implementasi Beranda terbaru tersedia di `docs/uiux/PUBLIC_HOME_TECHWIND_MAPPING.md`: hero 100 viewport dengan parallax 50%, pengantar PORPROV XV berdasarkan `Booklet PORPROV XV.pdf` halaman 4, section Maskot Toca-Toci berdasarkan halaman 6-7, pusat informasi, Venue live melalui API Gateway, dan CTA panduan penonton.
 - Public Web membaca `NEXT_PUBLIC_API_URL` dengan default canonical `http://localhost:8000/api/v1`. Server Components dalam Compose membaca `API_INTERNAL_URL=http://api-gateway:8000/api/v1`; browser dan server tetap hanya melewati API Gateway. Port `8080` khusus Keycloak.
 - Canonical/metadata origin Public Web membaca `NEXT_PUBLIC_SITE_URL` dengan default lokal `http://localhost:3000`; deployment wajib mengisinya dengan origin HTTPS resmi.
 - API Gateway membuka operasi baca publik untuk `/master-data/*`, `/schedule/*`, `/venues*`, `/medals/*`, `/livescore/public`, dan `/stream/events`; operasi mutasi, history operasional, Audit, dan private stream tetap wajib JWT/role.
 - Jadwal, LiveScore, dan Klasemen tidak menggunakan data contoh produksi: jika belum ada record, UI menampilkan empty state; jika service gagal, UI menampilkan error yang dapat ditindaklanjuti.
+- Public LiveScore menahan status live dan nilai skor bila susunan Peserta A/B belum lengkap, termasuk untuk revision historis yang tercatat sebelum kontrak peserta diterapkan. Card menampilkan status “Menunggu peserta” serta skor `–` sampai identitas dikonfirmasi.
 - URL Media Library lama yang menunjuk port diagnostik `localhost:18xxx/uploads/*` dinormalisasi ke route `/uploads/*` API Gateway agar asset tetap dapat dibaca Public Web tanpa melanggar single-edge policy.
 - Detail Cabor berada di `/cabor/[id]` dan menggabungkan nomor tanding, venue, serta Jadwal aktif. Detail Venue berada di `/venue/[id]` dan menggabungkan fasilitas, cabor, City Guide sekitar, rute/koordinat, serta Jadwal aktif; field kontak internal Venue tidak ditayangkan.
-- `GET /api/v1/schedule/matches/enriched` adalah kontrak read-model publik yang mengembalikan nama/ikon Cabor, Nomor Tanding, peserta/Kontingen, Venue, waktu, ronde, dan status. Schedule Service melakukan batch query peserta lalu mengambil referensi aktif dari Master Data/Venue; kegagalan dependency menghasilkan `503`, dan tombstone tidak pernah masuk projection.
+- City Guide menyimpan pasangan koordinat desimal `latitude`/`longitude` pada Master Data. Admin mendukung create, read, update, soft delete, pengambilan lokasi perangkat, pratinjau Google Maps, dan Media Selector; detail Venue publik membentuk tautan peta dari koordinat tanpa menyimpan URL vendor sebagai sumber kebenaran.
+- Dataset City Guide resmi berisi 165 rekomendasi dari `Booklet PORPROV XV.pdf` halaman 21–32 dalam kategori Coffee Shop, Wisata Kuliner, Tempat Menginap, Wisata Buatan, Wisata Situ, Pusat Perbelanjaan, dan Rumah Sakit. Dataset kanonis, status verifikasi, catatan listing historis, serta prosedur upsert API idempoten didokumentasikan di `docs/data/CITY_GUIDE_BOOKLET_PORPROV_XV_2026.md`.
+- `GET /api/v1/schedule/matches/enriched` adalah kontrak read-model publik yang mengembalikan nama/ikon Cabor, Nomor Tanding, Peserta A/B terurut, Kontingen, Venue, waktu, ronde, dan status. Peserta memiliki `participant_type` (`individual`, `team`, `contingent`), `slot`, identitas yang relevan, serta `display_name`. Schedule Service melakukan batch query lalu mengambil referensi aktif dari Master Data/Venue; kegagalan dependency menghasilkan `503`, dan tombstone tidak pernah masuk projection.
 - Event internal LiveScore/Medali memakai envelope v1 berisi `eventVersion`, `eventId`, `eventType`, sequence database/monotonik, timestamp, actor, dan request correlation. Public SSE hanya meneruskan `LIVESCORE_UPDATED`, `LIVESCORE_CORRECTED`, dan `MEDAL_STANDING_UPDATED` setelah actor/request/alasan koreksi dibuang. Klasemen tetap polling 30 detik sebagai fallback.
 
 ### 4.2 Admin Web Experience
@@ -127,6 +130,7 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 - Gunakan hanya Techwind `Dashboard/dist` untuk shell, sidebar/topbar, table, form, calendar, profile, gallery, dan feedback state; jangan memasukkan Gulp/theme JavaScript atau style dari tema lain ke bundle React.
 - Aksi delete harus diberi konfirmasi aksesibel, menjelaskan bahwa data masuk Recycle Bin/arsip, dan menyediakan restore sesuai permission.
 - LiveScore Center memakai private SSE bearer-token, menampilkan current/history, dan mengirim `expectedRevision` agar update operator yang stale menghasilkan `409`.
+- Susunan Peserta A/B dibuat atau diedit melalui Master Data → Jadwal Pertandingan. LiveScore Center membaca susunan tersebut, memberi label input skor sesuai nama peserta, dan mengunci submit bila dua sisi belum lengkap.
 - Workspace Medali memisahkan submitter (`koresponden`), verifier (`verifikator`), dan publisher (`super_admin`). Audit Log hanya tampak bagi `auditor`/`super_admin` dan menyediakan export CSV tanpa mengubah record audit.
 
 ### 4.3 Mobile Koresponden Experience
@@ -464,9 +468,9 @@ Implementasi aktif memakai `deleted_by TEXT` karena identitas actor berasal dari
 
 | Database/service | Migration | Entity aktif |
 |---|---:|---|
-| `master_data_db` / Master Data | v5 | Cabor, Nomor Pertandingan, Kontingen, City Guide, Media |
+| `master_data_db` / Master Data | v6 | Cabor, Nomor Pertandingan, Kontingen, City Guide dengan koordinat, Media |
 | `venue_db` / Venue | v2 | Venue |
-| `schedule_db` / Schedule | v4 | Jadwal/Match serta tabel legacy terkait |
+| `schedule_db` / Schedule | v5 | Jadwal/Match dan Peserta A/B bertipe Individu/Tim/Kontingen dengan slot serta soft replacement |
 | `livescore_db` / LiveScore | v1 | Revision append-only, current projection, transactional outbox |
 | `porprov_db` / Medal Standing | v3 | Official standings, submissions/history, separated workflow actors, outbox |
 | `audit_db` / Audit | v2 | Immutable/deduplicated audit event dengan payload hash |
@@ -482,21 +486,29 @@ Endpoint Admin melalui API Gateway:
 | `GET /api/v1/venues/deleted` | Tombstone Venue |
 | `DELETE /api/v1/schedule/matches/{id}` / `POST /api/v1/schedule/matches/{id}/restore` | Arsip/restore Jadwal |
 | `GET /api/v1/schedule/matches/deleted` | Tombstone Jadwal |
+| `POST /api/v1/schedule/matches` / `PUT /api/v1/schedule/matches/{id}` | Simpan Jadwal dan array `participants` dua sisi dalam satu transaksi |
+| `GET /api/v1/schedule/matches/{id}/participants` | Daftar peserta aktif terurut untuk satu Jadwal |
+
+Payload create/update `POST|PUT /api/v1/master-data/city-guides[/{id}]` memuat `title`, `category`, `description`, `address`, `image_url`, `latitude`, dan `longitude`. Kedua koordinat wajib hadir bersama; latitude berada pada `-90..90` dan longitude `-180..180`. Migration v6 mempertahankan pasangan null pada record legacy agar deployment backward-safe, tetapi API mewajibkan koordinat saat record dibuat atau diedit.
 
 Aturan integritas yang aktif:
 
 - Cabor tidak dapat diarsipkan bila masih memiliki Nomor Pertandingan aktif.
 - Nomor Pertandingan dan Venue tidak dapat diarsipkan bila masih dirujuk Jadwal aktif; pemeriksaan lintas service bersifat fail-closed melalui `SCHEDULE_SERVICE_URL`.
 - Jadwal hanya dapat dipulihkan bila Nomor Pertandingan dan Venue referensinya sudah aktif kembali.
+- Peserta pertandingan wajib tepat dua sisi dengan jenis yang sama untuk kontrak LiveScore A/B. Keduanya harus merujuk Kontingen aktif; Individu wajib memiliki `athlete_name`, Tim wajib memiliki `team_name`, dan Kontingen memakai nama referensi. Penggantian susunan menandai record lama terhapus sebelum menyimpan versi aktif baru dalam transaksi yang sama.
 - Media yang diarsipkan hilang dari list/selector dan `/uploads/{file}` mengembalikan `404`; setelah restore delivery kembali `200` tanpa mengunggah ulang file.
+- City Guide tidak boleh memiliki hanya satu koordinat. Database menegakkan pasangan null/non-null dan rentang geografis; UI serta handler mengulang validasi untuk feedback dini dan pertahanan berlapis.
 - Delete dan restore bersifat idempotent. Operasi yang benar-benar mengubah state menerbitkan event audit NATS berisi actor, reason/request ID, serta snapshot record/tombstone. Audit Service kini menyimpan event yang diterima secara immutable, tetapi publisher Master/Media/Venue/Jadwal masih best-effort dan belum memakai transactional outbox.
+- Kepemilikan serta kontrak Peserta A/B antara Master Data, Schedule, dan LiveScore dicatat pada `docs/adr/ADR-0006-schedule-participant-ownership.md`.
 
-Verifikasi 14 Juli 2026 mencakup `go test ./...` pada Master Data, Venue, Schedule, dan API Gateway; lint dan production build Admin; Compose config/build; runtime test delete–invisibility–restore–dependency guard–media retention; serta migration state `master=5`, `venue=2`, `schedule=4`, seluruhnya `dirty=false`. Keputusan implementasi dicatat pada `docs/adr/ADR-0002-soft-delete-and-port-namespaces.md`.
+Verifikasi baseline 14 Juli 2026 mencakup `go test ./...` pada Master Data, Venue, Schedule, dan API Gateway; lint dan production build Admin; Compose config/build; runtime test delete–invisibility–restore–dependency guard–media retention; serta migration state seluruhnya `dirty=false`. Perubahan 22 Juli menaikkan target migration menjadi `master=6`, `venue=2`, dan `schedule=5`; hasil verifikasi aktual dicatat pada laporan pekerjaan. Keputusan soft delete dicatat pada `docs/adr/ADR-0002-soft-delete-and-port-namespaces.md`.
 
 ### 16.5 LiveScore, Medali, Transactional Outbox, dan Audit Immutable
 
 - LiveScore menyimpan `livescore_revisions` yang ditolak trigger bila di-UPDATE/DELETE, serta `livescore_current` untuk projection baca. Sequence berasal dari revision database. `expectedRevision` mencegah operator menimpa state yang sudah berubah; update stale menghasilkan `409`.
 - Update/koreksi LiveScore hanya diterima untuk match Schedule aktif. Submission Medali hanya diterima untuk Kontingen Master Data aktif. Dependency yang gagal menghasilkan `503`; referensi tombstone/tidak ada menghasilkan `422`.
+- Selain match aktif, LiveScore memverifikasi endpoint peserta Schedule dan menolak `422` bila tepat dua slot A/B yang valid belum tersedia. Guard ini diterapkan di backend dan Admin Web.
 - Medali menyimpan `medal_submissions` dan history append-only. Hanya `PENDING → VERIFIED → OFFICIAL` yang menambah standings; reject dapat berasal dari PENDING/VERIFIED. Actor submit/verify/reject/publish tidak saling menimpa.
 - LiveScore dan Medali menulis state serta `outbox_events` pada transaksi yang sama. Worker melakukan atomic claim, JetStream publish, acknowledgement, dan retry/backoff. Delivery at-least-once didedup melalui event ID pada Audit Service.
 - Audit migration v2 menambahkan event metadata, actor/request/IP, unique event ID, SHA-256 payload, dan trigger immutable. Legacy event tanpa UUID diberi deterministic ID. Invalid poison message dihentikan; kegagalan database tetap di-NAK untuk retry.

@@ -12,19 +12,36 @@ import (
 )
 
 const addMatchParticipant = `-- name: AddMatchParticipant :one
-INSERT INTO match_participants (match_id, kontingen_id, athlete_name)
-VALUES ($1, $2, $3)
-RETURNING id, match_id, kontingen_id, athlete_name, created_at, updated_at, deleted_at, deleted_by, delete_reason
+INSERT INTO match_participants (match_id, kontingen_id, participant_type, athlete_name, team_name, slot)
+VALUES (
+  $1,
+  $2,
+  $3,
+  NULLIF(BTRIM($4::text), ''),
+  NULLIF(BTRIM($5::text), ''),
+  $6
+)
+RETURNING id, match_id, kontingen_id, athlete_name, created_at, updated_at, deleted_at, deleted_by, delete_reason, participant_type, team_name, slot
 `
 
 type AddMatchParticipantParams struct {
-	MatchID     pgtype.UUID `json:"match_id"`
-	KontingenID pgtype.UUID `json:"kontingen_id"`
-	AthleteName pgtype.Text `json:"athlete_name"`
+	MatchID         pgtype.UUID `json:"match_id"`
+	KontingenID     pgtype.UUID `json:"kontingen_id"`
+	ParticipantType string      `json:"participant_type"`
+	AthleteName     string      `json:"athlete_name"`
+	TeamName        string      `json:"team_name"`
+	Slot            int16       `json:"slot"`
 }
 
 func (q *Queries) AddMatchParticipant(ctx context.Context, arg AddMatchParticipantParams) (MatchParticipant, error) {
-	row := q.db.QueryRow(ctx, addMatchParticipant, arg.MatchID, arg.KontingenID, arg.AthleteName)
+	row := q.db.QueryRow(ctx, addMatchParticipant,
+		arg.MatchID,
+		arg.KontingenID,
+		arg.ParticipantType,
+		arg.AthleteName,
+		arg.TeamName,
+		arg.Slot,
+	)
 	var i MatchParticipant
 	err := row.Scan(
 		&i.ID,
@@ -36,6 +53,9 @@ func (q *Queries) AddMatchParticipant(ctx context.Context, arg AddMatchParticipa
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.ParticipantType,
+		&i.TeamName,
+		&i.Slot,
 	)
 	return i, err
 }
@@ -161,8 +181,9 @@ func (q *Queries) GetVenueByID(ctx context.Context, id pgtype.UUID) (Venue, erro
 }
 
 const listMatchParticipants = `-- name: ListMatchParticipants :many
-SELECT id, match_id, kontingen_id, athlete_name, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM match_participants
+SELECT id, match_id, kontingen_id, athlete_name, created_at, updated_at, deleted_at, deleted_by, delete_reason, participant_type, team_name, slot FROM match_participants
 WHERE match_id = $1 AND deleted_at IS NULL
+ORDER BY slot ASC, created_at ASC
 `
 
 func (q *Queries) ListMatchParticipants(ctx context.Context, matchID pgtype.UUID) ([]MatchParticipant, error) {
@@ -184,6 +205,9 @@ func (q *Queries) ListMatchParticipants(ctx context.Context, matchID pgtype.UUID
 			&i.DeletedAt,
 			&i.DeletedBy,
 			&i.DeleteReason,
+			&i.ParticipantType,
+			&i.TeamName,
+			&i.Slot,
 		); err != nil {
 			return nil, err
 		}
@@ -269,6 +293,27 @@ func (q *Queries) ListVenues(ctx context.Context, dollar_1 string) ([]Venue, err
 		return nil, err
 	}
 	return items, nil
+}
+
+const softDeleteMatchParticipants = `-- name: SoftDeleteMatchParticipants :exec
+UPDATE match_participants
+SET deleted_at = NOW(),
+    deleted_by = $1,
+    delete_reason = $2,
+    updated_at = NOW()
+WHERE match_id = $3
+  AND deleted_at IS NULL
+`
+
+type SoftDeleteMatchParticipantsParams struct {
+	DeletedBy    pgtype.Text `json:"deleted_by"`
+	DeleteReason pgtype.Text `json:"delete_reason"`
+	MatchID      pgtype.UUID `json:"match_id"`
+}
+
+func (q *Queries) SoftDeleteMatchParticipants(ctx context.Context, arg SoftDeleteMatchParticipantsParams) error {
+	_, err := q.db.Exec(ctx, softDeleteMatchParticipants, arg.DeletedBy, arg.DeleteReason, arg.MatchID)
+	return err
 }
 
 const updateMatch = `-- name: UpdateMatch :one

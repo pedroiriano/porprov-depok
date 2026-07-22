@@ -124,6 +124,8 @@ export interface RawCityGuide {
   description?: Parameters<typeof readPgText>[0];
   address?: Parameters<typeof readPgText>[0];
   image_url?: Parameters<typeof readPgText>[0];
+  latitude?: Parameters<typeof readPgNumber>[0];
+  longitude?: Parameters<typeof readPgNumber>[0];
 }
 
 export interface CityGuideModel {
@@ -133,9 +135,26 @@ export interface CityGuideModel {
   description: string;
   address: string;
   imageUrl: string;
+  latitude: number;
+  longitude: number;
+  mapUrl: string;
+}
+
+function hasPgNumber(value: Parameters<typeof readPgNumber>[0]): boolean {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "object") {
+    const record = value as { Valid?: boolean; valid?: boolean };
+    return (record.Valid ?? record.valid ?? true) !== false;
+  }
+  return true;
 }
 
 export function normalizeCityGuide(raw: RawCityGuide, index = 0): CityGuideModel {
+  const latitude = readPgNumber(raw.latitude);
+  const longitude = readPgNumber(raw.longitude);
+  const hasCoordinates = hasPgNumber(raw.latitude) && hasPgNumber(raw.longitude);
   return {
     id: readResourceId(raw.id, `city-guide-${index}`),
     title: raw.title?.trim() || "Panduan Kota Depok",
@@ -143,15 +162,21 @@ export function normalizeCityGuide(raw: RawCityGuide, index = 0): CityGuideModel
     description: readPgText(raw.description),
     address: readPgText(raw.address),
     imageUrl: resolvePublicAssetUrl(raw.image_url),
+    latitude,
+    longitude,
+    mapUrl: hasCoordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${latitude},${longitude}`)}` : "",
   };
 }
 
 export interface EnrichedParticipant {
   id: string;
+  participant_type: "individual" | "team" | "contingent";
   kontingen_id: string;
   kontingen_name: string;
   kontingen_logo_url: string;
   athlete_name: string;
+  team_name: string;
+  slot: number;
   display_name: string;
 }
 

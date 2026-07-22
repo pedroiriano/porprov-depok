@@ -1,7 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { HeroSection } from "@/components/HeroSection";
+import { MascotSection } from "@/components/MascotSection";
+import { PorprovIntroduction } from "@/components/PorprovIntroduction";
 import { VenueShowcase } from "@/components/VenueShowcase";
+import Image from "next/image";
 
 const informationLinks = [
   {
@@ -42,65 +44,8 @@ export default function Home() {
   return (
     <>
       <HeroSection />
-
-      <section id="tuan-rumah" className="relative py-16 md:py-24" aria-labelledby="host-title">
-        <div className="container relative">
-          <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-12 md:gap-[30px]">
-            <div className="md:col-span-6">
-              <div className="relative mx-auto max-w-xl">
-                <div className="absolute inset-0 -z-10 rounded-[2rem] bg-gradient-to-br from-primary-500/20 via-transparent to-amber-400/20 blur-2xl sm:-inset-4" aria-hidden="true" />
-                <div className="grid grid-cols-2 items-end gap-4">
-                  <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-4 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-                    <Image src="/assets/images/maskot-toca.png" width={400} height={500} className="h-72 w-full object-contain md:h-96" alt="Toca, maskot PORPROV XV Jawa Barat 2026" />
-                    <p className="mt-3 text-center text-sm font-black uppercase tracking-[0.18em] text-primary-500">Toca</p>
-                  </div>
-                  <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-4 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-                    <Image src="/assets/images/maskot-toci.png" width={400} height={500} className="h-72 w-full object-contain md:h-96" alt="Toci, maskot PORPROV XV Jawa Barat 2026" />
-                    <p className="mt-3 text-center text-sm font-black uppercase tracking-[0.18em] text-amber-500">Toci</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="md:col-span-6">
-              <div className="lg:ms-6">
-                <p className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-primary-500">Tuan Rumah PORPROV XV</p>
-                <h2 id="host-title" className="text-3xl font-black leading-tight tracking-tight md:text-5xl">
-                  Selamat datang di
-                  <span className="block text-primary-500">Kota Depok.</span>
-                </h2>
-                <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 dark:text-slate-300 md:text-lg">
-                  Depok menyambut kontingen dari seluruh Jawa Barat dengan arena pertandingan, konektivitas kota, dan keramahan warga untuk pengalaman olahraga yang berkesan.
-                </p>
-
-                <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                  <Link href="/venue" className="group flex min-h-32 items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-primary-300 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-700">
-                    <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-500/10 text-2xl text-primary-500 transition group-hover:bg-primary-500 group-hover:text-white">
-                      <i className="ri-map-pin-line" aria-hidden="true" />
-                    </span>
-                    <span>
-                      <span className="block text-lg font-bold">Lokasi Utama</span>
-                      <span className="mt-1 block text-sm leading-relaxed text-slate-500 dark:text-slate-400">Alun-Alun Kota Depok dan seluruh venue pertandingan.</span>
-                      <span className="mt-3 inline-flex items-center text-sm font-bold text-primary-500">Lihat lokasi <i className="ri-arrow-right-line ms-1 transition group-hover:translate-x-1" aria-hidden="true" /></span>
-                    </span>
-                  </Link>
-
-                  <Link href="/cabor" className="group flex min-h-32 items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-amber-300 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-amber-700">
-                    <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-2xl text-amber-500 transition group-hover:bg-amber-500 group-hover:text-white">
-                      <i className="ri-medal-line" aria-hidden="true" />
-                    </span>
-                    <span>
-                      <span className="block text-lg font-bold">Cabang Olahraga</span>
-                      <span className="mt-1 block text-sm leading-relaxed text-slate-500 dark:text-slate-400">Jelajahi cabang dan nomor yang dipertandingkan.</span>
-                      <span className="mt-3 inline-flex items-center text-sm font-bold text-amber-500">Lihat cabor <i className="ri-arrow-right-line ms-1 transition group-hover:translate-x-1" aria-hidden="true" /></span>
-                    </span>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PorprovIntroduction />
+      <MascotSection />
 
       <section id="informasi" className="relative scroll-mt-24 overflow-hidden py-16 md:py-24" aria-labelledby="information-title">
         <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-6xl bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-slate-700" aria-hidden="true" />

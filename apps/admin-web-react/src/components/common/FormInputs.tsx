@@ -16,6 +16,7 @@ export const TextInput = ({ label, required, ...props }: TextInputProps) => (
     </label>
     <input 
       {...props}
+      required={required}
       className={`form-input w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${props.className || ''}`}
     />
   </div>
@@ -30,6 +31,7 @@ export const TextArea = ({ label, required, ...props }: TextAreaProps) => (
     </label>
     <textarea 
       {...props}
+      required={required}
       className={`form-input w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${props.className || ''}`}
     />
   </div>
@@ -46,6 +48,7 @@ export const SelectInput = ({ label, required, options, ...props }: SelectInputP
     </label>
     <select 
       {...props}
+      required={required}
       className={`form-input w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${props.className || ''}`}
     >
       <option value="" disabled>Pilih {label}</option>

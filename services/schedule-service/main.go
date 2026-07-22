@@ -39,7 +39,7 @@ func main() {
 	}
 
 	// INFO: Initialize Handlers
-	matchHandler := handler.NewMatchHandler(queries, cfg.MasterDataURL, cfg.VenueURL)
+	matchHandler := handler.NewMatchHandler(queries, conn, cfg.MasterDataURL, cfg.VenueURL)
 
 	// INFO: Setup Chi Router
 	r := router.SetupRouter(matchHandler)

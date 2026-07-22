@@ -57,17 +57,19 @@ func (q *Queries) CreateCabor(ctx context.Context, arg CreateCaborParams) (Cabor
 }
 
 const createCityGuide = `-- name: CreateCityGuide :one
-INSERT INTO city_guides (title, category, description, address, image_url)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason
+INSERT INTO city_guides (title, category, description, address, image_url, latitude, longitude)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude
 `
 
 type CreateCityGuideParams struct {
-	Title       string      `json:"title"`
-	Category    string      `json:"category"`
-	Description pgtype.Text `json:"description"`
-	Address     pgtype.Text `json:"address"`
-	ImageUrl    pgtype.Text `json:"image_url"`
+	Title       string        `json:"title"`
+	Category    string        `json:"category"`
+	Description pgtype.Text   `json:"description"`
+	Address     pgtype.Text   `json:"address"`
+	ImageUrl    pgtype.Text   `json:"image_url"`
+	Latitude    pgtype.Float8 `json:"latitude"`
+	Longitude   pgtype.Float8 `json:"longitude"`
 }
 
 func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams) (CityGuide, error) {
@@ -77,6 +79,8 @@ func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams
 		arg.Description,
 		arg.Address,
 		arg.ImageUrl,
+		arg.Latitude,
+		arg.Longitude,
 	)
 	var i CityGuide
 	err := row.Scan(
@@ -91,6 +95,8 @@ func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.Latitude,
+		&i.Longitude,
 	)
 	return i, err
 }
@@ -225,7 +231,7 @@ func (q *Queries) GetCaborByID(ctx context.Context, id pgtype.UUID) (Cabor, erro
 }
 
 const getCityGuideByID = `-- name: GetCityGuideByID :one
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGuide, error) {
@@ -243,6 +249,8 @@ func (q *Queries) GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGui
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.Latitude,
+		&i.Longitude,
 	)
 	return i, err
 }
@@ -392,7 +400,7 @@ func (q *Queries) ListCabors(ctx context.Context) ([]Cabor, error) {
 }
 
 const listCityGuides = `-- name: ListCityGuides :many
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM city_guides
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude FROM city_guides
 WHERE deleted_at IS NULL
   AND category = COALESCE(NULLIF($1::text, ''), category)
 ORDER BY title ASC
@@ -419,6 +427,8 @@ func (q *Queries) ListCityGuides(ctx context.Context, dollar_1 string) ([]CityGu
 			&i.DeletedAt,
 			&i.DeletedBy,
 			&i.DeleteReason,
+			&i.Latitude,
+			&i.Longitude,
 		); err != nil {
 			return nil, err
 		}
@@ -562,33 +572,39 @@ func (q *Queries) UpdateCabor(ctx context.Context, arg UpdateCaborParams) (Cabor
 const updateCityGuide = `-- name: UpdateCityGuide :one
 UPDATE city_guides
 SET
-  title = COALESCE(NULLIF($2::text, ''), title),
-  category = COALESCE(NULLIF($3::text, ''), category),
-  description = COALESCE(NULLIF($4::text, ''), description),
-  address = COALESCE(NULLIF($5::text, ''), address),
-  image_url = COALESCE(NULLIF($6::text, ''), image_url),
+  title = $2,
+  category = $3,
+  description = NULLIF($4::text, ''),
+  address = NULLIF($5::text, ''),
+  image_url = NULLIF($6::text, ''),
+  latitude = $7,
+  longitude = $8,
   updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude
 `
 
 type UpdateCityGuideParams struct {
-	ID      pgtype.UUID `json:"id"`
-	Column2 string      `json:"column_2"`
-	Column3 string      `json:"column_3"`
-	Column4 string      `json:"column_4"`
-	Column5 string      `json:"column_5"`
-	Column6 string      `json:"column_6"`
+	ID        pgtype.UUID   `json:"id"`
+	Title     string        `json:"title"`
+	Category  string        `json:"category"`
+	Column4   string        `json:"column_4"`
+	Column5   string        `json:"column_5"`
+	Column6   string        `json:"column_6"`
+	Latitude  pgtype.Float8 `json:"latitude"`
+	Longitude pgtype.Float8 `json:"longitude"`
 }
 
 func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams) (CityGuide, error) {
 	row := q.db.QueryRow(ctx, updateCityGuide,
 		arg.ID,
-		arg.Column2,
-		arg.Column3,
+		arg.Title,
+		arg.Category,
 		arg.Column4,
 		arg.Column5,
 		arg.Column6,
+		arg.Latitude,
+		arg.Longitude,
 	)
 	var i CityGuide
 	err := row.Scan(
@@ -603,6 +619,8 @@ func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.Latitude,
+		&i.Longitude,
 	)
 	return i, err
 }

@@ -6,7 +6,8 @@ Tanggal audit: 22 Juli 2026.
 
 - Baseline canonical: `theme-reference/HTML/Landing/dist/`, terutama pola pada `index-event.html`, `index-gym.html`, dan halaman detail yang relevan.
 - Techwind adalah satu-satunya tema UI/UX yang diizinkan; referensi visual, template, atau design system lain tidak boleh dicampurkan.
-- Pola yang digunakan: hero event, overlay berlapis, CTA primer/sekunder, section host dua kolom, kartu informasi, venue/gallery cards, dan CTA penutup.
+- Pola yang digunakan: hero event, overlay berlapis, CTA primer/sekunder, about split dua kolom dari `index-charity.html`, profile cards, kartu informasi, venue/gallery cards, dan CTA penutup.
+- Sumber konten resmi section kedua dan ketiga: `Booklet PORPROV XV.pdf` halaman PDF 4, 6, dan 7. Aset logo, Toca, serta Toci memakai file resmi yang sudah tersedia di `public/assets/images/`.
 - Implementasi runtime: React/Next.js dan Tailwind CSS v4; HTML/Gulp/JavaScript Techwind tidak dimasukkan ke aplikasi.
 
 ## Adaptasi PORPROV
@@ -14,7 +15,8 @@ Tanggal audit: 22 Juli 2026.
 | Bagian | Pola Techwind | Adaptasi PORPROV |
 |---|---|---|
 | Hero | Event hero dengan gambar, overlay, headline, dan CTA | Tinggi 100 viewport, parallax 50%, countdown PORPROV, CTA Jadwal/Venue, reduced-motion fallback |
-| Tuan Rumah | Komposisi gambar dan detail lokasi/waktu | Maskot Toca-Toci, narasi Kota Depok, kartu tautan Venue dan Cabor yang keyboard-accessible |
+| Tentang PORPROV XV | About split dua kolom, brand panel, feature cards, dan CTA | Definisi PORPROV, semangat “Bergerak Bersama Menuju Depok Maju”, serta tujuan penjaringan bakat, pembinaan, dan persiapan menuju PON dari booklet halaman 4 |
+| Maskot | Profile/team cards dengan visual dominan dan detail nilai | Toca sebagai semangat juang/prestasi serta Toci sebagai sportivitas/keharmonisan dari booklet halaman 6-7; memakai aset resmi, bukan generasi ulang |
 | Pusat Informasi | Feature/service cards | Pintasan LiveScore, Jadwal, Medali, dan Cabor dengan identitas status olahraga |
 | Venue | Portfolio/gallery cards | Data live dari API Gateway, polling 30 detik, timestamp, skeleton, empty, error/retry, offline, pagination, dan rute |
 | CTA Penonton | Full-width event CTA | Panduan venue dan agenda pertandingan dengan aset peta PORPROV |

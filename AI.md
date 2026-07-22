@@ -6,6 +6,10 @@
 
 Repository `porprov-depok` adalah platform resmi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Sistem menggunakan monorepo aplikasi web/mobile, Golang microservices, database per service, API Gateway, event-driven architecture, serta runtime Docker. Admin Web dan alur Master Data–Media Library–Venue–Schedule telah terintegrasi. Public Web v0.4 membaca detail Cabor/Venue, Jadwal enriched, projection LiveScore persisten, public SSE tersanitasi, dan klasemen Medali OFFICIAL tanpa data tiruan. Hardening aktif mencakup JWT issuer/expiry/client, RBAC domain olahraga, private Admin SSE, revision koreksi skor, workflow Medali, transactional outbox LiveScore/Medali, dan Audit Log immutable. Outbox domain lama, MFA, RBAC menyeluruh, retensi purge, dan production hardening tetap mengikuti status nyata pada `FEATURES.md`.
 
+Schedule Service adalah pemilik susunan Peserta A/B pertandingan. Admin memilih satu jenis yang sama untuk kedua sisi—`individual`, `team`, atau `contingent`—lalu mengisi afiliasi Kontingen dan identitas yang relevan bersama Jadwal; LiveScore hanya mengonsumsi susunan terurut tersebut dan dilarang membuat identitas peserta paralel.
+
+Master Data Service adalah pemilik City Guide beserta pasangan koordinat desimalnya. Create/update wajib menerima latitude dan longitude berpasangan dengan rentang geografis valid; UI membentuk tautan peta dari koordinat dan tidak menyimpan URL vendor peta sebagai sumber kebenaran.
+
 ## Identitas Agent
 
 Anda adalah **Enterprise Sports Platform Architect & Full-Stack AI Coding Agent** untuk Portal PORPROV XV Jawa Barat 2026 Kota Depok. Anda menggabungkan peran Software Architect, Frontend Engineer, Backend Engineer, Mobile Engineer, DevOps, Security Engineer, QA, UI/UX Designer, dan Documentation Engineer.
@@ -77,6 +81,7 @@ Tailwind CSS v4 wajib mengikat utility `dark:*` hanya ke class `.dark`, selaras 
 - Restore harus terotorisasi dan diaudit.
 - Hard delete hanya boleh berupa purge terkontrol berdasarkan retensi, role khusus, audit, dan persetujuan eksplisit.
 - Media yang di-soft-delete tetap disimpan sampai proses purge; jangan langsung menghapus file fisik.
+- City Guide aktif wajib mempunyai latitude `-90..90` dan longitude `-180..180` yang diisi berpasangan. Record legacy tanpa koordinat hanya boleh dipertahankan untuk migrasi dan harus dilengkapi melalui form edit sebelum pembaruan berikutnya.
 
 ## Prinsip Portabilitas Runtime
 
@@ -88,6 +93,7 @@ Tailwind CSS v4 wajib mengikat utility `dark:*` hanya ke class `.dark`, selaras 
 - Bootstrap Keycloak client/role/user development harus otomatis dan idempotent sebelum Gateway/Admin dipakai.
 - Jangan menulis URL service atau port diagnostik langsung di frontend; gunakan environment dan API Gateway.
 - Agregasi referensi lintas service untuk konsumsi publik harus dikerjakan sebagai read-model di backend pemilik alur, bukan rangkaian request langsung dari browser. Jadwal memakai `/schedule/matches/enriched` melalui API Gateway.
+- Master Data memiliki referensi Kontingen, Schedule memiliki susunan peserta per match, dan LiveScore memiliki revisi skor. Penggantian susunan peserta wajib satu transaksi dengan perubahan Jadwal serta melakukan soft delete pada susunan lama.
 - Data tayang realtime publik boleh anonim hanya melalui API Gateway dan wajib berupa projection tersanitasi. Stream Admin membutuhkan JWT/role di edge serta secret internal yang eksplisit di luar development.
 - Update/koreksi skor dan keputusan Medali harus commit bersama outbox. Koreksi skor append-only; hanya submission Medali VERIFIED yang dapat dipublikasikan menjadi OFFICIAL.
 

@@ -3,6 +3,15 @@ import { Activity, AlertCircle, CheckCircle2, History, Loader2, Radio, RefreshCw
 import { useAuth } from 'react-oidc-context';
 import { API_BASE_URL, apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../lib/api';
 
+interface ScheduleParticipant {
+  participant_type: 'individual' | 'team' | 'contingent';
+  kontingen_name: string;
+  athlete_name: string;
+  team_name: string;
+  slot: number;
+  display_name: string;
+}
+
 interface ScheduleMatch {
   id: string;
   cabor_name: string;
@@ -10,7 +19,7 @@ interface ScheduleMatch {
   venue_name: string;
   round: string;
   status: string;
-  participants?: Array<{ display_name: string }>;
+  participants?: ScheduleParticipant[];
 }
 
 interface ScoreRecord {
@@ -127,6 +136,12 @@ export default function LiveScoreCenter() {
   }, [loadHistory, matchId, token]);
 
   const selectedMatch = useMemo(() => matches.find((match) => match.id === matchId), [matchId, matches]);
+  const selectedParticipants = useMemo(
+    () => [...(selectedMatch?.participants || [])].sort((first, second) => first.slot - second.slot).slice(0, 2),
+    [selectedMatch],
+  );
+  const participantsReady = selectedParticipants.length === 2
+    && selectedParticipants.every((participant) => participant.display_name && participant.display_name !== 'Peserta menunggu konfirmasi');
 
   useEffect(() => {
     const current = scores[matchId];
@@ -140,6 +155,10 @@ export default function LiveScoreCenter() {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!token || !matchId) return;
+    if (!participantsReady) {
+      setFeedback({ type: 'error', message: 'Susunan Peserta A/B belum lengkap. Lengkapi melalui Master Data → Jadwal Pertandingan sebelum input skor.' });
+      return;
+    }
     setSubmitting(true);
     setFeedback(null);
     try {
@@ -168,13 +187,15 @@ export default function LiveScoreCenter() {
       {loading ? <div className="flex min-h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-600" /><span className="sr-only">Memuat LiveScore</span></div> : <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.5fr)]">
         <form onSubmit={submit} className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <h2 className="flex items-center gap-2 text-lg font-black"><Send className="h-5 w-5 text-indigo-600" />Input skor resmi</h2>
-          <label className="mt-5 block text-sm font-bold">Pertandingan<select required value={matchId} onChange={(event) => setMatchId(event.target.value)} className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 dark:bg-slate-800 dark:text-white dark:border-slate-700"><option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Pilih pertandingan</option>{matches.map((match) => <option key={match.id} value={match.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{match.cabor_name} · {match.nomor_tanding_name} · {match.round}</option>)}</select></label>
-          {selectedMatch && <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800"><p className="font-bold">{selectedMatch.participants?.map((item) => item.display_name).join(' vs ') || 'Peserta menunggu konfirmasi'}</p><p className="mt-1 text-slate-500">{selectedMatch.venue_name}</p></div>}
-          <div className="mt-5 grid grid-cols-2 gap-4"><label className="text-sm font-bold">Skor A<input type="number" min="0" value={scoreA} onChange={(event) => setScoreA(Number(event.target.value))} className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 px-3 text-center text-xl font-black dark:bg-slate-800" /></label><label className="text-sm font-bold">Skor B<input type="number" min="0" value={scoreB} onChange={(event) => setScoreB(Number(event.target.value))} className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 px-3 text-center text-xl font-black dark:bg-slate-800" /></label></div>
+          <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-950 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-100"><strong>Alur resmi:</strong> susunan peserta dikelola di Master Data → Jadwal Pertandingan. Workspace ini hanya mencatat skor, status, dan koreksi.</div>
+          <label className="mt-5 block text-sm font-bold">Pertandingan<select required value={matchId} onChange={(event) => setMatchId(event.target.value)} className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"><option value="" className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">Pilih pertandingan</option>{matches.map((match) => { const participantNames = [...(match.participants || [])].sort((first, second) => first.slot - second.slot).map((participant) => participant.display_name).join(' vs '); return <option key={match.id} value={match.id} className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">{match.cabor_name} · {match.nomor_tanding_name} · {participantNames || 'peserta belum lengkap'}</option>; })}</select></label>
+          {selectedMatch && <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800"><p className="font-bold">{selectedParticipants.map((item) => item.display_name).join(' vs ') || 'Peserta belum diatur'}</p><p className="mt-1 text-slate-500 dark:text-slate-400">{selectedMatch.venue_name}</p></div>}
+          {selectedMatch && !participantsReady && <div role="alert" className="mt-3 flex gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"><AlertCircle className="h-5 w-5 shrink-0" /><span>Input skor dikunci sampai Peserta A dan B dilengkapi pada Jadwal Pertandingan.</span></div>}
+          <div className="mt-5 grid grid-cols-2 gap-4"><label className="min-w-0 text-sm font-bold"><span className="block truncate">Skor A — {selectedParticipants[0]?.display_name || 'belum dipilih'}</span><input type="number" min="0" disabled={!participantsReady} value={scoreA} onChange={(event) => setScoreA(Number(event.target.value))} className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-center text-xl font-black text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white" /></label><label className="min-w-0 text-sm font-bold"><span className="block truncate">Skor B — {selectedParticipants[1]?.display_name || 'belum dipilih'}</span><input type="number" min="0" disabled={!participantsReady} value={scoreB} onChange={(event) => setScoreB(Number(event.target.value))} className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-center text-xl font-black text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white" /></label></div>
           <label className="mt-4 block text-sm font-bold">Status<select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 dark:bg-slate-800 dark:text-white dark:border-slate-700">{['Belum Mulai','Berlangsung','Istirahat','Selesai','Official'].map((value) => <option key={value} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{value}</option>)}</select></label>
           <label className="mt-5 flex min-h-11 items-center gap-3 rounded-xl border border-slate-200 px-3"><input type="checkbox" checked={correction} onChange={(event) => setCorrection(event.target.checked)} /><span className="text-sm font-bold">Ini adalah koreksi skor</span></label>
           {correction && <label className="mt-4 block text-sm font-bold">Alasan koreksi<textarea required minLength={5} value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} className="mt-2 min-h-24 w-full rounded-lg border border-slate-300 p-3 dark:bg-slate-800" placeholder="Jelaskan sumber dan alasan koreksi" /></label>}
-          <button type="submit" disabled={submitting || !matchId} className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-indigo-600 px-4 font-black text-white hover:bg-indigo-700 disabled:opacity-50">{submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{correction ? 'Simpan koreksi' : 'Simpan update skor'}</button>
+          <button type="submit" disabled={submitting || !matchId || !participantsReady} className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-indigo-600 px-4 font-black text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">{submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{correction ? 'Simpan koreksi' : 'Simpan update skor'}</button>
         </form>
 
         <div className="space-y-6"><section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-black"><History className="h-5 w-5 text-indigo-600" />Riwayat revisi</h2><span className="text-xs font-bold text-slate-500">{history.length} revisi</span></div>{history.length === 0 ? <p className="mt-6 rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">Belum ada skor tersimpan untuk pertandingan ini.</p> : <div className="mt-4 space-y-3">{history.map((item) => <article key={item.revisionId} className="rounded-xl border border-slate-200 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-black">Revisi #{item.revisionNumber} · {item.scoreA}—{item.scoreB}</p><span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">{item.status}</span></div><p className="mt-2 text-xs text-slate-500">{new Date(item.timestamp).toLocaleString('id-ID')} · actor {item.actor}</p>{item.correctionReason && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-sm text-amber-800">Koreksi: {item.correctionReason}</p>}</article>)}</div>}</section>

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,6 +23,38 @@ func TestValidateActiveMatchRejectsMissingSchedule(t *testing.T) {
 	service := &server{scheduleURL: upstream.URL, httpClient: &http.Client{Timeout: time.Second}}
 	if err := service.validateActiveMatch(context.Background(), "00000000-0000-4000-8000-000000000001"); !errors.Is(err, errMatchNotActive) {
 		t.Fatalf("expected inactive match error, got %v", err)
+	}
+}
+
+func TestValidateActiveMatchRequiresTwoParticipantSlots(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/participants") {
+			_, _ = w.Write([]byte(`[{"participant_type":"individual","slot":1}]`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"id":"00000000-0000-4000-8000-000000000001"}`))
+	}))
+	defer upstream.Close()
+	service := &server{scheduleURL: upstream.URL, httpClient: &http.Client{Timeout: time.Second}}
+	if err := service.validateActiveMatch(context.Background(), "00000000-0000-4000-8000-000000000001"); !errors.Is(err, errParticipantsOpen) {
+		t.Fatalf("expected incomplete participant error, got %v", err)
+	}
+}
+
+func TestValidateActiveMatchAcceptsTwoOrderedParticipants(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/participants") {
+			_, _ = w.Write([]byte(`[{"participant_type":"individual","slot":1},{"participant_type":"team","slot":2}]`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"id":"00000000-0000-4000-8000-000000000001"}`))
+	}))
+	defer upstream.Close()
+	service := &server{scheduleURL: upstream.URL, httpClient: &http.Client{Timeout: time.Second}}
+	if err := service.validateActiveMatch(context.Background(), "00000000-0000-4000-8000-000000000001"); err != nil {
+		t.Fatalf("expected ready match, got %v", err)
 	}
 }
 

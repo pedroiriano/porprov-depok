@@ -41,6 +41,7 @@ func SetupRouter(matchHandler *handler.MatchHandler) *chi.Mux {
 			r.Get("/deleted", matchHandler.ListDeletedMatches)
 			r.Post("/{id}/restore", matchHandler.RestoreMatch)
 			r.Get("/{id}", matchHandler.GetMatch)
+			r.Get("/{id}/participants", matchHandler.ListMatchParticipants)
 			r.Put("/{id}", matchHandler.UpdateMatch)
 			r.Delete("/{id}", matchHandler.DeleteMatch)
 		})

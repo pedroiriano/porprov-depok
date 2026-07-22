@@ -17,15 +17,21 @@ import (
 )
 
 type MatchHandler struct {
-	queries       *db.Queries
+	queries   *db.Queries
+	txStarter interface {
+		Begin(context.Context) (pgx.Tx, error)
+	}
 	masterDataURL string
 	venueURL      string
 	httpClient    *http.Client
 }
 
-func NewMatchHandler(queries *db.Queries, masterDataURL, venueURL string) *MatchHandler {
+func NewMatchHandler(queries *db.Queries, txStarter interface {
+	Begin(context.Context) (pgx.Tx, error)
+}, masterDataURL, venueURL string) *MatchHandler {
 	return &MatchHandler{
 		queries:       queries,
+		txStarter:     txStarter,
 		masterDataURL: strings.TrimRight(masterDataURL, "/"),
 		venueURL:      strings.TrimRight(venueURL, "/"),
 		httpClient:    &http.Client{Timeout: 5 * time.Second},
@@ -53,13 +59,7 @@ func (h *MatchHandler) referenceExists(ctx context.Context, endpoint string) (bo
 }
 
 func (h *MatchHandler) CreateMatch(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		NomorTandingID string `json:"nomor_tanding_id"`
-		VenueID        string `json:"venue_id"`
-		MatchDate      string `json:"match_date"` // RFC3339
-		Status         string `json:"status"`
-		Round          string `json:"round"`
-	}
+	var req matchRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -100,8 +100,20 @@ func (h *MatchHandler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Nomor pertandingan atau venue tidak ditemukan", http.StatusUnprocessableEntity)
 		return
 	}
+	preparedParticipants, err := h.prepareParticipants(r.Context(), req.Participants)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
 
-	match, err := h.queries.CreateMatch(r.Context(), db.CreateMatchParams{
+	tx, err := h.txStarter.Begin(r.Context())
+	if err != nil {
+		http.Error(w, "Gagal memulai transaksi jadwal", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+	txQueries := h.queries.WithTx(tx)
+	match, err := txQueries.CreateMatch(r.Context(), db.CreateMatchParams{
 		NomorTandingID: nomorTandingUUID,
 		VenueID:        venueUUID,
 		MatchDate:      pgtype.Timestamptz{Time: t, Valid: true},
@@ -112,13 +124,23 @@ func (h *MatchHandler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if req.Participants != nil {
+		if err := replaceMatchParticipants(r.Context(), txQueries, match.ID, preparedParticipants, actorID(r)); err != nil {
+			http.Error(w, "Gagal menyimpan peserta pertandingan", http.StatusInternalServerError)
+			return
+		}
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		http.Error(w, "Gagal menyelesaikan transaksi jadwal", http.StatusInternalServerError)
+		return
+	}
 
 	var uuidStr string
 	if match.ID.Valid {
 		b, _ := match.ID.MarshalJSON()
 		uuidStr = string(b)
 	}
-	publishAudit("Match", "CREATE", uuidStr, match)
+	publishAudit("Match", "CREATE", uuidStr, map[string]interface{}{"match": match, "participant_count": len(preparedParticipants)})
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -162,13 +184,7 @@ func (h *MatchHandler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req struct {
-		NomorTandingID string `json:"nomor_tanding_id"`
-		VenueID        string `json:"venue_id"`
-		MatchDate      string `json:"match_date"` // RFC3339
-		Status         string `json:"status"`
-		Round          string `json:"round"`
-	}
+	var req matchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Payload JSON tidak valid", http.StatusBadRequest)
 		return
@@ -215,8 +231,20 @@ func (h *MatchHandler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	preparedParticipants, err := h.prepareParticipants(r.Context(), req.Participants)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
 
-	match, err := h.queries.UpdateMatch(r.Context(), db.UpdateMatchParams{
+	tx, err := h.txStarter.Begin(r.Context())
+	if err != nil {
+		http.Error(w, "Gagal memulai transaksi jadwal", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+	txQueries := h.queries.WithTx(tx)
+	match, err := txQueries.UpdateMatch(r.Context(), db.UpdateMatchParams{
 		ID:      uuid,
 		Column2: nomorTandingUUID,
 		Column3: venueUUID,
@@ -225,11 +253,25 @@ func (h *MatchHandler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		Column6: req.Round,
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "Jadwal tidak ditemukan", http.StatusNotFound)
+			return
+		}
 		http.Error(w, "Failed to update match", http.StatusInternalServerError)
 		return
 	}
+	if req.Participants != nil {
+		if err := replaceMatchParticipants(r.Context(), txQueries, uuid, preparedParticipants, actorID(r)); err != nil {
+			http.Error(w, "Gagal memperbarui peserta pertandingan", http.StatusInternalServerError)
+			return
+		}
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		http.Error(w, "Gagal menyelesaikan transaksi jadwal", http.StatusInternalServerError)
+		return
+	}
 
-	publishAudit("Match", "UPDATE", id, match)
+	publishAudit("Match", "UPDATE", id, map[string]interface{}{"match": match, "participant_count": len(preparedParticipants), "participants_replaced": req.Participants != nil})
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(match)
