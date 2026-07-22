@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Edit, Trash, Loader2 } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import MediaSelectorModal from '../media/MediaSelectorModal';
@@ -7,6 +7,10 @@ import { TextInput, SelectInput, MediaInput, TextArea } from '../common/FormInpu
 import { apiClient, authConfig, getApiErrorMessage, normalizeStoredMediaUrl, unwrapApiData } from '../../lib/api';
 import type { Cabor } from '../../types/master-data';
 import { requestSoftDeleteReason } from '../../lib/soft-delete';
+import { TablePagination, RowsPerPageSelector, SortableHeader } from '../common/TableControls';
+import { useTableControls, usePagination } from '../../hooks/useTableControls';
+
+type SortKeyType = 'name' | 'kategori' | 'total_medali' | 'technical_delegate' | 'status';
 
 export default function CabangOlahraga() {
   const [cabors, setCabors] = useState<Cabor[]>([]);
@@ -27,6 +31,8 @@ export default function CabangOlahraga() {
   const [search, setSearch] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const auth = useAuth();
+
+  const table = useTableControls<SortKeyType>({ sortKey: 'name', sortDirection: 'asc', rowsPerPage: 10 });
 
   useEffect(() => {
     if (isModalOpen || isMediaSelectorOpen) {
@@ -116,17 +122,50 @@ export default function CabangOlahraga() {
     setIsModalOpen(true);
   };
 
-  const filteredCabors = cabors.filter((item) =>
-    [item.name, item.kategori, item.technical_delegate]
-      .some((value) => value?.toLowerCase().includes(search.toLowerCase())),
+  // INFO: Filters data based on search input
+  const filteredCabors = useMemo(() => {
+    return cabors.filter((item) =>
+      [item.name, item.kategori, item.technical_delegate]
+        .some((value) => value?.toLowerCase().includes(search.toLowerCase())),
+    );
+  }, [cabors, search]);
+
+  // INFO: Reset page to 1 when search changes
+  useEffect(() => {
+    table.resetPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  // INFO: Sorts the filtered data
+  const sortedCabors = useMemo(() => {
+    if (!table.sortKey) return filteredCabors;
+    return [...filteredCabors].sort((a, b) => {
+      const aVal = a[table.sortKey as keyof Cabor];
+      const bVal = b[table.sortKey as keyof Cabor];
+      if (aVal === bVal) return 0;
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return table.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      const aString = String(aVal || '').toLowerCase();
+      const bString = String(bVal || '').toLowerCase();
+      if (table.sortDirection === 'asc') return aString > bString ? 1 : -1;
+      return aString < bString ? 1 : -1;
+    });
+  }, [filteredCabors, table.sortKey, table.sortDirection]);
+
+  // INFO: Pagination hook
+  const { paginatedData, totalItems, totalPages, startItem, endItem } = usePagination(
+    sortedCabors,
+    table.currentPage,
+    table.rowsPerPage
   );
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-text-primary">Master Data: Cabang Olahraga</h2>
-          <p className="text-text-muted text-sm mt-1">Kelola data seluruh cabang olahraga PORPROV.</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Master Data: Cabang Olahraga</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola data seluruh cabang olahraga PORPROV.</p>
         </div>
         <button
           onClick={() => { resetForm(); setIsModalOpen(true); }}
@@ -136,69 +175,99 @@ export default function CabangOlahraga() {
         </button>
       </div>
 
-      <div className="card">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {/* Toolbar */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari nama cabor atau kode..."
+              placeholder="Cari nama cabor, kategori, TD..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="form-input pl-9"
+              className="min-h-11 w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
             />
           </div>
+          <RowsPerPageSelector
+            value={table.rowsPerPage}
+            onChange={table.handleRowsPerPageChange}
+          />
         </div>
 
-        {/* Table */}
+        {/* Table Content */}
         <div className="overflow-x-auto min-h-[300px]">
           {errorMessage && (
-            <div role="alert" className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMessage}</div>
+            <div role="alert" className="m-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">{errorMessage}</div>
           )}
           {loading ? (
             <div className="flex justify-center items-center h-48">
-              <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
             </div>
-          ) : filteredCabors.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-slate-500">
+          ) : paginatedData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-500 dark:text-slate-400">
               <p>Belum ada data Cabang Olahraga.</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
+            <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">ID (UUID)</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Nama Cabor</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Kategori</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Medali</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Technical Delegate</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Status</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-right">Aksi</th>
+                <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+                  <SortableHeader
+                    field="name"
+                    label="Nama Cabor"
+                    sortKey={table.sortKey}
+                    sortDirection={table.sortDirection}
+                    onSort={table.handleSort}
+                  />
+                  <SortableHeader
+                    field="kategori"
+                    label="Kategori"
+                    sortKey={table.sortKey}
+                    sortDirection={table.sortDirection}
+                    onSort={table.handleSort}
+                  />
+                  <SortableHeader
+                    field="total_medali"
+                    label="Medali"
+                    sortKey={table.sortKey}
+                    sortDirection={table.sortDirection}
+                    onSort={table.handleSort}
+                  />
+                  <SortableHeader
+                    field="technical_delegate"
+                    label="Technical Delegate"
+                    sortKey={table.sortKey}
+                    sortDirection={table.sortDirection}
+                    onSort={table.handleSort}
+                  />
+                  <SortableHeader
+                    field="status"
+                    label="Status"
+                    sortKey={table.sortKey}
+                    sortDirection={table.sortDirection}
+                    onSort={table.handleSort}
+                  />
+                  <th className="p-4 font-medium text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredCabors.map((item, i) => (
-                  <tr key={item.id || i} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="p-4 font-mono text-xs text-text-muted">
-                      {(item.id || '').substring(0, 8)}...
-                    </td>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {paginatedData.map((item, i) => (
+                  <tr key={item.id || i} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
                     <td className="p-4 font-semibold text-slate-900 dark:text-white">
                       {item.name}
                     </td>
-                    <td className="p-4 text-sm text-slate-600 dark:text-slate-400 truncate max-w-xs">
+                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300 truncate max-w-xs">
                       {item.kategori || '-'}
                     </td>
-                    <td className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300">
                       {item.total_medali || 0}
                     </td>
-                    <td className="p-4 text-sm text-slate-600 dark:text-slate-400 truncate max-w-xs">
+                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300 truncate max-w-xs">
                       {item.technical_delegate || '-'}
                     </td>
                     <td className="p-4">
-                      <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
-                        item.status === 'Aktif' ? 'bg-success-100 text-success-700' :
-                        item.status === 'Eksibisi' ? 'bg-warning-100 text-warning-700' :
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        item.status === 'Aktif' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                        item.status === 'Eksibisi' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                         'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                       }`}>
                         {item.status || 'Aktif'}
@@ -206,14 +275,14 @@ export default function CabangOlahraga() {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => editCabor(item)} aria-label={`Edit ${item.name}`} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-md transition-colors">
+                        <button type="button" onClick={() => editCabor(item)} aria-label={`Edit ${item.name}`} className="rounded-md p-2 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950">
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(item.id)}
                           aria-label={`Arsipkan ${item.name}`}
-                          className="p-1.5 text-slate-400 hover:text-danger-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                          className="rounded-md p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
                         >
                           <Trash className="w-4 h-4" />
                         </button>
@@ -225,6 +294,18 @@ export default function CabangOlahraga() {
             </table>
           )}
         </div>
+        
+        {/* Footer Pagination */}
+        {totalPages > 1 && (
+          <TablePagination
+            currentPage={table.currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            startItem={startItem}
+            endItem={endItem}
+            onPageChange={table.handlePageChange}
+          />
+        )}
       </div>
 
       <ModalForm

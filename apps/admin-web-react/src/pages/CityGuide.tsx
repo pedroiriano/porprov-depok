@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, Edit, ExternalLink, Loader2, LocateFixed, MapPinned, Plus, Trash } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, ChevronDown, Edit, ExternalLink, Loader2, LocateFixed, MapPinned, Plus, Search, Trash, X } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import ModalForm from '../components/common/ModalForm';
 import { MediaInput, SelectInput, TextArea, TextInput } from '../components/common/FormInputs';
 import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../lib/api';
 import { requestSoftDeleteReason } from '../lib/soft-delete';
 import MediaSelectorModal from '../components/media/MediaSelectorModal';
+// INFO: Import table controls
+import { useTableControls, usePagination } from '../hooks/useTableControls';
+import { TablePagination, RowsPerPageSelector, SortableHeader } from '../components/common/TableControls';
 
 interface CityGuideRecord {
   id: string;
@@ -51,6 +54,8 @@ const categories = [
   'Lainnya',
 ];
 
+type CityGuideSortKey = 'title' | 'category' | 'address' | 'latitude';
+
 const googleMapsURL = (latitude: number | string, longitude: number | string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${latitude},${longitude}`)}`;
 
@@ -64,6 +69,13 @@ export default function CityGuide() {
   const [locating, setLocating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const auth = useAuth();
+
+  // INFO: State pencarian dan kategori filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+
+  // INFO: Hook controls
+  const table = useTableControls<CityGuideSortKey>({ sortKey: 'title', sortDirection: 'asc', rowsPerPage: 10 });
 
   const getAuthConfig = useCallback(() => authConfig(auth.user?.access_token), [auth.user?.access_token]);
 
@@ -83,6 +95,73 @@ export default function CityGuide() {
   useEffect(() => {
     void fetchGuides();
   }, [fetchGuides]);
+
+  // INFO: Daftar kategori unik dari data aktual untuk filter
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set(guides.map((g) => g.category));
+    return Array.from(cats).sort();
+  }, [guides]);
+
+  // CHANGE: Reset ke halaman 1 saat filter/search/rowsPerPage berubah
+  useEffect(() => {
+    table.resetPage();
+  }, [searchQuery, categoryFilter, table.rowsPerPage, table.resetPage]);
+
+  // PERFORMANCE: Filter data secara memoized
+  const filteredGuides = useMemo(() => {
+    let result = [...guides];
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (item) =>
+          item.title.toLowerCase().includes(query) ||
+          (item.address && item.address.toLowerCase().includes(query)) ||
+          (item.description && item.description.toLowerCase().includes(query)) ||
+          item.category.toLowerCase().includes(query)
+      );
+    }
+
+    if (categoryFilter) {
+      result = result.filter((item) => item.category === categoryFilter);
+    }
+
+    return result;
+  }, [guides, searchQuery, categoryFilter]);
+
+  // PERFORMANCE: Sort data secara memoized
+  const sortedGuides = useMemo(() => {
+    const result = [...filteredGuides];
+    result.sort((a, b) => {
+      let comparison = 0;
+      switch (table.sortKey) {
+        case 'title':
+          comparison = a.title.localeCompare(b.title, 'id');
+          break;
+        case 'category':
+          comparison = a.category.localeCompare(b.category, 'id');
+          break;
+        case 'address':
+          comparison = (a.address || '').localeCompare(b.address || '', 'id');
+          break;
+        case 'latitude': {
+          const latA = a.latitude ?? Infinity;
+          const latB = b.latitude ?? Infinity;
+          comparison = latA - latB;
+          break;
+        }
+      }
+      return table.sortDirection === 'asc' ? comparison : -comparison;
+    });
+    return result;
+  }, [filteredGuides, table.sortKey, table.sortDirection]);
+
+  // INFO: Pagination
+  const { paginatedData, totalItems, totalPages, startItem, endItem } = usePagination(
+    sortedGuides,
+    table.currentPage,
+    table.rowsPerPage
+  );
 
   const resetForm = () => setFormData(createEmptyForm());
 
@@ -206,21 +285,145 @@ export default function CityGuide() {
       {errorMessage && !isModalOpen && <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"><AlertCircle className="h-5 w-5 shrink-0" />{errorMessage}</div>}
 
       <div className="min-h-[300px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        {/* Toolbar — pencarian, filter kategori, rows per page */}
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            {/* Search input */}
+            <div className="relative flex-1 sm:max-w-xs">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari judul, alamat, deskripsi..."
+                className="min-h-11 w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  aria-label="Hapus pencarian"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter kategori */}
+            <div className="relative">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="min-h-11 appearance-none rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-9 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              >
+                <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Semua Kategori</option>
+                {uniqueCategories.map((cat) => (
+                  <option key={cat} value={cat} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{cat}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            </div>
+          </div>
+
+          <RowsPerPageSelector
+            value={table.rowsPerPage}
+            onChange={table.setRowsPerPage}
+          />
+        </div>
+
+        {/* Active filters badge */}
+        {(searchQuery || categoryFilter) && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Filter aktif:</span>
+            {searchQuery && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 py-1 pl-2.5 pr-1.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                Pencarian: &quot;{searchQuery}&quot;
+                <button type="button" onClick={() => setSearchQuery('')} className="rounded-full p-0.5 hover:bg-indigo-200 dark:hover:bg-indigo-800" aria-label="Hapus filter pencarian"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {categoryFilter && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 py-1 pl-2.5 pr-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                Kategori: {categoryFilter}
+                <button type="button" onClick={() => setCategoryFilter('')} className="rounded-full p-0.5 hover:bg-emerald-200 dark:hover:bg-emerald-800" aria-label="Hapus filter kategori"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => { setSearchQuery(''); setCategoryFilter(''); }}
+              className="text-xs font-medium text-slate-500 underline hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              Hapus semua filter
+            </button>
+          </div>
+        )}
+
+        {/* Table */}
         <div className="overflow-x-auto">
           {loading ? (
             <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /><span className="sr-only">Memuat City Guide</span></div>
-          ) : guides.length === 0 ? (
-            <div className="flex h-48 flex-col items-center justify-center text-slate-500 dark:text-slate-400"><MapPinned className="mb-3 h-10 w-10" /><p>Belum ada data City Guide.</p></div>
+          ) : paginatedData.length === 0 ? (
+            <div className="flex h-48 flex-col items-center justify-center text-slate-500 dark:text-slate-400">
+              <MapPinned className="mb-3 h-10 w-10" />
+              {guides.length === 0 ? (
+                <p>Belum ada data City Guide.</p>
+              ) : (
+                <>
+                  <p className="font-medium">Tidak ada data yang sesuai filter.</p>
+                  <p className="mt-1 text-sm">Coba ubah kata kunci pencarian atau filter kategori.</p>
+                </>
+              )}
+            </div>
           ) : (
             <table className="w-full border-collapse text-left">
-              <thead><tr className="bg-slate-50 text-sm uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
-                <th className="p-4 font-medium">Judul</th><th className="p-4 font-medium">Kategori</th><th className="p-4 font-medium">Alamat</th><th className="p-4 font-medium">Titik Peta</th><th className="p-4 text-right font-medium">Aksi</th>
-              </tr></thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">{guides.map((item) => {
+              <thead>
+                <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+                  <th className="p-4">
+                    <SortableHeader<CityGuideSortKey>
+                      label="Judul"
+                      columnKey="title"
+                      activeSortKey={table.sortKey}
+                      sortDirection={table.sortDirection}
+                      onSort={table.handleSort}
+                    />
+                  </th>
+                  <th className="p-4">
+                    <SortableHeader<CityGuideSortKey>
+                      label="Kategori"
+                      columnKey="category"
+                      activeSortKey={table.sortKey}
+                      sortDirection={table.sortDirection}
+                      onSort={table.handleSort}
+                    />
+                  </th>
+                  <th className="p-4">
+                    <SortableHeader<CityGuideSortKey>
+                      label="Alamat"
+                      columnKey="address"
+                      activeSortKey={table.sortKey}
+                      sortDirection={table.sortDirection}
+                      onSort={table.handleSort}
+                    />
+                  </th>
+                  <th className="p-4">
+                    <SortableHeader<CityGuideSortKey>
+                      label="Titik Peta"
+                      columnKey="latitude"
+                      activeSortKey={table.sortKey}
+                      sortDirection={table.sortDirection}
+                      onSort={table.handleSort}
+                    />
+                  </th>
+                  <th className="p-4 text-right font-medium">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">{paginatedData.map((item) => {
                 const hasCoordinates = item.latitude !== null && item.longitude !== null;
                 return <tr key={item.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
                   <td className="p-4 font-semibold text-slate-900 dark:text-white">{item.title}</td>
-                  <td className="p-4 text-sm text-slate-600 dark:text-slate-300">{item.category}</td>
+                  <td className="p-4 text-sm">
+                    <span className="inline-block rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">{item.category}</span>
+                  </td>
                   <td className="max-w-80 p-4 text-sm text-slate-600 dark:text-slate-300">{item.address || '-'}</td>
                   <td className="p-4">{hasCoordinates ? <a href={googleMapsURL(item.latitude as number, item.longitude as number)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-bold text-indigo-700 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-950/50"><MapPinned className="h-4 w-4" /><span>{Number(item.latitude).toFixed(6)}, {Number(item.longitude).toFixed(6)}</span><ExternalLink className="h-3.5 w-3.5" /></a> : <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Belum ditentukan</span>}</td>
                   <td className="p-4 text-right"><div className="flex justify-end gap-2">
@@ -232,6 +435,19 @@ export default function CityGuide() {
             </table>
           )}
         </div>
+
+        {/* Footer */}
+        {!loading && totalItems > 0 && (
+          <TablePagination
+            currentPage={table.currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            startItem={startItem}
+            endItem={endItem}
+            onPageChange={table.setCurrentPage}
+            totalAll={guides.length}
+          />
+        )}
       </div>
 
       <ModalForm isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); setErrorMessage(''); }} title={formData.id ? 'Edit City Guide' : 'Tambah City Guide'} onSubmit={handleSave} submitting={submitting} submitText={formData.id ? 'Simpan Perubahan' : 'Simpan Data'} size="large">

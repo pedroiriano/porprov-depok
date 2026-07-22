@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Edit, Trash, Loader2, Image as PhotoIcon } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import MediaSelectorModal from '../media/MediaSelectorModal';
@@ -7,6 +7,10 @@ import { TextInput, SelectInput, MediaInput } from '../common/FormInputs';
 import { apiClient, authConfig, getApiErrorMessage, normalizeStoredMediaUrl, resolveMediaUrl, unwrapApiData } from '../../lib/api';
 import type { Kontingen as KontingenRecord } from '../../types/master-data';
 import { requestSoftDeleteReason } from '../../lib/soft-delete';
+import { TablePagination, RowsPerPageSelector, SortableHeader } from '../common/TableControls';
+import { useTableControls, usePagination } from '../../hooks/useTableControls';
+
+type SortKeyType = 'name' | 'region_type';
 
 export default function Kontingen() {
   const [kontingens, setKontingens] = useState<KontingenRecord[]>([]);
@@ -26,6 +30,8 @@ export default function Kontingen() {
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  const table = useTableControls<SortKeyType>({ sortKey: 'name', sortDirection: 'asc', rowsPerPage: 10 });
 
   useEffect(() => {
     if (isModalOpen || isMediaSelectorOpen) {
@@ -119,16 +125,46 @@ export default function Kontingen() {
     setFormData(prev => ({ ...prev, logo_url: url }));
   };
 
-  const filteredKontingens = kontingens.filter((item) =>
-    `${item.name} ${item.region_type}`.toLowerCase().includes(search.toLowerCase()),
+  // INFO: Filters data based on search input
+  const filteredKontingens = useMemo(() => {
+    return kontingens.filter((item) =>
+      `${item.name} ${item.region_type}`.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [kontingens, search]);
+
+  // INFO: Reset page to 1 when search changes
+  useEffect(() => {
+    table.resetPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  // INFO: Sorts the filtered data
+  const sortedKontingens = useMemo(() => {
+    if (!table.sortKey) return filteredKontingens;
+    return [...filteredKontingens].sort((a, b) => {
+      const aVal = a[table.sortKey as keyof KontingenRecord];
+      const bVal = b[table.sortKey as keyof KontingenRecord];
+      if (aVal === bVal) return 0;
+      const aString = String(aVal || '').toLowerCase();
+      const bString = String(bVal || '').toLowerCase();
+      if (table.sortDirection === 'asc') return aString > bString ? 1 : -1;
+      return aString < bString ? 1 : -1;
+    });
+  }, [filteredKontingens, table.sortKey, table.sortDirection]);
+
+  // INFO: Pagination hook
+  const { paginatedData, totalItems, totalPages, startItem, endItem } = usePagination(
+    sortedKontingens,
+    table.currentPage,
+    table.rowsPerPage
   );
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-text-primary">Data Kontingen</h2>
-          <p className="text-text-muted text-sm mt-1">Kelola data kontingen / kota kabupaten peserta PORPROV.</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Data Kontingen</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola data kontingen / kota kabupaten peserta PORPROV.</p>
         </div>
         <button 
           onClick={openNewForm}
@@ -138,9 +174,9 @@ export default function Kontingen() {
         </button>
       </div>
 
-      <div className="card">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {/* Toolbar */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-md">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
@@ -148,36 +184,52 @@ export default function Kontingen() {
               placeholder="Cari kontingen..." 
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="form-input pl-9"
+              className="min-h-11 w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
             />
           </div>
+          <RowsPerPageSelector
+            value={table.rowsPerPage}
+            onChange={table.handleRowsPerPageChange}
+          />
         </div>
 
         <div className="overflow-x-auto min-h-[300px]">
           {errorMessage && (
-            <div role="alert" className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMessage}</div>
+            <div role="alert" className="m-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">{errorMessage}</div>
           )}
           {loading ? (
             <div className="flex justify-center items-center h-48">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
             </div>
-          ) : filteredKontingens.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-slate-500">
+          ) : paginatedData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-500 dark:text-slate-400">
               <p>Belum ada data Kontingen.</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
+            <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300 w-24">Logo</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Nama Kontingen</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Tipe Daerah</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-right">Aksi</th>
+                <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+                  <th className="p-4 font-medium w-24">Logo</th>
+                  <SortableHeader
+                    field="name"
+                    label="Nama Kontingen"
+                    sortKey={table.sortKey}
+                    sortDirection={table.sortDirection}
+                    onSort={table.handleSort}
+                  />
+                  <SortableHeader
+                    field="region_type"
+                    label="Tipe Daerah"
+                    sortKey={table.sortKey}
+                    sortDirection={table.sortDirection}
+                    onSort={table.handleSort}
+                  />
+                  <th className="p-4 font-medium text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredKontingens.map((item, i) => (
-                  <tr key={item.id || i} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {paginatedData.map((item, i) => (
+                  <tr key={item.id || i} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
                     <td className="p-4">
                       {item.logo_url ? (
                         <div className="w-12 h-12 rounded-full overflow-hidden bg-white border border-slate-200 flex items-center justify-center p-1">
@@ -192,16 +244,14 @@ export default function Kontingen() {
                     <td className="p-4 font-semibold text-slate-900 dark:text-white">
                       {item.name}
                     </td>
-                    <td className="p-4">
-                      <span className="capitalize text-sm font-medium text-slate-600 dark:text-slate-400">
-                        {item.region_type}
-                      </span>
+                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300 capitalize">
+                      {item.region_type}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
                         <button 
                           onClick={() => editKontingen(item)}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-md transition-colors"
+                          className="rounded-md p-2 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
@@ -209,7 +259,7 @@ export default function Kontingen() {
                           type="button"
                           onClick={() => handleDelete(item.id)}
                           aria-label={`Arsipkan ${item.name}`}
-                          className="p-1.5 text-slate-400 hover:text-danger-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                          className="rounded-md p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
                         >
                           <Trash className="w-4 h-4" />
                         </button>
@@ -221,6 +271,18 @@ export default function Kontingen() {
             </table>
           )}
         </div>
+        
+        {/* Footer Pagination */}
+        {totalPages > 1 && (
+          <TablePagination
+            currentPage={table.currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            startItem={startItem}
+            endItem={endItem}
+            onPageChange={table.handlePageChange}
+          />
+        )}
       </div>
 
       <ModalForm
@@ -257,7 +319,7 @@ export default function Kontingen() {
         />
       </ModalForm>
 
-      {/* Media Selector Modal Rendered within Kontingen but with higher z-index if needed, or we just overlay */}
+      {/* Media Selector Modal */}
       {isMediaSelectorOpen && (
         <MediaSelectorModal 
           isOpen={isMediaSelectorOpen}

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Plus, Edit, Trash, Loader2, X, Check, ChevronDown } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import MediaSelectorModal from '../media/MediaSelectorModal';
@@ -7,6 +7,11 @@ import { TextInput, SelectInput, MediaInput, TextArea } from '../common/FormInpu
 import { apiClient, authConfig, getApiErrorMessage, normalizeStoredMediaUrl, unwrapApiData } from '../../lib/api';
 import type { Cabor, Venue } from '../../types/master-data';
 import { requestSoftDeleteReason } from '../../lib/soft-delete';
+// INFO: Import table controls
+import { useTableControls, usePagination } from '../../hooks/useTableControls';
+import { TablePagination, RowsPerPageSelector, SortableHeader } from '../common/TableControls';
+
+type VenueSortKey = 'name' | 'address' | 'capacity';
 
 export default function VenueDepok() {
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -32,6 +37,14 @@ export default function VenueDepok() {
   const [isCaborDropdownOpen, setIsCaborDropdownOpen] = useState(false);
   const [caborSearch, setCaborSearch] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // INFO: Initialize table controls
+  const table = useTableControls<VenueSortKey>({ sortKey: 'name', sortDirection: 'asc', rowsPerPage: 10 });
+
+  // CHANGE: Reset page when search changes
+  useEffect(() => {
+    table.resetPage();
+  }, [search, table.resetPage]);
 
   useEffect(() => {
     if (isModalOpen || isMediaSelectorOpen) {
@@ -158,8 +171,34 @@ export default function VenueDepok() {
   };
 
   const filteredCabors = cabors.filter(c => c.name.toLowerCase().includes(caborSearch.toLowerCase()));
-  const filteredVenues = venues.filter((item) =>
-    `${item.name} ${item.address ?? ''}`.toLowerCase().includes(search.toLowerCase()),
+  
+  // PERFORMANCE: Use useMemo for sorting and filtering
+  const filteredVenues = useMemo(() => {
+    return venues.filter((item) =>
+      `${item.name} ${item.address ?? ''}`.toLowerCase().includes(search.toLowerCase()),
+    );
+  }, [venues, search]);
+
+  const sortedVenues = useMemo(() => {
+    return [...filteredVenues].sort((a, b) => {
+      let valA = a[table.sortKey as keyof Venue] ?? '';
+      let valB = b[table.sortKey as keyof Venue] ?? '';
+      
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return table.sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return table.sortDirection === 'asc' ? valA - valB : valB - valA;
+      }
+      return 0;
+    });
+  }, [filteredVenues, table.sortKey, table.sortDirection]);
+
+  // INFO: Use usePagination hook
+  const { paginatedData, totalItems, totalPages, startItem, endItem } = usePagination(
+    sortedVenues,
+    table.currentPage,
+    table.rowsPerPage
   );
 
   const editVenue = (item: Venue) => {
@@ -196,9 +235,9 @@ export default function VenueDepok() {
         </button>
       </div>
 
-      <div className="card">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {/* Toolbar */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-md">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
@@ -206,59 +245,61 @@ export default function VenueDepok() {
               placeholder="Cari nama venue..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="form-input pl-9"
+              className="min-h-11 w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
             />
           </div>
+          <RowsPerPageSelector
+            rowsPerPage={table.rowsPerPage}
+            onChange={table.handleChangeRowsPerPage}
+          />
         </div>
 
         <div className="overflow-x-auto min-h-[300px]">
           {errorMessage && (
-            <div role="alert" className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMessage}</div>
+            <div role="alert" className="m-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+              {errorMessage}
+            </div>
           )}
           {loading ? (
             <div className="flex justify-center items-center h-48">
-              <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
             </div>
           ) : filteredVenues.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-slate-500">
+            <div className="flex flex-col items-center justify-center h-48 text-slate-500 dark:text-slate-400">
               <p>Belum ada data Venue.</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
+            <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">ID (UUID)</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Nama Venue</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Alamat Lengkap</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Kapasitas</th>
-                  <th className="p-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-right">Aksi</th>
+                <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+                  <SortableHeader<VenueSortKey> sortKey="name" currentSortKey={table.sortKey} direction={table.sortDirection} onSort={table.handleSort} className="p-4 font-medium">Nama Venue</SortableHeader>
+                  <SortableHeader<VenueSortKey> sortKey="address" currentSortKey={table.sortKey} direction={table.sortDirection} onSort={table.handleSort} className="p-4 font-medium">Alamat Lengkap</SortableHeader>
+                  <SortableHeader<VenueSortKey> sortKey="capacity" currentSortKey={table.sortKey} direction={table.sortDirection} onSort={table.handleSort} className="p-4 font-medium">Kapasitas</SortableHeader>
+                  <th className="p-4 font-medium text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredVenues.map((item, i) => (
-                  <tr key={item.id || i} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="p-4 font-mono text-xs text-text-muted">
-                      {(item.id || '').substring(0, 8)}...
-                    </td>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {paginatedData.map((item, i) => (
+                  <tr key={item.id || i} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
                     <td className="p-4 font-semibold text-slate-900 dark:text-white">
                       {item.name}
                     </td>
-                    <td className="p-4 text-sm text-slate-600 dark:text-slate-400 truncate max-w-xs">
+                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300 truncate max-w-xs">
                       {item.address}
                     </td>
-                    <td className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300">
                       {item.capacity}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => editVenue(item)} aria-label={`Edit ${item.name}`} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-md transition-colors">
+                        <button type="button" onClick={() => editVenue(item)} aria-label={`Edit ${item.name}`} className="rounded-md p-2 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950">
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(item.id)}
                           aria-label={`Arsipkan ${item.name}`}
-                          className="p-1.5 text-slate-400 hover:text-danger-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                          className="rounded-md p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
                         >
                           <Trash className="w-4 h-4" />
                         </button>
@@ -270,6 +311,18 @@ export default function VenueDepok() {
             </table>
           )}
         </div>
+        
+        {/* INFO: Table Footer for Pagination */}
+        {!loading && filteredVenues.length > 0 && (
+          <TablePagination
+            currentPage={table.currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            startItem={startItem}
+            endItem={endItem}
+            onPageChange={table.handleChangePage}
+          />
+        )}
       </div>
 
       <ModalForm
@@ -462,7 +515,6 @@ export default function VenueDepok() {
           </div>
         </div>
       </ModalForm>
-
 
       {/* Media Selector */}
       <MediaSelectorModal

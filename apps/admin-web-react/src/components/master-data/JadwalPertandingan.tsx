@@ -6,6 +6,8 @@ import type { SelectOption } from '../common/SearchableSelect';
 import ModalForm from '../common/ModalForm';
 import { SelectInput, TextInput } from '../common/FormInputs';
 import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../../lib/api';
+import { useTableControls, usePagination } from '../../hooks/useTableControls';
+import { TablePagination, RowsPerPageSelector, SortableHeader } from '../common/TableControls';
 import type {
   Cabor,
   Kontingen,
@@ -58,6 +60,8 @@ const participantTypeLabels: Record<ParticipantType, string> = {
   team: 'Tim',
   contingent: 'Kontingen',
 };
+
+type SortKeyType = 'match_date' | 'nomor_tanding' | 'venue' | 'round' | 'status';
 
 export default function JadwalPertandingan() {
   const [matches, setMatches] = useState<MatchSchedule[]>([]);
@@ -150,11 +154,45 @@ export default function JadwalPertandingan() {
     subLabel: kontingen.region_type,
   }));
 
+  // INFO: Setup pagination & sorting
+  const table = useTableControls<SortKeyType>({ sortKey: 'match_date', sortDirection: 'asc', rowsPerPage: 10 });
+
+  useEffect(() => {
+    table.resetPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
   const filteredMatches = matches.filter((item) =>
     `${getNomorTandingName(item.nomor_tanding_id)} ${getVenueName(item.venue_id)} ${participantSummary(item)} ${item.round} ${item.status}`
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+
+  const sortedMatches = [...filteredMatches].sort((a, b) => {
+    const dir = table.sortDirection === 'asc' ? 1 : -1;
+    switch (table.sortKey) {
+      case 'match_date':
+        return (new Date(a.match_date).getTime() - new Date(b.match_date).getTime()) * dir;
+      case 'nomor_tanding':
+        return getNomorTandingName(a.nomor_tanding_id).localeCompare(getNomorTandingName(b.nomor_tanding_id)) * dir;
+      case 'venue':
+        return getVenueName(a.venue_id).localeCompare(getVenueName(b.venue_id)) * dir;
+      case 'round':
+        return (a.round || '').localeCompare(b.round || '') * dir;
+      case 'status':
+        return (a.status || '').localeCompare(b.status || '') * dir;
+      default:
+        return 0;
+    }
+  });
+
+  const {
+    paginatedData,
+    totalItems,
+    totalPages,
+    startItem,
+    endItem,
+  } = usePagination(sortedMatches, table.currentPage, table.rowsPerPage);
 
   const updateParticipant = (index: number, changes: Partial<ParticipantDraft>) => {
     setFormData((current) => ({
@@ -263,8 +301,8 @@ export default function JadwalPertandingan() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-xl font-bold text-text-primary">Jadwal Pertandingan</h2>
-          <p className="mt-1 text-sm text-text-muted">Atur waktu, venue, dan Peserta A/B yang menjadi sumber resmi LiveScore.</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Jadwal Pertandingan</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Atur waktu, venue, dan Peserta A/B yang menjadi sumber resmi LiveScore.</p>
         </div>
         <button type="button" onClick={() => { resetForm(); setErrorMessage(''); setIsModalOpen(true); }} className="flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-indigo-700">
           <Plus className="h-5 w-5" /> Tambah Jadwal
@@ -276,42 +314,108 @@ export default function JadwalPertandingan() {
         <p className="mt-1 text-indigo-800 dark:text-indigo-200">Pilih jenis Individu, Tim, atau Kontingen di jadwal ini. LiveScore Center otomatis membaca Peserta A/B dan hanya digunakan untuk input skor, status, serta koreksi.</p>
       </div>
 
-      <div className="card">
-        <div className="flex flex-col justify-between gap-4 rounded-t-md border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50 md:flex-row">
+      {/* CHANGE: Standardized table wrapper */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input type="search" placeholder="Cari jadwal atau peserta..." value={search} onChange={(event) => setSearch(event.target.value)} className="form-input pl-9" />
+            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Cari jadwal atau peserta..." 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)}
+              className="min-h-11 w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500" 
+            />
           </div>
+          <RowsPerPageSelector value={table.rowsPerPage} onChange={table.setRowsPerPage} />
         </div>
-        <div className="min-h-[300px] overflow-x-auto">
-          {errorMessage && !isModalOpen && <div role="alert" className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">{errorMessage}</div>}
-          {loading ? <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div> : filteredMatches.length === 0 ? (
-            <div className="flex h-48 flex-col items-center justify-center text-slate-500"><Users className="mb-3 h-9 w-9" /><p>Belum ada jadwal dengan susunan peserta.</p></div>
+        
+        <div className="overflow-x-auto">
+          {errorMessage && !isModalOpen && (
+            <div className="m-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <p>{errorMessage}</p>
+            </div>
+          )}
+          
+          {loading ? (
+            <div className="flex h-48 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+            </div>
+          ) : filteredMatches.length === 0 ? (
+            <div className="flex h-48 flex-col items-center justify-center text-slate-500 dark:text-slate-400">
+              <Users className="mb-3 h-9 w-9" />
+              <p>Belum ada jadwal dengan susunan peserta.</p>
+            </div>
           ) : (
             <table className="w-full border-collapse text-left">
-              <thead><tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50">
-                {['Waktu', 'Cabor / Nomor', 'Peserta', 'Venue', 'Babak', 'Status'].map((label) => <th key={label} className="p-4 text-sm font-semibold text-slate-600 dark:text-slate-300">{label}</th>)}
-                <th className="p-4 text-right text-sm font-semibold text-slate-600 dark:text-slate-300">Aksi</th>
-              </tr></thead>
-              <tbody>{filteredMatches.map((item) => <tr key={item.id} className="border-b border-slate-200 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50">
-                <td className="whitespace-nowrap p-4 font-semibold text-slate-900 dark:text-white">{new Date(item.match_date).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
-                <td className="p-4 text-sm text-slate-600 dark:text-slate-300">{getNomorTandingName(item.nomor_tanding_id)}</td>
-                <td className="min-w-64 p-4"><p className={`text-sm font-bold ${(item.participants?.length || 0) === 2 ? 'text-slate-900 dark:text-white' : 'text-amber-700 dark:text-amber-300'}`}>{participantSummary(item)}</p></td>
-                <td className="p-4 text-sm text-slate-600 dark:text-slate-300">{getVenueName(item.venue_id)}</td>
-                <td className="p-4 text-sm font-medium capitalize text-slate-700 dark:text-slate-300">{item.round?.replaceAll('_', ' ')}</td>
-                <td className="p-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.status === 'finished' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : item.status === 'ongoing' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200' : item.status === 'delayed' ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>{item.status}</span></td>
-                <td className="p-4 text-right"><div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => editMatch(item)} aria-label="Edit jadwal dan peserta" className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950"><Edit className="h-4 w-4" /></button>
-                  <button type="button" onClick={() => void handleDelete(item.id)} aria-label="Arsipkan jadwal pertandingan" className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"><Trash className="h-4 w-4" /></button>
-                </div></td>
-              </tr>)}</tbody>
+              <thead>
+                <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+                  <SortableHeader sortKey="match_date" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort}>Waktu</SortableHeader>
+                  <SortableHeader sortKey="nomor_tanding" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort}>Cabor / Nomor</SortableHeader>
+                  <th className="p-4 font-medium">Peserta</th>
+                  <SortableHeader sortKey="venue" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort}>Venue</SortableHeader>
+                  <SortableHeader sortKey="round" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort}>Babak</SortableHeader>
+                  <SortableHeader sortKey="status" currentSort={table.sortKey} direction={table.sortDirection} onSort={table.handleSort}>Status</SortableHeader>
+                  <th className="p-4 text-right font-medium">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {paginatedData.map((item) => (
+                  <tr key={item.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                    <td className="whitespace-nowrap p-4 font-semibold text-slate-900 dark:text-white">
+                      {new Date(item.match_date).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300">
+                      {getNomorTandingName(item.nomor_tanding_id)}
+                    </td>
+                    <td className="min-w-64 p-4">
+                      <p className={`text-sm font-bold ${(item.participants?.length || 0) === 2 ? 'text-slate-900 dark:text-white' : 'text-amber-700 dark:text-amber-300'}`}>
+                        {participantSummary(item)}
+                      </p>
+                    </td>
+                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300">
+                      {getVenueName(item.venue_id)}
+                    </td>
+                    <td className="p-4 text-sm font-medium capitalize text-slate-900 dark:text-white">
+                      {item.round?.replaceAll('_', ' ')}
+                    </td>
+                    <td className="p-4">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.status === 'finished' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : item.status === 'ongoing' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200' : item.status === 'delayed' ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => editMatch(item)} aria-label="Edit jadwal dan peserta" className="rounded-md p-2 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950">
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button type="button" onClick={() => void handleDelete(item.id)} aria-label="Arsipkan jadwal pertandingan" className="rounded-md p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950">
+                          <Trash className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           )}
         </div>
+        
+        {!loading && filteredMatches.length > 0 && (
+          <TablePagination
+            currentPage={table.currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            startItem={startItem}
+            endItem={endItem}
+            onPageChange={table.setPage}
+          />
+        )}
       </div>
 
       <ModalForm isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); setErrorMessage(''); }} title={formData.id ? 'Edit Jadwal & Peserta' : 'Tambah Jadwal & Peserta'} onSubmit={handleSave} submitting={submitting} submitText="Simpan Jadwal" size="large">
-        {errorMessage && <div role="alert" className="flex gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"><AlertCircle className="h-5 w-5 shrink-0" />{errorMessage}</div>}
+        {errorMessage && <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"><AlertCircle className="h-5 w-5 shrink-0" />{errorMessage}</div>}
         <div className="grid gap-4 md:grid-cols-2">
           <div><label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Cabor / Nomor Tanding <span className="text-red-500">*</span></label><SearchableSelect options={nomorTandingOptions} value={formData.nomor_tanding_id} onChange={(value) => setFormData((current) => ({ ...current, nomor_tanding_id: value }))} placeholder="Pilih Cabor / Nomor Tanding..." /></div>
           <div><label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Lokasi (Venue) <span className="text-red-500">*</span></label><SearchableSelect options={venueOptions} value={formData.venue_id} onChange={(value) => setFormData((current) => ({ ...current, venue_id: value }))} placeholder="Pilih Venue..." /></div>

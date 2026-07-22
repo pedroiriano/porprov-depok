@@ -63,12 +63,12 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 |---|---|---|---|---|
 | Vite React setup | `[x] Done` | v0.2 | `apps/admin-web-react/` | TypeScript + Tailwind v4; build produksi dan image Nginx teruji |
 | Role-based sidebar | `[~] In Progress` | v0.5 | admin layout | Menu Dashboard, Master Data, LiveScore, Medali, City Guide, Media Library, Verifikasi, Audit, dan Profil memakai realm role dari ID/access token; matrix granular domain lama masih bertahap |
-| Master data | `[x] Done` | v0.5 | cabor, nomor pertandingan, venue, kontingen, jadwal, City Guide | CRUD, pencarian, referensi, Media Selector, form Jadwal + Peserta A/B, serta City Guide dengan edit, deskripsi, koordinat tervalidasi, geolokasi, dan pratinjau peta tersedia; dataset 165 rekomendasi resmi Booklet halaman 21–32 sudah diimpor idempoten dalam 7 kategori; soft delete, dependency guard, dan restore aktif |
+| Master data | `[x] Done` | v0.6 | cabor, nomor pertandingan, venue, kontingen, jadwal, City Guide | CRUD, pencarian, referensi, Media Selector, form Jadwal + Peserta A/B, serta City Guide. Semua tabel master data kini telah distandardisasi dengan fitur pagination (TablePagination), sorting (SortableHeader), rows-per-page (RowsPerPageSelector), dan dark mode compatible. |
 | Media Library | `[x] Done` | v0.4 | `components/media/`, master-data-service | Upload/selector/URL relatif, soft delete metadata, penyembunyian delivery publik, retensi file, dan restore teruji; kebijakan purge tetap TBD |
-| Recycle Bin Admin | `[x] Done` | v0.4 | `components/master-data/RecycleBin.tsx` | Menggabungkan tombstone Master Data, Media, Venue, dan Jadwal dengan pencarian, status, actor/alasan, serta restore aksesibel |
+| Recycle Bin Admin | `[x] Done` | v0.5 | `components/master-data/RecycleBin.tsx` | Menggabungkan tombstone Master Data, Media, Venue, dan Jadwal dengan pencarian, status, actor/alasan, serta restore aksesibel. Tabel Recycle Bin kini menggunakan standardisasi pagination dan sorting. |
 | LiveScore center | `[~] In Progress` | v0.5 | admin livescore | Membaca Peserta A/B dari Jadwal, memberi label skor per peserta, dan mengunci scoring bila susunan belum lengkap; expected revision, koreksi, private SSE, serta history tersedia, sedangkan E2E data pertandingan staging belum final |
-| Verification workflow | `[~] In Progress` | v0.4 | admin Medali/verifikasi | PENDING → VERIFIED → OFFICIAL/REJECTED dengan role terpisah dan actor tiap tahap; correction/reversal data OFFICIAL belum tersedia |
-| Audit log | `[~] In Progress` | v0.4 | admin audit | Filter, detail payload, dedup event, hash, dan DB immutable tersedia; SIEM/WORM/retention belum final |
+| Verification workflow | `[~] In Progress` | v0.5 | admin Medali/verifikasi | PENDING → VERIFIED → OFFICIAL/REJECTED dengan role terpisah dan actor tiap tahap. Tabel antrean dan klasemen resmi kini menggunakan standardisasi pagination dan sorting. |
+| Audit log | `[x] Done` | v0.5 | admin audit | Filter, detail payload, dedup event, hash, dan DB immutable tersedia. Tabel Audit Log kini menggunakan standardisasi pagination dan sorting dengan limit 500 event. |
 | Export | `[~] In Progress` | v0.4 | admin audit | CSV Audit tersedia; XLSX/PDF/report domain lain belum tersedia |
 
 ## 5. Mobile Apps — React Native
