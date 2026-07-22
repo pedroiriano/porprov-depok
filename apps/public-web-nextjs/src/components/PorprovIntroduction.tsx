@@ -26,9 +26,10 @@ export function PorprovIntroduction() {
       <div className="absolute -end-24 bottom-0 size-72 rounded-full bg-amber-400/10 blur-3xl" aria-hidden="true" />
 
       <div className="container relative">
-        <div className="grid grid-cols-1 items-start gap-10 md:grid-cols-12 md:gap-[30px]">
-          <div className="md:sticky md:top-28 md:col-span-5 self-start">
-            <div className="relative mx-auto max-w-lg overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 p-6 text-white shadow-2xl sm:p-8">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-12 md:gap-[30px]">
+          <div className="md:col-span-5">
+            <div className="md:sticky md:top-24">
+              <div className="relative mx-auto max-w-lg overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 p-6 text-white shadow-2xl sm:p-8">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.34),transparent_42%)]" aria-hidden="true" />
               <div className="absolute -bottom-20 -end-12 size-56 rounded-full border-[26px] border-red-500/20" aria-hidden="true" />
 
@@ -56,6 +57,7 @@ export function PorprovIntroduction() {
               </div>
             </div>
           </div>
+        </div>
 
           <div className="md:col-span-7">
             <div className="lg:ms-8">
