@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ScheduleMatchCard } from "@/components/ScheduleMatchCard";
+import { NearbyCityGuides } from "@/components/NearbyCityGuides";
 import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
 import {
   normalizeCabor,
@@ -17,6 +18,19 @@ import {
 } from "@/lib/public-models";
 
 export const dynamic = "force-dynamic";
+
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;  
+  const dLon = (lon2 - lon1) * Math.PI / 180; 
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+    ; 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  return R * c;
+}
 
 const getVenue = cache(async (id: string) => {
   const response = await fetch(publicApiUrl(`/venues/${encodeURIComponent(id)}`), { cache: "no-store" });
@@ -53,9 +67,23 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
     getCollection<RawEnrichedMatch>("/schedule/matches/enriched"),
   ]);
   const cabors = rawCabors.map(normalizeCabor).filter((cabor) => venue.caborIds.includes(cabor.id));
-  const guides = rawGuides.map(normalizeCityGuide).filter((guide) => venue.cityGuideIds.includes(guide.id));
-  const matches = rawMatches.map(normalizeEnrichedMatch).filter((match) => match.venueId === venue.id);
   const coordinateAvailable = venue.latitude !== 0 || venue.longitude !== 0;
+
+  let nearbyGuides = rawGuides.map(normalizeCityGuide);
+  if (coordinateAvailable) {
+    nearbyGuides = nearbyGuides
+      .filter((g) => g.latitude !== 0 && g.longitude !== 0)
+      .map((g) => ({
+        ...g,
+        distanceKm: getDistanceKm(venue.latitude, venue.longitude, g.latitude, g.longitude),
+      }))
+      .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0))
+      .slice(0, 4);
+  } else {
+    nearbyGuides = nearbyGuides.filter((guide) => venue.cityGuideIds.includes(guide.id)).slice(0, 4);
+  }
+
+  const matches = rawMatches.map(normalizeEnrichedMatch).filter((match) => match.venueId === venue.id);
 
   return (
     <main className="pb-20 pt-24 md:pb-24 md:pt-28">
@@ -80,7 +108,7 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
             <dl className="mt-7 grid gap-4 sm:grid-cols-3"><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-500">Kapasitas</dt><dd className="mt-2 text-2xl font-black">{venue.capacity ? new Intl.NumberFormat("id-ID").format(venue.capacity) : "TBA"}</dd></div><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-500">Cabang olahraga</dt><dd className="mt-2 text-2xl font-black">{cabors.length}</dd></div><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-500">Jadwal aktif</dt><dd className="mt-2 text-2xl font-black">{matches.length}</dd></div></dl>
           </section>
           <section aria-labelledby="venue-schedule-title"><h2 id="venue-schedule-title" className="text-3xl font-black">Jadwal di venue ini</h2>{matches.length ? <div className="mt-6 grid gap-5">{matches.map((match) => <ScheduleMatchCard key={match.id} match={match} />)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-slate-500 dark:border-slate-700">Belum ada jadwal yang dipublikasikan untuk venue ini.</p>}</section>
-          {guides.length > 0 && <section aria-labelledby="nearby-title"><h2 id="nearby-title" className="text-3xl font-black">Panduan di sekitar venue</h2><div className="mt-6 grid gap-5 sm:grid-cols-2">{guides.map((guide) => <article key={guide.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">{guide.imageUrl && <div className="h-40 overflow-hidden"><img src={guide.imageUrl} alt="" className="size-full object-cover" /></div>}<div className="p-5"><p className="text-xs font-black uppercase tracking-wider text-primary-500">{guide.category}</p><h3 className="mt-2 text-lg font-black">{guide.title}</h3><p className="mt-2 line-clamp-3 text-sm text-slate-500">{guide.description || guide.address}</p>{guide.mapUrl && <a href={guide.mapUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-black text-primary-600 hover:bg-primary-500/10 dark:text-primary-300"><i className="ri-map-pin-line me-2" aria-hidden="true" />Buka titik peta<span className="sr-only"> {guide.title} di tab baru</span></a>}</div></article>)}</div></section>}
+          <NearbyCityGuides guides={nearbyGuides} venueName={venue.name} />
         </div>
 
         <aside className="space-y-5">
