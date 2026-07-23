@@ -200,28 +200,24 @@ export function VenueInteractivePage() {
                   <div
                     key={venue.id}
                     onClick={() => handleVenueClick(venue)}
-                    className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 hover:shadow-md cursor-pointer transition-all bg-white dark:bg-slate-900 group"
+                    className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 hover:shadow-sm cursor-pointer transition-all bg-white dark:bg-slate-900 group"
                   >
-                    <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-wide">{venue.name}</h3>
-                    <div className="mt-2 flex gap-2 items-start text-sm text-slate-500 dark:text-slate-400">
-                      <i className="ri-map-pin-line text-primary-500 shrink-0 mt-0.5"></i>
-                      <p className="line-clamp-2">{venue.address}</p>
-                    </div>
+                    <h3 className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wide line-clamp-1" title={venue.name}>{venue.name}</h3>
                     
                     {/* Tags / Badges */}
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="inline-flex items-center rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 dark:text-slate-300 uppercase">
                         {venue.caborCount} CABOR
                       </span>
-                      <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                      <span className="inline-flex items-center rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 dark:text-slate-300 uppercase">
                         KAPASITAS {venue.capacity || "-"}
                       </span>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                       <Link 
                         href={`/venue/${venue.id}`} 
-                        className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1"
+                        className="text-[11px] font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-0.5"
                         onClick={(e) => e.stopPropagation()} // Prevent trigger map click
                       >
                         Detail venue <i className="ri-arrow-right-s-line"></i>
