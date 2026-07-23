@@ -109,12 +109,29 @@ export function VenueInteractivePage() {
   useEffect(() => {
     const controller = new AbortController();
     fetchVenues(controller.signal);
+    
+    // Fallback interval polling
     const intervalId = setInterval(() => {
       fetchVenues();
     }, REFRESH_INTERVAL_MS);
+
+    // Realtime SSE Event Stream
+    const source = new EventSource(publicApiUrl("/stream/events"));
+    source.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as { eventType?: string };
+        if (payload.eventType && payload.eventType.startsWith("VENUE_")) {
+          void fetchVenues();
+        }
+      } catch {
+        // Abaikan payload tidak valid
+      }
+    };
+
     return () => {
       controller.abort();
       clearInterval(intervalId);
+      source.close();
     };
   }, [fetchVenues]);
 
