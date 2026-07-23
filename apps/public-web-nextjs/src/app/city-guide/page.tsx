@@ -71,7 +71,7 @@ export default async function CityGuidePage({
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 pb-24 pt-24 md:pt-32">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 pt-24 md:pt-32">
       {/* Hero Section */}
       <section className="relative overflow-hidden py-16">
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
@@ -84,17 +84,17 @@ export default async function CityGuidePage({
             <i className="ri-compass-3-line text-base"></i>
             Depok City Guide
           </div>
-          <h1 className="text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Jelajahi Kota <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">Tuan Rumah.</span>
+          <h1 className="text-4xl font-black leading-tight tracking-tight text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
+            Jelajahi Kota <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-indigo-500 dark:from-sky-400 dark:to-indigo-400">Tuan Rumah.</span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-400">
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">
             Temukan keindahan budaya, kuliner legendaris, tempat wisata memukau, hingga kenyamanan akomodasi terbaik di Kota Depok selama gelaran PORPROV XV 2026.
           </p>
         </div>
       </section>
 
       {/* Tabs / Filters */}
-      <div className="sticky top-[72px] z-20 md:top-[88px] bg-slate-950/80 backdrop-blur-xl border-y border-slate-800 py-4 mb-12 shadow-lg">
+      <div className="sticky top-[72px] z-20 md:top-[88px] bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-y border-slate-200 dark:border-slate-800 py-4 mb-12 shadow-lg">
         <div className="container flex flex-wrap items-center justify-center gap-2">
           {categories.map((cat) => {
             const isActive = activeCategory === cat.id;
@@ -105,7 +105,7 @@ export default async function CityGuidePage({
                 className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 ${
                   isActive 
                     ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(56,189,248,0.3)]" 
-                    : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600"
+                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <i className={cat.icon}></i>
@@ -124,7 +124,7 @@ export default async function CityGuidePage({
               {paginatedGuides.map((guide) => (
               <article 
                 key={guide.id}
-                className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-sky-500/50 hover:shadow-[0_10px_40px_rgba(56,189,248,0.15)]"
+                className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-sky-500/50 hover:shadow-[0_10px_40px_rgba(56,189,248,0.15)]"
               >
                 {/* Image Area */}
                 <div className="relative h-56 overflow-hidden">
@@ -135,15 +135,15 @@ export default async function CityGuidePage({
                       className="size-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100"
                     />
                   ) : (
-                    <div className="size-full bg-slate-800 flex items-center justify-center">
-                      <i className="ri-image-line text-4xl text-slate-600"></i>
+                    <div className="size-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                      <i className="ri-image-line text-4xl text-slate-400 dark:text-slate-600"></i>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-90" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-950 via-white/50 dark:via-transparent to-transparent opacity-90" />
                   
                   {/* Category Pill */}
                   <div className="absolute left-4 top-4">
-                    <span className="inline-block rounded-lg bg-slate-950/60 backdrop-blur-md px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white border border-white/10">
+                    <span className="inline-block rounded-lg bg-white/90 dark:bg-slate-950/60 backdrop-blur-md px-3 py-1.5 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 shadow-sm">
                       {guide.category}
                     </span>
                   </div>
@@ -152,22 +152,22 @@ export default async function CityGuidePage({
                 {/* Content Area */}
                 <div className="flex flex-1 flex-col justify-between p-6">
                   <div>
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/5 shadow-inner -mt-12 relative z-10 backdrop-blur-xl">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-100 dark:border-white/5 shadow-inner -mt-12 relative z-10 backdrop-blur-xl bg-white/50 dark:bg-transparent">
                       <div className={`flex size-full items-center justify-center rounded-xl ${getCategoryIcon(guide.category)}`}>
                         <i className={`text-xl ${getCategoryIcon(guide.category).split(' ')[0]}`}></i>
                       </div>
                     </div>
                     
-                    <h2 className="text-xl font-black text-white group-hover:text-sky-400 transition-colors line-clamp-2">
+                    <h2 className="text-xl font-black text-slate-900 dark:text-white group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors line-clamp-2">
                       {guide.title}
                     </h2>
                     
-                    <p className="mt-3 text-sm leading-relaxed text-slate-400 line-clamp-3">
+                    <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400 line-clamp-3">
                       {guide.description || guide.address || "Tidak ada deskripsi tersedia."}
                     </p>
                   </div>
 
-                  <div className="mt-6 pt-5 border-t border-slate-800 flex items-center justify-between">
+                  <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center text-xs text-slate-500 max-w-[60%]">
                       <i className="ri-map-pin-line me-1.5 shrink-0"></i>
                       <span className="truncate">{guide.address || "Depok"}</span>
@@ -178,7 +178,7 @@ export default async function CityGuidePage({
                         href={guide.mapUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-800 px-4 text-xs font-bold text-white transition hover:bg-sky-500 focus:outline-none"
+                        className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 px-4 text-xs font-bold text-slate-700 dark:text-white transition hover:bg-sky-50 dark:hover:bg-sky-500 hover:text-sky-600 focus:outline-none"
                       >
                         Buka Peta
                       </a>
@@ -194,7 +194,7 @@ export default async function CityGuidePage({
               <div className="mt-12 flex items-center justify-center gap-2">
                 <Link
                   href={createPageUrl(validPage - 1)}
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-400 transition hover:bg-slate-800 hover:text-white ${
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white ${
                     validPage <= 1 ? "pointer-events-none opacity-50" : ""
                   }`}
                   aria-disabled={validPage <= 1}
@@ -212,7 +212,7 @@ export default async function CityGuidePage({
                       className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold transition ${
                         isActive
                           ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-[0_0_15px_rgba(56,189,248,0.3)]"
-                          : "border border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white"
+                          : "border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                       }`}
                     >
                       {pageNum}
@@ -222,7 +222,7 @@ export default async function CityGuidePage({
 
                 <Link
                   href={createPageUrl(validPage + 1)}
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-400 transition hover:bg-slate-800 hover:text-white ${
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white ${
                     validPage >= totalPages ? "pointer-events-none opacity-50" : ""
                   }`}
                   aria-disabled={validPage >= totalPages}
@@ -233,17 +233,17 @@ export default async function CityGuidePage({
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-800 bg-slate-900/50 py-24 px-4 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 mb-6 text-slate-500">
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 py-24 px-4 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 mb-6 text-slate-400 dark:text-slate-500">
               <i className="ri-search-eye-line text-4xl"></i>
             </div>
-            <h3 className="text-2xl font-black text-white">Panduan Tidak Ditemukan</h3>
-            <p className="mt-2 text-slate-400 max-w-md mx-auto">
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white">Panduan Tidak Ditemukan</h3>
+            <p className="mt-2 text-slate-600 dark:text-slate-400 max-w-md mx-auto">
               Maaf, belum ada data City Guide untuk kategori "{activeCategory}". Panitia masih melengkapi panduan ini.
             </p>
             <Link 
               href="/city-guide" 
-              className="mt-8 inline-flex h-12 items-center justify-center rounded-xl bg-slate-800 px-6 font-bold text-white transition hover:bg-slate-700"
+              className="mt-8 inline-flex h-12 items-center justify-center rounded-xl bg-slate-900 dark:bg-slate-800 px-6 font-bold text-white transition hover:bg-slate-800 dark:hover:bg-slate-700"
             >
               Kembali ke Semua
             </Link>
