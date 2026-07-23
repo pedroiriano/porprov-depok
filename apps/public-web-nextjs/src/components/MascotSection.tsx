@@ -31,16 +31,16 @@ const mascots = [
 
 export function MascotSection() {
   return (
-    <section id="maskot" className="relative scroll-mt-24 overflow-hidden bg-slate-950 py-16 text-white md:py-24" aria-labelledby="mascot-title">
+    <section id="maskot" className="relative scroll-mt-24 overflow-hidden bg-[#D2EAF1] dark:bg-slate-950 py-16 text-slate-900 dark:text-white md:py-24" aria-labelledby="mascot-title">
       <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_1px_1px,rgba(148,163,184,0.28)_1px,transparent_0)] [background-size:24px_24px]" aria-hidden="true" />
       <div className="absolute -start-32 top-1/4 size-80 rounded-full bg-red-500/15 blur-3xl" aria-hidden="true" />
       <div className="absolute -end-32 bottom-0 size-80 rounded-full bg-sky-500/15 blur-3xl" aria-hidden="true" />
 
       <div className="container relative">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-sky-300">Maskot Resmi Kota Depok</p>
+          <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">Maskot Resmi Kota Depok</p>
           <h2 id="mascot-title" className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">Kenali Toca dan Toci.</h2>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-300 md:text-lg">
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-700 dark:text-slate-300 md:text-lg">
             Dua karakter yang membawa semangat prestasi, sportivitas, dan persaudaraan dalam PORPROV XV Jawa Barat 2026.
           </p>
         </div>

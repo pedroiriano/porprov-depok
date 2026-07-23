@@ -21,7 +21,7 @@ const purposes = [
 
 export function PorprovIntroduction() {
   return (
-    <section id="tentang-porprov" className="relative scroll-mt-24 py-16 md:py-24" aria-labelledby="porprov-introduction-title">
+    <section id="tentang-porprov" className="relative scroll-mt-24 py-16 md:py-24 bg-white dark:bg-slate-950" aria-labelledby="porprov-introduction-title">
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -start-32 top-12 size-72 rounded-full bg-primary-500/10 blur-3xl" />
         <div className="absolute -end-24 bottom-0 size-72 rounded-full bg-amber-400/10 blur-3xl" />

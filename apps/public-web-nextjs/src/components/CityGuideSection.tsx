@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export function CityGuideSection() {
   return (
-    <section id="city-guide" className="relative overflow-hidden bg-slate-950 py-20 lg:py-32" aria-labelledby="city-guide-title">
+    <section id="city-guide" className="relative overflow-hidden bg-white dark:bg-slate-950 py-20 lg:py-32" aria-labelledby="city-guide-title">
       {/* Decorative Background Elements */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute -start-40 top-1/4 size-[500px] rounded-full bg-blue-600/10 blur-[100px]" />
@@ -21,11 +21,11 @@ export function CityGuideSection() {
               Depok City Guide
             </div>
             
-            <h2 id="city-guide-title" className="mt-6 text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h2 id="city-guide-title" className="mt-6 text-4xl font-black leading-tight tracking-tight text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
               Jelajahi Kota <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">Tuan Rumah.</span>
             </h2>
             
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-400">
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">
               Jadikan momen PORPROV XV 2026 tidak hanya tentang pertandingan. Temukan pesona budaya, kuliner legendaris, tempat wisata, hingga kenyamanan akomodasi terbaik di Kota Depok.
             </p>
 
@@ -41,18 +41,18 @@ export function CityGuideSection() {
             </div>
             
             {/* Quick Stats / Highlights */}
-            <div className="mt-12 grid grid-cols-3 gap-4 divide-x divide-slate-800 border-t border-slate-800 pt-8">
+            <div className="mt-12 grid grid-cols-3 gap-4 divide-x divide-slate-200 border-t border-slate-200 dark:divide-slate-800 dark:border-slate-800 pt-8">
               <div className="px-2">
-                <div className="text-2xl font-black text-white">40+</div>
-                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-500">Destinasi</div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">40+</div>
+                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-500">Destinasi</div>
               </div>
               <div className="px-4">
-                <div className="text-2xl font-black text-white">120+</div>
-                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-500">Kuliner</div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">120+</div>
+                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-500">Kuliner</div>
               </div>
               <div className="px-4">
-                <div className="text-2xl font-black text-white">24/7</div>
-                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-500">Transportasi</div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">24/7</div>
+                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-500">Transportasi</div>
               </div>
             </div>
           </div>

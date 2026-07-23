@@ -48,7 +48,7 @@ export default function Home() {
       <PorprovIntroduction />
       <MascotSection />
 
-      <section id="informasi" className="relative scroll-mt-24 overflow-hidden py-16 md:py-24" aria-labelledby="information-title">
+      <section id="informasi" className="relative scroll-mt-24 overflow-hidden py-16 md:py-24 bg-white dark:bg-slate-950" aria-labelledby="information-title">
         <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-6xl bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-slate-700" aria-hidden="true" />
         <div className="container relative">
           <div className="mx-auto max-w-3xl text-center">
