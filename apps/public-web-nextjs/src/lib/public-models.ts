@@ -164,7 +164,7 @@ export function normalizeCityGuide(raw: RawCityGuide, index = 0): CityGuideModel
     imageUrl: resolvePublicAssetUrl(raw.image_url),
     latitude,
     longitude,
-    mapUrl: hasCoordinates ? `https://www.google.com/maps?q=${latitude},${longitude}` : "",
+    mapUrl: hasCoordinates ? `https://www.google.com/maps?q=${latitude},${longitude}+(${encodeURIComponent(raw.title?.trim() || "Panduan Kota Depok")})` : "",
   };
 }
 
