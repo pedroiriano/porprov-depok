@@ -94,7 +94,7 @@ export function VenueInteractivePage() {
       });
       if (!res.ok) throw new Error("Gagal mengambil data venue dari server.");
       const json = await res.json();
-      const rawItems = unwrapCollection<RawVenue>(json.data);
+      const rawItems = unwrapCollection<RawVenue>(json);
       const parsed = rawItems.map(normalizeVenue);
       setVenues(parsed);
       setError(null);
