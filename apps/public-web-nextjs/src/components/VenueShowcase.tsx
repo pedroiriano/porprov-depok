@@ -144,7 +144,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
   const isPage = displayMode === "page";
 
   return (
-    <section id="venue-section" className={`relative scroll-mt-24 bg-[#D2EAF1] dark:bg-slate-950 ${isPage ? "pb-20 pt-32 md:pb-24 md:pt-40" : "py-16 md:py-24"}`} aria-labelledby="venue-heading">
+    <section id="venue-section" className={`relative scroll-mt-24 dark:bg-slate-950 ${isPage ? "bg-white pb-20 pt-32 md:pb-24 md:pt-40" : "bg-[#D2EAF1] py-16 md:py-24"}`} aria-labelledby="venue-heading">
       <div className="container relative">
         <div className="flex flex-col items-center justify-center text-center gap-6 mb-8 md:mb-12">
           <div className="max-w-3xl mx-auto">
