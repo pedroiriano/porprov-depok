@@ -63,7 +63,8 @@ export function HeroSection() {
           className="object-cover object-center"
         />
       </div>
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(2,6,23,0.70)_0%,rgba(3,19,38,0.50)_48%,rgba(13,62,113,0.30)_100%)]" aria-hidden="true" />
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(2,6,23,0.40)_0%,rgba(3,19,38,0.25)_48%,rgba(13,62,113,0.10)_100%)]" aria-hidden="true" />
+      <div className="absolute inset-x-0 top-0 -z-10 h-40 bg-gradient-to-b from-slate-950/70 to-transparent" aria-hidden="true" />
       <div className="absolute inset-x-0 bottom-0 -z-10 h-48 bg-gradient-to-t from-slate-950 to-transparent" aria-hidden="true" />
 
       <div className="container relative flex h-full items-center pt-24 pb-12 sm:pt-28">
@@ -74,14 +75,14 @@ export function HeroSection() {
               7 November 2026 · Kota Depok
             </div>
 
-            <h1 id="hero-title" className="max-w-4xl text-4xl font-black leading-[1.04] tracking-[-0.035em] text-white sm:text-5xl lg:text-7xl">
+            <h1 id="hero-title" className="max-w-4xl text-4xl font-black leading-[1.04] tracking-[-0.035em] text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
               Panggung Juara
               <span className="block bg-gradient-to-r from-sky-300 via-white to-amber-300 bg-clip-text text-transparent">
                 Jawa Barat.
               </span>
             </h1>
 
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-200 sm:text-lg">
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-200 drop-shadow-md sm:text-lg">
               Saksikan PORPROV XV Jawa Barat 2026 dari Kota Depok—jadwal, venue, LiveScore, dan perjalanan para atlet dalam satu portal resmi.
             </p>
 
