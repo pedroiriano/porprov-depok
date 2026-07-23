@@ -145,6 +145,8 @@ export function VenueInteractivePage() {
   const handleVenueClick = (venue: VenueViewModel) => {
     if (venue.latitude && venue.longitude) {
       setActiveVenue({ latitude: venue.latitude, longitude: venue.longitude });
+    } else {
+      alert("Venue ini belum memiliki data koordinat lokasi yang valid.");
     }
   };
 
