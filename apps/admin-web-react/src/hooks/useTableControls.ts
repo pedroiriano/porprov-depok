@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 // INFO: Tipe sorting generik
 export type SortDirection = 'asc' | 'desc';
@@ -20,14 +20,14 @@ export function useTableControls<K extends string>(defaults?: {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(defaults?.rowsPerPage ?? 10);
 
-  const handleSort = (key: K, defaultDirection?: SortDirection) => {
+  const handleSort = useCallback((key: K, defaultDirection?: SortDirection) => {
     if (sortKey === key) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortKey(key);
       setSortDirection(defaultDirection ?? 'asc');
     }
-  };
+  }, [sortKey]);
 
   // CHANGE: Reset ke halaman 1 saat rowsPerPage berubah
   useEffect(() => {
@@ -42,14 +42,14 @@ export function useTableControls<K extends string>(defaults?: {
     rowsPerPage,
     setRowsPerPage,
     handleSort,
-    resetPage: () => setCurrentPage(1),
+    resetPage: useCallback(() => setCurrentPage(1), []),
     
     // INFO: Alias backward compatibility lengkap untuk seluruh varian subagent
-    handleChangePage: (page: number) => setCurrentPage(page),
-    handlePageChange: (page: number) => setCurrentPage(page),
-    setPage: (page: number) => setCurrentPage(page),
-    handleChangeRowsPerPage: (value: number) => setRowsPerPage(value),
-    handleRowsPerPageChange: (value: number) => setRowsPerPage(value),
+    handleChangePage: useCallback((page: number) => setCurrentPage(page), []),
+    handlePageChange: useCallback((page: number) => setCurrentPage(page), []),
+    setPage: useCallback((page: number) => setCurrentPage(page), []),
+    handleChangeRowsPerPage: useCallback((value: number) => setRowsPerPage(value), []),
+    handleRowsPerPageChange: useCallback((value: number) => setRowsPerPage(value), []),
   };
 }
 
