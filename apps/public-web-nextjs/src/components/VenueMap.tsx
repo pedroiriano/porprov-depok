@@ -21,7 +21,7 @@ function MapController({ center, zoom }: { center: [number, number] | null; zoom
   const map = useMap();
   useEffect(() => {
     if (center) {
-      map.setView(center, zoom, { animate: true, duration: 1 });
+      map.flyTo(center, zoom, { animate: true, duration: 1.5 });
     }
   }, [center, zoom, map]);
   return null;
