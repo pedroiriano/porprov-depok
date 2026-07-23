@@ -57,7 +57,7 @@ const categories = [
 type CityGuideSortKey = 'title' | 'category' | 'address' | 'latitude';
 
 const googleMapsURL = (latitude: number | string, longitude: number | string) =>
-  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${latitude},${longitude}`)}`;
+  `https://www.google.com/maps?q=${latitude},${longitude}`;
 
 export default function CityGuide() {
   const [guides, setGuides] = useState<CityGuideRecord[]>([]);
