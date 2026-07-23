@@ -34,7 +34,7 @@ const getCategoryIcon = (category: string) => {
 export default async function CityGuidePage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; page?: string }>;
 }) {
   const resolvedParams = await searchParams;
   const activeCategory = resolvedParams.category?.toLowerCase() || "semua";
@@ -50,6 +50,22 @@ export default async function CityGuidePage({
   const filteredGuides = activeCategory === "semua" 
     ? allGuides 
     : allGuides.filter(g => g.category.toLowerCase().includes(activeCategory));
+
+  const ITEMS_PER_PAGE = 12;
+  const currentPage = Number(resolvedParams.page) || 1;
+  const totalPages = Math.ceil(filteredGuides.length / ITEMS_PER_PAGE) || 1;
+  const validPage = Math.max(1, Math.min(currentPage, totalPages));
+  
+  const paginatedGuides = filteredGuides.slice(
+    (validPage - 1) * ITEMS_PER_PAGE,
+    validPage * ITEMS_PER_PAGE
+  );
+
+  const createPageUrl = (pageNumber: number) => {
+    return activeCategory === "semua" 
+      ? `/city-guide?page=${pageNumber}`
+      : `/city-guide?category=${activeCategory}&page=${pageNumber}`;
+  };
 
   return (
     <main className="min-h-screen bg-slate-950 pb-24 pt-24 md:pt-32">
@@ -100,8 +116,9 @@ export default async function CityGuidePage({
       {/* Grid Content */}
       <div className="container">
         {filteredGuides.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredGuides.map((guide) => (
+          <div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {paginatedGuides.map((guide) => (
               <article 
                 key={guide.id}
                 className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-sky-500/50 hover:shadow-[0_10px_40px_rgba(56,189,248,0.15)]"
@@ -166,7 +183,51 @@ export default async function CityGuidePage({
                   </div>
                 </div>
               </article>
-            ))}
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-12 flex items-center justify-center gap-2">
+                <Link
+                  href={createPageUrl(validPage - 1)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-400 transition hover:bg-slate-800 hover:text-white ${
+                    validPage <= 1 ? "pointer-events-none opacity-50" : ""
+                  }`}
+                  aria-disabled={validPage <= 1}
+                >
+                  <i className="ri-arrow-left-s-line text-lg"></i>
+                </Link>
+                
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  const pageNum = i + 1;
+                  const isActive = pageNum === validPage;
+                  return (
+                    <Link
+                      key={pageNum}
+                      href={createPageUrl(pageNum)}
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold transition ${
+                        isActive
+                          ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-[0_0_15px_rgba(56,189,248,0.3)]"
+                          : "border border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white"
+                      }`}
+                    >
+                      {pageNum}
+                    </Link>
+                  );
+                })}
+
+                <Link
+                  href={createPageUrl(validPage + 1)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-400 transition hover:bg-slate-800 hover:text-white ${
+                    validPage >= totalPages ? "pointer-events-none opacity-50" : ""
+                  }`}
+                  aria-disabled={validPage >= totalPages}
+                >
+                  <i className="ri-arrow-right-s-line text-lg"></i>
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-800 bg-slate-900/50 py-24 px-4 text-center">
