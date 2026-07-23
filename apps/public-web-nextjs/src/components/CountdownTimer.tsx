@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 
 interface CountdownProps {
   targetDate: string; // ISO String format
+  onFinished?: () => void;
 }
 
-export function CountdownTimer({ targetDate }: CountdownProps) {
+export function CountdownTimer({ targetDate, onFinished }: CountdownProps) {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -35,17 +36,29 @@ export function CountdownTimer({ targetDate }: CountdownProps) {
       };
     };
 
+    const checkFinished = (timeObj: typeof timeLeft) => {
+      if (timeObj.days === 0 && timeObj.hours === 0 && timeObj.minutes === 0 && timeObj.seconds === 0) {
+        if (onFinished) {
+          onFinished();
+        }
+        return true;
+      }
+      return false;
+    };
+
     // PERFORMANCE: Jadwalkan state awal di luar body effect agar sesuai kontrak React 19.
     const mountedTimer = window.setTimeout(() => {
       setMounted(true);
-      setTimeLeft(calculateTimeLeft());
+      const initialTime = calculateTimeLeft();
+      setTimeLeft(initialTime);
+      checkFinished(initialTime);
     }, 0);
 
     const interval = setInterval(() => {
       const newTimeLeft = calculateTimeLeft();
       setTimeLeft(newTimeLeft);
       
-      if (newTimeLeft.days === 0 && newTimeLeft.hours === 0 && newTimeLeft.minutes === 0 && newTimeLeft.seconds === 0) {
+      if (checkFinished(newTimeLeft)) {
         clearInterval(interval);
       }
     }, 1000);
@@ -54,7 +67,7 @@ export function CountdownTimer({ targetDate }: CountdownProps) {
       window.clearTimeout(mountedTimer);
       clearInterval(interval);
     };
-  }, [targetDate]);
+  }, [targetDate, onFinished]);
 
   if (!mounted) {
     return (

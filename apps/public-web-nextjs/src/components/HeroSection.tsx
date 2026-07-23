@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CountdownTimer } from "@/components/CountdownTimer";
 
 export function HeroSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
+  const [isCountdownFinished, setIsCountdownFinished] = useState(false);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -96,18 +97,24 @@ export function HeroSection() {
             </div>
           </div>
 
-          <div className="md:col-span-5 lg:col-span-4">
-            <div className="rounded-2xl border border-white/15 bg-slate-950/55 p-4 shadow-2xl shadow-slate-950/40 backdrop-blur-xl sm:p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-300">Hitung Mundur</p>
-                  <h2 className="mt-1 text-lg font-bold text-white">Menuju Opening Ceremony</h2>
+          {/* Countdown Card (Hidden when finished) */}
+          {!isCountdownFinished && (
+            <div className="md:col-span-5 lg:col-span-4">
+              <div className="rounded-2xl border border-white/15 bg-slate-950/55 p-4 shadow-2xl shadow-slate-950/40 backdrop-blur-xl sm:p-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-300">Hitung Mundur</p>
+                    <h2 className="mt-1 text-lg font-bold text-white">Menuju Opening Ceremony</h2>
+                  </div>
+                  <i className="ri-trophy-line text-3xl text-amber-300" aria-hidden="true" />
                 </div>
-                <i className="ri-trophy-line text-3xl text-amber-300" aria-hidden="true" />
+                <CountdownTimer 
+                  targetDate="2026-11-07T00:00:00+07:00" 
+                  onFinished={() => setIsCountdownFinished(true)}
+                />
               </div>
-              <CountdownTimer targetDate="2026-11-07T00:00:00+07:00" />
             </div>
-          </div>
+          )}
         </div>
       </div>
 
