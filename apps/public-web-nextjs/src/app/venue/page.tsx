@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { VenueShowcase } from "@/components/VenueShowcase";
+import { VenueInteractivePage } from "@/components/VenueInteractivePage";
 
 export const metadata: Metadata = {
   title: "Venue & Lokasi Pertandingan",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function VenuePage() {
-  return <VenueShowcase displayMode="page" />;
+  return <VenueInteractivePage />;
 }
