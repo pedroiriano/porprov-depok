@@ -87,7 +87,7 @@ export function VenueInteractivePage() {
 
   const fetchVenues = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch(publicApiUrl("/api/v1/venues?limit=100"), {
+      const res = await fetch(publicApiUrl("/venues"), {
         signal,
         headers: { Accept: "application/json" },
         cache: "no-store",
