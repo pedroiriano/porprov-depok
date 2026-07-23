@@ -95,14 +95,14 @@ export default async function CityGuidePage({
 
       {/* Tabs / Filters */}
       <div className="sticky top-[72px] z-20 md:top-[88px] bg-slate-950/80 backdrop-blur-xl border-y border-slate-800 py-4 mb-12 shadow-lg">
-        <div className="container flex items-center justify-start md:justify-center overflow-x-auto pb-2 md:pb-0 scrollbar-hide gap-3">
+        <div className="container flex flex-wrap items-center justify-center gap-2">
           {categories.map((cat) => {
             const isActive = activeCategory === cat.id;
             return (
               <Link 
                 key={cat.id}
                 href={cat.id === "semua" ? "/city-guide" : `/city-guide?category=${cat.id}`}
-                className={`flex shrink-0 items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-all duration-300 ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 ${
                   isActive 
                     ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(56,189,248,0.3)]" 
                     : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600"
