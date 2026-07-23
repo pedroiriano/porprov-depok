@@ -18,16 +18,14 @@ async function getCityGuides() {
 }
 
 const getCategoryIcon = (category: string) => {
-  const cat = category.toLowerCase();
-  if (cat.includes("kopi") || cat.includes("cafe") || cat.includes("makan") || cat.includes("kuliner") || cat.includes("coffee") || cat.includes("restaurant")) {
-    return "ri-restaurant-2-line text-amber-500 bg-amber-500/20";
-  }
-  if (cat.includes("inap") || cat.includes("hotel") || cat.includes("akomodasi") || cat.includes("apartemen")) {
-    return "ri-hotel-bed-line text-indigo-500 bg-indigo-500/20";
-  }
-  if (cat.includes("wisata") || cat.includes("taman")) {
-    return "ri-map-2-line text-sky-500 bg-sky-500/20";
-  }
+  const cat = category.trim().toLowerCase();
+  if (cat === "coffee shop") return "ri-cup-line text-amber-500 bg-amber-500/20";
+  if (cat === "wisata kuliner") return "ri-restaurant-2-line text-orange-500 bg-orange-500/20";
+  if (cat === "tempat menginap") return "ri-hotel-bed-line text-indigo-500 bg-indigo-500/20";
+  if (cat === "wisata buatan") return "ri-building-4-line text-sky-500 bg-sky-500/20";
+  if (cat === "wisata situ") return "ri-water-flash-line text-cyan-500 bg-cyan-500/20";
+  if (cat === "pusat perbelanjaan") return "ri-shopping-bag-3-line text-pink-500 bg-pink-500/20";
+  if (cat === "rumah sakit") return "ri-hospital-line text-red-500 bg-red-500/20";
   return "ri-map-pin-2-line text-emerald-500 bg-emerald-500/20";
 };
 
@@ -42,14 +40,19 @@ export default async function CityGuidePage({
 
   const categories = [
     { id: "semua", label: "Semua", icon: "ri-apps-2-line" },
-    { id: "wisata", label: "Wisata", icon: "ri-map-2-line" },
-    { id: "kuliner", label: "Kuliner", icon: "ri-restaurant-2-line" },
-    { id: "akomodasi", label: "Akomodasi", icon: "ri-hotel-bed-line" },
+    { id: "coffee-shop", label: "Coffee Shop", icon: "ri-cup-line" },
+    { id: "wisata-kuliner", label: "Wisata Kuliner", icon: "ri-restaurant-2-line" },
+    { id: "tempat-menginap", label: "Tempat Menginap", icon: "ri-hotel-bed-line" },
+    { id: "wisata-buatan", label: "Wisata Buatan", icon: "ri-building-4-line" },
+    { id: "wisata-situ", label: "Wisata Situ", icon: "ri-water-flash-line" },
+    { id: "pusat-perbelanjaan", label: "Pusat Perbelanjaan", icon: "ri-shopping-bag-3-line" },
+    { id: "rumah-sakit", label: "Rumah Sakit", icon: "ri-hospital-line" },
+    { id: "lainnya", label: "Lainnya", icon: "ri-map-pin-2-line" },
   ];
 
   const filteredGuides = activeCategory === "semua" 
     ? allGuides 
-    : allGuides.filter(g => g.category.toLowerCase().includes(activeCategory));
+    : allGuides.filter(g => g.category.trim().toLowerCase().replace(/\s+/g, '-') === activeCategory);
 
   const ITEMS_PER_PAGE = 12;
   const currentPage = Number(resolvedParams.page) || 1;
