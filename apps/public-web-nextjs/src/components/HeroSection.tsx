@@ -63,7 +63,7 @@ export function HeroSection() {
           className="object-cover object-center"
         />
       </div>
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(2,6,23,0.94)_0%,rgba(3,19,38,0.82)_48%,rgba(13,62,113,0.52)_100%)]" aria-hidden="true" />
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(2,6,23,0.70)_0%,rgba(3,19,38,0.50)_48%,rgba(13,62,113,0.30)_100%)]" aria-hidden="true" />
       <div className="absolute inset-x-0 bottom-0 -z-10 h-48 bg-gradient-to-t from-slate-950 to-transparent" aria-hidden="true" />
 
       <div className="container relative flex h-full items-center pt-24 pb-12 sm:pt-28">
