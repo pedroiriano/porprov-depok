@@ -11,6 +11,12 @@ interface AuditEvent {
   entity_id: string; action: string; actor_id: string; request_id: string; ip_address: string; payload: unknown; payload_hash: string; created_at: string;
 }
 
+interface User {
+  id: string;
+  username: string;
+  full_name: string;
+}
+
 type AuditSortKey = 'created_at' | 'actor_id' | 'action' | 'service_name' | 'entity_id';
 
 function csvCell(value: unknown): string {
@@ -21,6 +27,7 @@ export default function AuditLog() {
   const auth = useAuth();
   const token = auth.user?.access_token;
   const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
   const [action, setAction] = useState('');
   const [service, setService] = useState('');
@@ -39,8 +46,23 @@ export default function AuditLog() {
       if (search.trim()) params.set('search', search.trim());
       if (action) params.set('action', action);
       if (service) params.set('service', service);
-      const response = await apiClient.get<AuditEvent[]>(`/audit/logs?${params}`, authConfig(token));
-      setEvents(unwrapApiData<AuditEvent[]>(response.data) || []);
+      
+      const [eventsRes, usersRes] = await Promise.all([
+        apiClient.get<AuditEvent[]>(`/audit/logs?${params}`, authConfig(token)),
+        apiClient.get<User[]>('/users', authConfig(token)).catch(() => ({ data: [] }))
+      ]);
+      
+      const fetchedEvents = unwrapApiData<AuditEvent[]>(eventsRes.data) || [];
+      const fetchedUsers = unwrapApiData<User[]>(usersRes.data) || [];
+      
+      const map: Record<string, string> = {};
+      fetchedUsers.forEach(u => {
+        map[u.id] = u.username;
+        // Jika ada fallback field lain seperti keycloak_id bisa ditambahkan
+      });
+      
+      setEvents(fetchedEvents);
+      setUsersMap(map);
     } catch (cause) {
       setError(getApiErrorMessage(cause, 'Gagal membaca audit log immutable.'));
     } finally { setLoading(false); }
@@ -265,7 +287,9 @@ export default function AuditLog() {
                         <p className="font-bold text-slate-900 dark:text-white">{new Date(item.created_at).toLocaleString('id-ID')}</p>
                         <p className="mt-1 text-xs text-slate-400">v{item.event_version}</p>
                       </td>
-                      <td className="p-4 font-mono text-xs text-slate-700 dark:text-slate-300">{item.actor_id || 'legacy/system'}</td>
+                      <td className="p-4 font-mono text-xs text-slate-700 dark:text-slate-300">
+                        {usersMap[item.actor_id] || item.actor_id || 'legacy/system'}
+                      </td>
                       <td className="p-4">
                         <span className="rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 text-xs font-black text-indigo-700 dark:text-indigo-300">{item.action}</span>
                       </td>

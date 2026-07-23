@@ -106,7 +106,7 @@ func (h *MasterDataHandler) UploadMedia(w http.ResponseWriter, r *http.Request) 
 		encoded, _ := media.ID.MarshalJSON()
 		id = strings.Trim(string(encoded), "\"")
 	}
-	publishAudit("Media", "UPLOAD", id, media)
+	publishAudit(r, "Media", "UPLOAD", id, media)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(media)

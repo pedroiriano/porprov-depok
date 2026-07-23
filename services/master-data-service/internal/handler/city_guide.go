@@ -31,12 +31,16 @@ func NewCityGuideHandler(queries *db.Queries) *CityGuideHandler {
 	return &CityGuideHandler{queries: queries}
 }
 
-func publishAuditCityGuide(action, entityID string, payload interface{}) {
+func publishAuditCityGuide(r *http.Request, action, entityID string, payload interface{}) {
+	actorID := r.Header.Get("X-User-Id")
+	requestID := r.Header.Get("X-Request-Id")
 	event := map[string]interface{}{
 		"service_name": "master-data-service",
 		"entity_name":  "CityGuide",
 		"entity_id":    entityID,
 		"action":       action,
+		"actor_id":     actorID,
+		"request_id":   requestID,
 		"payload":      payload,
 	}
 	data, _ := json.Marshal(event)
@@ -105,7 +109,7 @@ func (h *CityGuideHandler) CreateCityGuide(w http.ResponseWriter, r *http.Reques
 		b, _ := cg.ID.MarshalJSON()
 		uuidStr = string(b)
 	}
-	publishAuditCityGuide("CREATE", uuidStr, cg)
+	publishAuditCityGuide(r, "CREATE", uuidStr, cg)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -177,7 +181,7 @@ func (h *CityGuideHandler) UpdateCityGuide(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	publishAuditCityGuide("UPDATE", id, cg)
+	publishAuditCityGuide(r, "UPDATE", id, cg)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(cg)
 }

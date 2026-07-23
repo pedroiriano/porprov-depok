@@ -27,12 +27,16 @@ func NewMasterDataHandler(queries *db.Queries, scheduleURL string) *MasterDataHa
 }
 
 // publishAudit is a helper to publish audit logs
-func publishAudit(entityName, action, entityID string, payload interface{}) {
+func publishAudit(r *http.Request, entityName, action, entityID string, payload interface{}) {
+	actorID := r.Header.Get("X-User-Id")
+	requestID := r.Header.Get("X-Request-Id")
 	event := map[string]interface{}{
 		"service_name": "master-data-service",
 		"entity_name":  entityName,
 		"entity_id":    entityID,
 		"action":       action,
+		"actor_id":     actorID,
+		"request_id":   requestID,
 		"payload":      payload,
 	}
 	data, _ := json.Marshal(event)
@@ -75,7 +79,7 @@ func (h *MasterDataHandler) CreateCabor(w http.ResponseWriter, r *http.Request) 
 		b, _ := cabor.ID.MarshalJSON()
 		uuidStr = string(b)
 	}
-	publishAudit("Cabor", "CREATE", uuidStr, cabor)
+	publishAudit(r, "Cabor", "CREATE", uuidStr, cabor)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -145,7 +149,7 @@ func (h *MasterDataHandler) UpdateCabor(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	publishAudit("Cabor", "UPDATE", id, cabor)
+	publishAudit(r, "Cabor", "UPDATE", id, cabor)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cabor)
@@ -196,7 +200,7 @@ func (h *MasterDataHandler) CreateKontingen(w http.ResponseWriter, r *http.Reque
 		b, _ := kontingen.ID.MarshalJSON()
 		uuidStr = string(b)
 	}
-	publishAudit("Kontingen", "CREATE", uuidStr, kontingen)
+	publishAudit(r, "Kontingen", "CREATE", uuidStr, kontingen)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -258,7 +262,7 @@ func (h *MasterDataHandler) UpdateKontingen(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	publishAudit("Kontingen", "UPDATE", id, kontingen)
+	publishAudit(r, "Kontingen", "UPDATE", id, kontingen)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(kontingen)
@@ -322,7 +326,7 @@ func (h *MasterDataHandler) CreateNomorTanding(w http.ResponseWriter, r *http.Re
 		encoded, _ := item.ID.MarshalJSON()
 		id = strings.Trim(string(encoded), "\"")
 	}
-	publishAudit("NomorTanding", "CREATE", id, item)
+	publishAudit(r, "NomorTanding", "CREATE", id, item)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(item)
@@ -382,7 +386,7 @@ func (h *MasterDataHandler) UpdateNomorTanding(w http.ResponseWriter, r *http.Re
 		http.Error(w, "Gagal memperbarui nomor pertandingan: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	publishAudit("NomorTanding", "UPDATE", idText, item)
+	publishAudit(r, "NomorTanding", "UPDATE", idText, item)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(item)
 }

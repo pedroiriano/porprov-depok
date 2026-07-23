@@ -94,7 +94,7 @@ func handleSoftDelete(w http.ResponseWriter, r *http.Request, queries *db.Querie
 		return
 	}
 	if changed {
-		publishAudit(entityName, "SOFT_DELETE", idText, map[string]interface{}{
+		publishAudit(r, entityName, "SOFT_DELETE", idText, map[string]interface{}{
 			"actor": actor, "reason": reason, "request_id": r.Header.Get("X-Request-ID"), "record": record,
 		})
 	}
@@ -136,7 +136,7 @@ func (h *MasterDataHandler) RestoreDeleted(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if changed {
-		publishAudit(entityType, "RESTORE", idText, map[string]interface{}{
+		publishAudit(r, entityType, "RESTORE", idText, map[string]interface{}{
 			"actor": actor, "request_id": r.Header.Get("X-Request-ID"), "tombstone": record,
 		})
 	}
