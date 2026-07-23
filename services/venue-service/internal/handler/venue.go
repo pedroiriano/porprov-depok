@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,8 +59,8 @@ func (h *VenueHandler) CreateVenue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var lat, lng pgtype.Numeric
-	lat.Scan(req.Latitude)
-	lng.Scan(req.Longitude)
+	lat.Scan(strconv.FormatFloat(req.Latitude, 'f', -1, 64))
+	lng.Scan(strconv.FormatFloat(req.Longitude, 'f', -1, 64))
 
 	var cityGuideUUIDs []pgtype.UUID
 	for _, id := range req.CityGuideIds {
@@ -166,8 +167,8 @@ func (h *VenueHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&req)
 
 	var lat, lng pgtype.Numeric
-	lat.Scan(req.Latitude)
-	lng.Scan(req.Longitude)
+	lat.Scan(strconv.FormatFloat(req.Latitude, 'f', -1, 64))
+	lng.Scan(strconv.FormatFloat(req.Longitude, 'f', -1, 64))
 
 	var cityGuideUUIDs []pgtype.UUID
 	for _, cid := range req.CityGuideIds {
