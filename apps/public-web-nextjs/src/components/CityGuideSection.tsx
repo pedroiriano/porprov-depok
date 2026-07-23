@@ -82,7 +82,7 @@ export function CityGuideSection() {
               </div>
 
               {/* Smaller Cards */}
-              <Link href="/city-guide?category=wisata" className="group relative h-[220px] overflow-hidden rounded-3xl bg-slate-900 shadow-xl border border-slate-800 transition-all hover:border-sky-500/50 hover:shadow-[0_0_30px_rgba(56,189,248,0.15)]">
+              <Link href="/city-guide?category=wisata-buatan" className="group relative h-[220px] overflow-hidden rounded-3xl bg-slate-900 shadow-xl border border-slate-800 transition-all hover:border-sky-500/50 hover:shadow-[0_0_30px_rgba(56,189,248,0.15)]">
                 <Image 
                   src="/assets/images/alun-alun.png" 
                   alt="Alun-Alun Kota Depok" 
@@ -100,7 +100,7 @@ export function CityGuideSection() {
               </Link>
 
               <div className="grid grid-rows-2 gap-4 lg:gap-6">
-                <Link href="/city-guide?category=kuliner" className="group relative flex items-center gap-4 overflow-hidden rounded-3xl bg-slate-900 p-5 shadow-xl border border-slate-800 transition-all hover:bg-slate-800 hover:border-amber-500/50">
+                <Link href="/city-guide?category=wisata-kuliner" className="group relative flex items-center gap-4 overflow-hidden rounded-3xl bg-slate-900 p-5 shadow-xl border border-slate-800 transition-all hover:bg-slate-800 hover:border-amber-500/50">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-500">
                     <i className="ri-restaurant-2-line text-2xl"></i>
                   </div>
@@ -110,7 +110,7 @@ export function CityGuideSection() {
                   </div>
                 </Link>
                 
-                <Link href="/city-guide?category=akomodasi" className="group relative flex items-center gap-4 overflow-hidden rounded-3xl bg-slate-900 p-5 shadow-xl border border-slate-800 transition-all hover:bg-slate-800 hover:border-indigo-500/50">
+                <Link href="/city-guide?category=tempat-menginap" className="group relative flex items-center gap-4 overflow-hidden rounded-3xl bg-slate-900 p-5 shadow-xl border border-slate-800 transition-all hover:bg-slate-800 hover:border-indigo-500/50">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-500">
                     <i className="ri-hotel-bed-line text-2xl"></i>
                   </div>
