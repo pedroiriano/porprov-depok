@@ -1,13 +1,28 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { CountdownTimer } from "@/components/CountdownTimer";
+import type { HeroContentModel } from "@/lib/public-models";
 
-export function HeroSection() {
+interface HeroSectionProps {
+  hero: HeroContentModel;
+}
+
+function splitHeroTitle(title: string, highlightText: string) {
+  if (!highlightText) return { base: title, highlight: "" };
+  const index = title.toLocaleLowerCase("id-ID").lastIndexOf(highlightText.toLocaleLowerCase("id-ID"));
+  if (index < 0) return { base: title, highlight: "" };
+  return {
+    base: `${title.slice(0, index)}${title.slice(index + highlightText.length)}`.trim(),
+    highlight: title.slice(index, index + highlightText.length),
+  };
+}
+
+export function HeroSection({ hero }: HeroSectionProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
   const [isCountdownFinished, setIsCountdownFinished] = useState(false);
+  const title = splitHeroTitle(hero.title, hero.highlightText);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -53,13 +68,9 @@ export function HeroSection() {
   return (
     <section ref={sectionRef} className="hero-section relative isolate w-full overflow-hidden" aria-labelledby="hero-title">
       <div ref={mediaRef} className="hero-parallax-media absolute -inset-[8%] -z-20" aria-hidden="true">
-        <Image
-          src="/assets/images/alun-alun.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${JSON.stringify(hero.backgroundImageUrl).slice(1, -1)})` }}
         />
       </div>
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(2,6,23,0.40)_0%,rgba(3,19,38,0.25)_48%,rgba(13,62,113,0.10)_100%)]" aria-hidden="true" />
@@ -75,14 +86,16 @@ export function HeroSection() {
             </div>
 
             <h1 id="hero-title" className="max-w-4xl text-4xl font-black leading-[1.04] tracking-[-0.035em] text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
-              Panggung Juara
-              <span className="block bg-gradient-to-r from-sky-300 via-white to-amber-300 bg-clip-text text-transparent">
-                Jawa Barat.
-              </span>
+              {title.base || hero.title}
+              {title.highlight && (
+                <span className="block bg-gradient-to-r from-sky-300 via-white to-amber-300 bg-clip-text text-transparent">
+                  {title.highlight}
+                </span>
+              )}
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-200 drop-shadow-md sm:text-lg">
-              Saksikan PORPROV XV Jawa Barat 2026 dari Kota Depok—jadwal, venue, LiveScore, dan perjalanan para atlet dalam satu portal resmi.
+              {hero.description}
             </p>
 
           </div>

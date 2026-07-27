@@ -94,6 +94,9 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 
 	// API Versi 1
 	r.Route("/api/v1", func(r chi.Router) {
+		// INFO: Landing Page hanya membaca satu projection Hero aktif tanpa membuka endpoint mutasi.
+		r.Get("/master-data/heroes/active", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)
+
 		// Rute terproteksi (butuh token JWT Keycloak)
 		r.Group(func(r chi.Router) {
 			r.Use(jwtMid.RequireAuth)
@@ -155,8 +158,17 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 		r.Get("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
 		r.Get("/venues", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
 
-		// Public Master Data Service (GET)
-		r.Get("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)
+		// Public Master Data Service (GET) memakai allowlist; endpoint editorial,
+		// tombstone, Media Library, dan mutasi tidak boleh ikut terbuka oleh wildcard.
+		publicMasterData := http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL))
+		r.Get("/master-data/cabors", publicMasterData.ServeHTTP)
+		r.Get("/master-data/cabors/{id}", publicMasterData.ServeHTTP)
+		r.Get("/master-data/nomor-tandings", publicMasterData.ServeHTTP)
+		r.Get("/master-data/nomor-tandings/{id}", publicMasterData.ServeHTTP)
+		r.Get("/master-data/kontingens", publicMasterData.ServeHTTP)
+		r.Get("/master-data/kontingens/{id}", publicMasterData.ServeHTTP)
+		r.Get("/master-data/city-guides", publicMasterData.ServeHTTP)
+		r.Get("/master-data/city-guides/{id}", publicMasterData.ServeHTTP)
 
 		// Public Schedule Service (GET)
 		// INFO: Jadwal aktif adalah data publik. Endpoint deleted tetap ditolak oleh

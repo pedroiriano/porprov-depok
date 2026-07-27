@@ -118,3 +118,58 @@ ORDER BY created_at DESC;
 SELECT * FROM media_assets
 WHERE id = $1 AND deleted_at IS NULL
 LIMIT 1;
+
+-- name: CreateHero :one
+WITH deactivated AS (
+  UPDATE heroes AS current_hero
+  SET is_active = FALSE, updated_at = NOW(), updated_by = sqlc.arg(actor)
+  WHERE sqlc.arg(is_active)::boolean = TRUE AND current_hero.is_active = TRUE AND current_hero.deleted_at IS NULL
+  RETURNING current_hero.id
+)
+INSERT INTO heroes (title, highlight_text, description, background_image_url, is_active, created_by, updated_by)
+SELECT sqlc.arg(title), NULLIF(sqlc.arg(highlight_text)::text, ''), sqlc.arg(description),
+       sqlc.arg(background_image_url), sqlc.arg(is_active), sqlc.arg(actor), sqlc.arg(actor)
+FROM (SELECT COUNT(*) FROM deactivated) synchronization
+RETURNING *;
+
+-- name: ListHeroes :many
+SELECT * FROM heroes
+WHERE deleted_at IS NULL
+ORDER BY is_active DESC, updated_at DESC;
+
+-- name: GetActiveHero :one
+SELECT * FROM heroes
+WHERE is_active = TRUE AND deleted_at IS NULL
+LIMIT 1;
+
+-- name: GetHeroByID :one
+SELECT * FROM heroes
+WHERE id = $1 AND deleted_at IS NULL
+LIMIT 1;
+
+-- name: UpdateHero :one
+WITH deactivated AS (
+  UPDATE heroes AS current_hero
+  SET is_active = FALSE, updated_at = NOW(), updated_by = sqlc.arg(actor)
+  WHERE sqlc.arg(is_active)::boolean = TRUE
+    AND current_hero.id <> sqlc.arg(id)
+    AND current_hero.is_active = TRUE
+    AND current_hero.deleted_at IS NULL
+    AND EXISTS (
+      SELECT 1 FROM heroes AS update_target
+      WHERE update_target.id = sqlc.arg(id) AND update_target.deleted_at IS NULL
+    )
+  RETURNING current_hero.id
+)
+UPDATE heroes AS target
+SET title = sqlc.arg(title),
+    highlight_text = NULLIF(sqlc.arg(highlight_text)::text, ''),
+    description = sqlc.arg(description),
+    background_image_url = sqlc.arg(background_image_url),
+    is_active = sqlc.arg(is_active),
+    updated_by = sqlc.arg(actor),
+    updated_at = NOW()
+WHERE target.id = sqlc.arg(id)
+  AND target.deleted_at IS NULL
+  AND (SELECT COUNT(*) FROM deactivated) >= 0
+RETURNING *;

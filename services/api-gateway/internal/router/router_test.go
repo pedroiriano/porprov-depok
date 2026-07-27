@@ -148,6 +148,33 @@ func TestPublicScheduleReadDoesNotRequireJWT(t *testing.T) {
 	}
 }
 
+func TestPublicActiveHeroReadDoesNotRequireJWT(t *testing.T) {
+	t.Parallel()
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/heroes/active" {
+			t.Fatalf("unexpected upstream path %q", r.URL.Path)
+		}
+		_, _ = io.WriteString(w, `{"title":"Hero aktif"}`)
+	}))
+	defer upstream.Close()
+
+	cfg := &config.AppConfig{
+		MasterDataURL: upstream.URL,
+		ScheduleURL:   upstream.URL,
+		VenueURL:      upstream.URL,
+		AuditURL:      upstream.URL,
+		LivescoreURL:  upstream.URL,
+		MedalsURL:     upstream.URL,
+		RealtimeURL:   upstream.URL,
+	}
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/master-data/heroes/active", nil)
+	response := httptest.NewRecorder()
+	SetupRouter(nil, cfg).ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected public active Hero status 200, got %d", response.Code)
+	}
+}
+
 func TestPublicLivescoreProjectionDoesNotRequireJWT(t *testing.T) {
 	t.Parallel()
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

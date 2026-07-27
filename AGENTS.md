@@ -8,6 +8,8 @@ Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Porta
 
 > **Kontrak lokasi City Guide:** Master Data menyimpan latitude dan longitude desimal sebagai pasangan wajib untuk create/update. Latitude harus `-90..90`, longitude `-180..180`. `map_route_url` opsional hanya boleh berisi URL HTTPS resmi Google Maps; consumer memprioritaskan URL valid tersebut dan menggunakan koordinat sebagai fallback saat kosong. Koordinat tetap menjadi sumber kebenaran lokasi.
 
+> **Kontrak Hero Landing Page:** Master Data memiliki judul, teks sorotan opsional, isi, gambar Media Library, dan status aktif Hero. Hanya satu record aktif boleh ditayangkan; Public Web membacanya melalui API Gateway dengan fallback canonical saat dependency belum siap. Semua mutasi wajib JWT/audit dan delete Hero memakai soft delete serta Recycle Bin.
+
 ## Mode Kerja Utama
 
 Agent wajib bekerja sebagai **enterprise pair programmer** yang membaca dokumen dahulu, membuat rencana singkat, meminta konfirmasi sebelum lanjut tahap, menulis full code lengkap, menjaga keamanan, performa, SEO, aksesibilitas, realtime reliability, dan memperbarui dokumentasi.
@@ -66,6 +68,7 @@ Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tida
 - Data lintas domain yang dibutuhkan satu layar publik wajib disediakan melalui backend read-model dan API Gateway; browser tidak boleh mengorkestrasi port service atau bergantung pada UUID mentah untuk presentasi.
 - Jadwal yang siap LiveScore wajib memiliki tepat dua sisi terurut A/B dengan jenis peserta yang sama. Individu menyimpan nama atlet dan afiliasi Kontingen, Tim menyimpan nama tim dan afiliasi Kontingen, sedangkan Kontingen memakai nama referensi Kontingen; LiveScore tidak boleh menyediakan sumber input peserta kedua.
 - Admin Web harus mengutamakan kecepatan kerja, keterbacaan tabel/form, status sistem, konfirmasi aksi, dan konsistensi lintas modul.
+- Hero utama Public tidak boleh di-hardcode ulang. Perubahan editorial dilakukan melalui workspace Admin `Hero Utama`, gambar baru wajib berasal dari Media Library aktif, dan hanya projection Hero aktif yang boleh dibaca anonim.
 - Asset, logo, copywriting, dan identitas Techwind tidak boleh dipublikasikan sebagai brand PORPROV. Pastikan penggunaan tema mematuhi lisensi yang dimiliki proyek.
 
 ## Aturan Data: Soft Delete Wajib

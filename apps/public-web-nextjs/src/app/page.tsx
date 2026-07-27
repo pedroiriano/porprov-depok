@@ -4,6 +4,13 @@ import { MascotSection } from "@/components/MascotSection";
 import { PorprovIntroduction } from "@/components/PorprovIntroduction";
 import { VenueShowcase } from "@/components/VenueShowcase";
 import { CityGuideSection } from "@/components/CityGuideSection";
+import { publicApiUrl } from "@/lib/public-api";
+import {
+  defaultHeroContent,
+  normalizeHeroContent,
+  type HeroContentModel,
+  type RawHeroContent,
+} from "@/lib/public-models";
 
 const informationLinks = [
   {
@@ -40,10 +47,25 @@ const informationLinks = [
   },
 ];
 
-export default function Home() {
+async function loadActiveHero(): Promise<HeroContentModel> {
+  try {
+    const response = await fetch(publicApiUrl("/master-data/heroes/active"), {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return defaultHeroContent;
+    return normalizeHeroContent(await response.json() as RawHeroContent);
+  } catch {
+    // INFO: Landing Page tetap tersedia saat Gateway belum siap pada startup lokal.
+    return defaultHeroContent;
+  }
+}
+
+export default async function Home() {
+  const hero = await loadActiveHero();
   return (
     <>
-      <HeroSection />
+      <HeroSection hero={hero} />
       <PorprovIntroduction />
       <MascotSection />
 

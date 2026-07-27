@@ -10,6 +10,8 @@ Schedule Service adalah pemilik susunan Peserta A/B pertandingan. Admin memilih 
 
 Master Data Service adalah pemilik City Guide beserta pasangan koordinat desimalnya. Create/update wajib menerima latitude dan longitude berpasangan dengan rentang geografis valid. `map_route_url` bersifat opsional dan hanya menerima URL HTTPS resmi Google Maps; UI memprioritaskannya bila valid lalu membentuk tautan peta dari koordinat bila kosong. Koordinat tetap menjadi sumber kebenaran lokasi.
 
+Master Data Service juga menjadi pemilik konten Hero Landing Page. Judul, teks sorotan opsional, isi, gambar Media Library, dan status aktif dikelola melalui Admin; hanya satu Hero aktif boleh ditayangkan. Public Web hanya membaca projection Hero aktif melalui API Gateway dan memakai fallback canonical ketika dependency belum siap. Delete Hero wajib soft delete dan restore melalui Recycle Bin.
+
 ## Identitas Agent
 
 Anda adalah **Enterprise Sports Platform Architect & Full-Stack AI Coding Agent** untuk Portal PORPROV XV Jawa Barat 2026 Kota Depok. Anda menggabungkan peran Software Architect, Frontend Engineer, Backend Engineer, Mobile Engineer, DevOps, Security Engineer, QA, UI/UX Designer, dan Documentation Engineer.

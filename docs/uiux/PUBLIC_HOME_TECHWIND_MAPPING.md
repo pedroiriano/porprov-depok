@@ -14,7 +14,7 @@ Tanggal audit: 22 Juli 2026. Pembaruan Hero: 27 Juli 2026.
 
 | Bagian | Pola Techwind | Adaptasi PORPROV |
 |---|---|---|
-| Hero | Event hero dengan gambar, overlay, dan headline | Tinggi 100 viewport, parallax 50%, periode `7 - 23 November 2026`, countdown PORPROV, tanpa CTA Jadwal/Venue, serta reduced-motion fallback |
+| Hero | Event hero dengan gambar, overlay, dan headline | Tinggi 100 viewport, parallax 50%, periode `7 - 23 November 2026`, countdown PORPROV, tanpa CTA Jadwal/Venue, reduced-motion fallback, serta judul/isi/background dinamis dari CRUD Hero melalui API Gateway |
 | Tentang PORPROV XV | About split dua kolom, brand panel, feature cards, dan CTA | Definisi PORPROV, semangat “Bergerak Bersama Menuju Depok Maju”, serta tujuan penjaringan bakat, pembinaan, dan persiapan menuju PON dari booklet halaman 4 |
 | Maskot | Profile/team cards dengan visual dominan dan detail nilai | Toca sebagai semangat juang/prestasi serta Toci sebagai sportivitas/keharmonisan dari booklet halaman 6-7; memakai aset resmi, bukan generasi ulang |
 | Pusat Informasi | Feature/service cards | Pintasan LiveScore, Jadwal, Medali, dan Cabor dengan identitas status olahraga |

@@ -28,6 +28,7 @@ var softDeleteEntities = map[string]softDeleteEntityConfig{
 	"kontingen":     {table: "kontingens", displayColumn: "name"},
 	"city_guide":    {table: "city_guides", displayColumn: "title"},
 	"media":         {table: "media_assets", displayColumn: "file_name"},
+	"hero":          {table: "heroes", displayColumn: "title"},
 }
 
 func softDeleteEntity(entityType string) (softDeleteEntityConfig, error) {
@@ -116,6 +117,8 @@ FROM (
     SELECT 'city_guide', id, title::text, deleted_at, deleted_by, delete_reason FROM city_guides WHERE deleted_at IS NOT NULL
     UNION ALL
     SELECT 'media', id, file_name::text, deleted_at, deleted_by, delete_reason FROM media_assets WHERE deleted_at IS NOT NULL
+    UNION ALL
+    SELECT 'hero', id, title::text, deleted_at, deleted_by, delete_reason FROM heroes WHERE deleted_at IS NOT NULL
 ) deleted
 ORDER BY deleted_at DESC`
 	rows, err := q.db.Query(ctx, statement)

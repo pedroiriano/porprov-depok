@@ -104,6 +104,57 @@ func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams
 	return i, err
 }
 
+const createHero = `-- name: CreateHero :one
+WITH deactivated AS (
+  UPDATE heroes AS current_hero
+  SET is_active = FALSE, updated_at = NOW(), updated_by = $6
+  WHERE $5::boolean = TRUE AND current_hero.is_active = TRUE AND current_hero.deleted_at IS NULL
+  RETURNING current_hero.id
+)
+INSERT INTO heroes (title, highlight_text, description, background_image_url, is_active, created_by, updated_by)
+SELECT $1, NULLIF($2::text, ''), $3,
+       $4, $5, $6, $6
+FROM (SELECT COUNT(*) FROM deactivated) synchronization
+RETURNING id, title, highlight_text, description, background_image_url, is_active, created_by, updated_by, created_at, updated_at, deleted_at, deleted_by, delete_reason
+`
+
+type CreateHeroParams struct {
+	Title              string      `json:"title"`
+	HighlightText      string      `json:"highlight_text"`
+	Description        string      `json:"description"`
+	BackgroundImageUrl string      `json:"background_image_url"`
+	IsActive           bool        `json:"is_active"`
+	Actor              pgtype.Text `json:"actor"`
+}
+
+func (q *Queries) CreateHero(ctx context.Context, arg CreateHeroParams) (Hero, error) {
+	row := q.db.QueryRow(ctx, createHero,
+		arg.Title,
+		arg.HighlightText,
+		arg.Description,
+		arg.BackgroundImageUrl,
+		arg.IsActive,
+		arg.Actor,
+	)
+	var i Hero
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.HighlightText,
+		&i.Description,
+		&i.BackgroundImageUrl,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+	)
+	return i, err
+}
+
 const createKontingen = `-- name: CreateKontingen :one
 INSERT INTO kontingens (name, region_type, logo_url)
 VALUES ($1, $2, $3)
@@ -208,6 +259,33 @@ func (q *Queries) CreateNomorTanding(ctx context.Context, arg CreateNomorTanding
 	return i, err
 }
 
+const getActiveHero = `-- name: GetActiveHero :one
+SELECT id, title, highlight_text, description, background_image_url, is_active, created_by, updated_by, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM heroes
+WHERE is_active = TRUE AND deleted_at IS NULL
+LIMIT 1
+`
+
+func (q *Queries) GetActiveHero(ctx context.Context) (Hero, error) {
+	row := q.db.QueryRow(ctx, getActiveHero)
+	var i Hero
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.HighlightText,
+		&i.Description,
+		&i.BackgroundImageUrl,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+	)
+	return i, err
+}
+
 const getCaborByID = `-- name: GetCaborByID :one
 SELECT id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason FROM cabors WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
@@ -255,6 +333,33 @@ func (q *Queries) GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGui
 		&i.Latitude,
 		&i.Longitude,
 		&i.MapRouteUrl,
+	)
+	return i, err
+}
+
+const getHeroByID = `-- name: GetHeroByID :one
+SELECT id, title, highlight_text, description, background_image_url, is_active, created_by, updated_by, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM heroes
+WHERE id = $1 AND deleted_at IS NULL
+LIMIT 1
+`
+
+func (q *Queries) GetHeroByID(ctx context.Context, id pgtype.UUID) (Hero, error) {
+	row := q.db.QueryRow(ctx, getHeroByID, id)
+	var i Hero
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.HighlightText,
+		&i.Description,
+		&i.BackgroundImageUrl,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }
@@ -434,6 +539,46 @@ func (q *Queries) ListCityGuides(ctx context.Context, dollar_1 string) ([]CityGu
 			&i.Latitude,
 			&i.Longitude,
 			&i.MapRouteUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listHeroes = `-- name: ListHeroes :many
+SELECT id, title, highlight_text, description, background_image_url, is_active, created_by, updated_by, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM heroes
+WHERE deleted_at IS NULL
+ORDER BY is_active DESC, updated_at DESC
+`
+
+func (q *Queries) ListHeroes(ctx context.Context) ([]Hero, error) {
+	rows, err := q.db.Query(ctx, listHeroes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Hero
+	for rows.Next() {
+		var i Hero
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.HighlightText,
+			&i.Description,
+			&i.BackgroundImageUrl,
+			&i.IsActive,
+			&i.CreatedBy,
+			&i.UpdatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
 		); err != nil {
 			return nil, err
 		}
@@ -630,6 +775,73 @@ func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams
 		&i.Latitude,
 		&i.Longitude,
 		&i.MapRouteUrl,
+	)
+	return i, err
+}
+
+const updateHero = `-- name: UpdateHero :one
+WITH deactivated AS (
+  UPDATE heroes AS current_hero
+  SET is_active = FALSE, updated_at = NOW(), updated_by = $6
+  WHERE $5::boolean = TRUE
+    AND current_hero.id <> $7
+    AND current_hero.is_active = TRUE
+    AND current_hero.deleted_at IS NULL
+    AND EXISTS (
+      SELECT 1 FROM heroes AS update_target
+      WHERE update_target.id = $7 AND update_target.deleted_at IS NULL
+    )
+  RETURNING current_hero.id
+)
+UPDATE heroes AS target
+SET title = $1,
+    highlight_text = NULLIF($2::text, ''),
+    description = $3,
+    background_image_url = $4,
+    is_active = $5,
+    updated_by = $6,
+    updated_at = NOW()
+WHERE target.id = $7
+  AND target.deleted_at IS NULL
+  AND (SELECT COUNT(*) FROM deactivated) >= 0
+RETURNING id, title, highlight_text, description, background_image_url, is_active, created_by, updated_by, created_at, updated_at, deleted_at, deleted_by, delete_reason
+`
+
+type UpdateHeroParams struct {
+	Title              string      `json:"title"`
+	HighlightText      string      `json:"highlight_text"`
+	Description        string      `json:"description"`
+	BackgroundImageUrl string      `json:"background_image_url"`
+	IsActive           bool        `json:"is_active"`
+	Actor              pgtype.Text `json:"actor"`
+	ID                 pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateHero(ctx context.Context, arg UpdateHeroParams) (Hero, error) {
+	row := q.db.QueryRow(ctx, updateHero,
+		arg.Title,
+		arg.HighlightText,
+		arg.Description,
+		arg.BackgroundImageUrl,
+		arg.IsActive,
+		arg.Actor,
+		arg.ID,
+	)
+	var i Hero
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.HighlightText,
+		&i.Description,
+		&i.BackgroundImageUrl,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
 	)
 	return i, err
 }

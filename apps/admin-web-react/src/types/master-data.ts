@@ -7,6 +7,19 @@ export interface MediaAsset {
   created_at: string;
 }
 
+export interface HeroContent {
+  id: string;
+  title: string;
+  highlight_text: string | null;
+  description: string;
+  background_image_url: string;
+  is_active: boolean;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Cabor {
   id: string;
   name: string;
@@ -86,7 +99,7 @@ export interface MatchSchedule {
   updated_at: string;
 }
 
-export type DeletedEntityType = 'cabor' | 'nomor_tanding' | 'kontingen' | 'city_guide' | 'media' | 'venue' | 'match';
+export type DeletedEntityType = 'cabor' | 'nomor_tanding' | 'kontingen' | 'city_guide' | 'media' | 'hero' | 'venue' | 'match';
 
 export interface DeletedRecord {
   entity_type: DeletedEntityType;

@@ -7,6 +7,9 @@ func TestSoftDeleteEntityWhitelist(t *testing.T) {
 	if _, err := softDeleteEntity("cabor"); err != nil {
 		t.Fatalf("expected cabor to be supported: %v", err)
 	}
+	if _, err := softDeleteEntity("hero"); err != nil {
+		t.Fatalf("expected hero to be supported: %v", err)
+	}
 	if _, err := softDeleteEntity("cabors; DROP TABLE cabors"); err == nil {
 		t.Fatal("expected unknown entity to be rejected")
 	}

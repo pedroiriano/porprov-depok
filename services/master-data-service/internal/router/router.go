@@ -10,7 +10,7 @@ import (
 	"github.com/porprov-xv/porprov-depok/services/master-data-service/internal/handler"
 )
 
-func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler *handler.CityGuideHandler) *chi.Mux {
+func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler *handler.CityGuideHandler, heroHandler *handler.HeroHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
@@ -66,6 +66,14 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler 
 			r.Post("/upload", masterDataHandler.UploadMedia)
 			r.Get("/", masterDataHandler.ListMedia)
 			r.Delete("/{id}", masterDataHandler.DeleteMedia)
+		})
+		r.Route("/heroes", func(r chi.Router) {
+			r.Get("/active", heroHandler.GetActiveHero)
+			r.Post("/", heroHandler.CreateHero)
+			r.Get("/", heroHandler.ListHeroes)
+			r.Get("/{id}", heroHandler.GetHero)
+			r.Put("/{id}", heroHandler.UpdateHero)
+			r.Delete("/{id}", heroHandler.DeleteHero)
 		})
 	})
 

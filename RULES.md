@@ -185,6 +185,7 @@ Sebuah UI hanya boleh disebut masterpiece bila memenuhi seluruh quality bar beri
 - LiveScore persisten wajib memakai revision log append-only, sequence database, projection current, dan optimistic revision check. Koreksi membuat revisi baru dengan alasan; revisi lama dilarang diubah/dihapus.
 - Master Data adalah pemilik referensi Kontingen, Schedule adalah pemilik susunan peserta pertandingan, dan LiveScore adalah pemilik revisi skor/status. Pertandingan yang masuk kontrak skor A/B wajib mempunyai tepat dua peserta terurut dengan jenis yang sama; jenis yang sah adalah `individual`, `team`, atau `contingent` dengan afiliasi Kontingen aktif.
 - Master Data adalah pemilik lokasi City Guide. Create/update City Guide wajib menerima `latitude` dan `longitude` desimal secara berpasangan; latitude harus `-90..90` dan longitude `-180..180`. `map_route_url` adalah metadata presentasi opsional, maksimal 2048 karakter, dan hanya boleh berupa URL HTTPS resmi Google Maps. Consumer wajib memprioritaskan URL valid yang terisi lalu membentuk tautan dari koordinat ketika kosong; koordinat tetap menjadi sumber kebenaran.
+- Master Data adalah pemilik Hero Landing Page. Hero wajib memuat judul, isi, gambar latar, status aktif, metadata actor/waktu, dan tombstone; teks sorotan boleh opsional tetapi harus merupakan bagian judul. Hanya satu Hero aktif boleh ditayangkan. Gambar baru wajib merujuk Media Library aktif, Public hanya membaca projection aktif melalui API Gateway, dan komponen Public wajib mempunyai fallback canonical saat dependency belum siap.
 - Migrasi City Guide boleh mempertahankan kedua koordinat sebagai null untuk record legacy, tetapi tidak boleh menyimpan hanya satu sisi, mengarang titik fallback, atau menerima pembaruan tanpa melengkapi pasangan koordinat.
 - Form peserta wajib berada pada workflow Jadwal Pertandingan. LiveScore dilarang membuat atau menyimpan identitas peserta paralel; jika susunan belum lengkap, input skor harus dikunci. Penggantian susunan peserta wajib transaksional dan melakukan soft delete pada record lama beserta actor/alasan.
 - Workflow Medali wajib memisahkan pengaju, verifikator, rejector, dan publisher. Hanya transisi `VERIFIED → OFFICIAL` yang boleh mengubah klasemen publik; publish ulang submission OFFICIAL dilarang agar perolehan tidak terhitung ganda.
@@ -235,7 +236,7 @@ Gunakan komentar bersih:
 
 ## 17. Soft Delete Wajib untuk Semua Data Persisten
 
-> Status penerapan 14 Juli 2026: kontrak ini sudah diterapkan dan diuji pada Cabor, Nomor Pertandingan, Kontingen, City Guide, Media Library, Venue, dan Jadwal. Implementasi service/domain baru wajib memakai kontrak yang sama; keputusan teknis aktif dicatat pada `docs/adr/ADR-0002-soft-delete-and-port-namespaces.md`.
+> Status penerapan 27 Juli 2026: kontrak ini sudah diterapkan dan diuji pada Cabor, Nomor Pertandingan, Kontingen, City Guide, Media Library, Hero, Venue, dan Jadwal. Implementasi service/domain baru wajib memakai kontrak yang sama; keputusan teknis aktif dicatat pada `docs/adr/ADR-0002-soft-delete-and-port-namespaces.md`.
 
 ### 17.1 Kontrak Data
 

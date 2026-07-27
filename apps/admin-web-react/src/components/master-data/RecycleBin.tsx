@@ -14,6 +14,7 @@ const entityLabels: Record<DeletedRecord['entity_type'], string> = {
   kontingen: 'Kontingen',
   city_guide: 'City Guide',
   media: 'Media',
+  hero: 'Hero Utama',
   venue: 'Venue',
   match: 'Jadwal Pertandingan',
 };

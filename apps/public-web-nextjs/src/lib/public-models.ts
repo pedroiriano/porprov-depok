@@ -7,6 +7,45 @@ import {
   safeExternalUrl,
 } from "@/lib/public-api";
 
+export interface RawHeroContent {
+  id?: unknown;
+  title?: string;
+  highlight_text?: Parameters<typeof readPgText>[0];
+  description?: string;
+  background_image_url?: Parameters<typeof readPgText>[0];
+  is_active?: boolean;
+}
+
+export interface HeroContentModel {
+  id: string;
+  title: string;
+  highlightText: string;
+  description: string;
+  backgroundImageUrl: string;
+}
+
+export const defaultHeroContent: HeroContentModel = {
+  id: "hero-fallback",
+  title: "Panggung Juara Jawa Barat.",
+  highlightText: "Jawa Barat.",
+  description: "Saksikan PORPROV XV Jawa Barat 2026 dari Kota Depok—jadwal, venue, LiveScore, dan perjalanan para atlet dalam satu portal resmi.",
+  backgroundImageUrl: "/assets/images/alun-alun.png",
+};
+
+export function normalizeHeroContent(raw: RawHeroContent): HeroContentModel {
+  const storedImageURL = readPgText(raw.background_image_url);
+  return {
+    id: readResourceId(raw.id, defaultHeroContent.id),
+    title: raw.title?.trim() || defaultHeroContent.title,
+    highlightText: readPgText(raw.highlight_text),
+    description: raw.description?.trim() || defaultHeroContent.description,
+    // INFO: Asset seed milik Public Web tetap relative; Media Library dilayani API Gateway.
+    backgroundImageUrl: storedImageURL.startsWith("/assets/")
+      ? storedImageURL
+      : resolvePublicAssetUrl(storedImageURL) || defaultHeroContent.backgroundImageUrl,
+  };
+}
+
 export interface RawCabor {
   id?: unknown;
   name?: string;

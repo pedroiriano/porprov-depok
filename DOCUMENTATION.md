@@ -111,9 +111,10 @@ Baseline responsif 27 Juli 2026 memakai matriks 9 rute Public dan 10 rute Admin 
 - Referensi wajib pada Techwind Landing antara lain pola event, gym, blog/editorial, gallery, auth, dan landing; pilih per komponen hanya dari `Landing/dist`, bukan menyalin satu halaman secara utuh.
 - Ubah seluruh pola menjadi design language PORPROV: energi kompetisi, identitas Kota Depok, status realtime, CTA yang jelas, dan kepadatan informasi yang tetap terbaca.
 - Mapping implementasi Beranda terbaru tersedia di `docs/uiux/PUBLIC_HOME_TECHWIND_MAPPING.md`: hero 100 viewport dengan parallax 50%, pengantar PORPROV XV berdasarkan `Booklet PORPROV XV.pdf` halaman 4, section Maskot Toca-Toci berdasarkan halaman 6-7, pusat informasi, Venue live melalui API Gateway, dan CTA panduan penonton.
+- Konten Hero utama tidak di-hardcode: Server Component Beranda membaca `GET /api/v1/master-data/heroes/active` tanpa cache melalui API Gateway. Record berisi judul penuh, sorotan judul opsional, isi, dan URL background; fallback canonical menjaga Landing Page tetap tersedia ketika Gateway belum siap.
 - Public Web membaca `NEXT_PUBLIC_API_URL` dengan default canonical `http://localhost:8000/api/v1`. Server Components dalam Compose membaca `API_INTERNAL_URL=http://api-gateway:8000/api/v1`; browser dan server tetap hanya melewati API Gateway. Port `8080` khusus Keycloak.
 - Canonical/metadata origin Public Web membaca `NEXT_PUBLIC_SITE_URL` dengan default lokal `http://localhost:3000`; deployment wajib mengisinya dengan origin HTTPS resmi.
-- API Gateway membuka operasi baca publik untuk `/master-data/*`, `/schedule/*`, `/venues*`, `/medals/*`, `/livescore/public`, dan `/stream/events`; operasi mutasi, history operasional, Audit, dan private stream tetap wajib JWT/role.
+- API Gateway membuka allowlist Master Data publik hanya untuk Cabor, Nomor Tanding, Kontingen, City Guide, dan `heroes/active`; endpoint daftar editorial Hero, Media Library, tombstone, serta seluruh mutasi tetap wajib JWT. Read publik lain tersedia pada `/schedule/*`, `/venues*`, `/medals/*`, `/livescore/public`, dan `/stream/events` sesuai kontraknya.
 - Jadwal, LiveScore, dan Klasemen tidak menggunakan data contoh produksi: jika belum ada record, UI menampilkan empty state; jika service gagal, UI menampilkan error yang dapat ditindaklanjuti.
 - Public LiveScore menahan status live dan nilai skor bila susunan Peserta A/B belum lengkap, termasuk untuk revision historis yang tercatat sebelum kontrak peserta diterapkan. Card menampilkan status “Menunggu peserta” serta skor `–` sampai identitas dikonfirmasi.
 - URL Media Library lama yang menunjuk port diagnostik `localhost:18xxx/uploads/*` dinormalisasi ke route `/uploads/*` API Gateway agar asset tetap dapat dibaca Public Web tanpa melanggar single-edge policy.
@@ -135,6 +136,7 @@ Baseline responsif 27 Juli 2026 memakai matriks 9 rute Public dan 10 rute Admin 
 - LiveScore Center memakai private SSE bearer-token, menampilkan current/history, dan mengirim `expectedRevision` agar update operator yang stale menghasilkan `409`.
 - Susunan Peserta A/B dibuat atau diedit melalui Master Data → Jadwal Pertandingan. LiveScore Center membaca susunan tersebut, memberi label input skor sesuai nama peserta, dan mengunci submit bila dua sisi belum lengkap.
 - Workspace Medali memisahkan submitter (`koresponden`), verifier (`verifikator`), dan publisher (`super_admin`). Audit Log hanya tampak bagi `auditor`/`super_admin` dan menyediakan export CSV tanpa mengubah record audit.
+- Workspace `Hero Utama` menyediakan daftar/pratinjau, tambah/edit, Media Selector, aktivasi tunggal, serta arsip soft delete. Mengaktifkan satu Hero otomatis menonaktifkan Hero lama; restore tersedia dari Master Data → Recycle Bin dan tunduk pada constraint satu Hero aktif.
 
 ### 4.3 Mobile Koresponden Experience
 
@@ -471,7 +473,7 @@ Implementasi aktif memakai `deleted_by TEXT` karena identitas actor berasal dari
 
 | Database/service | Migration | Entity aktif |
 |---|---:|---|
-| `master_data_db` / Master Data | v7 | Cabor, Nomor Pertandingan, Kontingen, City Guide dengan koordinat dan URL rute Google Maps opsional, Media |
+| `master_data_db` / Master Data | v8 | Cabor, Nomor Pertandingan, Kontingen, City Guide dengan koordinat/URL rute, Media, dan Hero dinamis berstatus aktif tunggal |
 | `venue_db` / Venue | v2 | Venue |
 | `schedule_db` / Schedule | v5 | Jadwal/Match dan Peserta A/B bertipe Individu/Tim/Kontingen dengan slot serta soft replacement |
 | `livescore_db` / LiveScore | v1 | Revision append-only, current projection, transactional outbox |

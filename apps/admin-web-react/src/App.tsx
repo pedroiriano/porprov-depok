@@ -5,6 +5,7 @@ import {
   Database,
   FileCheck,
   Images,
+  PanelsTopLeft,
   LayoutDashboard,
   LogOut,
   MapPinned,
@@ -33,6 +34,7 @@ const Medals = lazy(() => import('./pages/Medals'));
 const CityGuide = lazy(() => import('./pages/CityGuide'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const MediaLibrary = lazy(() => import('./components/media/MediaLibrary'));
+const HeroManagement = lazy(() => import('./pages/HeroManagement'));
 
 // Sidebar Item Component
 const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: LucideIcon, label: string, path: string, isActive: boolean }) => (
@@ -111,6 +113,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
           <ul className="sidebar-menu border-t border-white/10" style={{ height: 'calc(100% - 70px)' }}>
             <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" isActive={location.pathname === '/'} />
             <SidebarItem icon={Database} label="Master Data" path="/master-data" isActive={location.pathname.startsWith('/master-data')} />
+            <SidebarItem icon={PanelsTopLeft} label="Hero Utama" path="/hero" isActive={location.pathname.startsWith('/hero')} />
             {canOperateScores && <SidebarItem icon={Activity} label="LiveScore Center" path="/livescore" isActive={location.pathname.startsWith('/livescore')} />}
             {canSubmitMedals && <SidebarItem icon={Medal} label="Perolehan Medali" path="/medals" isActive={location.pathname.startsWith('/medals')} />}
             <SidebarItem icon={MapPinned} label="City Guide" path="/city-guide" isActive={location.pathname.startsWith('/city-guide')} />
@@ -249,6 +252,7 @@ export default function App() {
           <Routes>
           <Route path="/" element={<DashboardOverview />} />
           <Route path="/master-data" element={<MasterData />} />
+          <Route path="/hero" element={<HeroManagement />} />
           <Route path="/livescore" element={<LiveScoreCenter />} />
           <Route path="/audit-log" element={<AuditLog />} />
           <Route path="/profile" element={<Profile />} />

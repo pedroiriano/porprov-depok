@@ -42,6 +42,22 @@ type CityGuide struct {
 	MapRouteUrl pgtype.Text `json:"map_route_url"`
 }
 
+type Hero struct {
+	ID                 pgtype.UUID        `json:"id"`
+	Title              string             `json:"title"`
+	HighlightText      pgtype.Text        `json:"highlight_text"`
+	Description        string             `json:"description"`
+	BackgroundImageUrl string             `json:"background_image_url"`
+	IsActive           bool               `json:"is_active"`
+	CreatedBy          pgtype.Text        `json:"created_by"`
+	UpdatedBy          pgtype.Text        `json:"updated_by"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy          pgtype.Text        `json:"deleted_by"`
+	DeleteReason       pgtype.Text        `json:"delete_reason"`
+}
+
 type Kontingen struct {
 	ID           pgtype.UUID        `json:"id"`
 	Name         string             `json:"name"`
