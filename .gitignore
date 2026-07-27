@@ -14,6 +14,8 @@ infra/docker/tls/*.crt
 infra/docker/tls/*.key
 infra/docker/tls/*.csr
 infra/docker/tls/*.srl
+infra/docker/tls/*.ext
+infra/docker/.deploy-vps.lock
 # SECURITY: dump/migration sementara dan script ad-hoc berkredensial tidak boleh masuk Git.
 /data.sql
 /data_*.sql
