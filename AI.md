@@ -4,6 +4,12 @@
 
 ## Konteks Aplikasi Aktif
 
+Deployment VPS Ubuntu intranet memakai Nginx sebagai edge. Public Web dapat
+tetap tersedia melalui HTTP selama transisi, sedangkan Admin `/admin/`,
+Keycloak, dan API bertoken wajib memakai HTTPS. Build, restore, dan migrasi
+panjang dijalankan sebagai job server-side dengan lock, log, dan checkpoint
+agar reconnect client tidak menghentikan pekerjaan.
+
 Repository `porprov-depok` adalah platform resmi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Sistem menggunakan monorepo aplikasi web/mobile, Golang microservices, database per service, API Gateway, event-driven architecture, serta runtime Docker. Admin Web dan alur Master Data–Media Library–Venue–Schedule telah terintegrasi. Public Web v0.4 membaca detail Cabor/Venue, Jadwal enriched, projection LiveScore persisten, public SSE tersanitasi, dan klasemen Medali OFFICIAL tanpa data tiruan. Hardening aktif mencakup JWT issuer/expiry/client, RBAC domain olahraga, private Admin SSE, revision koreksi skor, workflow Medali, transactional outbox LiveScore/Medali, dan Audit Log immutable. Outbox domain lama, MFA, RBAC menyeluruh, retensi purge, dan production hardening tetap mengikuti status nyata pada `FEATURES.md`.
 
 Schedule Service adalah pemilik susunan Peserta A/B pertandingan. Admin memilih satu jenis yang sama untuk kedua sisi—`individual`, `team`, atau `contingent`—lalu mengisi afiliasi Kontingen dan identitas yang relevan bersama Jadwal; LiveScore hanya mengonsumsi susunan terurut tersebut dan dilarang membuat identitas peserta paralel.

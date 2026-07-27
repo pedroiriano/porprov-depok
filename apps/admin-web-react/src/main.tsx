@@ -8,12 +8,16 @@ import App from './App.tsx'
 import { ThemeProvider } from './components/ThemeProvider'
 
 const appOrigin = window.location.origin
+const configuredBasePath = import.meta.env.BASE_URL || '/'
+const routerBasePath = configuredBasePath === '/' ? undefined : configuredBasePath.replace(/\/$/, '')
+const oidcRedirectUrl = new URL(configuredBasePath, `${appOrigin}/`).toString()
 
 const oidcConfig = {
   authority: import.meta.env.VITE_OIDC_AUTHORITY || 'http://localhost:8080/realms/porprov',
   client_id: import.meta.env.VITE_OIDC_CLIENT_ID || 'porprov-admin-web',
-  redirect_uri: `${appOrigin}/`,
-  post_logout_redirect_uri: `${appOrigin}/`,
+  // SECURITY: Redirect OIDC harus kembali ke base path deployment yang sama.
+  redirect_uri: oidcRedirectUrl,
+  post_logout_redirect_uri: oidcRedirectUrl,
   onSigninCallback: () => {
     window.history.replaceState({}, document.title, window.location.pathname)
   }
@@ -37,7 +41,7 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider defaultTheme="light" storageKey="admin-theme">
       <AuthProvider {...oidcConfig}>
         <QueryClientProvider client={queryClient}>
-          <App />
+          <App routerBasePath={routerBasePath} />
         </QueryClientProvider>
       </AuthProvider>
     </ThemeProvider>

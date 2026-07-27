@@ -230,6 +230,12 @@ Gunakan komentar bersih:
 
 ## 16. Deployment VM Diskominfo Kota Depok
 
+- Admin/OIDC pada VPS dilarang memakai alamat IP HTTP. Authorization Code +
+  PKCE memerlukan secure context; penonaktifan PKCE atau token/password
+  plaintext dilarang.
+- Build, restore, dan migrasi Ubuntu wajib memakai proses server-side tahan
+  reconnect, log persisten, lock tunggal, dan langkah idempotent.
+
 - Minimum production: Docker, Docker Compose staging, Nginx reverse proxy, SSL/TLS, PostgreSQL, Redis, NATS JetStream, Keycloak, CI/CD, backup, monitoring, log aggregation.
 - Enterprise upgrade: Kubernetes, Nginx Ingress, Cert Manager, HPA, PostgreSQL HA, Redis Sentinel/Cluster, NATS Cluster, object storage, blue-green/canary deployment.
 - Semua konfigurasi rahasia wajib memakai `.env` atau secret manager, tidak masuk git.

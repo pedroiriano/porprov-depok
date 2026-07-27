@@ -68,7 +68,7 @@ export default function RootLayout({
         <link href="/assets/css/tailwind.css" rel="stylesheet" />
       </head>
       <body className="min-h-full flex flex-col bg-background-base dark:bg-slate-950 text-text-primary dark:text-slate-100 transition-colors duration-300">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <Navbar />
 
           <main className="flex-1 flex flex-col relative w-full h-full">

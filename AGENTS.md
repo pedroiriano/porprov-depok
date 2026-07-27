@@ -88,6 +88,9 @@ Setiap perubahan aturan, stack, arsitektur, standar UI/UX, keamanan, data, quali
 ## Namespace Port Wajib
 
 - Production hanya mengekspos Nginx `80/443`; browser tidak boleh mengakses port diagnostik service.
+- Pada VPS Ubuntu intranet, Admin canonical berada di `https://<host>/admin/`;
+  Keycloak dan API bertoken memakai origin HTTPS yang sama. Operasi panjang
+  wajib berjalan sebagai job server-side tahan reconnect dengan log dan lock.
 - Public development canonical memakai Public Web `3000`, Admin `5173`, API Gateway `8000`, dan Keycloak `8080` melalui Docker Compose.
 - Diagnostik Docker host memakai Master `18081`, Schedule `18082`, dan Venue `18087`.
 - Local `go run` memakai namespace `28xxx` hanya untuk debugging komponen terisolasi: Gateway `28000`, User `28001`, Master `28081`, Schedule `28082`, LiveScore `28083`, Audit `28084`, Realtime `28085`, Medal `28086`, dan Venue `28087`. Container domain yang sama wajib dihentikan lebih dahulu.

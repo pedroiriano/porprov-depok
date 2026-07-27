@@ -23,6 +23,8 @@ import { useAuth } from 'react-oidc-context';
 import { useTheme } from './hooks/useTheme';
 import { canAccessRole, getRealmRoles } from './lib/auth';
 
+const adminAssetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
+
 // PERFORMANCE: Setiap workspace Admin dimuat saat dibutuhkan agar entry bundle
 // tetap ringan tanpa meninggalkan pola application shell Techwind.
 const DashboardOverview = lazy(() => import('./pages/DashboardOverview'));
@@ -107,7 +109,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
       >
         <div className="sidebar-content">
           <div className="sidebar-brand">
-            <Link to="/" aria-label="Dashboard PORPROV" className="inline-flex min-h-11 items-center"><img src="/assets/images/logo-porprov-dan-tulisan.png" height="24" className="h-8 object-contain brightness-0 invert" alt="PORPROV XV Jawa Barat 2026" /></Link>
+            <Link to="/" aria-label="Dashboard PORPROV" className="inline-flex min-h-11 items-center"><img src={adminAssetUrl('assets/images/logo-porprov-dan-tulisan.png')} height="24" className="h-8 object-contain brightness-0 invert" alt="PORPROV XV Jawa Barat 2026" /></Link>
           </div>
           
           <ul className="sidebar-menu border-t border-white/10" style={{ height: 'calc(100% - 70px)' }}>
@@ -216,7 +218,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
   );
 };
 
-export default function App() {
+export default function App({ routerBasePath }: { routerBasePath?: string }) {
   const auth = useAuth();
   
   if (auth.isLoading) {
@@ -231,7 +233,7 @@ export default function App() {
     return (
       <div className="flex min-h-dvh w-full flex-col items-center justify-center bg-slate-50 px-4 py-8 dark:bg-slate-900">
         <div className="flex w-full max-w-sm flex-col items-center rounded-xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8 dark:border-slate-700 dark:bg-slate-800">
-          <img src="/assets/images/logo-porprov.png" alt="PORPROV XV Jawa Barat 2026" className="mb-6 size-24 object-contain" />
+          <img src={adminAssetUrl('assets/images/logo-porprov.png')} alt="PORPROV XV Jawa Barat 2026" className="mb-6 size-24 object-contain" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Portal PORPROV</h1>
           <p className="text-slate-500 dark:text-slate-400 mb-8 text-center">Silakan masuk menggunakan akun panitia/koresponden Anda.</p>
           <button 
@@ -246,7 +248,7 @@ export default function App() {
   }
 
   return (
-    <Router>
+    <Router basename={routerBasePath}>
       <AdminLayout auth={auth}>
         <Suspense fallback={<div className="flex min-h-64 items-center justify-center" role="status"><span className="size-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" aria-hidden="true" /><span className="sr-only">Memuat halaman Admin</span></div>}>
           <Routes>

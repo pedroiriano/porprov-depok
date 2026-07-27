@@ -1,0 +1,20 @@
+services:
+  admin-web:
+    build:
+      args:
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/admin/}
+
+  keycloak:
+    environment:
+      # SECURITY: TLS berakhir di Nginx. Keycloak tetap berkomunikasi melalui
+      # HTTP hanya di jaringan privat Compose dan menerbitkan issuer HTTPS.
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-https://10.11.5.80}
+      KC_HOSTNAME_STRICT: "true"
+    command: start
+
+  nginx:
+    volumes:
+      - ./nginx/nginx.vps.conf:/etc/nginx/nginx.conf:ro
+      - ./tls:/etc/nginx/tls:ro

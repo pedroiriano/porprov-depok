@@ -9,3 +9,8 @@ services/**/uploads/
 infra/docker/.docker-cli/
 theme-reference/
 runtime-backups/
+.tmp/
+infra/docker/tls/*.crt
+infra/docker/tls/*.key
+infra/docker/tls/*.csr
+infra/docker/tls/*.srl
