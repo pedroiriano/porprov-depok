@@ -166,7 +166,8 @@ Sebuah UI hanya boleh disebut masterpiece bila memenuhi seluruh quality bar beri
 
 - Gunakan Go dengan struktur bersih: `cmd/`, `internal/`, `pkg/`, `migrations/`, `api/`.
 - Framework: Gin/Fiber/Chi sesuai service; pilih konsisten dan dokumentasikan ADR.
-- Database access: utamakan `pgx` + `sqlc`; ORM hanya bila disetujui.
+- Database access: utamakan `pgxpool` + `sqlc`; ORM hanya bila disetujui. HTTP service dilarang membagikan satu `pgx.Conn` antargoroutine dan wajib memverifikasi pool dengan `Ping` saat startup.
+- Error database lengkap wajib dicatat pada log internal terstruktur dan tidak boleh dikirim mentah pada response API.
 - Gunakan validator, logging Zap/Zerolog, OpenTelemetry, Prometheus.
 - Semua entity persisten mengikuti kontrak soft delete pada Bagian 17.
 - API response wajib mengikuti format:

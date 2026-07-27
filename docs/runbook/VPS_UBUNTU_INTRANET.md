@@ -84,6 +84,8 @@ ADMIN_WEB_ORIGINS=["https://<IP-VPS>"]
 
 Semua secret wajib acak, unik, dan hanya berada di `.env` VPS.
 
+Schedule Service wajib menggunakan image yang memuat connection pool (`pgxpool`). Setelah restore database atau deploy image baru, verifikasi endpoint enriched secara konkuren; response `500` dengan log `conn busy` menandakan image lama masih aktif dan Schedule Service perlu dibangun ulang melalui job deploy canonical.
+
 ## Backup dan Restore
 
 Sebelum restore, buat dump custom-format per database, arsip volume

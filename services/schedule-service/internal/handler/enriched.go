@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -105,11 +106,14 @@ func fetchReferenceCollection[T any](ctx context.Context, client *http.Client, e
 func (h *MatchHandler) ListEnrichedMatches(w http.ResponseWriter, r *http.Request) {
 	matches, err := h.queries.ListMatches(r.Context())
 	if err != nil {
+		// INFO: Keep database details in service logs and return a stable public error.
+		log.Printf("Gagal membaca jadwal aktif untuk enrichment: %v", err)
 		http.Error(w, "Gagal membaca jadwal aktif", http.StatusInternalServerError)
 		return
 	}
 	participants, err := h.queries.ListAllActiveMatchParticipants(r.Context())
 	if err != nil {
+		log.Printf("Gagal membaca peserta jadwal aktif untuk enrichment: %v", err)
 		http.Error(w, "Gagal membaca peserta jadwal aktif", http.StatusInternalServerError)
 		return
 	}

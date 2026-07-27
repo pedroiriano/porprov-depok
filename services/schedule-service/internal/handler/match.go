@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -150,7 +151,9 @@ func (h *MatchHandler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 func (h *MatchHandler) ListMatches(w http.ResponseWriter, r *http.Request) {
 	matches, err := h.queries.ListMatches(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// SECURITY: Do not expose database implementation details to API consumers.
+		log.Printf("Gagal membaca jadwal aktif: %v", err)
+		http.Error(w, "Gagal membaca jadwal aktif", http.StatusInternalServerError)
 		return
 	}
 

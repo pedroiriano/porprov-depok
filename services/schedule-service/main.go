@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/porprov-xv/porprov-depok/packages/messaging"
 	"github.com/porprov-xv/porprov-depok/services/schedule-service/internal/config"
 	"github.com/porprov-xv/porprov-depok/services/schedule-service/internal/db"
@@ -18,18 +18,21 @@ func main() {
 	// INFO: Load configuration
 	cfg := config.LoadConfig()
 
-	// INFO: Connect to PostgreSQL using pgx
+	// INFO: Use a PostgreSQL pool because HTTP handlers execute concurrently.
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, cfg.DBConn)
+	pool, err := pgxpool.New(ctx, cfg.DBConn)
 	if err != nil {
+		log.Fatalf("Gagal membuat pool database PostgreSQL: %v\n", err)
+	}
+	defer pool.Close()
+	if err := pool.Ping(ctx); err != nil {
 		log.Fatalf("Gagal terhubung ke database PostgreSQL: %v\n", err)
 	}
-	defer conn.Close(ctx)
 
 	log.Println("Berhasil terhubung ke database PostgreSQL schedule_db")
 
 	// INFO: Initialize SQLC queries
-	queries := db.New(conn)
+	queries := db.New(pool)
 
 	// INFO: Init Messaging
 	if err := messaging.InitNATS(); err != nil {
@@ -39,7 +42,7 @@ func main() {
 	}
 
 	// INFO: Initialize Handlers
-	matchHandler := handler.NewMatchHandler(queries, conn, cfg.MasterDataURL, cfg.VenueURL)
+	matchHandler := handler.NewMatchHandler(queries, pool, cfg.MasterDataURL, cfg.VenueURL)
 
 	// INFO: Setup Chi Router
 	r := router.SetupRouter(matchHandler)
