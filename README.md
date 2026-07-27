@@ -1,6 +1,6 @@
 # Portal PORPROV XV Jawa Barat 2026 Kota Depok
 
-Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker untuk penyelenggaraan PORPROV XV Jawa Barat 2026 di Kota Depok. Repository ini juga memuat enam dokumen root yang menjadi pedoman bersama pengembang dan agent AI.
+Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker untuk penyelenggaraan PORPROV XV Jawa Barat 2026 di Kota Depok. Repository ini juga memuat enam dokumen tata kelola root dan `DEPLOYMENT_VPS.md` sebagai pedoman operasional aman bagi pengembang dan Agent AI.
 
 ## Kondisi Aplikasi Saat Ini
 
@@ -23,6 +23,7 @@ Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker un
 | `FEATURES.md` | Tracking fitur dan status |
 | `DOCUMENTATION.md` | Dokumentasi teknis dan operasional |
 | `README.md` | Orientasi repository, baseline, dan quick start |
+| `DEPLOYMENT_VPS.md` | Pedoman kanonis deployment Ubuntu yang aman, tahan reconnect, dapat diaudit, dan bebas credential |
 | `docs/runbook/LOCAL_DEVELOPMENT.md` | Runbook menjalankan Docker, seluruh service Go yang tersedia, Public Web, dan Admin Web |
 
 ## Stack Final
@@ -92,9 +93,11 @@ transisi dan Admin canonical pada `https://<host>/admin/`. Keycloak serta API
 bertoken memakai origin HTTPS yang sama karena OIDC PKCE tidak dapat berjalan
 aman pada alamat IP HTTP. Build/restore panjang wajib dijalankan sebagai job
 server-side tahan reconnect. Lihat
-[`docs/runbook/VPS_UBUNTU_INTRANET.md`](docs/runbook/VPS_UBUNTU_INTRANET.md).
+[`DEPLOYMENT_VPS.md`](DEPLOYMENT_VPS.md) sebagai aturan kanonis dan
+[`docs/runbook/VPS_UBUNTU_INTRANET.md`](docs/runbook/VPS_UBUNTU_INTRANET.md)
+sebagai ringkasan perintah.
 
-1. Baca `AI.md`, lalu `RULES.md`, `FEATURES.md`, `DOCUMENTATION.md`, `AGENTS.md`, dan README ini.
+1. Baca `AI.md`, lalu `RULES.md`, `FEATURES.md`, `DOCUMENTATION.md`, `AGENTS.md`, README ini, dan `DEPLOYMENT_VPS.md` sebelum menyentuh VPS.
 2. Simpan dokumen kebutuhan/desain resmi di `docs/reference/` dan laporkan bila belum tersedia.
 3. Gunakan hanya `theme-reference/HTML/Landing/dist/` untuk audit UI Public dan `theme-reference/HTML/Dashboard/dist/` untuk audit Admin.
 4. Jalankan full stack hanya melalui baseline berikut:

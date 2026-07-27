@@ -1,5 +1,11 @@
 # Runbook VPS Ubuntu Intranet
 
+> Ringkasan ini harus digunakan bersama
+> [`DEPLOYMENT_VPS.md`](../../DEPLOYMENT_VPS.md) di root. Jika ada perbedaan,
+> ikuti `RULES.md` dan `DEPLOYMENT_VPS.md`. Agent AI dilarang memulai
+> deployment hanya dari ringkasan ini tanpa membaca gate keamanan, backup,
+> rollback, dan handoff pada pedoman kanonis.
+
 Credential, private key, `.env`, dump database, dan sertifikat privat dilarang
 masuk Git.
 
@@ -77,7 +83,7 @@ VITE_OIDC_CLIENT_ID=porprov-admin-web
 VITE_BASE_PATH=/admin/
 KEYCLOAK_PUBLIC_HOST=<IP-VPS>
 KEYCLOAK_ISSUER=https://<IP-VPS>/realms/porprov
-CORS_ALLOWED_ORIGINS=http://<IP-VPS>,https://<IP-VPS>
+CORS_ALLOWED_ORIGINS=https://<IP-VPS>
 ADMIN_REDIRECT_URIS=["https://<IP-VPS>/admin/*"]
 ADMIN_WEB_ORIGINS=["https://<IP-VPS>"]
 ```

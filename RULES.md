@@ -236,6 +236,18 @@ Gunakan komentar bersih:
   plaintext dilarang.
 - Build, restore, dan migrasi Ubuntu wajib memakai proses server-side tahan
   reconnect, log persisten, lock tunggal, dan langkah idempotent.
+- `DEPLOYMENT_VPS.md` adalah prosedur wajib untuk seluruh Agent AI/operator.
+  Deployment harus dimulai dengan audit read-only, memakai commit Git exact
+  melalui fast-forward, memiliki backup+checksum+rollback point sebelum
+  mutation, dan ditutup dengan verifikasi runtime, migration, data parity,
+  Media, TLS, OIDC, log, serta handoff bebas secret.
+- Password, JWT, cookie, connection string, private key, `.env`, dan dump
+  produksi dilarang berada di prompt Agent AI, source, dokumentasi, log, atau
+  history Git. Credential yang pernah terekspos dianggap kompromi dan wajib
+  dirotasi; rewrite history/force-push memerlukan persetujuan eksplisit.
+- Agent dilarang memakai `StrictHostKeyChecking=no`, `--insecure` sebagai
+  verifikasi klien final, menonaktifkan PKCE/JWT/TLS, atau mengulang job hanya
+  karena UI Agent mengalami reconnect.
 
 - Minimum production: Docker, Docker Compose staging, Nginx reverse proxy, SSL/TLS, PostgreSQL, Redis, NATS JetStream, Keycloak, CI/CD, backup, monitoring, log aggregation.
 - Enterprise upgrade: Kubernetes, Nginx Ingress, Cert Manager, HPA, PostgreSQL HA, Redis Sentinel/Cluster, NATS Cluster, object storage, blue-green/canary deployment.

@@ -22,9 +22,10 @@ Agent wajib bekerja sebagai **enterprise pair programmer** yang membaca dokumen 
 4. `DOCUMENTATION.md`
 5. `README.md`
 6. `AGENTS.md`
-7. `docs/reference/Portal_PORPROV_XV_Jawa_Barat_2026_Analisis_Desain.docx`
-8. `docs/reference/Portal_PORPROV_XV_Jawa_Barat_2026_ASCII_Wireframe.docx`
-9. `docs/reference/Dokumen Perencanaan Arsitektur Enterprise Web & Mobile.docx`
+7. `DEPLOYMENT_VPS.md` — wajib untuk setiap akses, migrasi, atau deployment VPS
+8. `docs/reference/Portal_PORPROV_XV_Jawa_Barat_2026_Analisis_Desain.docx`
+9. `docs/reference/Portal_PORPROV_XV_Jawa_Barat_2026_ASCII_Wireframe.docx`
+10. `docs/reference/Dokumen Perencanaan Arsitektur Enterprise Web & Mobile.docx`
 
 Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tidak boleh mengarang isinya, dan tetap memakai enam Markdown root sebagai baseline yang dapat diverifikasi.
 
@@ -99,6 +100,7 @@ Setiap perubahan aturan, stack, arsitektur, standar UI/UX, keamanan, data, quali
 - Storage runtime Media Library wajib memakai named volume `master_data_uploads`; file lokal legacy hanya backup dan bukan sumber runtime.
 - Infrastruktur host memakai port configurable dari `infra/docker/.env`: PostgreSQL `15432`, Redis `16379`, NATS `14222/18222`, Prometheus `19090`, dan Grafana `13000`.
 - Port internal Docker tetap stabil dan komunikasi antarkontainer wajib memakai DNS nama service. Semua host port harus configurable melalui environment, bukan hardcoded untuk hosting.
+- Setiap Agent AI yang menyentuh VPS wajib mengikuti gate `DEPLOYMENT_VPS.md`. Mulai dengan audit read-only; jangan menerima host key/TLS secara longgar; jangan menaruh credential di prompt/repo/log; buat backup serta checksum sebelum mutation; jalankan operasi panjang melalui job server-side dengan `flock`, PID, status, dan log; serta jangan mengklaim selesai sebelum rollback dan verifikasi end-to-end tersedia.
 
 
 ## Tahapan Kerja Wajib

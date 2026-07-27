@@ -1,6 +1,6 @@
 # AI.md — Panduan Masuk Agent AI/Codex Portal PORPROV v4
 
-> **WAJIB DIBACA PERTAMA.** Agent AI/Codex wajib membaca keenam dokumen root—`README.md`, `AI.md`, `AGENTS.md`, `RULES.md`, `FEATURES.md`, dan `DOCUMENTATION.md`—sebelum menganalisis, menulis, atau mengubah kode.
+> **WAJIB DIBACA PERTAMA.** Agent AI/Codex wajib membaca keenam dokumen tata kelola root—`README.md`, `AI.md`, `AGENTS.md`, `RULES.md`, `FEATURES.md`, dan `DOCUMENTATION.md`—sebelum menganalisis, menulis, atau mengubah kode. Untuk seluruh pekerjaan VPS, `DEPLOYMENT_VPS.md` juga wajib dibaca lengkap.
 
 ## Konteks Aplikasi Aktif
 
@@ -70,7 +70,8 @@ Tailwind CSS v4 wajib mengikat utility `dark:*` hanya ke class `.dark`, selaras 
 | 4 | `DOCUMENTATION.md` | Cara menjalankan, struktur, deployment, dan SOP teknis |
 | 5 | `AGENTS.md` | Protokol kerja Codex/VS Code |
 | 6 | `README.md` | Orientasi repository dan status aplikasi saat ini |
-| 7 | `docs/reference/` | BRD/PRD/SRS/SDD, ASCII Wireframe, dan dokumen arsitektur enterprise |
+| 7 | `DEPLOYMENT_VPS.md` | Aturan deployment aman, backup/restore, TLS/OIDC, rollback, dan handoff Agent AI |
+| 8 | `docs/reference/` | BRD/PRD/SRS/SDD, ASCII Wireframe, dan dokumen arsitektur enterprise |
 
 ## Protokol Bertahap
 
@@ -106,6 +107,7 @@ Tailwind CSS v4 wajib mengikat utility `dark:*` hanya ke class `.dark`, selaras 
 - Master Data memiliki referensi Kontingen, Schedule memiliki susunan peserta per match, dan LiveScore memiliki revisi skor. Penggantian susunan peserta wajib satu transaksi dengan perubahan Jadwal serta melakukan soft delete pada susunan lama.
 - Data tayang realtime publik boleh anonim hanya melalui API Gateway dan wajib berupa projection tersanitasi. Stream Admin membutuhkan JWT/role di edge serta secret internal yang eksplisit di luar development.
 - Update/koreksi skor dan keputusan Medali harus commit bersama outbox. Koreksi skor append-only; hanya submission Medali VERIFIED yang dapat dipublikasikan menjadi OFFICIAL.
+- Deployment VPS wajib mengikuti `DEPLOYMENT_VPS.md`: audit read-only lebih dahulu, backup/checksum sebelum mutation, Git fast-forward commit terverifikasi, job server-side dengan lock/status/log, serta quality gate data, TLS, OIDC, dan rollback. Credential tidak boleh berada di prompt, file Git, atau log.
 
 ## Aturan Ringkas yang Tidak Boleh Dilanggar
 

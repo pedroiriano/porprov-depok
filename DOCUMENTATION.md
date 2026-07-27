@@ -545,6 +545,11 @@ Setiap perubahan aturan atau standar harus disebarkan sesuai fungsi dokumen pada
 
 Perubahan arsitektur tetap dicatat dalam ADR dan perubahan fitur tetap memperbarui `FEATURES.md`. Tanggal/status harus faktual; jangan menandai kepatuhan selesai sebelum migration, code, dan test tersedia.
 
+`DEPLOYMENT_VPS.md` adalah pedoman operasional khusus di root dan tidak
+menggantikan enam dokumen tata kelola di atas. Setiap pekerjaan VPS wajib
+membacanya untuk gate keamanan, backup/restore, TLS/OIDC, job tahan reconnect,
+rollback, incident response, dan format handoff Agent AI.
+
 ## 18. Deployment VPS Ubuntu Intranet
 
 Public Web dapat dilayani melalui HTTP Nginx selama tahap intranet, tetapi
@@ -557,4 +562,6 @@ Compose VPS memakai `docker-compose.vps.yml`, sertifikat non-Git pada
 `infra/docker/tls`, dan `deploy-vps.sh`. Operasi panjang berjalan melalui
 `nohup`/supervisor dengan log persisten dan `flock`, sehingga reconnect client
 tidak menghentikan atau menggandakan deployment. Prosedur lengkap berada di
-`docs/runbook/VPS_UBUNTU_INTRANET.md`.
+`DEPLOYMENT_VPS.md`; `docs/runbook/VPS_UBUNTU_INTRANET.md` hanya ringkasan
+operasional dan tidak boleh dipakai untuk melewati approval gate pada pedoman
+kanonis tersebut.
