@@ -10,7 +10,9 @@ services:
       # HTTP hanya di jaringan privat Compose dan menerbitkan issuer HTTPS.
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
-      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-https://10.11.5.80}
+      # Keycloak 24 pada image aktif menerima hostname tanpa scheme. Scheme
+      # eksternal berasal dari X-Forwarded-Proto Nginx.
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_HOST:-10.11.5.80}
       KC_HOSTNAME_STRICT: "true"
     command: start
 
