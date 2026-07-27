@@ -29,13 +29,13 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
 
   return (
     <section aria-labelledby="nearby-title">
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="mb-10 flex flex-col items-center text-center gap-4">
         <div>
-          <h2 id="nearby-title" className="text-sm font-black uppercase tracking-wider text-primary-500 flex items-center gap-2">
-            <span className="w-5 h-[2px] bg-primary-500 rounded-full"></span>
+          <h2 id="nearby-title" className="text-sm font-black uppercase tracking-wider text-primary-500 flex flex-col items-center gap-2">
+            <span className="w-10 h-[2px] bg-primary-500 rounded-full"></span>
             Di Sekitar Venue Ini
           </h2>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-3 text-sm text-slate-500 max-w-2xl mx-auto">
             Rekomendasi fasilitas terdekat berdasarkan kalkulasi jarak riil dari {venueName}
           </p>
         </div>
