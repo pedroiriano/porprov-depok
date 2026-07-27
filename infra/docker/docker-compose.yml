@@ -373,6 +373,7 @@ services:
     restart: always
     ports:
       - "${ADMIN_WEB_HOST_PORT:-5173}:80"
+      - "${ADMIN_WEB_HTTPS_PORT:-5174}:443"
     depends_on:
       api-gateway:
         condition: service_started
