@@ -19,6 +19,7 @@ interface CityGuideRecord {
   image_url: string | null;
   latitude: number | null;
   longitude: number | null;
+  map_route_url: string | null;
 }
 
 interface CityGuideFormState {
@@ -30,6 +31,7 @@ interface CityGuideFormState {
   image_url: string;
   latitude: string;
   longitude: string;
+  map_route_url: string;
 }
 
 const createEmptyForm = (): CityGuideFormState => ({
@@ -41,6 +43,7 @@ const createEmptyForm = (): CityGuideFormState => ({
   image_url: '',
   latitude: '',
   longitude: '',
+  map_route_url: '',
 });
 
 const categories = [
@@ -54,11 +57,44 @@ const categories = [
   'Lainnya',
 ];
 
-type CityGuideSortKey = 'title' | 'category' | 'address' | 'latitude';
+type CityGuideSortKey = 'title' | 'category' | 'address' | 'map_route_url';
+
+const allowedGoogleMapsHosts = new Set([
+  'google.com',
+  'google.co.id',
+  'maps.app.goo.gl',
+  'maps.google.co.id',
+  'maps.google.com',
+  'www.google.co.id',
+  'www.google.com',
+]);
+
+const isValidGoogleMapsURL = (value: string) => {
+  if (!value.trim()) return true;
+  try {
+    const parsed = new URL(value.trim());
+    const hostname = parsed.hostname.toLowerCase();
+    return parsed.protocol === 'https:'
+      && !parsed.username
+      && !parsed.password
+      && !parsed.port
+      && allowedGoogleMapsHosts.has(hostname)
+      && (hostname === 'maps.app.goo.gl' || parsed.pathname.startsWith('/maps'));
+  } catch {
+    return false;
+  }
+};
 
 const googleMapsURL = (latitude: number | string, longitude: number | string, title?: string) => {
   const base = `https://www.google.com/maps?q=${latitude},${longitude}`;
   return title ? `${base}+(${encodeURIComponent(title)})` : base;
+};
+
+const cityGuideRouteURL = (item: Pick<CityGuideRecord, 'title' | 'latitude' | 'longitude' | 'map_route_url'>) => {
+  const configuredURL = item.map_route_url?.trim();
+  if (configuredURL && isValidGoogleMapsURL(configuredURL)) return configuredURL;
+  if (item.latitude === null || item.longitude === null) return '';
+  return googleMapsURL(item.latitude, item.longitude, item.title);
 };
 
 export default function CityGuide() {
@@ -146,10 +182,10 @@ export default function CityGuide() {
         case 'address':
           comparison = (a.address || '').localeCompare(b.address || '', 'id');
           break;
-        case 'latitude': {
-          const latA = a.latitude ?? Infinity;
-          const latB = b.latitude ?? Infinity;
-          comparison = latA - latB;
+        case 'map_route_url': {
+          const sourceA = a.map_route_url?.trim() ? 'URL' : 'Koordinat';
+          const sourceB = b.map_route_url?.trim() ? 'URL' : 'Koordinat';
+          comparison = sourceA.localeCompare(sourceB, 'id');
           break;
         }
       }
@@ -183,6 +219,7 @@ export default function CityGuide() {
       image_url: item.image_url || '',
       latitude: item.latitude === null ? '' : String(item.latitude),
       longitude: item.longitude === null ? '' : String(item.longitude),
+      map_route_url: item.map_route_url || '',
     });
     setErrorMessage('');
     setIsModalOpen(true);
@@ -204,6 +241,10 @@ export default function CityGuide() {
       setErrorMessage('Longitude harus berupa angka antara -180 sampai 180.');
       return;
     }
+    if (formData.map_route_url.trim().length > 2048 || !isValidGoogleMapsURL(formData.map_route_url)) {
+      setErrorMessage('URL Google Maps harus berupa tautan HTTPS resmi Google Maps dengan panjang maksimal 2048 karakter.');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -216,6 +257,7 @@ export default function CityGuide() {
         image_url: formData.image_url,
         latitude,
         longitude,
+        map_route_url: formData.map_route_url.trim(),
       };
       if (formData.id) {
         await apiClient.put(`/master-data/city-guides/${formData.id}`, payload, getAuthConfig());
@@ -268,6 +310,12 @@ export default function CityGuide() {
   };
 
   const coordinatePreviewReady = formData.latitude !== '' && formData.longitude !== '';
+  const configuredMapURL = formData.map_route_url.trim();
+  const formMapPreviewURL = configuredMapURL && isValidGoogleMapsURL(configuredMapURL)
+    ? configuredMapURL
+    : coordinatePreviewReady
+      ? googleMapsURL(formData.latitude, formData.longitude, formData.title.trim() || 'City Guide Kota Depok')
+      : '';
   const categoryOptions = formData.category && !categories.includes(formData.category)
     ? [formData.category, ...categories]
     : categories;
@@ -277,7 +325,7 @@ export default function CityGuide() {
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">City Guide Kota Depok</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola panduan kota beserta titik koordinat peta yang terverifikasi.</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola panduan kota, URL rute Google Maps, dan koordinat fallback yang terverifikasi.</p>
         </div>
         <button type="button" onClick={openCreateForm} className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-indigo-700">
           <Plus className="h-5 w-5" /> Tambah Panduan
@@ -409,8 +457,8 @@ export default function CityGuide() {
                   </th>
                   <th className="p-4">
                     <SortableHeader<CityGuideSortKey>
-                      label="Titik Peta"
-                      columnKey="latitude"
+                      label="URL Google Maps (Rute)"
+                      columnKey="map_route_url"
                       activeSortKey={table.sortKey}
                       sortDirection={table.sortDirection}
                       onSort={table.handleSort}
@@ -420,14 +468,15 @@ export default function CityGuide() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">{paginatedData.map((item) => {
-                const hasCoordinates = item.latitude !== null && item.longitude !== null;
+                const routeURL = cityGuideRouteURL(item);
+                const usesConfiguredURL = Boolean(item.map_route_url?.trim() && isValidGoogleMapsURL(item.map_route_url));
                 return <tr key={item.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
                   <td className="p-4 font-semibold text-slate-900 dark:text-white">{item.title}</td>
                   <td className="p-4 text-sm">
                     <span className="inline-block rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">{item.category}</span>
                   </td>
                   <td className="max-w-80 p-4 text-sm text-slate-600 dark:text-slate-300">{item.address || '-'}</td>
-                  <td className="p-4">{hasCoordinates ? <a href={googleMapsURL(item.latitude as number, item.longitude as number)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-bold text-indigo-700 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-950/50"><MapPinned className="h-4 w-4" /><span>{Number(item.latitude).toFixed(6)}, {Number(item.longitude).toFixed(6)}</span><ExternalLink className="h-3.5 w-3.5" /></a> : <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Belum ditentukan</span>}</td>
+                  <td className="p-4">{routeURL ? <div className="flex flex-col items-start gap-1"><a href={routeURL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-bold text-indigo-700 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-indigo-300 dark:hover:bg-indigo-950/50"><MapPinned className="h-4 w-4" /><span>Rute ke {item.title}</span><ExternalLink className="h-3.5 w-3.5" /></a><span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-bold ${usesConfiguredURL ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'}`}>{usesConfiguredURL ? 'URL tersimpan' : 'Fallback koordinat'}</span></div> : <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Belum ditentukan</span>}</td>
                   <td className="p-4 text-right"><div className="flex justify-end gap-2">
                     <button type="button" onClick={() => openEditForm(item)} aria-label={`Edit ${item.title}`} className="rounded-md p-2 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950"><Edit className="h-4 w-4" /></button>
                     <button type="button" onClick={() => void handleDelete(item.id)} aria-label={`Arsipkan ${item.title}`} className="rounded-md p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"><Trash className="h-4 w-4" /></button>
@@ -461,6 +510,11 @@ export default function CityGuide() {
         <TextArea label="Deskripsi" rows={3} value={formData.description} onChange={(event) => setFormData((current) => ({ ...current, description: event.target.value }))} placeholder="Ringkasan lokasi, layanan, jam operasional, atau informasi pengunjung" />
         <TextArea label="Alamat" rows={2} value={formData.address} onChange={(event) => setFormData((current) => ({ ...current, address: event.target.value }))} />
 
+        <div>
+          <TextInput label="URL Google Maps (Rute)" type="url" maxLength={2048} value={formData.map_route_url} onChange={(event) => setFormData((current) => ({ ...current, map_route_url: event.target.value }))} placeholder="https://www.google.com/maps/dir/?api=1&destination=..." />
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Opsional. Jika kosong, sistem otomatis menggunakan latitude dan longitude di bawah sebagai tujuan peta.</p>
+        </div>
+
         <fieldset className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Titik koordinat peta</legend>
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><p className="text-sm text-slate-500 dark:text-slate-400">Gunakan koordinat desimal agar lokasi dapat dibuka tepat di aplikasi peta.</p><button type="button" onClick={useCurrentLocation} disabled={locating} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-indigo-300 px-3 text-sm font-bold text-indigo-700 transition-colors hover:bg-indigo-50 disabled:opacity-60 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-950"><LocateFixed className={`h-4 w-4 ${locating ? 'animate-pulse' : ''}`} />{locating ? 'Mengambil lokasi...' : 'Gunakan Lokasi Saat Ini'}</button></div>
@@ -468,7 +522,7 @@ export default function CityGuide() {
             <TextInput label="Latitude" type="number" inputMode="decimal" step="any" min={-90} max={90} required value={formData.latitude} onChange={(event) => setFormData((current) => ({ ...current, latitude: event.target.value }))} placeholder="Contoh: -6.402484" />
             <TextInput label="Longitude" type="number" inputMode="decimal" step="any" min={-180} max={180} required value={formData.longitude} onChange={(event) => setFormData((current) => ({ ...current, longitude: event.target.value }))} placeholder="Contoh: 106.742061" />
           </div>
-          {coordinatePreviewReady && <a href={googleMapsURL(formData.latitude, formData.longitude)} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-indigo-50 px-4 text-sm font-bold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-200 dark:hover:bg-indigo-950"><MapPinned className="h-4 w-4" />Pratinjau titik di Google Maps<ExternalLink className="h-3.5 w-3.5" /></a>}
+          {formMapPreviewURL && <a href={formMapPreviewURL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-indigo-50 px-4 text-sm font-bold text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-indigo-950/50 dark:text-indigo-200 dark:hover:bg-indigo-950"><MapPinned className="h-4 w-4" />{configuredMapURL ? 'Pratinjau URL Google Maps' : 'Pratinjau rute dari koordinat'}<ExternalLink className="h-3.5 w-3.5" /></a>}
         </fieldset>
 
         <MediaInput label="Gambar City Guide" value={formData.image_url} onClear={() => setFormData((current) => ({ ...current, image_url: '' }))} onSelect={() => setIsMediaSelectorOpen(true)} />

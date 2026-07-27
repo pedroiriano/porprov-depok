@@ -239,7 +239,7 @@ export default async function CityGuidePage({
             </div>
             <h3 className="text-2xl font-black text-slate-900 dark:text-white">Panduan Tidak Ditemukan</h3>
             <p className="mt-2 text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-              Maaf, belum ada data City Guide untuk kategori "{activeCategory}". Panitia masih melengkapi panduan ini.
+              Maaf, belum ada data City Guide untuk kategori &quot;{activeCategory}&quot;. Panitia masih melengkapi panduan ini.
             </p>
             <Link 
               href="/city-guide" 

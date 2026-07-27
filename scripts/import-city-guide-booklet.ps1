@@ -75,10 +75,18 @@ foreach ($record in $records) {
         $null -eq $record.longitude) {
         throw "Data wajib tidak lengkap pada '$($record.booklet_title)'."
     }
+    if (-not [string]::IsNullOrWhiteSpace([string]$record.map_route_url) -and
+        [string]$record.map_route_url -notmatch '^https://(www\.)?google\.(com|co\.id)/maps/' -and
+        [string]$record.map_route_url -notmatch '^https://maps\.google\.(com|co\.id)/maps/' -and
+        [string]$record.map_route_url -notmatch '^https://maps\.app\.goo\.gl/') {
+        throw "URL Google Maps tidak valid pada '$($record.booklet_title)'."
+    }
 }
 
 if ($DryRun) {
     Write-Host "Dry run valid: $($records.Count) entri siap diimpor dari $resolvedDataPath"
+    $configuredMapUrls = @($records | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.map_route_url) }).Count
+    Write-Host "- URL Google Maps tersimpan: $configuredMapUrls; fallback koordinat: $($records.Count - $configuredMapUrls)"
     $requiredCategories.GetEnumerator() | ForEach-Object {
         Write-Host ("- {0}: {1}" -f $_.Key, $_.Value)
     }
@@ -129,6 +137,10 @@ foreach ($record in $records) {
     if ([string]::IsNullOrWhiteSpace($imageUrl) -and $null -ne $existing) {
         $imageUrl = [string]$existing.image_url
     }
+    $mapRouteUrl = [string]$record.map_route_url
+    if ([string]::IsNullOrWhiteSpace($mapRouteUrl) -and $null -ne $existing) {
+        $mapRouteUrl = [string]$existing.map_route_url
+    }
     $payload = @{
         title = [string]$record.title
         category = [string]$record.category
@@ -137,6 +149,7 @@ foreach ($record in $records) {
         image_url = $imageUrl
         latitude = [double]$record.latitude
         longitude = [double]$record.longitude
+        map_route_url = $mapRouteUrl
     } | ConvertTo-Json -Depth 5
 
     try {

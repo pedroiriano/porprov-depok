@@ -73,8 +73,8 @@ WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: CreateCityGuide :one
-INSERT INTO city_guides (title, category, description, address, image_url, latitude, longitude)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO city_guides (title, category, description, address, image_url, latitude, longitude, map_route_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: ListCityGuides :many
@@ -96,6 +96,7 @@ SET
   image_url = NULLIF($6::text, ''),
   latitude = $7,
   longitude = $8,
+  map_route_url = NULLIF($9::text, ''),
   updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;

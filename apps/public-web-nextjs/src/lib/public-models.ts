@@ -126,6 +126,7 @@ export interface RawCityGuide {
   image_url?: Parameters<typeof readPgText>[0];
   latitude?: Parameters<typeof readPgNumber>[0];
   longitude?: Parameters<typeof readPgNumber>[0];
+  map_route_url?: Parameters<typeof readPgText>[0];
 }
 
 export interface CityGuideModel {
@@ -151,10 +152,40 @@ function hasPgNumber(value: Parameters<typeof readPgNumber>[0]): boolean {
   return true;
 }
 
+const googleMapsHosts = new Set([
+  "google.com",
+  "google.co.id",
+  "maps.app.goo.gl",
+  "maps.google.co.id",
+  "maps.google.com",
+  "www.google.co.id",
+  "www.google.com",
+]);
+
+function safeGoogleMapsRouteURL(value: Parameters<typeof readPgText>[0]): string {
+  const candidate = readPgText(value).trim();
+  if (!candidate) return "";
+  try {
+    const parsed = new URL(candidate);
+    const host = parsed.hostname.toLowerCase();
+    return parsed.protocol === "https:"
+      && !parsed.username
+      && !parsed.password
+      && !parsed.port
+      && googleMapsHosts.has(host)
+      && (host === "maps.app.goo.gl" || parsed.pathname.startsWith("/maps"))
+      ? candidate
+      : "";
+  } catch {
+    return "";
+  }
+}
+
 export function normalizeCityGuide(raw: RawCityGuide, index = 0): CityGuideModel {
   const latitude = readPgNumber(raw.latitude);
   const longitude = readPgNumber(raw.longitude);
   const hasCoordinates = hasPgNumber(raw.latitude) && hasPgNumber(raw.longitude);
+  const configuredMapURL = safeGoogleMapsRouteURL(raw.map_route_url);
   return {
     id: readResourceId(raw.id, `city-guide-${index}`),
     title: raw.title?.trim() || "Panduan Kota Depok",
@@ -164,7 +195,7 @@ export function normalizeCityGuide(raw: RawCityGuide, index = 0): CityGuideModel
     imageUrl: resolvePublicAssetUrl(raw.image_url),
     latitude,
     longitude,
-    mapUrl: hasCoordinates ? `https://www.google.com/maps?q=${latitude},${longitude}+(${encodeURIComponent(raw.title?.trim() || "Panduan Kota Depok")})` : "",
+    mapUrl: configuredMapURL || (hasCoordinates ? `https://www.google.com/maps?q=${latitude},${longitude}+(${encodeURIComponent(raw.title?.trim() || "Panduan Kota Depok")})` : ""),
   };
 }
 

@@ -38,6 +38,8 @@ type CityGuide struct {
 	DeleteReason pgtype.Text        `json:"delete_reason"`
 	Latitude     pgtype.Float8      `json:"latitude"`
 	Longitude    pgtype.Float8      `json:"longitude"`
+	// Optional HTTPS Google Maps route URL. Consumers fall back to latitude/longitude when empty.
+	MapRouteUrl pgtype.Text `json:"map_route_url"`
 }
 
 type Kontingen struct {

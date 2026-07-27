@@ -4,7 +4,6 @@ import { MascotSection } from "@/components/MascotSection";
 import { PorprovIntroduction } from "@/components/PorprovIntroduction";
 import { VenueShowcase } from "@/components/VenueShowcase";
 import { CityGuideSection } from "@/components/CityGuideSection";
-import Image from "next/image";
 
 const informationLinks = [
   {

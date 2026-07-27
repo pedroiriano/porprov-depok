@@ -108,7 +108,9 @@ export function VenueInteractivePage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchVenues(controller.signal);
+    const initialFetchId = window.setTimeout(() => {
+      void fetchVenues(controller.signal);
+    }, 0);
     
     // Fallback interval polling
     const intervalId = setInterval(() => {
@@ -130,6 +132,7 @@ export function VenueInteractivePage() {
 
     return () => {
       controller.abort();
+      window.clearTimeout(initialFetchId);
       clearInterval(intervalId);
       source.close();
     };
@@ -141,6 +144,17 @@ export function VenueInteractivePage() {
       v.address.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [venues, searchQuery]);
+
+  const mappableVenues = useMemo(() => venues.flatMap((venue) => {
+    if (venue.latitude === null || venue.longitude === null) return [];
+    return [{
+      id: venue.id,
+      name: venue.name,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
+      address: venue.address,
+    }];
+  }), [venues]);
 
   const handleVenueClick = (venue: VenueViewModel) => {
     if (venue.latitude && venue.longitude) {
@@ -231,7 +245,7 @@ export function VenueInteractivePage() {
 
           {/* Right Panel: Map */}
           <div className="lg:col-span-8 bg-slate-200 dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm relative z-0">
-            <VenueMap venues={venues.filter(v => v.latitude && v.longitude) as any} activeVenue={activeVenue} />
+            <VenueMap venues={mappableVenues} activeVenue={activeVenue} />
           </div>
 
         </div>

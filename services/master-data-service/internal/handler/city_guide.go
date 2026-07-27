@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -25,6 +26,40 @@ type cityGuideRequest struct {
 	ImageURL    string   `json:"image_url"`
 	Latitude    *float64 `json:"latitude"`
 	Longitude   *float64 `json:"longitude"`
+	MapRouteURL string   `json:"map_route_url"`
+}
+
+const maximumMapRouteURLLength = 2048
+
+var allowedGoogleMapsHosts = map[string]struct{}{
+	"google.com":        {},
+	"google.co.id":      {},
+	"maps.app.goo.gl":   {},
+	"maps.google.co.id": {},
+	"maps.google.com":   {},
+	"www.google.co.id":  {},
+	"www.google.com":    {},
+}
+
+func validateGoogleMapsRouteURL(value string) error {
+	if value == "" {
+		return nil
+	}
+	if len(value) > maximumMapRouteURLLength {
+		return errors.New("URL Google Maps maksimal 2048 karakter")
+	}
+	parsed, err := url.ParseRequestURI(value)
+	if err != nil || parsed.Scheme != "https" || parsed.User != nil || parsed.Port() != "" {
+		return errors.New("URL Google Maps harus berupa URL HTTPS yang valid")
+	}
+	host := strings.ToLower(parsed.Hostname())
+	if _, allowed := allowedGoogleMapsHosts[host]; !allowed {
+		return errors.New("URL Google Maps harus menggunakan domain resmi Google Maps")
+	}
+	if host != "maps.app.goo.gl" && !strings.HasPrefix(parsed.Path, "/maps") {
+		return errors.New("URL harus mengarah ke halaman Google Maps")
+	}
+	return nil
 }
 
 func NewCityGuideHandler(queries *db.Queries) *CityGuideHandler {
@@ -53,6 +88,7 @@ func validateCityGuideRequest(req *cityGuideRequest) error {
 	req.Description = strings.TrimSpace(req.Description)
 	req.Address = strings.TrimSpace(req.Address)
 	req.ImageURL = strings.TrimSpace(req.ImageURL)
+	req.MapRouteURL = strings.TrimSpace(req.MapRouteURL)
 	if req.Title == "" || req.Category == "" {
 		return errors.New("title dan category wajib diisi")
 	}
@@ -64,6 +100,9 @@ func validateCityGuideRequest(req *cityGuideRequest) error {
 	}
 	if *req.Longitude < -180 || *req.Longitude > 180 {
 		return errors.New("longitude harus berada pada rentang -180 sampai 180")
+	}
+	if err := validateGoogleMapsRouteURL(req.MapRouteURL); err != nil {
+		return err
 	}
 	return nil
 }
@@ -98,6 +137,7 @@ func (h *CityGuideHandler) CreateCityGuide(w http.ResponseWriter, r *http.Reques
 		ImageUrl:    pgtype.Text{String: req.ImageURL, Valid: req.ImageURL != ""},
 		Latitude:    pgtype.Float8{Float64: *req.Latitude, Valid: true},
 		Longitude:   pgtype.Float8{Float64: *req.Longitude, Valid: true},
+		MapRouteUrl: pgtype.Text{String: req.MapRouteURL, Valid: req.MapRouteURL != ""},
 	})
 	if err != nil {
 		http.Error(w, "Gagal menyimpan City Guide", http.StatusInternalServerError)
@@ -171,6 +211,7 @@ func (h *CityGuideHandler) UpdateCityGuide(w http.ResponseWriter, r *http.Reques
 		Column6:   req.ImageURL,
 		Latitude:  pgtype.Float8{Float64: *req.Latitude, Valid: true},
 		Longitude: pgtype.Float8{Float64: *req.Longitude, Valid: true},
+		Column9:   req.MapRouteURL,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		http.Error(w, "City Guide tidak ditemukan", http.StatusNotFound)
