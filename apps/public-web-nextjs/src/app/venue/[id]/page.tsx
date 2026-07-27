@@ -6,6 +6,7 @@ import { cache } from "react";
 import { ScheduleMatchCard } from "@/components/ScheduleMatchCard";
 import { NearbyCityGuides } from "@/components/NearbyCityGuides";
 import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
+import { selectNearestCityGuidesByCategory } from "@/lib/nearby-city-guides";
 import {
   normalizeCabor,
   normalizeCityGuide,
@@ -18,19 +19,6 @@ import {
 } from "@/lib/public-models";
 
 export const dynamic = "force-dynamic";
-
-function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Radius of the earth in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;  
-  const dLon = (lon2 - lon1) * Math.PI / 180; 
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2)
-    ; 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-  return R * c;
-}
 
 const getVenue = cache(async (id: string) => {
   const response = await fetch(publicApiUrl(`/venues/${encodeURIComponent(id)}`), { cache: "no-store" });
@@ -69,19 +57,12 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
   const cabors = rawCabors.map(normalizeCabor).filter((cabor) => venue.caborIds.includes(cabor.id));
   const coordinateAvailable = venue.latitude !== 0 || venue.longitude !== 0;
 
-  let nearbyGuides = rawGuides.map(normalizeCityGuide);
-  if (coordinateAvailable) {
-    nearbyGuides = nearbyGuides
-      .filter((g) => g.latitude !== 0 && g.longitude !== 0)
-      .map((g) => ({
-        ...g,
-        distanceKm: getDistanceKm(venue.latitude, venue.longitude, g.latitude, g.longitude),
-      }))
-      .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0))
-      .slice(0, 4);
-  } else {
-    nearbyGuides = nearbyGuides.filter((guide) => venue.cityGuideIds.includes(guide.id)).slice(0, 4);
-  }
+  const nearbyGuides = selectNearestCityGuidesByCategory(
+    rawGuides.map(normalizeCityGuide),
+    venue.latitude,
+    venue.longitude,
+    venue.cityGuideIds,
+  );
 
   const matches = rawMatches.map(normalizeEnrichedMatch).filter((match) => match.venueId === venue.id);
 
@@ -116,7 +97,7 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
         </aside>
       </div>
 
-      <div className="container mt-20">
+      <div className="container mt-20 border-t border-slate-200 pt-16 dark:border-slate-800">
         <NearbyCityGuides guides={nearbyGuides} venueName={venue.name} />
       </div>
     </main>

@@ -40,11 +40,12 @@ export default function VenueDepok() {
 
   // INFO: Initialize table controls
   const table = useTableControls<VenueSortKey>({ sortKey: 'name', sortDirection: 'asc', rowsPerPage: 10 });
+  const { resetPage } = table;
 
   // CHANGE: Reset page when search changes
   useEffect(() => {
-    table.resetPage();
-  }, [search, table.resetPage]);
+    resetPage();
+  }, [search, resetPage]);
 
   useEffect(() => {
     if (isModalOpen || isMediaSelectorOpen) {

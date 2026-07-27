@@ -97,6 +97,8 @@ Implementasi tema memakai class `.dark` pada root sebagai single source of truth
 Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type yang konsisten, seluruh state loading/empty/error/success/disabled/offline/reconnect, mobile-first, WCAG 2.2 AA, reduced motion, performa, visual regression, dan tidak adanya demo content atau komponen duplikat tanpa alasan.
 
 
+Baseline responsif 27 Juli 2026 memakai matriks 9 rute Public dan 10 rute Admin pada viewport pendek `400×504`, mobile `400×800`, serta desktop `1440×900` dalam tema terang dan gelap. Hero Public memakai minimum dynamic viewport dan boleh memanjang mengikuti konten pada layar pendek; modal Admin dibatasi terhadap `100dvh`; tabel, filter, dan pagination menyediakan overflow horizontal terkontrol tanpa memperlebar halaman; kontrol utama serta kontrol peta memiliki target sentuh minimal 44 px. Manifest Public menyediakan ikon PNG valid 192/512 dan theme color per color scheme. Quality gate runtime mewajibkan tidak ada horizontal page overflow, gambar rusak, error, atau warning Console pada seluruh rute aktif.
+
 ### 4.1 Public Web Experience
 
 - Gaya informasi: cepat, padat, SEO-friendly, sports-event storytelling.
@@ -115,8 +117,9 @@ Quality bar “masterpiece” mewajibkan hierarki visual kuat, grid/spacing/type
 - Jadwal, LiveScore, dan Klasemen tidak menggunakan data contoh produksi: jika belum ada record, UI menampilkan empty state; jika service gagal, UI menampilkan error yang dapat ditindaklanjuti.
 - Public LiveScore menahan status live dan nilai skor bila susunan Peserta A/B belum lengkap, termasuk untuk revision historis yang tercatat sebelum kontrak peserta diterapkan. Card menampilkan status “Menunggu peserta” serta skor `–` sampai identitas dikonfirmasi.
 - URL Media Library lama yang menunjuk port diagnostik `localhost:18xxx/uploads/*` dinormalisasi ke route `/uploads/*` API Gateway agar asset tetap dapat dibaca Public Web tanpa melanggar single-edge policy.
-- Detail Cabor berada di `/cabor/[id]` dan menggabungkan nomor tanding, venue, serta Jadwal aktif. Detail Venue berada di `/venue/[id]` dan menggabungkan fasilitas, cabor, City Guide sekitar, rute/koordinat, serta Jadwal aktif; field kontak internal Venue tidak ditayangkan.
-- City Guide menyimpan pasangan koordinat desimal `latitude`/`longitude` pada Master Data. Admin mendukung create, read, update, soft delete, pengambilan lokasi perangkat, pratinjau Google Maps, dan Media Selector; detail Venue publik membentuk tautan peta dari koordinat tanpa menyimpan URL vendor sebagai sumber kebenaran.
+- Detail Cabor berada di `/cabor/[id]` dan menggabungkan nomor tanding, venue, serta Jadwal aktif. Detail Venue berada di `/venue/[id]` dan menggabungkan fasilitas, cabor, rute/koordinat, Jadwal aktif, serta enam kartu tempat terdekat. Kartu dipilih satu per kelompok Tempat Menginap, Pusat Perbelanjaan, Wisata Kuliner, Coffee Shop, Rumah Sakit, dan Lainnya dengan pemeringkatan jarak Haversine dari koordinat Venue; field kontak internal Venue tidak ditayangkan.
+- Setiap kartu tempat terdekat memuat foto Media Library bila tersedia, jarak, nama, alamat, dan tautan rute. Ketika foto lokasi belum tersedia, Public Web memakai aset Techwind representatif per kategori dan menandainya sebagai `Visual kategori`; visual fallback tidak boleh dianggap sebagai foto faktual lokasi.
+- City Guide menyimpan pasangan koordinat desimal `latitude`/`longitude` sebagai sumber kebenaran pada Master Data serta `map_route_url` opsional sebagai metadata rute Google Maps. Admin mendukung create, read, update, soft delete, pengambilan lokasi perangkat, pratinjau rute, dan Media Selector. Admin/Public memprioritaskan URL HTTPS Google Maps yang valid lalu membentuk tautan dari koordinat ketika URL kosong.
 - Dataset City Guide resmi berisi 165 rekomendasi dari `Booklet PORPROV XV.pdf` halaman 21–32 dalam kategori Coffee Shop, Wisata Kuliner, Tempat Menginap, Wisata Buatan, Wisata Situ, Pusat Perbelanjaan, dan Rumah Sakit. Dataset kanonis, status verifikasi, catatan listing historis, serta prosedur upsert API idempoten didokumentasikan di `docs/data/CITY_GUIDE_BOOKLET_PORPROV_XV_2026.md`.
 - `GET /api/v1/schedule/matches/enriched` adalah kontrak read-model publik yang mengembalikan nama/ikon Cabor, Nomor Tanding, Peserta A/B terurut, Kontingen, Venue, waktu, ronde, dan status. Peserta memiliki `participant_type` (`individual`, `team`, `contingent`), `slot`, identitas yang relevan, serta `display_name`. Schedule Service melakukan batch query lalu mengambil referensi aktif dari Master Data/Venue; kegagalan dependency menghasilkan `503`, dan tombstone tidak pernah masuk projection.
 - Event internal LiveScore/Medali memakai envelope v1 berisi `eventVersion`, `eventId`, `eventType`, sequence database/monotonik, timestamp, actor, dan request correlation. Public SSE hanya meneruskan `LIVESCORE_UPDATED`, `LIVESCORE_CORRECTED`, dan `MEDAL_STANDING_UPDATED` setelah actor/request/alasan koreksi dibuang. Klasemen tetap polling 30 detik sebagai fallback.
@@ -468,7 +471,7 @@ Implementasi aktif memakai `deleted_by TEXT` karena identitas actor berasal dari
 
 | Database/service | Migration | Entity aktif |
 |---|---:|---|
-| `master_data_db` / Master Data | v6 | Cabor, Nomor Pertandingan, Kontingen, City Guide dengan koordinat, Media |
+| `master_data_db` / Master Data | v7 | Cabor, Nomor Pertandingan, Kontingen, City Guide dengan koordinat dan URL rute Google Maps opsional, Media |
 | `venue_db` / Venue | v2 | Venue |
 | `schedule_db` / Schedule | v5 | Jadwal/Match dan Peserta A/B bertipe Individu/Tim/Kontingen dengan slot serta soft replacement |
 | `livescore_db` / LiveScore | v1 | Revision append-only, current projection, transactional outbox |
@@ -489,7 +492,7 @@ Endpoint Admin melalui API Gateway:
 | `POST /api/v1/schedule/matches` / `PUT /api/v1/schedule/matches/{id}` | Simpan Jadwal dan array `participants` dua sisi dalam satu transaksi |
 | `GET /api/v1/schedule/matches/{id}/participants` | Daftar peserta aktif terurut untuk satu Jadwal |
 
-Payload create/update `POST|PUT /api/v1/master-data/city-guides[/{id}]` memuat `title`, `category`, `description`, `address`, `image_url`, `latitude`, dan `longitude`. Kedua koordinat wajib hadir bersama; latitude berada pada `-90..90` dan longitude `-180..180`. Migration v6 mempertahankan pasangan null pada record legacy agar deployment backward-safe, tetapi API mewajibkan koordinat saat record dibuat atau diedit.
+Payload create/update `POST|PUT /api/v1/master-data/city-guides[/{id}]` memuat `title`, `category`, `description`, `address`, `image_url`, `latitude`, `longitude`, dan `map_route_url`. Kedua koordinat wajib hadir bersama; latitude berada pada `-90..90` dan longitude `-180..180`. `map_route_url` boleh kosong; bila terisi maksimal 2048 karakter dan wajib berupa URL HTTPS host resmi Google Maps. Migration v6 mempertahankan pasangan null pada record legacy, sedangkan migration v7 menambahkan kolom URL nullable. Mengirim string kosong pada update mengembalikan field tersebut menjadi `NULL` dan mengaktifkan fallback koordinat.
 
 Aturan integritas yang aktif:
 
@@ -498,7 +501,7 @@ Aturan integritas yang aktif:
 - Jadwal hanya dapat dipulihkan bila Nomor Pertandingan dan Venue referensinya sudah aktif kembali.
 - Peserta pertandingan wajib tepat dua sisi dengan jenis yang sama untuk kontrak LiveScore A/B. Keduanya harus merujuk Kontingen aktif; Individu wajib memiliki `athlete_name`, Tim wajib memiliki `team_name`, dan Kontingen memakai nama referensi. Penggantian susunan menandai record lama terhapus sebelum menyimpan versi aktif baru dalam transaksi yang sama.
 - Media yang diarsipkan hilang dari list/selector dan `/uploads/{file}` mengembalikan `404`; setelah restore delivery kembali `200` tanpa mengunggah ulang file.
-- City Guide tidak boleh memiliki hanya satu koordinat. Database menegakkan pasangan null/non-null dan rentang geografis; UI serta handler mengulang validasi untuk feedback dini dan pertahanan berlapis.
+- City Guide tidak boleh memiliki hanya satu koordinat. Database menegakkan pasangan null/non-null, rentang geografis, dan batas panjang URL; UI, handler, serta normalizer Public Web mengulang validasi untuk feedback dini dan pertahanan berlapis. Resolusi tautan selalu `map_route_url` valid terlebih dahulu, lalu koordinat.
 - Delete dan restore bersifat idempotent. Operasi yang benar-benar mengubah state menerbitkan event audit NATS berisi actor, reason/request ID, serta snapshot record/tombstone. Audit Service kini menyimpan event yang diterima secara immutable, tetapi publisher Master/Media/Venue/Jadwal masih best-effort dan belum memakai transactional outbox.
 - Kepemilikan serta kontrak Peserta A/B antara Master Data, Schedule, dan LiveScore dicatat pada `docs/adr/ADR-0006-schedule-participant-ownership.md`.
 

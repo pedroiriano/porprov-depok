@@ -157,7 +157,7 @@ export function VenueInteractivePage() {
   }), [venues]);
 
   const handleVenueClick = (venue: VenueViewModel) => {
-    if (venue.latitude && venue.longitude) {
+    if (venue.latitude !== null && venue.longitude !== null) {
       setActiveVenue({ latitude: venue.latitude, longitude: venue.longitude });
     } else {
       alert("Venue ini belum memiliki data koordinat lokasi yang valid.");
@@ -176,10 +176,10 @@ export function VenueInteractivePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[700px]">
+        <div className="grid grid-cols-1 gap-6 lg:h-[700px] lg:grid-cols-12">
           
           {/* Left Panel: Search & Scrollable List */}
-          <div className="lg:col-span-4 flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden h-full">
+          <div className="flex h-[440px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:h-[520px] lg:col-span-4 lg:h-full dark:border-slate-800 dark:bg-slate-900">
             
             {/* Search Input */}
             <div className="p-4 border-b border-slate-100 dark:border-slate-800">
@@ -211,40 +211,42 @@ export function VenueInteractivePage() {
                 </div>
               ) : (
                 filteredVenues.map((venue) => (
-                  <div
+                  <article
                     key={venue.id}
-                    onClick={() => handleVenueClick(venue)}
-                    className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 hover:shadow-sm cursor-pointer transition-all bg-white dark:bg-slate-900 group"
+                    className="overflow-hidden rounded-xl border border-slate-200 bg-white transition-all hover:border-primary-500 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:hover:border-primary-500"
                   >
-                    <h3 className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wide line-clamp-1" title={venue.name}>{venue.name}</h3>
-                    
-                    {/* Tags / Badges */}
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      <span className="inline-flex items-center rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 dark:text-slate-300 uppercase">
-                        {venue.caborCount} CABOR
-                      </span>
-                      <span className="inline-flex items-center rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 dark:text-slate-300 uppercase">
-                        KAPASITAS {venue.capacity || "-"}
-                      </span>
-                    </div>
-
-                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                      <Link 
-                        href={`/venue/${venue.id}`} 
-                        className="text-[11px] font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-0.5"
-                        onClick={(e) => e.stopPropagation()} // Prevent trigger map click
+                    <button
+                      type="button"
+                      onClick={() => handleVenueClick(venue)}
+                      className="group block min-h-11 w-full p-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-primary-500"
+                      aria-label={`Tampilkan ${venue.name} pada peta`}
+                    >
+                      <h3 className="line-clamp-2 text-sm font-black uppercase tracking-wide text-slate-900 group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-300" title={venue.name}>{venue.name}</h3>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <span className="inline-flex items-center rounded bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          {venue.caborCount} Cabor
+                        </span>
+                        <span className="inline-flex items-center rounded bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          Kapasitas {venue.capacity || "-"}
+                        </span>
+                      </div>
+                    </button>
+                    <div className="border-t border-slate-100 px-3 dark:border-slate-800">
+                      <Link
+                        href={`/venue/${venue.id}`}
+                        className="flex min-h-11 items-center justify-between text-xs font-bold text-primary-600 hover:text-primary-700 dark:text-primary-300 dark:hover:text-primary-200"
                       >
-                        Detail venue <i className="ri-arrow-right-s-line"></i>
+                        Detail venue <i className="ri-arrow-right-s-line text-base" aria-hidden="true" />
                       </Link>
                     </div>
-                  </div>
+                  </article>
                 ))
               )}
             </div>
           </div>
 
           {/* Right Panel: Map */}
-          <div className="lg:col-span-8 bg-slate-200 dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm relative z-0">
+          <div className="relative z-0 h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-sm sm:h-[520px] lg:col-span-8 lg:h-full dark:border-slate-700 dark:bg-slate-800">
             <VenueMap venues={mappableVenues} activeVenue={activeVenue} />
           </div>
 

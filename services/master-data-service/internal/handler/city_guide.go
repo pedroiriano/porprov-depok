@@ -34,6 +34,7 @@ const maximumMapRouteURLLength = 2048
 var allowedGoogleMapsHosts = map[string]struct{}{
 	"google.com":        {},
 	"google.co.id":      {},
+	"goo.gl":            {},
 	"maps.app.goo.gl":   {},
 	"maps.google.co.id": {},
 	"maps.google.com":   {},
@@ -56,7 +57,12 @@ func validateGoogleMapsRouteURL(value string) error {
 	if _, allowed := allowedGoogleMapsHosts[host]; !allowed {
 		return errors.New("URL Google Maps harus menggunakan domain resmi Google Maps")
 	}
-	if host != "maps.app.goo.gl" && !strings.HasPrefix(parsed.Path, "/maps") {
+	standardMapsPath := parsed.Path == "/maps" || strings.HasPrefix(parsed.Path, "/maps/")
+	isMapsPath := (host == "maps.app.goo.gl" && len(parsed.Path) > 1) ||
+		host == "maps.google.com" ||
+		host == "maps.google.co.id" ||
+		standardMapsPath
+	if !isMapsPath {
 		return errors.New("URL harus mengarah ke halaman Google Maps")
 	}
 	return nil

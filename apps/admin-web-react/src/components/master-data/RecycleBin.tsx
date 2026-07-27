@@ -35,11 +35,12 @@ export default function RecycleBin() {
 
   // INFO: Initialize table controls
   const table = useTableControls<RecycleBinSortKey>({ sortKey: 'deleted_at', sortDirection: 'desc', rowsPerPage: 10 });
+  const { resetPage } = table;
 
   // CHANGE: Reset page when search changes
   useEffect(() => {
-    table.resetPage();
-  }, [search, table.resetPage]);
+    resetPage();
+  }, [search, resetPage]);
 
   const deletedQuery = useQuery({
     queryKey: ['soft-delete', 'recycle-bin'],
@@ -70,7 +71,7 @@ export default function RecycleBin() {
     onError: (error) => setFeedback(getApiErrorMessage(error, 'Gagal memulihkan data.')),
   });
 
-  const records = deletedQuery.data || [];
+  const records = useMemo(() => deletedQuery.data ?? [], [deletedQuery.data]);
 
   // PERFORMANCE: Memoized search filter
   const filteredRecords = useMemo(() => {

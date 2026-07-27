@@ -2,7 +2,7 @@
 
 ## Ruang Lingkup
 
-Dataset kanonis berada di `data/city-guide/booklet-porprov-xv-2026.json` dan memuat seluruh 165 rekomendasi tempat pada `Booklet PORPROV XV.pdf` halaman 21–32. Urutan sumber, halaman, judul booklet, kategori, tautan Maps booklet, alamat, wilayah, koordinat, kategori lokasi, deskripsi, dan metadata verifikasi dipertahankan agar data dapat diaudit dan diimpor ulang.
+Dataset kanonis berada di `data/city-guide/booklet-porprov-xv-2026.json` dan memuat seluruh 165 rekomendasi tempat pada `Booklet PORPROV XV.pdf` halaman 21–32. Urutan sumber, halaman, judul booklet, kategori, tautan Maps booklet, URL rute bernama, alamat, wilayah, koordinat, kategori lokasi, deskripsi, dan metadata verifikasi dipertahankan agar data dapat diaudit dan diimpor ulang.
 
 | Kategori | Halaman | Jumlah |
 |---|---:|---:|
@@ -49,15 +49,15 @@ Validasi tanpa menulis data:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\import-city-guide-booklet.ps1 -DryRun
 ```
 
-Importer menggunakan API Gateway dan token Keycloak sehingga validasi domain dan audit event tetap berjalan. Kunci upsert adalah gabungan `title + category`; pengulangan impor memperbarui record yang sama dan tidak melakukan delete. `image_url` yang sudah dipilih operator dipertahankan ketika dataset tidak menyediakan gambar.
+Importer menggunakan API Gateway dan token Keycloak sehingga validasi domain dan audit event tetap berjalan. Kunci upsert adalah gabungan `title + category`; pengulangan impor memperbarui record yang sama dan tidak melakukan delete. `image_url` yang sudah dipilih operator dipertahankan ketika dataset tidak menyediakan gambar. `map_route_url` yang terisi dipakai sebagai tautan utama; bila field kosong, aplikasi otomatis menggunakan latitude/longitude.
 
 ## Quality Gate Dataset
 
 - Total harus tepat 165.
 - Distribusi kategori harus sama dengan tabel ruang lingkup.
 - `title`, `category`, `address`, `latitude`, dan `longitude` wajib terisi.
+- `map_route_url` opsional; bila terisi harus memakai HTTPS dan domain resmi Google Maps.
 - Koordinat wajib berada pada rentang geografis valid.
 - Gabungan judul dan kategori tidak boleh duplikat.
 - Operasi hapus setelah impor tetap mengikuti soft delete dan Recycle Bin.
 - Entri `historical_reference` dan `booklet_only` perlu ditinjau operator sebelum publikasi produksi final.
-

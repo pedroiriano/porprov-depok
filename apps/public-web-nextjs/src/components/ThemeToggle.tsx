@@ -17,7 +17,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <button className="p-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md opacity-0">
+      <button type="button" aria-label="Memuat pengaturan tema" disabled className="min-h-11 min-w-11 rounded-full border border-slate-200 bg-white/50 p-2 opacity-0 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/50">
         <div className="w-5 h-5" />
       </button>
     );

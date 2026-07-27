@@ -71,10 +71,10 @@ export function CountdownTimer({ targetDate, onFinished }: CountdownProps) {
 
   if (!mounted) {
     return (
-      <div className="flex gap-4 justify-center mt-6">
+      <div className="mt-6 grid grid-cols-4 gap-2 sm:gap-4">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex flex-col items-center">
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-200 dark:bg-slate-800 rounded-2xl animate-pulse backdrop-blur-md"></div>
+            <div className="aspect-square w-full max-w-20 rounded-2xl bg-slate-200 backdrop-blur-md animate-pulse dark:bg-slate-800"></div>
           </div>
         ))}
       </div>
@@ -82,20 +82,20 @@ export function CountdownTimer({ targetDate, onFinished }: CountdownProps) {
   }
 
   return (
-    <div className="flex gap-3 sm:gap-4 justify-center mt-6">
+    <div className="mt-6 grid grid-cols-4 gap-2 sm:gap-4">
       {[
         { label: 'Hari', value: timeLeft.days },
         { label: 'Jam', value: timeLeft.hours },
         { label: 'Menit', value: timeLeft.minutes },
         { label: 'Detik', value: timeLeft.seconds },
       ].map((item, idx) => (
-        <div key={idx} className="flex flex-col items-center">
-          <div className="w-16 h-16 md:w-20 md:h-20 bg-white/80 dark:bg-slate-800/80 rounded-2xl flex items-center justify-center backdrop-blur-md shadow-lg border border-white/20 dark:border-slate-700/50">
-            <span className="text-2xl font-black text-primary-700 md:text-3xl dark:text-primary-300">
+        <div key={idx} className="flex min-w-0 flex-col items-center">
+          <div className="flex aspect-square w-full max-w-20 items-center justify-center rounded-xl border border-white/20 bg-white/85 shadow-lg backdrop-blur-md sm:rounded-2xl dark:border-slate-700/50 dark:bg-slate-800/80">
+            <span className="text-xl font-black text-primary-700 sm:text-2xl md:text-3xl dark:text-primary-300">
               {item.value.toString().padStart(2, '0')}
             </span>
           </div>
-          <span className="text-xs md:text-sm font-bold text-white mt-2 uppercase tracking-wider drop-shadow-sm">
+          <span className="mt-2 text-[10px] font-bold uppercase tracking-wide text-white drop-shadow-sm sm:text-xs md:text-sm md:tracking-wider">
             {item.label}
           </span>
         </div>

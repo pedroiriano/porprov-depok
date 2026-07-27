@@ -58,22 +58,22 @@ export default function ModalForm({
       role="dialog"
       aria-modal="true"
       aria-labelledby={`${formId}-title`}
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 sm:p-6 animate-fade-in-up"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-2 backdrop-blur-sm animate-fade-in-up sm:p-6"
       onClick={onClose}
     >
       <div 
-        className={`bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] ${size === 'large' ? 'max-w-4xl' : 'max-w-lg'}`}
+        className={`flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:max-h-[85vh] dark:bg-slate-900 ${size === 'large' ? 'max-w-4xl' : 'max-w-lg'}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800 dark:bg-slate-800/50">
           <h3 id={`${formId}-title`} className="font-bold text-lg text-slate-900 dark:text-white">
             {title}
           </h3>
           <button 
             onClick={onClose} 
             aria-label="Tutup dialog"
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-2xl leading-none"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-white"
             type="button"
           >
             &times;
@@ -81,18 +81,18 @@ export default function ModalForm({
         </div>
         
         {/* Form Body */}
-        <div className="p-6 overflow-y-auto custom-scrollbar">
+        <div className="overflow-y-auto p-4 custom-scrollbar sm:p-6">
           <form id={formId} onSubmit={onSubmit} className="flex flex-col gap-4">
             {children}
           </form>
         </div>
         
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3 bg-slate-50 dark:bg-slate-800/50">
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:justify-end sm:gap-3 sm:px-6 sm:py-4 dark:border-slate-800 dark:bg-slate-800/50">
           <button 
             type="button"
             onClick={onClose}
-            className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md transition-colors"
+            className="min-h-11 w-full rounded-md border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition-colors hover:bg-slate-50 sm:w-auto dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
           >
             Batal
           </button>
@@ -100,7 +100,7 @@ export default function ModalForm({
             type="submit" 
             form={formId}
             disabled={submitting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium shadow-sm transition-colors flex items-center disabled:opacity-70 gap-2"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:opacity-70 sm:w-auto"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             {submitting ? 'Menyimpan...' : submitText}

@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CountdownTimer } from "@/components/CountdownTimer";
 
@@ -67,12 +66,12 @@ export function HeroSection() {
       <div className="absolute inset-x-0 top-0 -z-10 h-40 bg-gradient-to-b from-slate-950/70 to-transparent" aria-hidden="true" />
       <div className="absolute inset-x-0 bottom-0 -z-10 h-48 bg-gradient-to-t from-slate-950 to-transparent" aria-hidden="true" />
 
-      <div className="container relative flex h-full items-center pt-24 pb-12 sm:pt-28">
-        <div className="grid w-full grid-cols-1 items-center gap-6 md:grid-cols-12 md:gap-8">
+      <div className="container relative flex min-h-[100svh] items-center pb-12 pt-28 sm:pt-32 md:h-full md:min-h-0">
+        <div className="grid w-full grid-cols-1 items-center gap-8 md:grid-cols-12 md:gap-8">
           <div className="md:col-span-7 lg:col-span-8">
             <div className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold tracking-wide text-white backdrop-blur-md">
               <span className="size-2.5 rounded-full bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.9)]" aria-hidden="true" />
-              7 November 2026 · Kota Depok
+              7 - 23 November 2026
             </div>
 
             <h1 id="hero-title" className="max-w-4xl text-4xl font-black leading-[1.04] tracking-[-0.035em] text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
@@ -86,16 +85,6 @@ export function HeroSection() {
               Saksikan PORPROV XV Jawa Barat 2026 dari Kota Depok—jadwal, venue, LiveScore, dan perjalanan para atlet dalam satu portal resmi.
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link href="/jadwal" className="inline-flex min-h-11 items-center justify-center rounded-md border border-primary-500 bg-primary-500 px-5 py-3 font-bold text-white shadow-lg shadow-primary-900/30 transition hover:-translate-y-0.5 hover:bg-primary-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
-                <i className="ri-calendar-event-line me-2 text-lg" aria-hidden="true" />
-                Lihat Jadwal
-              </Link>
-              <Link href="/venue" className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/40 bg-white/10 px-5 py-3 font-bold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:border-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
-                <i className="ri-map-pin-user-line me-2 text-lg" aria-hidden="true" />
-                Jelajahi Venue
-              </Link>
-            </div>
           </div>
 
           {/* Countdown Card (Hidden when finished) */}

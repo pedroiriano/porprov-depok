@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
 import { normalizeCityGuide, type RawCityGuide } from "@/lib/public-models";
@@ -102,7 +103,7 @@ export default async function CityGuidePage({
               <Link 
                 key={cat.id}
                 href={cat.id === "semua" ? "/city-guide" : `/city-guide?category=${cat.id}`}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 ${
+                className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 ${
                   isActive 
                     ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(56,189,248,0.3)]" 
                     : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
@@ -129,9 +130,12 @@ export default async function CityGuidePage({
                 {/* Image Area */}
                 <div className="relative h-56 overflow-hidden">
                   {guide.imageUrl ? (
-                    <img 
+                    <Image
                       src={guide.imageUrl} 
                       alt={guide.title}
+                      fill
+                      sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                      unoptimized
                       className="size-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100"
                     />
                   ) : (
@@ -178,7 +182,7 @@ export default async function CityGuidePage({
                         href={guide.mapUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 px-4 text-xs font-bold text-slate-700 dark:text-white transition hover:bg-sky-50 dark:hover:bg-sky-500 hover:text-sky-600 focus:outline-none"
+                        className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 px-4 text-xs font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-600 focus:outline-none dark:bg-slate-800 dark:text-white dark:hover:bg-sky-500"
                       >
                         Buka Peta
                       </a>
@@ -191,13 +195,14 @@ export default async function CityGuidePage({
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="mt-12 flex items-center justify-center gap-2">
+              <nav className="mt-12 flex items-center justify-start gap-2 overflow-x-auto px-1 pb-2 sm:justify-center" aria-label="Navigasi halaman City Guide">
                 <Link
                   href={createPageUrl(validPage - 1)}
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white ${
+                  className={`flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white ${
                     validPage <= 1 ? "pointer-events-none opacity-50" : ""
                   }`}
                   aria-disabled={validPage <= 1}
+                  aria-label="Halaman City Guide sebelumnya"
                 >
                   <i className="ri-arrow-left-s-line text-lg"></i>
                 </Link>
@@ -209,11 +214,13 @@ export default async function CityGuidePage({
                     <Link
                       key={pageNum}
                       href={createPageUrl(pageNum)}
-                      className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold transition ${
+                      className={`flex size-11 shrink-0 items-center justify-center rounded-xl font-bold transition ${
                         isActive
                           ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-[0_0_15px_rgba(56,189,248,0.3)]"
                           : "border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                       }`}
+                      aria-label={`Halaman City Guide ${pageNum}`}
+                      aria-current={isActive ? "page" : undefined}
                     >
                       {pageNum}
                     </Link>
@@ -222,14 +229,15 @@ export default async function CityGuidePage({
 
                 <Link
                   href={createPageUrl(validPage + 1)}
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white ${
+                  className={`flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white ${
                     validPage >= totalPages ? "pointer-events-none opacity-50" : ""
                   }`}
                   aria-disabled={validPage >= totalPages}
+                  aria-label="Halaman City Guide berikutnya"
                 >
                   <i className="ri-arrow-right-s-line text-lg"></i>
                 </Link>
-              </div>
+              </nav>
             )}
           </div>
         ) : (

@@ -37,7 +37,7 @@ const MediaLibrary = lazy(() => import('./components/media/MediaLibrary'));
 // Sidebar Item Component
 const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: LucideIcon, label: string, path: string, isActive: boolean }) => (
   <li className={isActive ? 'active' : ''}>
-    <Link to={path} aria-current={isActive ? 'page' : undefined}>
+    <Link to={path} className="flex min-h-11 items-center" aria-current={isActive ? 'page' : undefined}>
       <Icon className="w-5 h-5 align-middle me-2 inline-block" />
       {label}
     </Link>
@@ -105,7 +105,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
       >
         <div className="sidebar-content">
           <div className="sidebar-brand">
-            <Link to="/" aria-label="Dashboard PORPROV"><img src="/assets/images/logo-porprov-dan-tulisan.png" height="24" className="h-8 object-contain brightness-0 invert" alt="PORPROV XV Jawa Barat 2026" /></Link>
+            <Link to="/" aria-label="Dashboard PORPROV" className="inline-flex min-h-11 items-center"><img src="/assets/images/logo-porprov-dan-tulisan.png" height="24" className="h-8 object-contain brightness-0 invert" alt="PORPROV XV Jawa Barat 2026" /></Link>
           </div>
           
           <ul className="sidebar-menu border-t border-white/10" style={{ height: 'calc(100% - 70px)' }}>
@@ -144,7 +144,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
               </button>
             </div>
 
-            <ul className="list-none mb-0 space-x-1">
+            <ul className="mb-0 flex list-none items-center gap-1">
               <li className="dropdown inline-block relative">
                 <button 
                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -166,7 +166,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
                   <Bell className="h-5 w-5" aria-hidden="true" />
                   <span className="absolute top-0 right-0 flex items-center justify-center bg-red-600 text-white text-[10px] font-bold rounded-full size-2 after:content-[''] after:absolute after:h-2 after:w-2 after:bg-red-600 after:top-0 after:right-0 after:rounded-full after:animate-ping"></span>
                 </button>
-                <div id="notification-dropdown" className={`dropdown-menu absolute right-0 mt-3 w-64 bg-white dark:bg-slate-900 shadow-md dark:shadow-gray-800 rounded-md border border-slate-200 dark:border-slate-700 z-10 ${notificationOpen ? '' : 'hidden'}`}>
+                <div id="notification-dropdown" className={`dropdown-menu absolute right-0 z-10 mt-3 w-64 max-w-[calc(100vw-1.5rem)] rounded-md border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900 dark:shadow-gray-800 ${notificationOpen ? '' : 'hidden'}`}>
                   <div className="p-4 border-b border-gray-100 dark:border-gray-800">
                     <h2 className="mb-0 font-bold text-slate-900 dark:text-white">Notifikasi</h2>
                   </div>
@@ -186,7 +186,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
                 >
                   <span className="size-11 inline-flex items-center justify-center tracking-wide align-middle duration-500 text-center bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-full"><User className="h-5 w-5" aria-hidden="true" /></span>
                 </button>
-                <div id="profile-dropdown" className={`dropdown-menu absolute right-0 mt-3 w-48 bg-white dark:bg-slate-900 shadow-md dark:shadow-gray-800 rounded-md border border-slate-200 dark:border-slate-700 z-10 ${profileOpen ? '' : 'hidden'}`}>
+                <div id="profile-dropdown" className={`dropdown-menu absolute right-0 z-10 mt-3 w-48 max-w-[calc(100vw-1.5rem)] rounded-md border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900 dark:shadow-gray-800 ${profileOpen ? '' : 'hidden'}`}>
                   <ul className="py-2 text-left">
                     <li>
                       <Link to="/profile" onClick={() => setProfileOpen(false)} className="flex min-h-11 items-center font-medium py-2 px-4 text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-white"><User className="me-2 h-4 w-4" aria-hidden="true" />Profil Akun</Link>
@@ -203,7 +203,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
         </div>
         {/* Top Header */}
 
-        <div className="container-fluid relative px-3">
+        <div className="container-fluid relative px-3 sm:px-4 lg:px-6">
           <div className="layout-specing">
             {children}
           </div>
@@ -217,18 +217,18 @@ export default function App() {
   const auth = useAuth();
   
   if (auth.isLoading) {
-    return <div className="h-screen w-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-indigo-600">Loading Auth...</div>;
+    return <div className="flex min-h-dvh w-full items-center justify-center bg-slate-50 px-4 font-semibold text-indigo-600 dark:bg-slate-900 dark:text-indigo-300" role="status">Memuat autentikasi...</div>;
   }
 
   if (auth.error) {
-    return <div className="h-screen w-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-red-500">Auth Error: {auth.error.message}</div>;
+    return <div className="flex min-h-dvh w-full items-center justify-center bg-slate-50 px-4 text-center text-red-700 dark:bg-slate-900 dark:text-red-300" role="alert">Autentikasi gagal: {auth.error.message}</div>;
   }
 
   if (!auth.isAuthenticated) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <div className="p-8 bg-white dark:bg-slate-800 shadow-xl rounded-md flex flex-col items-center max-w-sm w-full">
-          <img src="/assets/images/logo-porprov.png" alt="Logo" className="w-24 h-24 mb-6" />
+      <div className="flex min-h-dvh w-full flex-col items-center justify-center bg-slate-50 px-4 py-8 dark:bg-slate-900">
+        <div className="flex w-full max-w-sm flex-col items-center rounded-xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8 dark:border-slate-700 dark:bg-slate-800">
+          <img src="/assets/images/logo-porprov.png" alt="PORPROV XV Jawa Barat 2026" className="mb-6 size-24 object-contain" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Portal PORPROV</h1>
           <p className="text-slate-500 dark:text-slate-400 mb-8 text-center">Silakan masuk menggunakan akun panitia/koresponden Anda.</p>
           <button 

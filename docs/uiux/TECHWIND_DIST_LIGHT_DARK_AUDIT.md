@@ -1,6 +1,6 @@
 # Audit UI/UX Techwind Dist — Public dan Admin PORPROV
 
-Tanggal baseline: 22 Juli 2026.
+Tanggal baseline: 22 Juli 2026. Audit ulang responsif/runtime: 27 Juli 2026.
 
 ## Tujuan dan Sumber Tunggal
 
@@ -40,6 +40,7 @@ Class `html.light` atau `html.dark` kini menjadi satu-satunya sumber state tema.
 | `/jadwal` | `index-gym.html`, `index-event.html` | Filter bar, grouped schedule, match card, loading/empty/error |
 | `/livescore` | `index-event.html`, `index-gym.html` | Connection state, score cards, metadata pertandingan, integritas data |
 | `/medali` | `index-event.html`, `ui-components.html` | Standings table, filter/search, status resmi, loading/empty/error |
+| `/city-guide` | `index-travel.html`, `portfolio-detail-one.html` | Filter kategori, kartu destinasi, peta/rute, pagination, loading/empty/error |
 
 ## Mapping Admin Web
 
@@ -70,14 +71,18 @@ Class `html.light` atau `html.dark` kini menjadi satu-satunya sumber state tema.
 
 Badge status memakai pasangan background dan teks per tema; tidak boleh sekadar mengubah teks tanpa mengganti surface. Hero bergambar wajib memiliki overlay yang menjaga teks putih terbaca pada seluruh bagian gambar.
 
+Popup penanda Venue memakai class terisolasi `venue-map-popup`: surface putih/slate-950, teks slate-900/slate-50, alamat slate-600/slate-300, border, tip, shadow, serta tombol tutup 44 px selalu berubah sebagai satu pasangan ketika tema berganti. Styling bawaan Leaflet tidak boleh dibiarkan mewarisi token gelap pada popup putih.
+
 ## Cakupan QA
 
-- Public: 8 route termasuk detail Cabor dan Venue.
+- Public: 9 route termasuk detail Cabor, detail Venue, dan City Guide.
 - Admin: 10 route, seluruh tab Master Data, modal, tabel, dropdown, empty/error/success state yang dapat dipicu dari data aktif.
-- Viewport: desktop dan mobile 390×844.
+- Viewport: desktop `1440×900`, mobile `400×800`, dan viewport pendek `400×504` untuk memastikan hero tidak tertutup navbar atau memotong headline/countdown.
 - Tema: `light` dan `dark`, termasuk OS yang memilih dark saat aplikasi memilih light.
-- Hasil kontras DOM: Admin 10/10 route terang dan gelap tanpa temuan; Public 8/8 route gelap tanpa temuan dan seluruh surface non-gambar pada tema terang tanpa temuan. Hero serta badge di atas gambar diverifikasi visual karena evaluator DOM tidak dapat mengkomposit background image/overlay transparan.
-- Mobile: Hero Public tepat 844 px pada viewport 390×844, tidak ada overflow, menu Public berfungsi; sidebar Admin tertutup/inert secara default, terbuka satu klik, menutup setelah navigasi, dan tidak menimbulkan overflow.
+- Hasil kontras DOM/visual: Admin 10/10 route terang dan gelap tanpa teks menyatu dengan surface; Public 9/9 route pada dua tema tanpa temuan pada surface non-gambar. Hero, gradient CTA, dan badge di atas gambar diverifikasi visual karena evaluator DOM tidak dapat mengkomposit background image/overlay transparan.
+- Mobile: Hero Public memakai `min-height: 100dvh` dan memanjang mengikuti konten pada viewport pendek; tidak ada page overflow; menu Public berfungsi; sidebar Admin tertutup/inert secara default, terbuka satu klik, menutup setelah navigasi, dan tidak menimbulkan overflow. Pagination, daftar peta, tabel, dan modal memakai scroller lokal yang terkontrol.
+- Target sentuh: tombol, form, link entitas detail, pagination, dan kontrol zoom Leaflet minimal 44 px; checkbox/radio tetap boleh berukuran visual kecil ketika dibungkus label klik minimal 44 px.
+- Inspect Element: 9/9 route Public dan 10/10 route Admin bebas error/warning Console serta gambar rusak. Manifest dan ikon PWA 192/512 merespons `200 image/png`; warning ikon manifest lama telah ditutup.
 - Quality gate: Public ESLint + Next production build; Admin Oxlint + TypeScript + Vite production build.
 - Runtime: Docker Compose canonical pada Public `3000` dan Admin `5173`.
 

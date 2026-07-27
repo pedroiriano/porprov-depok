@@ -69,9 +69,9 @@ export default function VenueMap({ venues, activeVenue }: VenueMapProps) {
               position={[venue.latitude, venue.longitude]}
               icon={customIcon}
             >
-              <Popup>
-                <div className="text-sm font-bold text-slate-900">{venue.name}</div>
-                <div className="text-xs mt-1 text-slate-600">{venue.address}</div>
+              <Popup className="venue-map-popup">
+                <div className="text-sm font-bold text-slate-900 dark:text-slate-50">{venue.name}</div>
+                <div className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">{venue.address}</div>
               </Popup>
             </Marker>
           );

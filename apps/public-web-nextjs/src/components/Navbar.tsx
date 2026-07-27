@@ -52,7 +52,7 @@ export function Navbar() {
         <Link className="logo" href="/">
           <span className="inline-block dark:hidden">
             <Image src="/assets/images/logo-porprov-dan-tulisan.png" className={`${(!isHomePage || isSticky) ? 'inline-block' : 'hidden'} h-[40px] w-auto object-contain mt-3`} width={200} height={40} alt="PORPROV XV Jawa Barat 2026" priority />
-            <Image src="/assets/images/logo-porprov-dan-tulisan.png" className={`${(isHomePage && !isSticky) ? 'inline-block' : 'hidden'} h-[40px] w-auto object-contain mt-3 brightness-0 invert`} width={200} height={40} alt="PORPROV XV Jawa Barat 2026" priority />
+            <Image src="/assets/images/logo-porprov-dan-tulisan.png" className={`${(isHomePage && !isSticky) ? 'inline-block' : 'hidden'} mt-3 h-[40px] w-auto object-contain lg:brightness-0 lg:invert`} width={200} height={40} alt="PORPROV XV Jawa Barat 2026" priority />
           </span>
           <Image src="/assets/images/logo-porprov-dan-tulisan.png" width={200} height={40} className="hidden dark:inline-block h-[40px] w-auto object-contain mt-3 brightness-0 invert" alt="PORPROV XV Jawa Barat 2026" priority />
         </Link>
@@ -61,7 +61,7 @@ export function Navbar() {
         <div className="menu-extras">
           <div className="menu-item">
             {/* Mobile menu toggle*/}
-            <button type="button" className={`navbar-toggle ${isOpen ? 'open' : ''}`} id="isToggle" onClick={toggleMenu} aria-label={isOpen ? "Tutup menu navigasi" : "Buka menu navigasi"} aria-expanded={isOpen} aria-controls="navigation">
+            <button type="button" className={`navbar-toggle min-h-11 min-w-11 ${isOpen ? 'open' : ''}`} id="isToggle" onClick={toggleMenu} aria-label={isOpen ? "Tutup menu navigasi" : "Buka menu navigasi"} aria-expanded={isOpen} aria-controls="navigation">
               <div className="lines">
                 <span></span>
                 <span></span>

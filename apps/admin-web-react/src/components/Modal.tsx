@@ -55,7 +55,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'md
   }[maxWidth];
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 sm:p-6">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-2 backdrop-blur-sm sm:p-6">
       {/* Click outside backdrop */}
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
       
@@ -63,17 +63,17 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'md
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className={`relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full ${maxWidthClass} flex flex-col max-h-full border border-gray-100 dark:border-gray-800 z-10`}
+        className={`relative z-10 flex max-h-[calc(100dvh-1rem)] w-full flex-col rounded-xl border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-slate-900 ${maxWidthClass}`}
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-800 shrink-0">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 p-4 sm:p-6 dark:border-gray-800">
           <h3 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
             {title}
           </h3>
           <button 
             type="button"
             onClick={onClose} 
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
             <span className="sr-only">Tutup</span>
             <X className="w-5 h-5" />

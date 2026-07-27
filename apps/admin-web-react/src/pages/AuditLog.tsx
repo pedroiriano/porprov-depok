@@ -36,6 +36,7 @@ export default function AuditLog() {
 
   // INFO: Hook controls
   const table = useTableControls<AuditSortKey>({ sortKey: 'created_at', sortDirection: 'desc', rowsPerPage: 25 });
+  const { resetPage } = table;
 
   const loadEvents = useCallback(async () => {
     if (!token) return;
@@ -77,8 +78,8 @@ export default function AuditLog() {
 
   // CHANGE: Reset ke halaman 1 saat filter/search/rowsPerPage berubah
   useEffect(() => {
-    table.resetPage();
-  }, [search, action, service, table.rowsPerPage, table.resetPage]);
+    resetPage();
+  }, [search, action, service, table.rowsPerPage, resetPage]);
 
   // PERFORMANCE: Sort data secara memoized
   const sortedEvents = useMemo(() => {

@@ -155,6 +155,7 @@ function hasPgNumber(value: Parameters<typeof readPgNumber>[0]): boolean {
 const googleMapsHosts = new Set([
   "google.com",
   "google.co.id",
+  "goo.gl",
   "maps.app.goo.gl",
   "maps.google.co.id",
   "maps.google.com",
@@ -168,12 +169,16 @@ function safeGoogleMapsRouteURL(value: Parameters<typeof readPgText>[0]): string
   try {
     const parsed = new URL(candidate);
     const host = parsed.hostname.toLowerCase();
+    const standardMapsPath = parsed.pathname === "/maps" || parsed.pathname.startsWith("/maps/");
     return parsed.protocol === "https:"
       && !parsed.username
       && !parsed.password
       && !parsed.port
       && googleMapsHosts.has(host)
-      && (host === "maps.app.goo.gl" || parsed.pathname.startsWith("/maps"))
+      && ((host === "maps.app.goo.gl" && parsed.pathname.length > 1)
+        || host === "maps.google.com"
+        || host === "maps.google.co.id"
+        || standardMapsPath)
       ? candidate
       : "";
   } catch {

@@ -49,12 +49,12 @@ export function TablePagination({
       </p>
 
       {/* INFO: Pagination controls */}
-      <div className="flex items-center gap-1">
+      <div className="flex w-full items-center gap-1 overflow-x-auto pb-1 sm:w-auto sm:pb-0" aria-label="Navigasi halaman tabel">
         <button
           type="button"
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           aria-label="Halaman pertama"
         >
           <ChevronsLeft className="h-4 w-4" />
@@ -63,7 +63,7 @@ export function TablePagination({
           type="button"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           aria-label="Halaman sebelumnya"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -74,11 +74,13 @@ export function TablePagination({
             key={page}
             type="button"
             onClick={() => onPageChange(page)}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
+            className={`inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
               page === currentPage
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
             }`}
+            aria-label={`Halaman ${page}`}
+            aria-current={page === currentPage ? 'page' : undefined}
           >
             {page}
           </button>
@@ -88,7 +90,7 @@ export function TablePagination({
           type="button"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           aria-label="Halaman berikutnya"
         >
           <ChevronRight className="h-4 w-4" />
@@ -97,7 +99,7 @@ export function TablePagination({
           type="button"
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           aria-label="Halaman terakhir"
         >
           <ChevronsRight className="h-4 w-4" />
@@ -123,7 +125,7 @@ export function RowsPerPageSelector({ value, rowsPerPage, onChange }: RowsPerPag
         <select
           value={selectedValue}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="min-h-9 appearance-none rounded-lg border border-slate-300 bg-white py-1 pl-3 pr-8 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          className="min-h-11 appearance-none rounded-lg border border-slate-300 bg-white py-1 pl-3 pr-8 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
         >
           {ROWS_PER_PAGE_OPTIONS.map((opt) => (
             <option key={opt} value={opt} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{opt}</option>

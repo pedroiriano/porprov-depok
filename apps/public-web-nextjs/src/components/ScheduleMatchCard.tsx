@@ -33,7 +33,7 @@ export function ScheduleMatchCard({ match, compact = false }: ScheduleMatchCardP
             </span>
             <div className="min-w-0">
               {match.caborId ? (
-                <Link href={`/cabor/${encodeURIComponent(match.caborId)}`} className="font-black text-slate-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-300">{match.caborName}</Link>
+                <Link href={`/cabor/${encodeURIComponent(match.caborId)}`} className="inline-flex min-h-11 items-center font-black text-slate-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-300">{match.caborName}</Link>
               ) : <p className="font-black">{match.caborName}</p>}
               <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">{match.nomorTandingName} · {match.round}</p>
             </div>
@@ -57,7 +57,7 @@ export function ScheduleMatchCard({ match, compact = false }: ScheduleMatchCardP
           </div>
           <div className="flex items-start gap-2 sm:justify-end">
             <MapPin className="mt-0.5 size-4 shrink-0 text-primary-500" aria-hidden="true" />
-            <div><dt className="sr-only">Venue</dt><dd>{match.venueId ? <Link href={`/venue/${encodeURIComponent(match.venueId)}`} className="hover:text-primary-600 dark:hover:text-primary-300">{match.venueName}</Link> : match.venueName}</dd></div>
+            <div><dt className="sr-only">Venue</dt><dd>{match.venueId ? <Link href={`/venue/${encodeURIComponent(match.venueId)}`} className="inline-flex min-h-11 items-center hover:text-primary-600 dark:hover:text-primary-300">{match.venueName}</Link> : match.venueName}</dd></div>
           </div>
         </dl>
       </div>

@@ -98,7 +98,7 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
 
   const media = mediaQuery.data ?? [];
   const modalContent = (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4">
       <button
         type="button"
         aria-label="Tutup pemilih media"
@@ -110,9 +110,9 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
         role="dialog"
         aria-modal="true"
         aria-labelledby="media-selector-title"
-        className="relative flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-slate-800"
+        className="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl sm:max-h-[85vh] dark:bg-slate-800"
       >
-        <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-800/80 sm:px-6">
+        <header className="flex items-start justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-3 sm:items-center sm:gap-4 sm:px-6 sm:py-4 dark:border-slate-700 dark:bg-slate-800/80">
           <div>
             <h2 id="media-selector-title" className="text-xl font-bold text-slate-800 dark:text-white">Pilih Media</h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pilih gambar yang sudah ada atau unggah gambar baru.</p>
@@ -148,7 +148,7 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {(uploadError || mediaQuery.error) && (
-            <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
               {uploadError || getApiErrorMessage(mediaQuery.error, 'Gagal memuat Media Library.')}
             </div>
           )}
@@ -159,7 +159,7 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
               <span className="sr-only">Memuat media</span>
             </div>
           ) : media.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4">
               {media.map((item) => (
                 <button
                   key={item.id}

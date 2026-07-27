@@ -37,14 +37,15 @@ export default function Medals() {
 
   // INFO: Initialize table controls for Submissions
   const subTable = useTableControls<SubmissionSortKey>({ sortKey: 'submitted_at', sortDirection: 'desc', rowsPerPage: 10 });
+  const { resetPage: resetSubmissionPage } = subTable;
   
   // INFO: Initialize table controls for Standings
   const stdTable = useTableControls<StandingSortKey>({ sortKey: 'gold', sortDirection: 'desc', rowsPerPage: 10 });
 
   // CHANGE: Reset submissions page when filter changes
   useEffect(() => {
-    subTable.resetPage();
-  }, [statusFilter, subTable.resetPage]);
+    resetSubmissionPage();
+  }, [statusFilter, resetSubmissionPage]);
 
   const loadData = useCallback(async () => {
     if (!token) return;

@@ -6,7 +6,7 @@ Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Porta
 
 > **Kontrak peserta aktif:** Master Data memiliki referensi Kontingen; Schedule memiliki susunan Peserta A/B dengan satu jenis yang sama—Individu, Tim, atau Kontingen; LiveScore hanya memiliki revisi skor/status untuk match tersebut. Form peserta berada pada Jadwal Pertandingan dan penggantian susunan lama selalu soft delete.
 
-> **Kontrak lokasi City Guide:** Master Data menyimpan latitude dan longitude desimal sebagai pasangan wajib untuk create/update. Latitude harus `-90..90`, longitude `-180..180`; URL peta dibentuk oleh consumer dari koordinat, bukan disimpan sebagai sumber data vendor-spesifik.
+> **Kontrak lokasi City Guide:** Master Data menyimpan latitude dan longitude desimal sebagai pasangan wajib untuk create/update. Latitude harus `-90..90`, longitude `-180..180`. `map_route_url` opsional hanya boleh berisi URL HTTPS resmi Google Maps; consumer memprioritaskan URL valid tersebut dan menggunakan koordinat sebagai fallback saat kosong. Koordinat tetap menjadi sumber kebenaran lokasi.
 
 ## Mode Kerja Utama
 
@@ -76,7 +76,7 @@ Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tida
 - File Media Library tidak boleh langsung dihapus dari storage ketika metadata di-soft-delete. Penghapusan fisik hanya dilakukan proses purge terkontrol setelah masa retensi.
 - Dilarang memakai cascade hard delete lintas domain. Publikasikan event delete/restore bila perubahan perlu diketahui service lain.
 - Implementasi lama yang masih hard delete wajib dicatat sebagai technical debt di `FEATURES.md` dan dimigrasikan sebelum fitur dinyatakan final.
-- City Guide wajib mempunyai koordinat desimal berpasangan dan tervalidasi. Migrasi skema boleh mempertahankan nilai null untuk record legacy, tetapi form edit harus meminta pelengkapannya dan query normal tidak boleh mengarang koordinat fallback.
+- City Guide wajib mempunyai koordinat desimal berpasangan dan tervalidasi. `map_route_url` boleh kosong dan tidak menggantikan koordinat; bila terisi harus tervalidasi sebagai URL HTTPS resmi Google Maps. Consumer wajib memakai URL valid tersebut terlebih dahulu lalu fallback ke koordinat. Migrasi skema boleh mempertahankan nilai null untuk record legacy, tetapi form edit harus meminta pelengkapannya.
 
 ## Sinkronisasi Enam Dokumen Root
 

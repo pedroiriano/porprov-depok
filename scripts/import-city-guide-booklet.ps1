@@ -78,6 +78,7 @@ foreach ($record in $records) {
     if (-not [string]::IsNullOrWhiteSpace([string]$record.map_route_url) -and
         [string]$record.map_route_url -notmatch '^https://(www\.)?google\.(com|co\.id)/maps/' -and
         [string]$record.map_route_url -notmatch '^https://maps\.google\.(com|co\.id)/maps/' -and
+        [string]$record.map_route_url -notmatch '^https://goo\.gl/maps/' -and
         [string]$record.map_route_url -notmatch '^https://maps\.app\.goo\.gl/') {
         throw "URL Google Maps tidak valid pada '$($record.booklet_title)'."
     }

@@ -27,6 +27,8 @@ func TestValidateCityGuideRequestAcceptsOptionalGoogleMapsURL(t *testing.T) {
 		"https://www.google.com/maps/dir/?api=1&destination=Margo%20City%20Depok",
 		"https://maps.google.co.id/maps?q=Situ+Pengasinan",
 		"https://maps.app.goo.gl/AbCdEf123456",
+		"https://goo.gl/maps/AbCdEf123456",
+		"https://maps.google.com/?q=Situ+Pengasinan",
 	}
 	for _, mapRouteURL := range tests {
 		req := cityGuideRequest{
@@ -48,6 +50,7 @@ func TestValidateCityGuideRequestRejectsUnsafeMapURL(t *testing.T) {
 		"javascript:alert(1)",
 		"https://google.com.evil.example/maps?q=Depok",
 		"https://www.google.com/search?q=Depok",
+		"https://www.google.com/maps-malicious?q=Depok",
 	}
 	for _, mapRouteURL := range tests {
 		req := cityGuideRequest{

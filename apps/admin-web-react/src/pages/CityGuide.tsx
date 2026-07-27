@@ -62,6 +62,7 @@ type CityGuideSortKey = 'title' | 'category' | 'address' | 'map_route_url';
 const allowedGoogleMapsHosts = new Set([
   'google.com',
   'google.co.id',
+  'goo.gl',
   'maps.app.goo.gl',
   'maps.google.co.id',
   'maps.google.com',
@@ -74,12 +75,16 @@ const isValidGoogleMapsURL = (value: string) => {
   try {
     const parsed = new URL(value.trim());
     const hostname = parsed.hostname.toLowerCase();
+    const standardMapsPath = parsed.pathname === '/maps' || parsed.pathname.startsWith('/maps/');
     return parsed.protocol === 'https:'
       && !parsed.username
       && !parsed.password
       && !parsed.port
       && allowedGoogleMapsHosts.has(hostname)
-      && (hostname === 'maps.app.goo.gl' || parsed.pathname.startsWith('/maps'));
+      && ((hostname === 'maps.app.goo.gl' && parsed.pathname.length > 1)
+        || hostname === 'maps.google.com'
+        || hostname === 'maps.google.co.id'
+        || standardMapsPath);
   } catch {
     return false;
   }
@@ -114,6 +119,7 @@ export default function CityGuide() {
 
   // INFO: Hook controls
   const table = useTableControls<CityGuideSortKey>({ sortKey: 'title', sortDirection: 'asc', rowsPerPage: 10 });
+  const { resetPage } = table;
 
   const getAuthConfig = useCallback(() => authConfig(auth.user?.access_token), [auth.user?.access_token]);
 
@@ -142,8 +148,8 @@ export default function CityGuide() {
 
   // CHANGE: Reset ke halaman 1 saat filter/search/rowsPerPage berubah
   useEffect(() => {
-    table.resetPage();
-  }, [searchQuery, categoryFilter, table.rowsPerPage, table.resetPage]);
+    resetPage();
+  }, [searchQuery, categoryFilter, table.rowsPerPage, resetPage]);
 
   // PERFORMANCE: Filter data secara memoized
   const filteredGuides = useMemo(() => {

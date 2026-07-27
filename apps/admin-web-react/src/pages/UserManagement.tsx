@@ -46,11 +46,12 @@ export default function UserManagement() {
 
   // INFO: Initialize table controls
   const table = useTableControls<UserSortKey>({ sortKey: 'created_at', sortDirection: 'desc', rowsPerPage: 10 });
+  const { resetPage } = table;
 
   // CHANGE: Reset page when search changes
   useEffect(() => {
-    table.resetPage();
-  }, [searchTerm, table.resetPage]);
+    resetPage();
+  }, [searchTerm, resetPage]);
 
   // INFO: Menggunakan apiClient dari lib/api.ts untuk konsistensi envelope unwrapping
   const fetchUsers = useCallback(async () => {

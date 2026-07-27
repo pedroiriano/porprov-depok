@@ -8,7 +8,7 @@ Repository `porprov-depok` adalah platform resmi PORPROV XV Jawa Barat 2026 untu
 
 Schedule Service adalah pemilik susunan Peserta A/B pertandingan. Admin memilih satu jenis yang sama untuk kedua sisi—`individual`, `team`, atau `contingent`—lalu mengisi afiliasi Kontingen dan identitas yang relevan bersama Jadwal; LiveScore hanya mengonsumsi susunan terurut tersebut dan dilarang membuat identitas peserta paralel.
 
-Master Data Service adalah pemilik City Guide beserta pasangan koordinat desimalnya. Create/update wajib menerima latitude dan longitude berpasangan dengan rentang geografis valid; UI membentuk tautan peta dari koordinat dan tidak menyimpan URL vendor peta sebagai sumber kebenaran.
+Master Data Service adalah pemilik City Guide beserta pasangan koordinat desimalnya. Create/update wajib menerima latitude dan longitude berpasangan dengan rentang geografis valid. `map_route_url` bersifat opsional dan hanya menerima URL HTTPS resmi Google Maps; UI memprioritaskannya bila valid lalu membentuk tautan peta dari koordinat bila kosong. Koordinat tetap menjadi sumber kebenaran lokasi.
 
 ## Identitas Agent
 
@@ -81,7 +81,7 @@ Tailwind CSS v4 wajib mengikat utility `dark:*` hanya ke class `.dark`, selaras 
 - Restore harus terotorisasi dan diaudit.
 - Hard delete hanya boleh berupa purge terkontrol berdasarkan retensi, role khusus, audit, dan persetujuan eksplisit.
 - Media yang di-soft-delete tetap disimpan sampai proses purge; jangan langsung menghapus file fisik.
-- City Guide aktif wajib mempunyai latitude `-90..90` dan longitude `-180..180` yang diisi berpasangan. Record legacy tanpa koordinat hanya boleh dipertahankan untuk migrasi dan harus dilengkapi melalui form edit sebelum pembaruan berikutnya.
+- City Guide aktif wajib mempunyai latitude `-90..90` dan longitude `-180..180` yang diisi berpasangan. `map_route_url` boleh kosong; bila terisi harus berupa URL HTTPS Google Maps yang tervalidasi dan dipakai sebelum fallback koordinat. Record legacy tanpa koordinat hanya boleh dipertahankan untuk migrasi dan harus dilengkapi melalui form edit sebelum pembaruan berikutnya.
 
 ## Prinsip Portabilitas Runtime
 
