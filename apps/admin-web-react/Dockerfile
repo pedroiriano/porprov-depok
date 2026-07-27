@@ -22,5 +22,6 @@ RUN mkdir -p /etc/nginx/certs && \
     -out /etc/nginx/certs/cert.pem \
     -subj "/C=ID/ST=Jawa Barat/L=Depok/O=Diskominfo/CN=10.11.5.80"
 COPY apps/admin-web-react/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/dist /usr/share/nginx/html
+RUN mkdir -p /usr/share/nginx/html/admin
+COPY --from=builder /app/dist /usr/share/nginx/html/admin
 EXPOSE 80 443
