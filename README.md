@@ -86,6 +86,13 @@ Hero Landing Page aktif tersedia pada `GET /api/v1/master-data/heroes/active`; d
 
 ## Cara Pakai
 
+Deployment Ubuntu intranet memakai Public Web pada Nginx port 80 selama masa
+transisi dan Admin canonical pada `https://<host>/admin/`. Keycloak serta API
+bertoken memakai origin HTTPS yang sama karena OIDC PKCE tidak dapat berjalan
+aman pada alamat IP HTTP. Build/restore panjang wajib dijalankan sebagai job
+server-side tahan reconnect. Lihat
+[`docs/runbook/VPS_UBUNTU_INTRANET.md`](docs/runbook/VPS_UBUNTU_INTRANET.md).
+
 1. Baca `AI.md`, lalu `RULES.md`, `FEATURES.md`, `DOCUMENTATION.md`, `AGENTS.md`, dan README ini.
 2. Simpan dokumen kebutuhan/desain resmi di `docs/reference/` dan laporkan bila belum tersedia.
 3. Gunakan hanya `theme-reference/HTML/Landing/dist/` untuk audit UI Public dan `theme-reference/HTML/Dashboard/dist/` untuk audit Admin.

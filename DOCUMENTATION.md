@@ -543,3 +543,17 @@ Setiap perubahan aturan atau standar harus disebarkan sesuai fungsi dokumen pada
 | `DOCUMENTATION.md` | Detail implementasi, operasi, dan runbook |
 
 Perubahan arsitektur tetap dicatat dalam ADR dan perubahan fitur tetap memperbarui `FEATURES.md`. Tanggal/status harus faktual; jangan menandai kepatuhan selesai sebelum migration, code, dan test tersedia.
+
+## 18. Deployment VPS Ubuntu Intranet
+
+Public Web dapat dilayani melalui HTTP Nginx selama tahap intranet, tetapi
+Admin canonical berada pada `https://<host>/admin/`. API bertoken dan Keycloak
+browser memakai origin HTTPS yang sama. `VITE_BASE_PATH=/admin/` menjaga asset,
+React Router, login callback, dan logout pada prefix Admin. Penonaktifan PKCE
+atau fallback kriptografi buatan untuk alamat IP HTTP dilarang.
+
+Compose VPS memakai `docker-compose.vps.yml`, sertifikat non-Git pada
+`infra/docker/tls`, dan `deploy-vps.sh`. Operasi panjang berjalan melalui
+`nohup`/supervisor dengan log persisten dan `flock`, sehingga reconnect client
+tidak menghentikan atau menggandakan deployment. Prosedur lengkap berada di
+`docs/runbook/VPS_UBUNTU_INTRANET.md`.

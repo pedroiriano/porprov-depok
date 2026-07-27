@@ -13,7 +13,6 @@
   "type": "commonjs",
   "dependencies": {
     "pg": "^8.22.0",
-    "playwright": "^1.62.0",
-    "ssh2": "^1.17.0"
+    "playwright": "^1.62.0"
   }
 }
