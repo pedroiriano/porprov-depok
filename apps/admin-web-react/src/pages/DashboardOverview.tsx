@@ -97,6 +97,34 @@ export default function DashboardOverview() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
+          title="Total Atlet Terdaftar" 
+          value="0" 
+          icon={Users} 
+          trend="0%" 
+          colorClass="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
+        />
+        <StatCard 
+          title="Medali Didistribusikan" 
+          value="0" 
+          icon={Trophy} 
+          trend="+0" 
+          colorClass="bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300"
+        />
+        <StatCard 
+          title="Skor Masuk (Hari Ini)" 
+          value="0" 
+          icon={Activity} 
+          trend="+0" 
+          colorClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+        />
+        <StatCard 
+          title="Insiden Sistem" 
+          value="0" 
+          icon={AlertTriangle} 
+          trend="-0" 
+          colorClass="bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
+        />
+        <StatCard 
           title="Total Cabang Olahraga" 
           value={statsLoading ? "..." : stats.cabors.toString()} 
           icon={Medal} 
