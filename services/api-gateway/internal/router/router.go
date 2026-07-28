@@ -117,6 +117,8 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 			// Schedule Service melalui DNS dan port internal Docker.
 			r.Handle("/schedule/*", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)))
 			r.Handle("/schedule", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)))
+			r.Get("/schedule/deleted", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)).ServeHTTP)
+			r.Get("/schedule/matches/deleted", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)).ServeHTTP)
 
 			// Audit immutable hanya dapat dibaca role audit/super admin.
 			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
