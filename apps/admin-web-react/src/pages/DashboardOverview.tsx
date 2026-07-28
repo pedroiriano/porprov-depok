@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Trophy, Activity, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { Users, Trophy, Activity, AlertTriangle, Medal, MapPin, Map, Flag, type LucideIcon } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import { apiClient, authConfig, unwrapApiData } from '../lib/api';
 
@@ -34,6 +34,39 @@ export default function DashboardOverview() {
   const [logsLoading, setLogsLoading] = useState(true);
   const [logsError, setLogsError] = useState('');
 
+  const [stats, setStats] = useState({
+    cabors: 0,
+    venues: 0,
+    cityGuides: 0,
+    kontingens: 0,
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const loadStats = useCallback(async () => {
+    if (!token) return;
+    setStatsLoading(true);
+    try {
+      const config = authConfig(token);
+      const [caborsRes, venuesRes, cityGuidesRes, kontingensRes] = await Promise.all([
+        apiClient.get('/master-data/cabors', config),
+        apiClient.get('/venues', config),
+        apiClient.get('/master-data/city-guides', config),
+        apiClient.get('/master-data/kontingens', config),
+      ]);
+      
+      setStats({
+        cabors: unwrapApiData<any[]>(caborsRes.data)?.length || 0,
+        venues: unwrapApiData<any[]>(venuesRes.data)?.length || 0,
+        cityGuides: unwrapApiData<any[]>(cityGuidesRes.data)?.length || 0,
+        kontingens: unwrapApiData<any[]>(kontingensRes.data)?.length || 0,
+      });
+    } catch (e) {
+      console.error("Gagal memuat statistik", e);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [token]);
+
   const loadLogs = useCallback(async () => {
     if (!token) return;
     setLogsLoading(true);
@@ -50,7 +83,8 @@ export default function DashboardOverview() {
 
   useEffect(() => {
     loadLogs();
-  }, [loadLogs]);
+    loadStats();
+  }, [loadLogs, loadStats]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -63,32 +97,32 @@ export default function DashboardOverview() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
-          title="Total Atlet Terdaftar" 
-          value="4,210" 
-          icon={Users} 
-          trend="+12%" 
+          title="Total Cabang Olahraga" 
+          value={statsLoading ? "..." : stats.cabors.toString()} 
+          icon={Medal} 
+          trend={statsLoading ? "Memuat" : "Real-time"} 
           colorClass="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
         />
         <StatCard 
-          title="Medali Didistribusikan" 
-          value="156" 
-          icon={Trophy} 
-          trend="+45" 
-          colorClass="bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300"
-        />
-        <StatCard 
-          title="Skor Masuk (Hari Ini)" 
-          value="892" 
-          icon={Activity} 
-          trend="+210" 
+          title="Total Venue" 
+          value={statsLoading ? "..." : stats.venues.toString()} 
+          icon={MapPin} 
+          trend={statsLoading ? "Memuat" : "Real-time"} 
           colorClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
         />
         <StatCard 
-          title="Insiden Sistem" 
-          value="3" 
-          icon={AlertTriangle} 
-          trend="-2" 
-          colorClass="bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
+          title="Total City Guide" 
+          value={statsLoading ? "..." : stats.cityGuides.toString()} 
+          icon={Map} 
+          trend={statsLoading ? "Memuat" : "Real-time"} 
+          colorClass="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300"
+        />
+        <StatCard 
+          title="Total Kontingen" 
+          value={statsLoading ? "..." : stats.kontingens.toString()} 
+          icon={Flag} 
+          trend={statsLoading ? "Memuat" : "Real-time"} 
+          colorClass="bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300"
         />
       </div>
 
