@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-porprov_secret}
       POSTGRES_DB: ${POSTGRES_DB:-porprov_db}
     ports:
-      - "${POSTGRES_HOST_PORT:-15432}:5432"
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-15432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -119,7 +119,7 @@ services:
       KEYCLOAK_SERVER_URL: http://keycloak:8080
       NATS_URL: nats://nats:4222
     ports:
-      - "${USER_HOST_PORT:-28001}:8001"
+      - "127.0.0.1:${USER_HOST_PORT:-28001}:8001"
     depends_on:
       migrate-user:
         condition: service_completed_successfully
@@ -148,7 +148,7 @@ services:
       SCHEDULE_SERVICE_URL: http://schedule-service:8082/api/v1
       NATS_URL: nats://nats:4222
     ports:
-      - "${MASTER_DATA_HOST_PORT:-18081}:8081"
+      - "127.0.0.1:${MASTER_DATA_HOST_PORT:-18081}:8081"
     volumes:
       - master_data_uploads:/app/uploads
     depends_on:
@@ -176,7 +176,7 @@ services:
       SCHEDULE_SERVICE_URL: http://schedule-service:8082/api/v1
       NATS_URL: nats://nats:4222
     ports:
-      - "${VENUE_HOST_PORT:-18087}:8087"
+      - "127.0.0.1:${VENUE_HOST_PORT:-18087}:8087"
     depends_on:
       migrate-venue:
         condition: service_completed_successfully
@@ -204,7 +204,7 @@ services:
       VENUE_SERVICE_URL: http://venue-service:8087/api/v1/venues
       NATS_URL: nats://nats:4222
     ports:
-      - "${SCHEDULE_HOST_PORT:-18082}:8082"
+      - "127.0.0.1:${SCHEDULE_HOST_PORT:-18082}:8082"
     depends_on:
       migrate-schedule:
         condition: service_completed_successfully
@@ -339,7 +339,7 @@ services:
       REALTIME_GATEWAY_URL: http://realtime-gateway:8085/api/v1/stream
       INTERNAL_STREAM_TOKEN: ${INTERNAL_STREAM_TOKEN:-local-development-stream-token}
     ports:
-      - "${API_GATEWAY_HOST_PORT:-8000}:8000"
+      - "127.0.0.1:${API_GATEWAY_HOST_PORT:-8000}:8000"
     depends_on:
       master-data-service:
         condition: service_healthy
@@ -372,8 +372,8 @@ services:
     container_name: porprov_admin_web
     restart: always
     ports:
-      - "${ADMIN_WEB_HOST_PORT:-5173}:80"
-      - "${ADMIN_WEB_HTTPS_PORT:-5174}:443"
+      - "127.0.0.1:${ADMIN_WEB_HOST_PORT:-5173}:80"
+      - "127.0.0.1:${ADMIN_WEB_HTTPS_PORT:-5174}:443"
     depends_on:
       api-gateway:
         condition: service_started
@@ -392,7 +392,7 @@ services:
     environment:
       API_INTERNAL_URL: http://api-gateway:8000/api/v1
     ports:
-      - "${PUBLIC_WEB_HOST_PORT:-3000}:3000"
+      - "127.0.0.1:${PUBLIC_WEB_HOST_PORT:-3000}:3000"
     depends_on:
       api-gateway:
         condition: service_started
@@ -405,7 +405,7 @@ services:
     restart: always
     command: redis-server --requirepass ${REDIS_PASSWORD:-porprov_redis_secret}
     ports:
-      - "${REDIS_HOST_PORT:-16379}:6379"
+      - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -417,8 +417,8 @@ services:
     restart: always
     command: ["-js", "-sd", "/data", "-m", "8222"]
     ports:
-      - "${NATS_CLIENT_HOST_PORT:-14222}:4222" # Client port
-      - "${NATS_MONITOR_HOST_PORT:-18222}:8222" # Management port
+      - "127.0.0.1:${NATS_CLIENT_HOST_PORT:-14222}:4222" # Client port
+      - "127.0.0.1:${NATS_MONITOR_HOST_PORT:-18222}:8222" # Management port
     volumes:
       - nats_data:/data
     networks:
@@ -439,7 +439,7 @@ services:
       KC_METRICS_ENABLED: 'true'
     command: start-dev
     ports:
-      - "${KEYCLOAK_HOST_PORT:-8080}:8080"
+      - "127.0.0.1:${KEYCLOAK_HOST_PORT:-8080}:8080"
     depends_on:
       - postgres
     networks:
@@ -493,7 +493,7 @@ services:
     container_name: porprov_prometheus
     restart: always
     ports:
-      - "${PROMETHEUS_HOST_PORT:-19090}:9090"
+      - "127.0.0.1:${PROMETHEUS_HOST_PORT:-19090}:9090"
     volumes:
       - prometheus_data:/prometheus
     networks:
@@ -506,7 +506,7 @@ services:
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
     ports:
-      - "${GRAFANA_HOST_PORT:-13000}:3000"
+      - "127.0.0.1:${GRAFANA_HOST_PORT:-13000}:3000"
     depends_on:
       - prometheus
     volumes:
