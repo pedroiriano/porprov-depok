@@ -65,7 +65,7 @@ export default function Profile() {
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Terautentikasi via Keycloak</p>
               
               <button 
-                onClick={() => window.open('http://localhost:8080/realms/porprov/account/', '_blank')} 
+                onClick={() => window.open((import.meta.env.VITE_OIDC_AUTHORITY || 'http://localhost:8080/realms/porprov') + '/account/', '_blank')} 
                 className="w-full py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center gap-2 transition-colors"
               >
                 <Key className="w-4 h-4" /> Manajemen Akun
