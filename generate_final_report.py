@@ -258,7 +258,7 @@ def main():
         ['Tampilan Publik', 'Next.js + React + TypeScript', '16.3 / 19.2', 'SSR untuk SEO, PWA untuk instalasi, responsif di semua perangkat'],
         ['Tampilan Admin', 'React + TypeScript + Vite', '19.x / 8.1', 'SPA cepat untuk operasional panitia sehari-hari'],
         ['Tema UI/UX', 'Techwind 3.3.0 + Tailwind CSS v4', '3.3 / 4.x', 'Tema tunggal yang konsisten, mendukung Dark Mode, WCAG 2.2 AA'],
-        ['Backend', 'Golang (Go)', '1.26.5', 'Super cepat, irit memori, jago menangani ribuan request bersamaan'],
+        ['Backend', 'Golang (Go)', '1.26.6', 'Super cepat, irit memori, jago menangani ribuan request bersamaan'],
         ['Database Utama', 'PostgreSQL + PostGIS', '15', 'Andal, mendukung transaksi ACID dan data geospasial'],
         ['Cache Kilat', 'Redis', '7 Alpine', 'Penyimpan sementara untuk replay SSE dan rate limiting'],
         ['Pesan Antarservice', 'NATS JetStream', '2.10', 'Event bisnis durable yang tidak pernah hilang'],

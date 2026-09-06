@@ -1,6 +1,6 @@
 module github.com/porprov-xv/porprov-depok/services/audit-service
 
-go 1.26.5
+go 1.26.6
 
 replace github.com/porprov-xv/porprov-depok/packages/messaging => ../../packages/messaging
 

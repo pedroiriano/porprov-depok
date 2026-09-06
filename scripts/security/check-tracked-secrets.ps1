@@ -17,11 +17,12 @@ foreach ($file in (git ls-files)) {
     if ($file -match '(^|/)(theme-reference|public/assets)/') { continue }
     if ($file -match '\.(md|docx|png|jpe?g|gif|webp|ico|woff2?|ttf|pdf|gz|zip)$') { continue }
     if ($file -match '(_test\.go|\.spec\.[jt]sx?|\.test\.[jt]sx?)$') { continue }
-    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
-    if ((Get-Item -LiteralPath $file).Length -gt 2MB) { continue }
+    $fullPath = [System.IO.Path]::GetFullPath((Join-Path (Get-Location).Path $file))
+    if (-not [System.IO.File]::Exists($fullPath)) { continue }
+    if ([System.IO.FileInfo]::new($fullPath).Length -gt 2MB) { continue }
 
     $lineNumber = 0
-    foreach ($line in (Get-Content -LiteralPath $file)) {
+    foreach ($line in [System.IO.File]::ReadLines($fullPath)) {
         $lineNumber++
         if ($line -match '\$\{[A-Z0-9_]+(?::[-?+][^}]*)?\}') { continue }
         if ($line -match '["'']\$[A-Z_][A-Z0-9_]*["'']') { continue }

@@ -45,7 +45,7 @@ Techwind masih memuat Google Fonts, bukan dari header origin PORPROV.
    dan checksum sebelum rebuild serta menjalankan smoke test HTTPS sesudahnya.
 7. Git memakai CODEOWNERS, Dependabot, CodeQL, dependency audit, govulncheck,
    dan pemeriksaan credential literal. GitHub Actions dipin ke commit SHA.
-8. Runtime Go dipin ke 1.26.5 dan `golang.org/x/text` minimal 0.39.0. Audit npm
+8. Runtime Go dipin ke 1.26.6 dan `golang.org/x/text` minimal 0.39.0. Audit npm
    production harus menghasilkan nol vulnerability sebelum release.
 9. CSP Admin production melarang `'unsafe-inline'` pada `style-src`. Edge
    menetapkan COOP `same-origin`, COEP `require-corp`, dan CORP `same-origin`

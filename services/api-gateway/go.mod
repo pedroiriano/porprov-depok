@@ -1,6 +1,6 @@
 module github.com/porprov-xv/porprov-depok/services/api-gateway
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0

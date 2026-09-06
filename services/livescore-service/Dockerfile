@@ -1,4 +1,4 @@
-FROM golang:1.26.5-alpine AS builder
+FROM golang:1.26.6-alpine AS builder
 WORKDIR /src/services/livescore-service
 COPY services/livescore-service/go.mod services/livescore-service/go.sum ./
 RUN go mod download

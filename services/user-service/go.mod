@@ -1,6 +1,6 @@
 module github.com/porprov-xv/porprov-depok/services/user-service
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/Nerzal/gocloak/v13 v13.9.0

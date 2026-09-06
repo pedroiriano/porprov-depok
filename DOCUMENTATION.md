@@ -451,9 +451,10 @@ Keputusan integrasi ini dicatat pada `docs/adr/ADR-0001-master-data-media-integr
 - Admin, API, dan LiveScore memakai `Cache-Control: no-store`. Upload publik
   hanya diperlakukan sebagai konten pasif dengan cache singkat.
 - API Gateway menyanitasi body upstream `5xx` menjadi error JSON stabil.
-- Runtime Go minimum 1.26.5 dan `golang.org/x/text` minimum 0.39.0 sesuai hasil
-  `govulncheck` 4 Agustus 2026. Seluruh dependency npm, termasuk toolchain
-  development/build, wajib nol advisory pada audit penuh.
+- Runtime Go minimum 1.26.6 dan `golang.org/x/text` minimum 0.39.0 sesuai gate
+  CI 6 September 2026. Seluruh dependency npm, termasuk toolchain
+  development/build, wajib nol advisory pada audit penuh; override terarah
+  mematok `browserslist` 4.28.9, `nanoid` 3.3.18, dan `js-yaml` 4.3.1.
 - Git security gate berada pada `.github/workflows/security.yml` dan mencakup
   secret literal scan, npm audit, lint/build, unit test, govulncheck, CodeQL,
   dan dependency review. Seluruh action dipin ke SHA.

@@ -232,6 +232,7 @@ Sebuah UI hanya boleh disebut masterpiece bila memenuhi seluruh quality bar beri
 - Response upstream `5xx` yang melintasi API Gateway wajib disanitasi; detail database, query, hostname internal, path, dan stack trace hanya boleh berada pada log internal terproteksi.
 - Production Compose wajib fail-closed terhadap secret placeholder, origin non-canonical, working tree kotor, dan commit tidak cocok. Container aplikasi wajib non-root, read-only bila kompatibel, `no-new-privileges`, dan capability minimum.
 - Release gate Git wajib menjalankan secret scan, audit penuh dependency npm termasuk toolchain build, `govulncheck`, lint/build/test, CodeQL, dan dependency review. Action eksternal harus dipin ke SHA immutable.
+- Runtime Go pada source, CI, dan builder container wajib minimum 1.26.6 sampai baseline diperbarui berdasarkan advisory resmi.
 - Release production wajib menjalankan regression probe header dan ZAP baseline pasif setelah deploy. Klaim penutupan alert Medium/Low hanya sah bila laporan JSON hasil scan baru menunjukkan `riskcode` 2 dan 1 masing-masing nol serta daftar site/instance tidak memuat origin pihak ketiga yang tidak disengaja; scan pasif anonim tidak menggantikan active/authenticated testing terjadwal.
 - Credential yang pernah tercatat pada Git wajib dirotasi/revoke. Rewrite histori dan force-push hanya boleh dilakukan setelah backup, koordinasi seluruh clone, dan persetujuan eksplisit.
 

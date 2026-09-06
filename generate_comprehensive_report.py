@@ -239,7 +239,7 @@ def main():
         ['Web Publik', 'Next.js + React + TypeScript', '16.3 / 19.2', 'Server-Side Rendering, PWA, SEO'],
         ['Web Admin', 'React + TypeScript + Vite', '19.x / 8.1', 'Single Page App dashboard operator'],
         ['Desain UI', 'Techwind 3.3.0 + Tailwind CSS', 'v4.x', 'Tema tunggal UI/UX + Dark Mode'],
-        ['Backend', 'Golang', '1.26.5', 'Microservices HTTP & event handler'],
+        ['Backend', 'Golang', '1.26.6', 'Microservices HTTP & event handler'],
         ['Database', 'PostgreSQL + PostGIS', '15', 'Database per service, 7 database terisolasi'],
         ['Cache', 'Redis', '7 Alpine', 'Cache SSE replay, session, rate limit'],
         ['Message Broker', 'NATS JetStream', '2.10', 'Event bisnis durable (audit, livescore, medali)'],
