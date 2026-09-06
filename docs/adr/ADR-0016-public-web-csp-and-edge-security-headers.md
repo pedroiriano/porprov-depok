@@ -1,4 +1,4 @@
-# ADR-0009: Public Web CSP Nonce dan Kepemilikan Header Security Edge
+# ADR-0016: Public Web CSP Nonce dan Kepemilikan Header Security Edge
 
 - Status: Accepted
 - Tanggal: 6 Agustus 2026

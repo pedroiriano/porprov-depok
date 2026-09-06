@@ -419,7 +419,7 @@ Keputusan integrasi ini dicatat pada `docs/adr/ADR-0001-master-data-media-integr
 - Metadata SEO resmi diterbitkan melalui App Router `robots.ts` dan `sitemap.ts`. URL asset encoded/double-slash pada detail Cabor/Venue ditolak Nginx sebagai text/plain 404 sebelum mencapai renderer.
 - Nginx memakai `server_tokens off`, edge menyembunyikan `X-Powered-By`, dan Next.js menonaktifkan `poweredByHeader`.
 - Route Cabor memvalidasi UUID sebelum memanggil Gateway. ID malformed menghasilkan 404, sedangkan query City Guide hanya menerima kategori allowlist serta page integer terbatas.
-- Keputusan dan bukti remediasi VA dicatat pada `docs/adr/ADR-0009-public-web-csp-and-edge-security-headers.md` serta `docs/security/VA_2026-08-06_REMEDIATION.md`.
+- Keputusan dan bukti remediasi VA dicatat pada `docs/adr/ADR-0016-public-web-csp-and-edge-security-headers.md` serta `docs/security/VA_2026-08-06_REMEDIATION.md`.
 - Input validation, output encoding, SQL injection prevention.
 - Secret management.
 - Nginx production adalah normalizer tunggal CSP/HSTS/X-Content-Type/Referrer/

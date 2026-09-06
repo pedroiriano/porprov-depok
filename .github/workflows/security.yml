@@ -71,8 +71,8 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.26.5"
-          # SECURITY: packages/messaging sengaja tidak mempunyai go.sum;
-          # cache dimatikan agar gate tidak gagal hanya karena path cache kosong.
+          # SECURITY: cache dimatikan agar matriks modul memakai perilaku
+          # dependency yang konsisten tanpa berbagi state cache antar-job.
           cache: false
       - run: go test ./...
       - name: Vulnerability scan
