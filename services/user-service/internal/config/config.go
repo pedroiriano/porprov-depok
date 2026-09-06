@@ -1,18 +1,41 @@
 package config
 
 import (
+	"errors"
 	"os"
+	"strings"
 )
 
 // AppConfig menyimpan konfigurasi untuk User Service
 type AppConfig struct {
-	Port                string
-	Env                 string
-	DBConn              string
-	KeycloakServerURL   string
-	KeycloakRealm       string
-	KeycloakClientID    string
+	Port                 string
+	Env                  string
+	DBConn               string
+	KeycloakServerURL    string
+	KeycloakRealm        string
+	KeycloakClientID     string
 	KeycloakClientSecret string
+}
+
+func envOrDefault(key, fallback string) string {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		return value
+	}
+	return fallback
+}
+
+// Validate menolak credential development pada staging/production.
+func (c *AppConfig) Validate() error {
+	if !strings.EqualFold(c.Env, "production") && !strings.EqualFold(c.Env, "staging") {
+		return nil
+	}
+	if strings.Contains(c.DBConn, "porprov_secret") {
+		return errors.New("DATABASE_URL masih memakai credential development")
+	}
+	if len(c.KeycloakClientSecret) < 32 || c.KeycloakClientSecret == "backend_secret" || strings.HasPrefix(c.KeycloakClientSecret, "replace-with-") {
+		return errors.New("KEYCLOAK_BACKEND_CLIENT_SECRET wajib berupa secret eksplisit minimal 32 karakter")
+	}
+	return nil
 }
 
 // LoadConfig memuat konfigurasi dari environment variables
@@ -39,12 +62,12 @@ func LoadConfig() *AppConfig {
 	}
 
 	return &AppConfig{
-		Port:                port,
-		Env:                 env,
-		DBConn:              dbConn,
-		KeycloakServerURL:   kcURL,
-		KeycloakRealm:       "porprov",
-		KeycloakClientID:    "porprov-backend-service",
-		KeycloakClientSecret: "backend_secret",
+		Port:                 port,
+		Env:                  env,
+		DBConn:               dbConn,
+		KeycloakServerURL:    kcURL,
+		KeycloakRealm:        envOrDefault("KEYCLOAK_REALM", "porprov"),
+		KeycloakClientID:     envOrDefault("KEYCLOAK_BACKEND_CLIENT_ID", "porprov-backend-service"),
+		KeycloakClientSecret: envOrDefault("KEYCLOAK_BACKEND_CLIENT_SECRET", "backend_secret"),
 	}
 }

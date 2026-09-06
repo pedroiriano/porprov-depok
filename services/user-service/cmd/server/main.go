@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/porprov-xv/porprov-depok/packages/messaging"
 	"github.com/porprov-xv/porprov-depok/services/user-service/internal/config"
 	"github.com/porprov-xv/porprov-depok/services/user-service/internal/db"
@@ -20,14 +20,17 @@ import (
 func main() {
 	// INFO: Memuat konfigurasi
 	cfg := config.LoadConfig()
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Konfigurasi User Service tidak aman: %v", err)
+	}
 
 	// INFO: Inisiasi koneksi ke PostgreSQL
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, cfg.DBConn)
+	conn, err := pgxpool.New(ctx, cfg.DBConn)
 	if err != nil {
 		log.Fatalf("Gagal terhubung ke database PostgreSQL: %v", err)
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 	log.Println("Berhasil terhubung ke database PostgreSQL user_service_db")
 
 	// INFO: Menginisialisasi SQLC Queries

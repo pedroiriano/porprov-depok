@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue, error)
 	GetVenueByID(ctx context.Context, id pgtype.UUID) (Venue, error)
+	GetVenueByIdentifier(ctx context.Context, identifier string) (Venue, error)
 	ListVenues(ctx context.Context) ([]Venue, error)
 	UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue, error)
 }

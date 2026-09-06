@@ -15,9 +15,36 @@ infra/docker/tls/*.key
 infra/docker/tls/*.csr
 infra/docker/tls/*.srl
 infra/docker/tls/*.ext
+infra/docker/nginx/tls/*.crt
+infra/docker/nginx/tls/*.key
 infra/docker/.deploy-vps.lock
 # SECURITY: dump/migration sementara dan script ad-hoc berkredensial tidak boleh masuk Git.
+/db_backup.sql
 /data.sql
 /data_*.sql
 /install_vps.sh
 /scripts/maps_updater/deploy*.js
+infra/docker/nginx/tls/
+# SECURITY: sertifikat wildcard dan private key resmi tidak boleh masuk Git.
+/ssl-wildcard/
+# SECURITY: script ad-hoc lama yang membaca/menanam credential TLS/VPS.
+/scripts/maps_updater/*ssl*.js
+/scripts/maps_updater/fix_certs.js
+/scripts/maps_updater/fix_vps.js
+/scripts/maps_updater/write_certs.js
+# SECURITY: helper SSH ad-hoc dan hasil migrasi tidak boleh menjadi source.
+/scripts/maps_updater/*.js
+!/scripts/maps_updater/index.js
+/scripts/maps_updater/*.sql
+/scripts/maps_updater/*.tar.gz
+/scripts/maps_updater/*.zip
+*ZAP-Report*.html
+
+# RECOVERY: hasil render, laporan VA mentah, dan keluaran generator disimpan di backup, bukan Git.
+/tmp/
+/va/
+/Katalog_API_Porprov_XV.docx
+/Laporan_*.docx
+/Laporan_*.pdf
+/Pemetaan_Akses_Role_Porprov.docx
+/Porprov Depok.jpeg

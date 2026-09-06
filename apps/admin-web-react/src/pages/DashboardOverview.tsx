@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Users, Trophy, Activity, AlertTriangle, Medal, MapPin, Map, Flag, type LucideIcon } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import { apiClient, authConfig, unwrapApiData } from '../lib/api';
+import { canAccessRole, getRealmRoles } from '../lib/auth';
+import VisitorAnalytics from '../components/VisitorAnalytics';
 
 interface StatCardProps {
   title: string;
@@ -29,6 +31,7 @@ const StatCard = ({ title, value, icon: Icon, trend, colorClass }: StatCardProps
 export default function DashboardOverview() {
   const auth = useAuth();
   const token = auth.user?.access_token;
+  const canViewAnalytics = canAccessRole(getRealmRoles(auth.user), ['auditor']);
   
   const [logs, setLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(true);
@@ -93,6 +96,8 @@ export default function DashboardOverview() {
         <h1 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Dashboard Operasional</h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Pantau pertandingan, aktivitas sistem, dan pekerjaan penting dalam satu layar.</p>
       </header>
+
+      {token && canViewAnalytics && <VisitorAnalytics token={token} />}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

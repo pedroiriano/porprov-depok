@@ -1,6 +1,6 @@
 -- name: CreateCabor :one
-INSERT INTO cabors (name, description, icon_url, kategori, total_medali, technical_delegate, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO cabors (name, description, icon_url, hero_image_url, kategori, total_medali, technical_delegate, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: ListCabors :many
@@ -45,16 +45,23 @@ ORDER BY name ASC;
 -- name: GetCaborByID :one
 SELECT * FROM cabors WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
+-- name: GetCaborByIdentifier :one
+SELECT * FROM cabors
+WHERE deleted_at IS NULL
+  AND (id::text = sqlc.arg(identifier)::text OR slug = sqlc.arg(identifier)::text)
+LIMIT 1;
+
 -- name: UpdateCabor :one
 UPDATE cabors
 SET
   name = COALESCE(NULLIF($2::text, ''), name),
   description = COALESCE(NULLIF($3::text, ''), description),
   icon_url = COALESCE(NULLIF($4::text, ''), icon_url),
-  kategori = COALESCE(NULLIF($5::text, ''), kategori),
-  total_medali = COALESCE(NULLIF($6::integer, 0), total_medali),
-  technical_delegate = COALESCE(NULLIF($7::text, ''), technical_delegate),
-  status = COALESCE(NULLIF($8::text, ''), status),
+  hero_image_url = NULLIF($5::text, ''),
+  kategori = COALESCE(NULLIF($6::text, ''), kategori),
+  total_medali = COALESCE(NULLIF($7::integer, 0), total_medali),
+  technical_delegate = COALESCE(NULLIF($8::text, ''), technical_delegate),
+  status = COALESCE(NULLIF($9::text, ''), status),
   updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
@@ -73,15 +80,63 @@ WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: CreateCityGuide :one
-INSERT INTO city_guides (title, category, description, address, image_url, latitude, longitude, map_route_url)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO city_guides (
+  title, category, description, address, image_url, latitude, longitude, map_route_url,
+  contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url,
+  service_types, service_area, operating_hours, price_range, fleet_types, fleet_count
+)
+VALUES (
+  $1, $2, $3, $4, $5, $6, $7, $8,
+  $9, $10, $11, $12, $13, $14, $15,
+  $16, $17, $18, $19, $20, $21
+)
 RETURNING *;
 
 -- name: ListCityGuides :many
 SELECT * FROM city_guides
 WHERE deleted_at IS NULL
-  AND category = COALESCE(NULLIF($1::text, ''), category)
+  AND category = COALESCE(NULLIF(sqlc.arg(category)::text, ''), category)
+  AND (
+    NULLIF(sqlc.arg(search)::text, '') IS NULL
+    OR title ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(description, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(address, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR category ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+  )
 ORDER BY title ASC;
+
+-- name: ListCityGuidesPaginated :many
+SELECT * FROM city_guides
+WHERE deleted_at IS NULL
+  AND category = COALESCE(NULLIF(sqlc.arg(category)::text, ''), category)
+  AND (
+    NULLIF(sqlc.arg(search)::text, '') IS NULL
+    OR title ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(description, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(address, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR category ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(contact_phone, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(whatsapp, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(email, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+  )
+ORDER BY title ASC, id ASC
+LIMIT sqlc.arg(page_limit)::integer
+OFFSET sqlc.arg(page_offset)::integer;
+
+-- name: CountCityGuides :one
+SELECT COUNT(*) FROM city_guides
+WHERE deleted_at IS NULL
+  AND category = COALESCE(NULLIF(sqlc.arg(category)::text, ''), category)
+  AND (
+    NULLIF(sqlc.arg(search)::text, '') IS NULL
+    OR title ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(description, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(address, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR category ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(contact_phone, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(whatsapp, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(email, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+  );
 
 -- name: GetCityGuideByID :one
 SELECT * FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
@@ -97,6 +152,19 @@ SET
   latitude = $7,
   longitude = $8,
   map_route_url = NULLIF($9::text, ''),
+  contact_phone = NULLIF($10::text, ''),
+  whatsapp = NULLIF($11::text, ''),
+  email = NULLIF($12::text, ''),
+  website_url = NULLIF($13::text, ''),
+  instagram_url = NULLIF($14::text, ''),
+  facebook_url = NULLIF($15::text, ''),
+  tiktok_url = NULLIF($16::text, ''),
+  service_types = $17,
+  service_area = NULLIF($18::text, ''),
+  operating_hours = NULLIF($19::text, ''),
+  price_range = NULLIF($20::text, ''),
+  fleet_types = $21,
+  fleet_count = $22,
   updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;

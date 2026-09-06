@@ -56,6 +56,26 @@ export function publicApiUrl(path: string): string {
   return `${getPublicApiBaseUrl()}${normalizedPath}`;
 }
 
+export function isCanonicalPublicResourceId(value: string): boolean {
+  // SECURITY: Seluruh resource domain publik saat ini memakai UUID canonical.
+  // Tolak path crawler/asset malformed sebelum mencapai microservice agar
+  // input tersebut menghasilkan 404 stabil, bukan error upstream 500.
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+export function isCanonicalVenueIdentifier(value: string): boolean {
+  // SECURITY: Venue menerima UUID lama atau slug lowercase yang dibatasi.
+  // Path asset/crawler malformed tetap ditolak sebelum mencapai backend.
+  return value.length <= 255
+    && (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+      || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value));
+}
+
+export function isCanonicalCaborIdentifier(value: string): boolean {
+  // SECURITY: Cabor menerima UUID lama atau slug lowercase yang dibatasi.
+  return isCanonicalPublicResourceId(value)
+    || (value.length <= 255 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value));
+}
 export function unwrapCollection<T>(payload: unknown): T[] {
   if (Array.isArray(payload)) {
     return payload as T[];
@@ -180,7 +200,9 @@ export function resolvePublicAssetUrl(value: NullablePgText): string {
     return "";
   }
 
-  if (path.startsWith("data:") || path.startsWith("blob:")) {
+  // SECURITY: Data URL dibatasi ke format raster; SVG/data generik dan skema
+  // executable tidak boleh berasal dari metadata database.
+  if (/^data:image\/(?:png|jpe?g|webp|gif);base64,/i.test(path)) {
     return path;
   }
 
@@ -204,7 +226,7 @@ export function resolvePublicAssetUrl(value: NullablePgText): string {
   }
 
   if (!path.startsWith("/")) {
-    return path;
+    return "";
   }
 
   // INFO: Asset URL (img src, dll.) harus selalu menggunakan origin yang dapat dijangkau browser,
@@ -223,5 +245,5 @@ export function resolvePublicAssetUrl(value: NullablePgText): string {
 
 export function safeExternalUrl(value: NullablePgText): string {
   const url = readPgText(value);
-  return /^https?:\/\//i.test(url) ? url : "";
+  return /^https:\/\//i.test(url) ? url : "";
 }

@@ -67,7 +67,7 @@
   --color-primary-700: #0a365f !important;
   --color-primary-800: #062447 !important;
   --color-primary-900: #031326 !important;
-  --font-sans: "Nunito", "Segoe UI", Arial, sans-serif;
+  --font-sans: "Nunito Variable", "Nunito", "Segoe UI", Arial, sans-serif;
   --bg-base: #f8fafc;
   --bg-surface: #ffffff;
   --bg-elevated: rgba(255, 255, 255, 0.7);

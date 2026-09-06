@@ -28,7 +28,7 @@ export const defaultHeroContent: HeroContentModel = {
   id: "hero-fallback",
   title: "Panggung Juara Jawa Barat.",
   highlightText: "Jawa Barat.",
-  description: "Saksikan PORPROV XV Jawa Barat 2026 dari Kota Depok—jadwal, venue, LiveScore, dan perjalanan para atlet dalam satu portal resmi.",
+  description: "Saksikan Pekan Olahraga Provinsi Jawa Barat ke XV 2026 dari Kota Depok.\nJadwal, Venue, LiveScore, dan perjalanan para Atlet dalam satu Portal Resmi.",
   backgroundImageUrl: "/assets/images/alun-alun.png",
 };
 
@@ -48,9 +48,11 @@ export function normalizeHeroContent(raw: RawHeroContent): HeroContentModel {
 
 export interface RawCabor {
   id?: unknown;
+  slug?: string;
   name?: string;
   description?: Parameters<typeof readPgText>[0];
   icon_url?: Parameters<typeof readPgText>[0];
+  hero_image_url?: Parameters<typeof readPgText>[0];
   kategori?: Parameters<typeof readPgText>[0];
   total_medali?: Parameters<typeof readPgNumber>[0];
   technical_delegate?: Parameters<typeof readPgText>[0];
@@ -59,9 +61,11 @@ export interface RawCabor {
 
 export interface CaborModel {
   id: string;
+  slug: string;
   name: string;
   description: string;
   iconUrl: string;
+  heroImageUrl: string;
   category: string;
   totalMedals: number;
   technicalDelegate: string;
@@ -72,14 +76,20 @@ export function normalizeCabor(raw: RawCabor, index = 0): CaborModel {
   const name = raw.name?.trim() || "Cabang Olahraga PORPROV";
   return {
     id: readResourceId(raw.id, `cabor-${index}`),
+    slug: raw.slug?.trim() || "",
     name,
     description: readPgText(raw.description) || `Informasi resmi ${name} pada PORPROV XV Jawa Barat 2026.`,
     iconUrl: resolvePublicAssetUrl(raw.icon_url),
+    heroImageUrl: resolvePublicAssetUrl(raw.hero_image_url),
     category: readPgText(raw.kategori) || "Pertandingan",
     totalMedals: readPgNumber(raw.total_medali),
     technicalDelegate: readPgText(raw.technical_delegate),
     status: readPgText(raw.status) || "Aktif",
   };
+}
+
+export function publicCaborPath(cabor: Pick<CaborModel, "id" | "slug">): string {
+  return `/cabor/${encodeURIComponent(cabor.slug || cabor.id)}`;
 }
 
 export interface RawNomorTanding {
@@ -110,6 +120,7 @@ export function normalizeNomorTanding(raw: RawNomorTanding, index = 0): NomorTan
 
 export interface RawVenueModel {
   id?: unknown;
+  slug?: string;
   name?: string;
   image_url?: Parameters<typeof readPgText>[0];
   address?: Parameters<typeof readPgText>[0];
@@ -125,6 +136,7 @@ export interface RawVenueModel {
 
 export interface VenueModel {
   id: string;
+  slug: string;
   name: string;
   imageUrl: string;
   address: string;
@@ -142,6 +154,7 @@ export function normalizeVenueModel(raw: RawVenueModel, index = 0): VenueModel {
   const name = raw.name?.trim() || "Venue PORPROV";
   return {
     id: readResourceId(raw.id, `venue-${index}`),
+    slug: raw.slug?.trim() || "",
     name,
     imageUrl: resolvePublicAssetUrl(raw.image_url),
     address: readPgText(raw.address),
@@ -156,6 +169,10 @@ export function normalizeVenueModel(raw: RawVenueModel, index = 0): VenueModel {
   };
 }
 
+export function publicVenuePath(venue: Pick<VenueModel, "id" | "slug">): string {
+  return `/venue/${encodeURIComponent(venue.slug || venue.id)}`;
+}
+
 export interface RawCityGuide {
   id?: unknown;
   title?: string;
@@ -166,6 +183,19 @@ export interface RawCityGuide {
   latitude?: Parameters<typeof readPgNumber>[0];
   longitude?: Parameters<typeof readPgNumber>[0];
   map_route_url?: Parameters<typeof readPgText>[0];
+  contact_phone?: Parameters<typeof readPgText>[0];
+  whatsapp?: Parameters<typeof readPgText>[0];
+  email?: Parameters<typeof readPgText>[0];
+  website_url?: Parameters<typeof readPgText>[0];
+  instagram_url?: Parameters<typeof readPgText>[0];
+  facebook_url?: Parameters<typeof readPgText>[0];
+  tiktok_url?: Parameters<typeof readPgText>[0];
+  service_types?: unknown;
+  service_area?: Parameters<typeof readPgText>[0];
+  operating_hours?: Parameters<typeof readPgText>[0];
+  price_range?: Parameters<typeof readPgText>[0];
+  fleet_types?: unknown;
+  fleet_count?: Parameters<typeof readPgNumber>[0];
 }
 
 export interface CityGuideModel {
@@ -178,6 +208,19 @@ export interface CityGuideModel {
   latitude: number;
   longitude: number;
   mapUrl: string;
+  contactPhone: string;
+  whatsapp: string;
+  email: string;
+  websiteUrl: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  tiktokUrl: string;
+  serviceTypes: string[];
+  serviceArea: string;
+  operatingHours: string;
+  priceRange: string;
+  fleetTypes: string[];
+  fleetCount: number;
 }
 
 function hasPgNumber(value: Parameters<typeof readPgNumber>[0]): boolean {
@@ -240,6 +283,19 @@ export function normalizeCityGuide(raw: RawCityGuide, index = 0): CityGuideModel
     latitude,
     longitude,
     mapUrl: configuredMapURL || (hasCoordinates ? `https://www.google.com/maps?q=${latitude},${longitude}+(${encodeURIComponent(raw.title?.trim() || "Panduan Kota Depok")})` : ""),
+    contactPhone: readPgText(raw.contact_phone),
+    whatsapp: readPgText(raw.whatsapp),
+    email: readPgText(raw.email),
+    websiteUrl: safeExternalUrl(raw.website_url),
+    instagramUrl: safeExternalUrl(raw.instagram_url),
+    facebookUrl: safeExternalUrl(raw.facebook_url),
+    tiktokUrl: safeExternalUrl(raw.tiktok_url),
+    serviceTypes: Array.isArray(raw.service_types) ? raw.service_types.filter((value): value is string => typeof value === "string" && value.trim().length > 0) : [],
+    serviceArea: readPgText(raw.service_area),
+    operatingHours: readPgText(raw.operating_hours),
+    priceRange: readPgText(raw.price_range),
+    fleetTypes: Array.isArray(raw.fleet_types) ? raw.fleet_types.filter((value): value is string => typeof value === "string" && value.trim().length > 0) : [],
+    fleetCount: readPgNumber(raw.fleet_count),
   };
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/Nerzal/gocloak/v13"
@@ -152,6 +153,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.queries.ListUsers(r.Context())
 	if err != nil {
+		log.Printf("Failed to fetch users: %v", err)
 		http.Error(w, "Failed to fetch users", http.StatusInternalServerError)
 		return
 	}
@@ -214,21 +216,11 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Update in Keycloak
-	kcUser := gocloak.User{
+	var kcUser = gocloak.User{
 		ID:        gocloak.StringP(existingUser.KeycloakID),
 		Username:  gocloak.StringP(req.Username),
 		Email:     gocloak.StringP(req.Email),
 		FirstName: gocloak.StringP(req.FullName),
-	}
-	
-	if req.Password != "" {
-		kcUser.Credentials = &[]gocloak.CredentialRepresentation{
-			{
-				Type:      gocloak.StringP("password"),
-				Value:     gocloak.StringP(req.Password),
-				Temporary: gocloak.BoolP(false),
-			},
-		}
 	}
 
 	err = h.kc.UpdateUser(r.Context(), token.AccessToken, h.cfg.KeycloakRealm, kcUser)
@@ -237,9 +229,29 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Password != "" {
+		err = h.kc.SetPassword(r.Context(), token.AccessToken, existingUser.KeycloakID, h.cfg.KeycloakRealm, req.Password, false)
+		if err != nil {
+			log.Printf("Failed to update password for user %s: %v", existingUser.KeycloakID, err)
+		}
+	}
+
 	// 3. Sync Roles in Keycloak if role changed
 	if req.Role != "" && req.Role != existingUser.Role {
-		// We'll simplify and just add the new role. In a robust system, we should remove the old role.
+		// First, remove the old role
+		if existingUser.Role != "" {
+			oldRoles, err := h.kc.GetRealmRoles(r.Context(), token.AccessToken, h.cfg.KeycloakRealm, gocloak.GetRoleParams{Search: gocloak.StringP(existingUser.Role)})
+			if err == nil && len(oldRoles) > 0 {
+				for _, rl := range oldRoles {
+					if *rl.Name == existingUser.Role {
+						h.kc.DeleteRealmRoleFromUser(r.Context(), token.AccessToken, h.cfg.KeycloakRealm, existingUser.KeycloakID, []gocloak.Role{*rl})
+						break
+					}
+				}
+			}
+		}
+
+		// Then, add the new role
 		roles, err := h.kc.GetRealmRoles(r.Context(), token.AccessToken, h.cfg.KeycloakRealm, gocloak.GetRoleParams{Search: gocloak.StringP(req.Role)})
 		if err == nil && len(roles) > 0 {
 			for _, rl := range roles {

@@ -14,6 +14,12 @@ ORDER BY name ASC;
 -- name: GetVenueByID :one
 SELECT * FROM venues WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
+-- name: GetVenueByIdentifier :one
+SELECT * FROM venues
+WHERE deleted_at IS NULL
+  AND (id::text = sqlc.arg(identifier)::text OR slug = sqlc.arg(identifier)::text)
+LIMIT 1;
+
 -- name: UpdateVenue :one
 UPDATE venues
 SET 

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/porprov-xv/porprov-depok/packages/messaging"
 	"github.com/porprov-xv/porprov-depok/services/audit-service/internal/config"
 	"github.com/porprov-xv/porprov-depok/services/audit-service/internal/db"
@@ -22,11 +22,11 @@ func main() {
 
 	// 1. Database Connection
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, cfg.DBConn)
+	conn, err := pgxpool.New(ctx, cfg.DBConn)
 	if err != nil {
 		log.Fatalf("Gagal terhubung ke database PostgreSQL audit_db: %v\n", err)
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 	log.Println("Berhasil terhubung ke database PostgreSQL audit_db")
 
 	queries := db.New(conn)

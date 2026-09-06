@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
 import { ScheduleMatchCard } from "@/components/ScheduleMatchCard";
-import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
+import { isCanonicalCaborIdentifier, isCanonicalPublicResourceId, publicApiUrl, unwrapCollection } from "@/lib/public-api";
 import {
   normalizeCabor,
   normalizeEnrichedMatch,
   normalizeNomorTanding,
   normalizeVenueModel,
+  publicVenuePath,
   type RawCabor,
   type RawEnrichedMatch,
   type RawNomorTanding,
@@ -18,6 +19,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const getCabor = cache(async (id: string) => {
+  if (!isCanonicalCaborIdentifier(id)) return null;
   const response = await fetch(publicApiUrl(`/master-data/cabors/${encodeURIComponent(id)}`), { cache: "no-store" });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Master Data Service merespons ${response.status}`);
@@ -45,6 +47,9 @@ export default async function CaborDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const cabor = await getCabor(id);
   if (!cabor) notFound();
+  if (isCanonicalPublicResourceId(id) && cabor.slug) {
+    permanentRedirect(`/cabor/${encodeURIComponent(cabor.slug)}`);
+  }
 
   const [rawNomor, rawVenues, rawMatches] = await Promise.all([
     getCollection<RawNomorTanding>("/master-data/nomor-tandings"),
@@ -58,7 +63,18 @@ export default async function CaborDetailPage({ params }: { params: Promise<{ id
   return (
     <main className="pb-20 pt-28 md:pb-24 md:pt-36">
       <section className="relative overflow-hidden bg-gradient-sports py-16 text-white md:py-24">
-        <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_75%_25%,white_0,transparent_28%)]" aria-hidden="true" />
+        {cabor.heroImageUrl && (
+          <>
+            {/* PERFORMANCE: Lapisan blur mengisi kanvas tanpa mengubah rasio gambar utama. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cabor.heroImageUrl} alt="" className="absolute inset-0 size-full scale-105 object-cover opacity-55 blur-xl" aria-hidden="true" />
+            {/* ACCESSIBILITY: object-contain mempertahankan seluruh komposisi Hero tanpa crop atau distorsi. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cabor.heroImageUrl} alt="" className="absolute inset-0 size-full object-contain brightness-110" aria-hidden="true" />
+          </>
+        )}
+        <div className={`absolute inset-0 ${cabor.heroImageUrl ? "bg-slate-950/40" : "opacity-20 [background-image:radial-gradient(circle_at_75%_25%,white_0,transparent_28%)]"}`} aria-hidden="true" />
+        {cabor.heroImageUrl && <div className="absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-900/20 to-transparent" aria-hidden="true" />}
         <div className="container relative">
           <Link href="/cabor" className="inline-flex min-h-11 items-center text-sm font-bold text-primary-100 hover:text-white"><i className="ri-arrow-left-line me-2" aria-hidden="true" />Semua cabor</Link>
           <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-center">
@@ -82,7 +98,7 @@ export default async function CaborDetailPage({ params }: { params: Promise<{ id
         </div>
         <aside className="space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Informasi resmi</h2><dl className="mt-5 space-y-4 text-sm"><div><dt className="text-slate-500">Status</dt><dd className="mt-1 font-black">{cabor.status}</dd></div><div><dt className="text-slate-500">Total medali</dt><dd className="mt-1 font-black">{cabor.totalMedals || "Menunggu penetapan"}</dd></div><div><dt className="text-slate-500">Technical Delegate</dt><dd className="mt-1 font-black">{cabor.technicalDelegate || "Menunggu penetapan"}</dd></div></dl></div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Venue terkait</h2>{venues.length ? <ul className="mt-4 space-y-2">{venues.map((venue) => <li key={venue.id}><Link href={`/venue/${encodeURIComponent(venue.id)}`} className="flex min-h-11 items-center justify-between rounded-xl px-3 font-bold hover:bg-primary-500/10 hover:text-primary-600">{venue.name}<i className="ri-arrow-right-s-line" aria-hidden="true" /></Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-500">Venue belum ditautkan.</p>}</div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Venue terkait</h2>{venues.length ? <ul className="mt-4 space-y-2">{venues.map((venue) => <li key={venue.id}><Link href={publicVenuePath(venue)} className="flex min-h-11 items-center justify-between rounded-xl px-3 font-bold hover:bg-primary-500/10 hover:text-primary-600">{venue.name}<i className="ri-arrow-right-s-line" aria-hidden="true" /></Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-500">Venue belum ditautkan.</p>}</div>
         </aside>
       </div>
     </main>

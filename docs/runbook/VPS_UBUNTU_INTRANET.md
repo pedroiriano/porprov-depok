@@ -13,14 +13,18 @@ masuk Git.
 
 | Area | Endpoint |
 |---|---|
-| Public Web intranet | `http://<IP-VPS>/` dan `https://<IP-VPS>/` |
+| Public Web intranet | `https://<IP-VPS>/` (`http://` hanya redirect) |
 | Admin Web | `https://<IP-VPS>/admin/` |
-| API browser | `http(s)://<IP-VPS>/api/v1` |
+| API browser | `https://<IP-VPS>/api/v1` |
 | Keycloak browser | `https://<IP-VPS>/realms/porprov` |
 
 Admin, Keycloak, dan token API wajib memakai HTTPS. Alamat IP HTTP bukan secure
 context browser sehingga Authorization Code + PKCE gagal saat membentuk code
 challenge melalui Web Crypto.
+
+Jika Public/Admin/API/Keycloak direcreate, reload atau recreate Nginx setelah
+upstream stabil lalu jalankan smoke HTTPS. Nginx dapat mempertahankan alamat IP
+container lama dan mengembalikan 502 walaupun container baru sudah sehat.
 
 ## Job Tahan Reconnect
 
@@ -89,6 +93,12 @@ ADMIN_WEB_ORIGINS=["https://<IP-VPS>"]
 ```
 
 Semua secret wajib acak, unik, dan hanya berada di `.env` VPS.
+
+Setelah deployment, verifikasi bahwa Public mengirim satu CSP dengan nonce unik
+tanpa `script-src unsafe-inline`, API dan Public sama-sama menerima HSTS,
+`X-Powered-By` tidak tersedia, versi patch Nginx tidak terlihat, dan malformed
+route Cabor menghasilkan 404. Perintah kanonis serta larangan duplicate CSP
+berada di Bagian 16 `DEPLOYMENT_VPS.md`.
 
 Schedule Service wajib menggunakan image yang memuat connection pool (`pgxpool`). Setelah restore database atau deploy image baru, verifikasi endpoint enriched secara konkuren; response `500` dengan log `conn busy` menandakan image lama masih aktif dan Schedule Service perlu dibangun ulang melalui job deploy canonical.
 

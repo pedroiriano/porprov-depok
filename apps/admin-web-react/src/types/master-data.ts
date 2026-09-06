@@ -25,6 +25,7 @@ export interface Cabor {
   name: string;
   description: string | null;
   icon_url: string | null;
+  hero_image_url: string | null;
   kategori: string | null;
   total_medali: number | null;
   technical_delegate: string | null;

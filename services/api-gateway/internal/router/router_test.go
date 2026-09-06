@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/cors"
@@ -112,6 +113,53 @@ func TestSetupProxyKeepsSingleGatewayCORSOrigin(t *testing.T) {
 	}
 	if origins[0] != "http://localhost:5174" {
 		t.Fatalf("expected gateway origin http://localhost:5174, got %q", origins[0])
+	}
+}
+
+func TestSetupProxyScrubsInternalServerError(t *testing.T) {
+	t.Parallel()
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = io.WriteString(w, "postgres password and internal query must not escape")
+	}))
+	defer upstream.Close()
+
+	request := httptest.NewRequest(http.MethodGet, "/venues", nil)
+	response := httptest.NewRecorder()
+	setupProxy(upstream.URL).ServeHTTP(response, request)
+
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", response.Code)
+	}
+	if response.Body.String() != upstreamErrorBody {
+		t.Fatalf("expected stable upstream error body, got %q", response.Body.String())
+	}
+	if response.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("expected no-store error response")
+	}
+}
+
+func TestGatewayAddsSecurityHeaders(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config.AppConfig{AllowedOrigins: []string{"http://localhost:3000"}}
+	request := httptest.NewRequest(http.MethodGet, "/health", nil)
+	response := httptest.NewRecorder()
+	SetupRouter(nil, cfg).ServeHTTP(response, request)
+
+	for _, header := range []string{"Cache-Control", "Content-Security-Policy", "Permissions-Policy", "Referrer-Policy", "X-Content-Type-Options", "X-Frame-Options"} {
+		if response.Header().Get(header) == "" {
+			t.Fatalf("expected security header %s", header)
+		}
+	}
+
+	policy := response.Header().Get("Content-Security-Policy")
+	for _, directive := range []string{"default-src", "base-uri", "object-src", "frame-ancestors", "form-action"} {
+		if !strings.Contains(policy, directive+" ") {
+			t.Fatalf("expected explicit CSP directive %s in %q", directive, policy)
+		}
 	}
 }
 

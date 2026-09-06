@@ -22,6 +22,66 @@ services:
       timeout: 5s
       retries: 12
 
+  init-umami-db:
+    image: postgres:15-alpine
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-porprov_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-porprov_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-porprov_db}
+      UMAMI_DATABASE_USER: ${UMAMI_DATABASE_USER:-umami}
+      UMAMI_DATABASE_PASSWORD: ${UMAMI_DATABASE_PASSWORD:-umamilocalpassword}
+      UMAMI_DATABASE_NAME: ${UMAMI_DATABASE_NAME:-umami_db}
+    volumes:
+      - ./init-umami-db.sh:/opt/porprov/init-umami-db.sh:ro
+    entrypoint: ["/bin/sh", "/opt/porprov/init-umami-db.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - porprov_network
+
+  umami:
+    image: docker.umami.is/umami-software/umami:3.2.0
+    container_name: porprov_umami
+    restart: always
+    environment:
+      DATABASE_URL: postgres://${UMAMI_DATABASE_USER:-umami}:${UMAMI_DATABASE_PASSWORD:-umamilocalpassword}@postgres:5432/${UMAMI_DATABASE_NAME:-umami_db}
+      APP_SECRET: ${UMAMI_APP_SECRET:-replace-with-a-long-random-umami-secret}
+      DISABLE_TELEMETRY: "1"
+      DISABLE_UPDATES: "1"
+      TRACKER_SCRIPT_NAME: porprov-insight.js
+      COLLECT_API_ENDPOINT: /api/collect
+      CLIENT_IP_HEADER: X-Forwarded-For
+    depends_on:
+      init-umami-db:
+        condition: service_completed_successfully
+    networks:
+      - porprov_network
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/heartbeat').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  umami-bootstrap:
+    image: python:3.13-alpine
+    restart: "no"
+    environment:
+      UMAMI_INTERNAL_URL: http://umami:3000
+      UMAMI_USERNAME: ${UMAMI_USERNAME:-admin}
+      UMAMI_PASSWORD: ${UMAMI_PASSWORD:-replace-with-a-long-random-umami-password}
+      UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-e013f972-fc45-440c-a872-575545e6e65f}
+      UMAMI_WEBSITE_DOMAIN: ${UMAMI_WEBSITE_DOMAIN:-porprov.depok.go.id}
+    volumes:
+      - ./bootstrap-umami.py:/opt/porprov/bootstrap-umami.py:ro
+    command: ["python", "/opt/porprov/bootstrap-umami.py"]
+    depends_on:
+      umami:
+        condition: service_healthy
+    networks:
+      - porprov_network
+
   migrate-master-data:
     build:
       context: ../..
@@ -117,6 +177,9 @@ services:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgres://${POSTGRES_USER:-porprov_admin}:${POSTGRES_PASSWORD:-porprov_secret}@postgres:5432/user_service_db?sslmode=disable
       KEYCLOAK_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_REALM: porprov
+      KEYCLOAK_BACKEND_CLIENT_ID: porprov-backend-service
+      KEYCLOAK_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET:-backend_secret}
       NATS_URL: nats://nats:4222
     ports:
       - "127.0.0.1:${USER_HOST_PORT:-28001}:8001"
@@ -338,6 +401,10 @@ services:
       AUDIT_SERVICE_URL: http://audit-service:8084/api/v1
       REALTIME_GATEWAY_URL: http://realtime-gateway:8085/api/v1/stream
       INTERNAL_STREAM_TOKEN: ${INTERNAL_STREAM_TOKEN:-local-development-stream-token}
+      UMAMI_INTERNAL_URL: http://umami:3000
+      UMAMI_USERNAME: ${UMAMI_USERNAME:-admin}
+      UMAMI_PASSWORD: ${UMAMI_PASSWORD:-replace-with-a-long-random-umami-password}
+      UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-e013f972-fc45-440c-a872-575545e6e65f}
     ports:
       - "127.0.0.1:${API_GATEWAY_HOST_PORT:-8000}:8000"
     depends_on:
@@ -357,6 +424,8 @@ services:
         condition: service_healthy
       realtime-gateway:
         condition: service_started
+      umami-bootstrap:
+        condition: service_completed_successfully
     networks:
       - porprov_network
 
@@ -387,6 +456,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-e013f972-fc45-440c-a872-575545e6e65f}
     container_name: porprov_public_web
     restart: always
     environment:
@@ -439,6 +509,7 @@ services:
       KC_METRICS_ENABLED: 'true'
       KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME_STRICT: 'false'
+      JAVA_OPTS_APPEND: "-Xms256m -Xmx512m"
     command: start-dev
     ports:
       - "127.0.0.1:${KEYCLOAK_HOST_PORT:-8080}:8080"

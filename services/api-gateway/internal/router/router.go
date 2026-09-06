@@ -1,10 +1,13 @@
 package router
 
 import (
+	"bytes"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -16,6 +19,22 @@ import (
 	customMiddleware "github.com/porprov-xv/porprov-depok/services/api-gateway/internal/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+const upstreamErrorBody = `{"error":{"code":"UPSTREAM_ERROR","message":"Layanan sementara tidak tersedia"}}`
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// SECURITY: API Gateway tetap aman ketika port diagnostik lokal dipakai
+		// tanpa edge Nginx. Nginx production menormalisasi header yang sama.
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'none'; style-src 'none'; sandbox")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		next.ServeHTTP(w, r)
+	})
+}
 
 // setupProxy creates a reverse proxy to a target URL
 func setupProxyWithHeaders(targetURL string, trustedHeaders map[string]string) http.HandlerFunc {
@@ -29,6 +48,17 @@ func setupProxyWithHeaders(targetURL string, trustedHeaders map[string]string) h
 			if strings.HasPrefix(strings.ToLower(headerName), "access-control-") {
 				response.Header.Del(headerName)
 			}
+		}
+		// SECURITY: Detail error database/service tidak boleh melewati boundary
+		// API Gateway; client hanya menerima kontrak error yang stabil.
+		if response.StatusCode >= http.StatusInternalServerError {
+			_ = response.Body.Close()
+			body := []byte(upstreamErrorBody)
+			response.Body = io.NopCloser(bytes.NewReader(body))
+			response.ContentLength = int64(len(body))
+			response.Header.Set("Content-Length", strconv.Itoa(len(body)))
+			response.Header.Set("Content-Type", "application/json; charset=utf-8")
+			response.Header.Set("Cache-Control", "no-store")
 		}
 		return nil
 	}
@@ -70,6 +100,9 @@ func setupProxy(targetURL string) http.HandlerFunc {
 // SetupRouter mengonfigurasi dan mengembalikan Chi mux router
 func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) *chi.Mux {
 	r := chi.NewRouter()
+	analyticsHandler := handler.NewAnalyticsHandler(cfg.UmamiURL, cfg.UmamiUsername, cfg.UmamiPassword, cfg.UmamiWebsiteID)
+	r.Use(securityHeaders)
+	r.Use(middleware.RequestSize(12 << 20))
 
 	// SECURITY: CORS strict setup
 	r.Use(cors.Handler(cors.Options{
@@ -101,6 +134,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 		r.Group(func(r chi.Router) {
 			r.Use(jwtMid.RequireAuth)
 			r.Get("/profile", handler.ProfileHandler)
+			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Get("/analytics/overview", analyticsHandler.Overview)
 
 			// User Management Service - Hanya Super Admin
 			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/users/*", setupProxy(cfg.UserURL))

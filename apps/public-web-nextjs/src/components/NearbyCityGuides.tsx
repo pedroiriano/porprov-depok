@@ -28,6 +28,16 @@ const categoryPresentation: Record<NearbyCategoryKey, { icon: string; image: str
     image: "/assets/images/city-guide-fallback/coffee-shop.jpg",
     accent: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
   },
+  catering: {
+    icon: "ri-restaurant-line",
+    image: "/assets/images/city-guide-fallback/wisata-kuliner.jpg",
+    accent: "bg-lime-500/15 text-lime-800 dark:text-lime-300",
+  },
+  "travel-transportasi": {
+    icon: "ri-bus-2-line",
+    image: "/assets/images/city-guide-fallback/lainnya.jpg",
+    accent: "bg-sky-500/15 text-sky-800 dark:text-sky-300",
+  },
   "rumah-sakit": {
     icon: "ri-hospital-line",
     image: "/assets/images/city-guide-fallback/rumah-sakit.jpg",
@@ -48,8 +58,6 @@ const formatDistance = (distanceKm?: number) => {
 };
 
 export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
-  if (!guides.length) return null;
-
   const hasCalculatedDistance = guides.some((guide) => guide.distanceKm !== undefined);
 
   return (
@@ -69,6 +77,17 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
         </p>
       </div>
 
+      {!guides.length ? (
+        <div className="mx-auto max-w-2xl rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
+          <span className="mx-auto inline-flex size-12 items-center justify-center rounded-full bg-primary-500/10 text-2xl text-primary-600 dark:text-primary-300">
+            <i className="ri-map-pin-time-line" aria-hidden="true" />
+          </span>
+          <h3 className="mt-4 text-xl font-black text-slate-950 dark:text-white">Belum ada rekomendasi dalam radius terdekat</h3>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            City Guide dalam radius 15 km dari {venueName} belum tersedia atau masih diverifikasi panitia.
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {guides.map((guide) => {
           const presentation = categoryPresentation[guide.nearbyCategoryKey];
@@ -145,6 +164,7 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
           );
         })}
       </div>
+      )}
 
       <div className="mt-10 text-center">
         <Link

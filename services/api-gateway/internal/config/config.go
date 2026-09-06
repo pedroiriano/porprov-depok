@@ -23,6 +23,10 @@ type AppConfig struct {
 	RealtimeURL         string
 	InternalStreamToken string
 	UserURL             string
+	UmamiURL            string
+	UmamiUsername       string
+	UmamiPassword       string
+	UmamiWebsiteID      string
 }
 
 func csvValues(value string, fallback []string) []string {
@@ -52,6 +56,9 @@ func (c *AppConfig) Validate() error {
 		}
 		if !strings.HasPrefix(strings.ToLower(c.KeycloakIssuer), "https://") {
 			return errors.New("KEYCLOAK_ISSUER must use HTTPS outside development")
+		}
+		if strings.TrimSpace(c.UmamiURL) == "" || strings.TrimSpace(c.UmamiWebsiteID) == "" || len(c.UmamiPassword) < 20 || strings.HasPrefix(c.UmamiPassword, "replace-with-") {
+			return errors.New("Umami internal URL, website ID, and strong password are required outside development")
 		}
 		for _, origin := range c.AllowedOrigins {
 			if origin == "*" || strings.Contains(origin, "*") || !strings.HasPrefix(strings.ToLower(origin), "https://") {
@@ -103,5 +110,9 @@ func LoadConfig() *AppConfig {
 		RealtimeURL:         envOrDefault("REALTIME_GATEWAY_URL", "http://localhost:28085/api/v1/stream"),
 		InternalStreamToken: envOrDefault("INTERNAL_STREAM_TOKEN", "local-development-stream-token"),
 		UserURL:             envOrDefault("USER_SERVICE_URL", "http://localhost:28001/api/v1/users"),
+		UmamiURL:            envOrDefault("UMAMI_INTERNAL_URL", "http://localhost:3001"),
+		UmamiUsername:       envOrDefault("UMAMI_USERNAME", "admin"),
+		UmamiPassword:       envOrDefault("UMAMI_PASSWORD", "replace-with-a-long-random-umami-password"),
+		UmamiWebsiteID:      envOrDefault("UMAMI_WEBSITE_ID", "e013f972-fc45-440c-a872-575545e6e65f"),
 	}
 }

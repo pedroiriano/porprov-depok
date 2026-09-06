@@ -22,6 +22,8 @@ type Cabor struct {
 	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
 	DeletedBy         pgtype.Text        `json:"deleted_by"`
 	DeleteReason      pgtype.Text        `json:"delete_reason"`
+	Slug              string             `json:"slug"`
+	HeroImageUrl      pgtype.Text        `json:"hero_image_url"`
 }
 
 type CityGuide struct {
@@ -39,7 +41,23 @@ type CityGuide struct {
 	Latitude     pgtype.Float8      `json:"latitude"`
 	Longitude    pgtype.Float8      `json:"longitude"`
 	// Optional HTTPS Google Maps route URL. Consumers fall back to latitude/longitude when empty.
-	MapRouteUrl pgtype.Text `json:"map_route_url"`
+	MapRouteUrl  pgtype.Text `json:"map_route_url"`
+	ContactPhone pgtype.Text `json:"contact_phone"`
+	Whatsapp     pgtype.Text `json:"whatsapp"`
+	Email        pgtype.Text `json:"email"`
+	WebsiteUrl   pgtype.Text `json:"website_url"`
+	InstagramUrl pgtype.Text `json:"instagram_url"`
+	FacebookUrl  pgtype.Text `json:"facebook_url"`
+	TiktokUrl    pgtype.Text `json:"tiktok_url"`
+	// Jenis layanan, misalnya nasi kotak, prasmanan, antar-jemput, atau sewa kendaraan.
+	ServiceTypes   []string    `json:"service_types"`
+	ServiceArea    pgtype.Text `json:"service_area"`
+	OperatingHours pgtype.Text `json:"operating_hours"`
+	PriceRange     pgtype.Text `json:"price_range"`
+	// Jenis armada untuk kategori Info Travel/Jasa Transportasi.
+	FleetTypes []string `json:"fleet_types"`
+	// Jumlah seluruh unit armada aktif yang ditawarkan penyedia transportasi.
+	FleetCount pgtype.Int4 `json:"fleet_count"`
 }
 
 type Hero struct {

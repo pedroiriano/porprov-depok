@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	CountCityGuides(ctx context.Context, arg CountCityGuidesParams) (int64, error)
 	CreateCabor(ctx context.Context, arg CreateCaborParams) (Cabor, error)
 	CreateCityGuide(ctx context.Context, arg CreateCityGuideParams) (CityGuide, error)
 	CreateHero(ctx context.Context, arg CreateHeroParams) (Hero, error)
@@ -19,6 +20,7 @@ type Querier interface {
 	CreateNomorTanding(ctx context.Context, arg CreateNomorTandingParams) (NomorTanding, error)
 	GetActiveHero(ctx context.Context) (Hero, error)
 	GetCaborByID(ctx context.Context, id pgtype.UUID) (Cabor, error)
+	GetCaborByIdentifier(ctx context.Context, identifier string) (Cabor, error)
 	GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGuide, error)
 	GetHeroByID(ctx context.Context, id pgtype.UUID) (Hero, error)
 	GetKontingenByID(ctx context.Context, id pgtype.UUID) (Kontingen, error)
@@ -26,7 +28,8 @@ type Querier interface {
 	GetMediaByID(ctx context.Context, id pgtype.UUID) (MediaAsset, error)
 	GetNomorTandingByID(ctx context.Context, id pgtype.UUID) (NomorTanding, error)
 	ListCabors(ctx context.Context) ([]Cabor, error)
-	ListCityGuides(ctx context.Context, dollar_1 string) ([]CityGuide, error)
+	ListCityGuides(ctx context.Context, arg ListCityGuidesParams) ([]CityGuide, error)
+	ListCityGuidesPaginated(ctx context.Context, arg ListCityGuidesPaginatedParams) ([]CityGuide, error)
 	ListHeroes(ctx context.Context) ([]Hero, error)
 	ListKontingens(ctx context.Context) ([]Kontingen, error)
 	ListNomorTandings(ctx context.Context) ([]NomorTanding, error)

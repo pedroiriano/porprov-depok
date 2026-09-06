@@ -1,5 +1,4 @@
 /*! tailwindcss v4.2.2 | MIT License | https://tailwindcss.com */
-@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Kaushan+Script&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
 @layer properties;
 @layer theme, base, components, utilities;
 @layer theme {
@@ -120,7 +119,7 @@
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     --default-font-family: var(--font-sans);
     --default-mono-font-family: var(--font-mono);
-    --font-nunito: "Nunito", "serif";
+    --font-nunito: "Nunito Variable", "Nunito", "serif";
     --font-alex: "Alex Brush", "serif";
     --font-kaushan: "Kaushan Script", "serif";
     --font-ebgaramond: "EB Garamond", "serif";

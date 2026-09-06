@@ -17,7 +17,7 @@ INSERT INTO venues (
     city_guide_ids, cabor_ids, capacity, facilities, readiness_status, contact_person
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
-) RETURNING id, name, image_url, address, latitude, longitude, map_route_url, city_guide_ids, cabor_ids, capacity, facilities, readiness_status, contact_person, created_at, updated_at, deleted_at, deleted_by, delete_reason
+) RETURNING id, name, image_url, address, latitude, longitude, map_route_url, city_guide_ids, cabor_ids, capacity, facilities, readiness_status, contact_person, created_at, updated_at, deleted_at, deleted_by, delete_reason, slug
 `
 
 type CreateVenueParams struct {
@@ -70,12 +70,13 @@ func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.Slug,
 	)
 	return i, err
 }
 
 const getVenueByID = `-- name: GetVenueByID :one
-SELECT id, name, image_url, address, latitude, longitude, map_route_url, city_guide_ids, cabor_ids, capacity, facilities, readiness_status, contact_person, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM venues WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, name, image_url, address, latitude, longitude, map_route_url, city_guide_ids, cabor_ids, capacity, facilities, readiness_status, contact_person, created_at, updated_at, deleted_at, deleted_by, delete_reason, slug FROM venues WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetVenueByID(ctx context.Context, id pgtype.UUID) (Venue, error) {
@@ -100,12 +101,47 @@ func (q *Queries) GetVenueByID(ctx context.Context, id pgtype.UUID) (Venue, erro
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.Slug,
+	)
+	return i, err
+}
+
+const getVenueByIdentifier = `-- name: GetVenueByIdentifier :one
+SELECT id, name, image_url, address, latitude, longitude, map_route_url, city_guide_ids, cabor_ids, capacity, facilities, readiness_status, contact_person, created_at, updated_at, deleted_at, deleted_by, delete_reason, slug FROM venues
+WHERE deleted_at IS NULL
+  AND (id::text = $1::text OR slug = $1::text)
+LIMIT 1
+`
+
+func (q *Queries) GetVenueByIdentifier(ctx context.Context, identifier string) (Venue, error) {
+	row := q.db.QueryRow(ctx, getVenueByIdentifier, identifier)
+	var i Venue
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ImageUrl,
+		&i.Address,
+		&i.Latitude,
+		&i.Longitude,
+		&i.MapRouteUrl,
+		&i.CityGuideIds,
+		&i.CaborIds,
+		&i.Capacity,
+		&i.Facilities,
+		&i.ReadinessStatus,
+		&i.ContactPerson,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.Slug,
 	)
 	return i, err
 }
 
 const listVenues = `-- name: ListVenues :many
-SELECT id, name, image_url, address, latitude, longitude, map_route_url, city_guide_ids, cabor_ids, capacity, facilities, readiness_status, contact_person, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM venues
+SELECT id, name, image_url, address, latitude, longitude, map_route_url, city_guide_ids, cabor_ids, capacity, facilities, readiness_status, contact_person, created_at, updated_at, deleted_at, deleted_by, delete_reason, slug FROM venues
 WHERE deleted_at IS NULL
 ORDER BY name ASC
 `
@@ -138,6 +174,7 @@ func (q *Queries) ListVenues(ctx context.Context) ([]Venue, error) {
 			&i.DeletedAt,
 			&i.DeletedBy,
 			&i.DeleteReason,
+			&i.Slug,
 		); err != nil {
 			return nil, err
 		}
@@ -166,7 +203,7 @@ SET
     contact_person = COALESCE(NULLIF($13::text, ''), contact_person),
     updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, name, image_url, address, latitude, longitude, map_route_url, city_guide_ids, cabor_ids, capacity, facilities, readiness_status, contact_person, created_at, updated_at, deleted_at, deleted_by, delete_reason
+RETURNING id, name, image_url, address, latitude, longitude, map_route_url, city_guide_ids, cabor_ids, capacity, facilities, readiness_status, contact_person, created_at, updated_at, deleted_at, deleted_by, delete_reason, slug
 `
 
 type UpdateVenueParams struct {
@@ -221,6 +258,7 @@ func (q *Queries) UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.Slug,
 	)
 	return i, err
 }

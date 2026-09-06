@@ -125,14 +125,13 @@ func (h *VenueHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *VenueHandler) GetVenue(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var uuid pgtype.UUID
-	if err := uuid.Scan(id); err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+	identifier := strings.ToLower(strings.TrimSpace(chi.URLParam(r, "id")))
+	if !isVenueIdentifier(identifier) {
+		http.Error(w, "Invalid venue identifier", http.StatusBadRequest)
 		return
 	}
 
-	venue, err := h.queries.GetVenueByID(r.Context(), uuid)
+	venue, err := h.queries.GetVenueByIdentifier(r.Context(), identifier)
 	if err != nil {
 		http.Error(w, "Venue not found", http.StatusNotFound)
 		return
@@ -140,6 +139,22 @@ func (h *VenueHandler) GetVenue(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(venue)
+}
+
+func isVenueIdentifier(value string) bool {
+	if len(value) < 1 || len(value) > 255 {
+		return false
+	}
+	for index, character := range value {
+		if character >= 'a' && character <= 'z' || character >= '0' && character <= '9' {
+			continue
+		}
+		if character == '-' && index > 0 && index < len(value)-1 {
+			continue
+		}
+		return false
+	}
+	return !strings.Contains(value, "--")
 }
 
 func (h *VenueHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) {

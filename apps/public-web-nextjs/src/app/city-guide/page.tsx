@@ -6,22 +6,56 @@ import { normalizeCityGuide, type RawCityGuide } from "@/lib/public-models";
 
 export const dynamic = "force-dynamic";
 
+const CATEGORY_IDS = new Set([
+  "semua",
+  "coffee-shop",
+  "wisata-kuliner",
+  "catering",
+  "info-travel",
+  "tempat-menginap",
+  "wisata-buatan",
+  "wisata-situ",
+  "pusat-perbelanjaan",
+  "rumah-sakit",
+  "lainnya",
+]);
+
+const MAX_SEARCH_LENGTH = 80;
+
+function readSingleQueryValue(value: string | string[] | undefined) {
+  return typeof value === "string" ? value : undefined;
+}
+
 export const metadata: Metadata = {
   title: "City Guide | PORPROV XV Jawa Barat 2026",
   description: "Jelajahi keindahan, kuliner, dan akomodasi terbaik di Kota Depok selama perhelatan PORPROV XV Jawa Barat 2026.",
 };
 
-async function getCityGuides() {
-  const response = await fetch(publicApiUrl("/master-data/city-guides"), { cache: "no-store" });
-  if (!response.ok) return [];
+async function getCityGuides(searchQuery: string) {
+  const endpoint = new URL(publicApiUrl("/master-data/city-guides"));
+  if (searchQuery) endpoint.searchParams.set("q", searchQuery);
+
+  const response = await fetch(endpoint, { cache: "no-store" });
+  if (!response.ok) return { guides: [], hasError: true };
   const rawGuides = unwrapCollection<RawCityGuide>(await response.json());
-  return rawGuides.map(normalizeCityGuide);
+  return { guides: rawGuides.map(normalizeCityGuide), hasError: false };
+}
+
+function createCityGuideUrl(category: string, searchQuery: string, page?: number) {
+  const params = new URLSearchParams();
+  if (category !== "semua") params.set("category", category);
+  if (searchQuery) params.set("q", searchQuery);
+  if (page && page > 1) params.set("page", String(page));
+  const query = params.toString();
+  return query ? `/city-guide?${query}` : "/city-guide";
 }
 
 const getCategoryIcon = (category: string) => {
   const cat = category.trim().toLowerCase();
   if (cat === "coffee shop") return "ri-cup-line text-amber-500 bg-amber-500/20";
   if (cat === "wisata kuliner") return "ri-restaurant-2-line text-orange-500 bg-orange-500/20";
+  if (cat === "catering") return "ri-bowl-line text-amber-500 bg-amber-500/20";
+  if (cat === "info travel") return "ri-bus-2-line text-blue-500 bg-blue-500/20";
   if (cat === "tempat menginap") return "ri-hotel-bed-line text-indigo-500 bg-indigo-500/20";
   if (cat === "wisata buatan") return "ri-building-4-line text-sky-500 bg-sky-500/20";
   if (cat === "wisata situ") return "ri-water-flash-line text-cyan-500 bg-cyan-500/20";
@@ -33,16 +67,24 @@ const getCategoryIcon = (category: string) => {
 export default async function CityGuidePage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; page?: string }>;
+  searchParams: Promise<{ category?: string | string[]; page?: string | string[]; q?: string | string[] }>;
 }) {
   const resolvedParams = await searchParams;
-  const activeCategory = resolvedParams.category?.toLowerCase() || "semua";
-  const allGuides = await getCityGuides();
+  const requestedCategory = readSingleQueryValue(resolvedParams.category)?.trim().toLowerCase() || "semua";
+  const activeCategory = CATEGORY_IDS.has(requestedCategory) ? requestedCategory : "semua";
+  const requestedSearch = readSingleQueryValue(resolvedParams.q)?.trim() || "";
+  const hasInvalidSearch = Array.from(requestedSearch).length > MAX_SEARCH_LENGTH;
+  const searchQuery = hasInvalidSearch ? "" : requestedSearch;
+  const { guides: allGuides, hasError } = hasInvalidSearch
+    ? { guides: [], hasError: false }
+    : await getCityGuides(searchQuery);
 
   const categories = [
     { id: "semua", label: "Semua", icon: "ri-apps-2-line" },
     { id: "coffee-shop", label: "Coffee Shop", icon: "ri-cup-line" },
     { id: "wisata-kuliner", label: "Wisata Kuliner", icon: "ri-restaurant-2-line" },
+    { id: "catering", label: "Catering", icon: "ri-bowl-line" },
+    { id: "info-travel", label: "Travel & Transportasi", icon: "ri-bus-2-line" },
     { id: "tempat-menginap", label: "Tempat Menginap", icon: "ri-hotel-bed-line" },
     { id: "wisata-buatan", label: "Wisata Buatan", icon: "ri-building-4-line" },
     { id: "wisata-situ", label: "Wisata Situ", icon: "ri-water-flash-line" },
@@ -50,13 +92,13 @@ export default async function CityGuidePage({
     { id: "rumah-sakit", label: "Rumah Sakit", icon: "ri-hospital-line" },
     { id: "lainnya", label: "Lainnya", icon: "ri-map-pin-2-line" },
   ];
-
   const filteredGuides = activeCategory === "semua" 
     ? allGuides 
     : allGuides.filter(g => g.category.trim().toLowerCase().replace(/\s+/g, '-') === activeCategory);
 
   const ITEMS_PER_PAGE = 12;
-  const currentPage = Number(resolvedParams.page) || 1;
+  const requestedPage = readSingleQueryValue(resolvedParams.page);
+  const currentPage = requestedPage && /^\d{1,6}$/.test(requestedPage) ? Number.parseInt(requestedPage, 10) : 1;
   const totalPages = Math.ceil(filteredGuides.length / ITEMS_PER_PAGE) || 1;
   const validPage = Math.max(1, Math.min(currentPage, totalPages));
   
@@ -66,10 +108,19 @@ export default async function CityGuidePage({
   );
 
   const createPageUrl = (pageNumber: number) => {
-    return activeCategory === "semua" 
-      ? `/city-guide?page=${pageNumber}`
-      : `/city-guide?category=${activeCategory}&page=${pageNumber}`;
+    return createCityGuideUrl(activeCategory, searchQuery, pageNumber);
   };
+
+  // ACCESSIBILITY: batasi tombol halaman agar pagination tetap ringkas pada viewport mobile.
+  const visiblePageNumbers = Array.from(
+    new Set([
+      1,
+      totalPages,
+      validPage - 1,
+      validPage,
+      validPage + 1,
+    ].filter((pageNumber) => pageNumber >= 1 && pageNumber <= totalPages)),
+  ).sort((left, right) => left - right);
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 pt-24 md:pt-32">
@@ -94,6 +145,37 @@ export default async function CityGuidePage({
         </div>
       </section>
 
+      {/* Search */}
+      <section className="container mb-8" aria-labelledby="city-guide-search-title">
+        <div className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <h2 id="city-guide-search-title" className="sr-only">Cari City Guide</h2>
+          <form action="/city-guide" method="get" className="flex flex-col gap-3 sm:flex-row">
+            {activeCategory !== "semua" && <input type="hidden" name="category" value={activeCategory} />}
+            <label className="relative flex-1" htmlFor="city-guide-search">
+              <span className="sr-only">Cari City Guide</span>
+              <i className="ri-search-line pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg text-slate-400" aria-hidden="true"></i>
+              <input
+                id="city-guide-search"
+                type="search"
+                name="q"
+                defaultValue={requestedSearch}
+                maxLength={MAX_SEARCH_LENGTH}
+                placeholder="Cari hotel, kuliner, rumah sakit…"
+                className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/15 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              />
+            </label>
+            <button type="submit" className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 px-7 text-sm font-black text-white shadow-lg transition hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-sky-500/30">
+              Cari
+            </button>
+            {requestedSearch && (
+              <Link href={createCityGuideUrl(activeCategory, "")} className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-slate-300/40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                Hapus
+              </Link>
+            )}
+          </form>
+        </div>
+      </section>
+
       {/* Tabs / Filters */}
       <div className="sticky top-[72px] z-20 md:top-[88px] bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-y border-slate-200 dark:border-slate-800 py-4 mb-12 shadow-lg">
         <div className="container flex flex-wrap items-center justify-center gap-2">
@@ -102,7 +184,7 @@ export default async function CityGuidePage({
             return (
               <Link 
                 key={cat.id}
-                href={cat.id === "semua" ? "/city-guide" : `/city-guide?category=${cat.id}`}
+                href={createCityGuideUrl(cat.id, searchQuery)}
                 className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 ${
                   isActive 
                     ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(56,189,248,0.3)]" 
@@ -119,8 +201,23 @@ export default async function CityGuidePage({
 
       {/* Grid Content */}
       <div className="container">
-        {filteredGuides.length > 0 ? (
+        {hasInvalidSearch ? (
+          <div role="alert" className="rounded-3xl border border-amber-200 bg-amber-50 px-6 py-16 text-center dark:border-amber-900/60 dark:bg-amber-950/30">
+            <i className="ri-search-eye-line text-4xl text-amber-500" aria-hidden="true"></i>
+            <h2 className="mt-4 text-2xl font-black text-slate-900 dark:text-white">Kata Pencarian Terlalu Panjang</h2>
+            <p className="mx-auto mt-2 max-w-xl text-slate-600 dark:text-slate-400">Gunakan maksimal {MAX_SEARCH_LENGTH} karakter agar pencarian dapat diproses.</p>
+          </div>
+        ) : hasError ? (
+          <div role="alert" className="rounded-3xl border border-red-200 bg-red-50 px-6 py-16 text-center dark:border-red-900/60 dark:bg-red-950/30">
+            <i className="ri-error-warning-line text-4xl text-red-500" aria-hidden="true"></i>
+            <h2 className="mt-4 text-2xl font-black text-slate-900 dark:text-white">City Guide Belum Dapat Dimuat</h2>
+            <p className="mx-auto mt-2 max-w-xl text-slate-600 dark:text-slate-400">Layanan panduan kota sedang tidak tersedia. Silakan muat ulang halaman beberapa saat lagi.</p>
+          </div>
+        ) : filteredGuides.length > 0 ? (
           <div>
+            <p className="mb-6 text-sm font-semibold text-slate-600 dark:text-slate-400" aria-live="polite">
+              {filteredGuides.length} lokasi ditemukan{searchQuery ? <> untuk &quot;<span className="text-slate-900 dark:text-white">{searchQuery}</span>&quot;</> : ""}.
+            </p>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {paginatedGuides.map((guide) => (
               <article 
@@ -169,6 +266,11 @@ export default async function CityGuidePage({
                     <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400 line-clamp-3">
                       {guide.description || guide.address || "Tidak ada deskripsi tersedia."}
                     </p>
+                    {guide.category === "Info Travel" && (
+                      <p className="mt-3 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                        {guide.fleetCount} armada{guide.fleetTypes.length > 0 ? ` · ${guide.fleetTypes.join(", ")}` : ""}
+                      </p>
+                    )}
                   </div>
 
                   <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -207,12 +309,14 @@ export default async function CityGuidePage({
                   <i className="ri-arrow-left-s-line text-lg"></i>
                 </Link>
                 
-                {Array.from({ length: totalPages }).map((_, i) => {
-                  const pageNum = i + 1;
+                {visiblePageNumbers.map((pageNum, index) => {
                   const isActive = pageNum === validPage;
                   return (
+                    <div key={pageNum} className="flex shrink-0 items-center gap-2">
+                    {index > 0 && pageNum - visiblePageNumbers[index - 1] > 1 && (
+                      <span className="px-1 text-slate-400" aria-hidden="true">…</span>
+                    )}
                     <Link
-                      key={pageNum}
                       href={createPageUrl(pageNum)}
                       className={`flex size-11 shrink-0 items-center justify-center rounded-xl font-bold transition ${
                         isActive
@@ -224,6 +328,7 @@ export default async function CityGuidePage({
                     >
                       {pageNum}
                     </Link>
+                    </div>
                   );
                 })}
 
@@ -247,13 +352,15 @@ export default async function CityGuidePage({
             </div>
             <h3 className="text-2xl font-black text-slate-900 dark:text-white">Panduan Tidak Ditemukan</h3>
             <p className="mt-2 text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-              Maaf, belum ada data City Guide untuk kategori &quot;{activeCategory}&quot;. Panitia masih melengkapi panduan ini.
+              {searchQuery
+                ? <>Tidak ada lokasi yang cocok dengan &quot;{searchQuery}&quot; pada kategori ini.</>
+                : <>Maaf, belum ada data City Guide untuk kategori &quot;{activeCategory}&quot;. Panitia masih melengkapi panduan ini.</>}
             </p>
-            <Link 
-              href="/city-guide" 
+            <Link
+              href={searchQuery ? createCityGuideUrl(activeCategory, "") : "/city-guide"}
               className="mt-8 inline-flex h-12 items-center justify-center rounded-xl bg-slate-900 dark:bg-slate-800 px-6 font-bold text-white transition hover:bg-slate-800 dark:hover:bg-slate-700"
             >
-              Kembali ke Semua
+              {searchQuery ? "Hapus Pencarian" : "Kembali ke Semua"}
             </Link>
           </div>
         )}

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -49,6 +50,7 @@ func (h *MasterDataHandler) CreateCabor(w http.ResponseWriter, r *http.Request) 
 		Name              string `json:"name"`
 		Description       string `json:"description"`
 		IconURL           string `json:"icon_url"`
+		HeroImageURL      string `json:"hero_image_url"`
 		Kategori          string `json:"kategori"`
 		TotalMedali       int32  `json:"total_medali"`
 		TechnicalDelegate string `json:"technical_delegate"`
@@ -59,11 +61,16 @@ func (h *MasterDataHandler) CreateCabor(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	req.HeroImageURL = strings.TrimSpace(req.HeroImageURL)
+	if !h.validateOptionalCaborHeroImage(w, r, req.HeroImageURL) {
+		return
+	}
 
 	cabor, err := h.queries.CreateCabor(r.Context(), db.CreateCaborParams{
 		Name:              req.Name,
 		Description:       pgtype.Text{String: req.Description, Valid: req.Description != ""},
 		IconUrl:           pgtype.Text{String: req.IconURL, Valid: req.IconURL != ""},
+		HeroImageUrl:      pgtype.Text{String: req.HeroImageURL, Valid: req.HeroImageURL != ""},
 		Kategori:          pgtype.Text{String: req.Kategori, Valid: req.Kategori != ""},
 		TotalMedali:       pgtype.Int4{Int32: req.TotalMedali, Valid: req.TotalMedali > 0},
 		TechnicalDelegate: pgtype.Text{String: req.TechnicalDelegate, Valid: req.TechnicalDelegate != ""},
@@ -98,14 +105,13 @@ func (h *MasterDataHandler) ListCabors(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MasterDataHandler) GetCabor(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var uuid pgtype.UUID
-	if err := uuid.Scan(id); err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+	identifier := strings.ToLower(strings.TrimSpace(chi.URLParam(r, "id")))
+	if !isCaborIdentifier(identifier) {
+		http.Error(w, "Invalid cabor identifier", http.StatusBadRequest)
 		return
 	}
 
-	cabor, err := h.queries.GetCaborByID(r.Context(), uuid)
+	cabor, err := h.queries.GetCaborByIdentifier(r.Context(), identifier)
 	if err != nil {
 		http.Error(w, "Cabor not found", http.StatusNotFound)
 		return
@@ -113,6 +119,52 @@ func (h *MasterDataHandler) GetCabor(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cabor)
+}
+
+func isCaborIdentifier(value string) bool {
+	if len(value) < 1 || len(value) > 255 {
+		return false
+	}
+	for index, character := range value {
+		if character >= 'a' && character <= 'z' || character >= '0' && character <= '9' {
+			continue
+		}
+		if character == '-' && index > 0 && index < len(value)-1 {
+			continue
+		}
+		return false
+	}
+	return !strings.Contains(value, "--")
+}
+
+func (h *MasterDataHandler) validateOptionalCaborHeroImage(w http.ResponseWriter, r *http.Request, imageURL string) bool {
+	if err := validateOptionalCaborHeroImageURL(imageURL); err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return false
+	}
+	if imageURL == "" {
+		return true
+	}
+	active, err := h.queries.IsActiveMediaURL(r.Context(), imageURL)
+	if err != nil {
+		http.Error(w, "Gagal memverifikasi Media Library", http.StatusInternalServerError)
+		return false
+	}
+	if !active {
+		http.Error(w, "Hero Image Cabor tidak ditemukan atau sudah diarsipkan", http.StatusUnprocessableEntity)
+		return false
+	}
+	return true
+}
+
+func validateOptionalCaborHeroImageURL(imageURL string) error {
+	if imageURL == "" {
+		return nil
+	}
+	if len(imageURL) > maximumHeroImageURLLength || !strings.HasPrefix(imageURL, "/uploads/") || strings.Contains(imageURL, "\\") || strings.Contains(imageURL, "..") {
+		return errors.New("Hero Image Cabor wajib berasal dari Media Library")
+	}
+	return nil
 }
 
 func (h *MasterDataHandler) UpdateCabor(w http.ResponseWriter, r *http.Request) {
@@ -127,22 +179,31 @@ func (h *MasterDataHandler) UpdateCabor(w http.ResponseWriter, r *http.Request) 
 		Name              string `json:"name"`
 		Description       string `json:"description"`
 		IconURL           string `json:"icon_url"`
+		HeroImageURL      string `json:"hero_image_url"`
 		Kategori          string `json:"kategori"`
 		TotalMedali       int32  `json:"total_medali"`
 		TechnicalDelegate string `json:"technical_delegate"`
 		Status            string `json:"status"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Payload Cabor tidak valid", http.StatusBadRequest)
+		return
+	}
+	req.HeroImageURL = strings.TrimSpace(req.HeroImageURL)
+	if !h.validateOptionalCaborHeroImage(w, r, req.HeroImageURL) {
+		return
+	}
 
 	cabor, err := h.queries.UpdateCabor(r.Context(), db.UpdateCaborParams{
 		ID:      uuid,
 		Column2: req.Name,
 		Column3: req.Description,
 		Column4: req.IconURL,
-		Column5: req.Kategori,
-		Column6: req.TotalMedali,
-		Column7: req.TechnicalDelegate,
-		Column8: req.Status,
+		Column5: req.HeroImageURL,
+		Column6: req.Kategori,
+		Column7: req.TotalMedali,
+		Column8: req.TechnicalDelegate,
+		Column9: req.Status,
 	})
 	if err != nil {
 		http.Error(w, "Failed to update cabor: "+err.Error(), http.StatusInternalServerError)

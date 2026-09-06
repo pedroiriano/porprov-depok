@@ -1,14 +1,18 @@
-# AGENTS.md — Protokol Codex Agent Portal PORPROV Enterprise UI/UX v4
+# AGENTS.md — Protokol Codex Agent Portal PORPROV Enterprise UI/UX v5
 
 Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Portal PORPROV XV Jawa Barat 2026.
 
-> **Konteks aktif per 22 Juli 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime full-stack canonical memakai Docker Compose dan mencakup Public/Admin Web v0.4, API Gateway, Master Data, Venue, Schedule, LiveScore, Medal Standing, Audit, Realtime Gateway, PostgreSQL, Keycloak beserta bootstrap role/client, Redis, NATS, Nginx, dan observability. Namespace `28xxx` hanya untuk debugging satu komponen, bukan full-stack kedua. Data publik membaca detail Cabor/Venue, Jadwal enriched, projection LiveScore persisten, public SSE tersanitasi, serta Medali OFFICIAL tanpa data tiruan. Soft delete/Recycling domain inti tetap aktif; MFA, outbox domain lama, RBAC menyeluruh, scale-out, dan production hardening dilanjutkan bertahap.
+> **Konteks aktif per 6 Agustus 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime full-stack canonical memakai Docker Compose dan mencakup Public/Admin Web, API Gateway, seluruh core service, data/event infrastructure, Nginx, dan observability. Navigasi utama Public adalah Beranda, Cabor, Venue, Jadwal, Klasemen, dan Jelajah; Jelajah menuju `/city-guide`. Public Web memakai CSP nonce per request tanpa `script-src unsafe-inline`; Nginx edge memiliki HSTS, HTTPS canonical, header redirect/error, dan pengurangan fingerprint. Metadata `robots.txt`/`sitemap.xml` tersedia. Soft delete/Recycling domain inti tetap aktif; MFA, outbox domain lama, RBAC menyeluruh, scale-out, dan production hardening lain dilanjutkan bertahap.
 
 > **Kontrak peserta aktif:** Master Data memiliki referensi Kontingen; Schedule memiliki susunan Peserta A/B dengan satu jenis yang sama—Individu, Tim, atau Kontingen; LiveScore hanya memiliki revisi skor/status untuk match tersebut. Form peserta berada pada Jadwal Pertandingan dan penggantian susunan lama selalu soft delete.
 
-> **Kontrak lokasi City Guide:** Master Data menyimpan latitude dan longitude desimal sebagai pasangan wajib untuk create/update. Latitude harus `-90..90`, longitude `-180..180`. `map_route_url` opsional hanya boleh berisi URL HTTPS resmi Google Maps; consumer memprioritaskan URL valid tersebut dan menggunakan koordinat sebagai fallback saat kosong. Koordinat tetap menjadi sumber kebenaran lokasi.
+> **Kontrak lokasi City Guide:** Master Data menyimpan latitude dan longitude desimal sebagai pasangan wajib untuk create/update. Latitude harus `-90..90`, longitude `-180..180`. `map_route_url` opsional hanya boleh berisi URL HTTPS resmi Google Maps; consumer memprioritaskan URL valid tersebut dan menggunakan koordinat sebagai fallback saat kosong. Pencarian publik memakai `q` tunggal maksimal 80 karakter; Admin memakai pagination server-side maksimal 100 baris. Catering/Info Travel memakai kontak dan layanan terstruktur, Info Travel wajib memiliki jenis/jumlah armada, dan gambar hanya berasal dari Media Library tanpa field screenshot eksternal.
 
 > **Kontrak Hero Landing Page:** Master Data memiliki judul, teks sorotan opsional, isi, gambar Media Library, dan status aktif Hero. Hanya satu record aktif boleh ditayangkan; Public Web membacanya melalui API Gateway dengan fallback canonical saat dependency belum siap. Semua mutasi wajib JWT/audit dan delete Hero memakai soft delete serta Recycle Bin.
+
+> **Kontrak analytics pengunjung:** Umami berjalan self-hosted pada jaringan internal Compose. Internet hanya boleh mengakses tracker dan endpoint koleksi same-origin yang dibatasi; panel/login/API Umami dilarang diekspos. Tracker menghormati Do Not Track dan tidak mengirim query, hash, distinct ID, atau identitas akun. Statistik Admin hanya boleh dibaca melalui API Gateway ber-JWT untuk `super_admin`/`auditor`; credential Umami tidak boleh sampai ke browser.
+
+> **Kontrak security release:** Edge production wajib menormalisasi tepat satu CSP lengkap pada HTTP redirect dan seluruh response HTTPS; `base-uri`, `form-action`, serta `frame-ancestors` harus eksplisit karena tidak mempunyai fallback. Public Web wajib membentuk nonce per response di source dan hanya CSP nonce Public yang telah terbukti lengkap boleh dipertahankan sebagai kebijakan upstream tepercaya; Admin/API/Upload/Keycloak dan setiap CSP upstream yang tidak lengkap memakai fallback edge deterministik. CSP Admin production tidak boleh memakai `style-src 'unsafe-inline'`. Seluruh response HTTPS wajib memiliki `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Embedder-Policy: require-corp`, dan `Cross-Origin-Resource-Policy: same-origin`; resource peta lintas-origin harus dimuat melalui CORS eksplisit. Font aplikasi wajib di-self-host dari package berlisensi yang dipin; Google Fonts/font CDN tidak boleh muncul pada CSS, HTML, network runtime, atau CSP production tanpa keputusan keamanan eksplisit. HSTS hanya dimiliki edge dan wajib tepat satu pada HTTPS; source aplikasi tidak boleh menerbitkan HSTS sendiri. Edge juga menyembunyikan versi Nginx/Next.js dan menerapkan cache `no-store` untuk Admin/API/LiveScore. ID resource publik yang tidak canonical wajib berhenti sebagai `404` tanpa request upstream atau error `5xx`. API Gateway menyanitasi error upstream `5xx`; audit penuh dependency npm termasuk toolchain build, `govulncheck`, secret scan, CodeQL, lint/build/test, exact commit, backup/checksum, smoke HTTPS, pemeriksaan dependency lintas-origin browser, dan ZAP baseline pasif adalah gate wajib. Secret yang pernah masuk histori harus dirotasi sebelum rewrite terkoordinasi.
 
 ## Mode Kerja Utama
 
@@ -26,6 +30,8 @@ Agent wajib bekerja sebagai **enterprise pair programmer** yang membaca dokumen 
 8. `docs/reference/Portal_PORPROV_XV_Jawa_Barat_2026_Analisis_Desain.docx`
 9. `docs/reference/Portal_PORPROV_XV_Jawa_Barat_2026_ASCII_Wireframe.docx`
 10. `docs/reference/Dokumen Perencanaan Arsitektur Enterprise Web & Mobile.docx`
+11. `docs/governance/ENGINEERING_UIUX_QUALITY_STANDARD.md` — wajib untuk perubahan engineering, UI/UX, quality gate, security, performance, reliability, atau SEO
+12. `docs/adr/ADR-0015-split-ui-authority-techwind-public-cuba-admin.md` dan `docs/uiux/ADMIN_CUBA_VISUAL_CONTRACT.md` — wajib untuk pekerjaan Admin UI
 
 Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tidak boleh mengarang isinya, dan tetap memakai enam Markdown root sebagai baseline yang dapat diverifikasi.
 
@@ -45,22 +51,23 @@ Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tida
 | Event Broker | NATS JetStream untuk durable event bisnis |
 | Auth | Keycloak + OpenID Connect/OAuth2 + JWT |
 | Deployment | Docker + Nginx + SSL pada VM Diskominfo Kota Depok; Kubernetes bila skala enterprise besar |
-| UI System | Techwind 3.3.0 sebagai tema tunggal wajib, Tailwind CSS v4.x hanya sebagai mesin implementasi, design tokens PORPROV, mobile-first, accessible components |
+| UI System | Otoritas terpisah: Techwind 3.3.0 untuk Public, Cuba Admin Dashboard untuk Admin, Tailwind CSS v4.x sebagai mesin implementasi, design tokens PORPROV, mobile-first, accessible components |
 
 
-## Tema Tunggal UI/UX yang Harus Dipakai
+## Otoritas UI/UX yang Harus Dipakai
 
 | Area | Sumber Tema Wajib | Adaptasi PORPROV |
 |---|---|---|
 | Public Web | Techwind 3.3.0 `theme-reference/HTML/Landing/dist/`: navigation, hero, section rhythm, cards, editorial, event, gallery, CTA, footer | Diubah menjadi pengalaman PORPROV yang orisinal, energik, SEO-ready, realtime, dan beridentitas Kota Depok |
-| Admin Web | Techwind 3.3.0 `theme-reference/HTML/Dashboard/dist/`: sidebar, topbar, dashboard, forms, tables, profile, calendar, gallery, responsive shell | Diubah menjadi workspace operator olahraga yang padat, cepat, role-aware, audit-friendly, dan aksesibel |
-| Web/Mobile baru | Pola terdekat dari dua folder `dist` Techwind canonical | Diadaptasi responsif dengan identitas PORPROV; tema/template/design system visual lain dilarang |
+| Admin Web | Cuba Admin Dashboard; target snapshot lokal `theme-reference/Cuba/template/` setelah gate lisensi | Diubah menjadi workspace operator olahraga yang padat, cepat, role-aware, audit-friendly, dan aksesibel; Admin Techwind aktif tetap baseline transisi/rollback |
+| Mobile | Design tokens PORPROV dan pola tugas dari produk web terdekat | Diadaptasi mobile-native; dilarang membuat tema ketiga |
 
 ### Standar “Masterpiece” PORPROV
 
-- Techwind adalah satu-satunya tema komposisi dan interaksi yang wajib dipakai, bukan hasil akhir yang disalin mentah.
+- Techwind adalah otoritas komposisi/interaksi Public; Cuba adalah otoritas komposisi/interaksi Admin. Keduanya bukan runtime mentah atau brand aplikasi.
+- Path upstream `C:\Datas\Proyek\UI\techwind-pembelajaran\source` dan `C:\Datas\Proyek\UI\cuba-pembelajaran\template` bersifat read-only dan tidak boleh menjadi dependency build/runtime. Penyalinan vendor Cuba dilarang sampai bukti lisensi diverifikasi (`BLOCKED_LICENSE_EVIDENCE`).
 - Implementasi wajib menggunakan komponen React/Next.js dan token PORPROV; source Gulp/HTML tema tidak menjadi runtime aplikasi.
-- Dilarang mengambil tema, template, komponen bergaya, layout, warna, tipografi, atau interaction language dari sumber visual lain. Tailwind CSS dan library komponen hanya alat implementasi perilaku teknis.
+- Dilarang mencampur global CSS/JavaScript Techwind dan Cuba atau mengambil visual language ketiga. Tailwind CSS dan library komponen hanya alat implementasi perilaku teknis.
 - Setiap layar wajib mempunyai hierarki visual yang jelas, state loading/empty/error/success, responsif mobile-first, navigasi keyboard, focus state, kontras WCAG 2.2 AA, dan motion yang menghormati `prefers-reduced-motion`.
 - Tailwind CSS v4 wajib memakai class `.dark` sebagai satu-satunya pemicu utility `dark:*`; preferensi sistem hanya menentukan tema awal. Rasio kontras minimal adalah 4,5:1 untuk teks normal dan 3:1 untuk teks besar atau komponen grafis esensial pada kedua tema.
 - Public Web harus terasa energik dan editorial tanpa mengorbankan kepadatan LiveScore, SEO, atau Core Web Vitals.
@@ -71,7 +78,17 @@ Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tida
 - Jadwal yang siap LiveScore wajib memiliki tepat dua sisi terurut A/B dengan jenis peserta yang sama. Individu menyimpan nama atlet dan afiliasi Kontingen, Tim menyimpan nama tim dan afiliasi Kontingen, sedangkan Kontingen memakai nama referensi Kontingen; LiveScore tidak boleh menyediakan sumber input peserta kedua.
 - Admin Web harus mengutamakan kecepatan kerja, keterbacaan tabel/form, status sistem, konfirmasi aksi, dan konsistensi lintas modul.
 - Hero utama Public tidak boleh di-hardcode ulang. Perubahan editorial dilakukan melalui workspace Admin `Hero Utama`, gambar baru wajib berasal dari Media Library aktif, dan hanya projection Hero aktif yang boleh dibaca anonim.
-- Asset, logo, copywriting, dan identitas Techwind tidak boleh dipublikasikan sebagai brand PORPROV. Pastikan penggunaan tema mematuhi lisensi yang dimiliki proyek.
+- Asset, logo, copywriting, dan identitas Techwind/Cuba tidak boleh dipublikasikan sebagai brand PORPROV. Pastikan penggunaan dan distribusi template mematuhi lisensi yang dapat dibuktikan.
+
+## Standar Engineering, Delivery, dan Prompt
+
+- Gunakan `Explore → Analyze → Plan → Execute → Verify → Refine`, targeted discovery, smallest coherent solution, dan pertahankan seluruh perubahan existing yang tidak terkait.
+- Klaim kualitas yang sah adalah “tidak ada defect diketahui pada scope dan acceptance criteria terbukti”, bukan janji absolut tanpa bukti.
+- Quality gate standar selalu mencakup format, lint/typecheck, test terkait, build terdampak, diff check, dan secret scan dasar.
+- Security test spesifik risiko tetap wajib untuk auth, authorization, SSO, SQL/migration, upload, secret, dependency, public API, container, redirect, dan permission.
+- Full DevSecOps hanya dijalankan atas instruksi eksplisit atau release gate final. Commit/push, merge, deploy, migrasi, dan akses VPS masing-masing memerlukan otorisasi yang sesuai; commit/push bukan izin merge/deploy.
+- Prompt lanjutan dibuat sebagai satu blok salin yang singkat dan terukur: tujuan, scope, constraint, acceptance criteria, verifikasi, dan kondisi berhenti.
+- Kontrak tabel, modal, validasi, media ≤3 MiB, draft recovery, revision history, keamanan, performa, keandalan, SEO, dan adopsi praktik Teman Belajar mengikuti `docs/governance/ENGINEERING_UIUX_QUALITY_STANDARD.md`.
 
 ## Aturan Data: Soft Delete Wajib
 
@@ -100,6 +117,7 @@ Setiap perubahan aturan, stack, arsitektur, standar UI/UX, keamanan, data, quali
 - Storage runtime Media Library wajib memakai named volume `master_data_uploads`; file lokal legacy hanya backup dan bukan sumber runtime.
 - Infrastruktur host memakai port configurable dari `infra/docker/.env`: PostgreSQL `15432`, Redis `16379`, NATS `14222/18222`, Prometheus `19090`, dan Grafana `13000`.
 - Port internal Docker tetap stabil dan komunikasi antarkontainer wajib memakai DNS nama service. Semua host port harus configurable melalui environment, bukan hardcoded untuk hosting.
+- Recreate container upstream Public/Admin/API/Keycloak harus diikuti reload atau recreate Nginx dalam job yang sama dan smoke HTTPS, karena Nginx dapat mempertahankan hasil resolusi DNS Docker lama hingga menghasilkan 502.
 - Setiap Agent AI yang menyentuh VPS wajib mengikuti gate `DEPLOYMENT_VPS.md`. Mulai dengan audit read-only; jangan menerima host key/TLS secara longgar; jangan menaruh credential di prompt/repo/log; buat backup serta checksum sebelum mutation; jalankan operasi panjang melalui job server-side dengan `flock`, PID, status, dan log; serta jangan mengklaim selesai sebelum rollback dan verifikasi end-to-end tersedia.
 
 
@@ -165,7 +183,7 @@ Konfirmasi: lanjut ke Tahap berikutnya?
 - Semua delete data persisten wajib soft delete; hard delete hanya purge terkontrol.
 - Jangan menambah port host baru di luar registry tanpa memperbarui enam dokumen root dan `.env.example`.
 - Semua implementasi harus mobile-first, aksesibel, SEO-ready untuk public web, aman, observable, dan testable.
-- Gunakan hanya tema Techwind berlisensi dan adaptasikan menjadi design system PORPROV yang orisinal; tema/template/visual language lain dilarang.
+- Gunakan hanya otoritas visual berlisensi yang ditetapkan: Techwind untuk Public dan Cuba untuk Admin. Jangan mencampur keduanya atau membuat visual language ketiga.
 
 
 ## Perilaku Saat Ada Konflik
@@ -177,4 +195,4 @@ Konfirmasi: lanjut ke Tahap berikutnya?
 
 ## Definisi Selesai
 
-Fitur dianggap selesai jika code compile/build, test relevan lulus, lint/type check lulus, aksesibilitas dasar dicek, SEO tidak rusak untuk public web, delete persisten memakai soft delete beserta audit/restore, tidak ada secret, enam dokumentasi root terkait telah sinkron, serta siap diuji di staging VM Diskominfo.
+Fitur dianggap selesai jika acceptance criteria terbukti, tidak ada defect diketahui pada scope, code compile/build, test relevan lulus, lint/type check lulus, aksesibilitas dasar dicek, SEO tidak rusak untuk public web, delete persisten memakai soft delete beserta audit/restore, tidak ada secret, `FEATURES.md` akurat, enam dokumentasi root terkait telah sinkron, serta rollback/evidence proporsional tersedia. Definisi selesai tidak memberi izin otomatis untuk commit, push, merge, deploy, migrasi, atau akses VPS.

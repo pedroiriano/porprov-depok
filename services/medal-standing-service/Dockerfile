@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26.5-alpine AS builder
 WORKDIR /src
 COPY packages/messaging/ packages/messaging/
 COPY services/medal-standing-service/go.mod services/medal-standing-service/go.sum services/medal-standing-service/
