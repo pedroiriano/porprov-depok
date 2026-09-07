@@ -11,9 +11,11 @@ import {
   safeExternalUrl,
   unwrapCollection,
 } from "@/lib/public-api";
+import { publicVenuePath } from "@/lib/public-models";
 
 interface RawVenue {
   id?: unknown;
+  slug?: string;
   name?: string;
   image_url?: Parameters<typeof readPgText>[0];
   address?: Parameters<typeof readPgText>[0];
@@ -26,6 +28,7 @@ interface RawVenue {
 
 interface VenueViewModel {
   id: string;
+  slug: string;
   name: string;
   imageUrl: string;
   address: string;
@@ -46,6 +49,7 @@ function normalizeVenue(venue: RawVenue, index: number): VenueViewModel {
   const name = typeof venue.name === "string" && venue.name.trim() ? venue.name.trim() : "Venue PORPROV";
   return {
     id: readResourceId(venue.id, `${name}-${index}`),
+    slug: venue.slug?.trim() || "",
     name,
     imageUrl: resolvePublicAssetUrl(venue.image_url),
     address: readPgText(venue.address),
@@ -148,7 +152,6 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
       <div className="container relative">
         <div className="flex flex-col items-center justify-center text-center gap-6 mb-8 md:mb-12">
           <div className="max-w-3xl mx-auto">
-            <p className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-primary-500">Data Langsung dari Panitia</p>
             {isPage ? (
               <h1 id="venue-heading" className="text-3xl font-black tracking-tight md:text-5xl">Venue & Lokasi Pertandingan</h1>
             ) : (
@@ -238,7 +241,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
                     <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{venue.facilities || "Informasi fasilitas sedang diverifikasi."}</p>
 
                     <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-                      <Link href={`/venue/${encodeURIComponent(venue.id)}`} className="inline-flex min-h-11 items-center text-sm font-black text-primary-500 hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500">
+                      <Link href={publicVenuePath(venue)} className="inline-flex min-h-11 items-center text-sm font-black text-primary-500 hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500">
                         Detail venue <i className="ri-arrow-right-line ms-1 transition group-hover:translate-x-1" aria-hidden="true" />
                       </Link>
                       {venue.mapRouteUrl && (

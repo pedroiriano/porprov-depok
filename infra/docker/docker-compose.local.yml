@@ -1,0 +1,10 @@
+services:
+  admin-web:
+    build:
+      args:
+        # INFO: Port diagnostik Admin lokal harus memakai endpoint host lokal.
+        # Konfigurasi base/VPS tetap memakai origin HTTPS canonical melalui edge.
+        VITE_API_URL: http://localhost:8000/api/v1
+        VITE_OIDC_AUTHORITY: http://localhost:8080/realms/porprov
+    volumes:
+      - ./local/admin.nginx.conf:/etc/nginx/conf.d/default.conf:ro

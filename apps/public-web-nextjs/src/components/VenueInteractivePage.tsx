@@ -12,6 +12,7 @@ import {
   safeExternalUrl,
   unwrapCollection,
 } from "@/lib/public-api";
+import { publicVenuePath } from "@/lib/public-models";
 
 // Dynamically import the VenueMap to avoid SSR issues with Leaflet
 const VenueMap = dynamic(() => import("./VenueMap"), {
@@ -28,6 +29,7 @@ const VenueMap = dynamic(() => import("./VenueMap"), {
 
 interface RawVenue {
   id?: unknown;
+  slug?: string;
   name?: string;
   image_url?: Parameters<typeof readPgText>[0];
   address?: Parameters<typeof readPgText>[0];
@@ -42,6 +44,7 @@ interface RawVenue {
 
 interface VenueViewModel {
   id: string;
+  slug: string;
   name: string;
   imageUrl: string;
   address: string;
@@ -65,6 +68,7 @@ function normalizeVenue(venue: RawVenue, index: number): VenueViewModel {
 
   return {
     id: readResourceId(venue.id, `${name}-${index}`),
+    slug: venue.slug?.trim() || "",
     name,
     imageUrl: resolvePublicAssetUrl(venue.image_url),
     address: readPgText(venue.address),
@@ -233,7 +237,7 @@ export function VenueInteractivePage() {
                     </button>
                     <div className="border-t border-slate-100 px-3 dark:border-slate-800">
                       <Link
-                        href={`/venue/${venue.id}`}
+                        href={publicVenuePath(venue)}
                         className="flex min-h-11 items-center justify-between text-xs font-bold text-primary-600 hover:text-primary-700 dark:text-primary-300 dark:hover:text-primary-200"
                       >
                         Detail venue <i className="ri-arrow-right-s-line text-base" aria-hidden="true" />

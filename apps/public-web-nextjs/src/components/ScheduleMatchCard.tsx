@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { CalendarDays, Clock3, MapPin } from "lucide-react";
 import type { EnrichedMatch } from "@/lib/public-models";

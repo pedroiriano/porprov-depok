@@ -17,11 +17,13 @@ export default function CabangOlahraga() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMediaSelectorOpen, setIsMediaSelectorOpen] = useState(false);
+  const [mediaTarget, setMediaTarget] = useState<'icon' | 'hero'>('icon');
   const [formData, setFormData] = useState({
     id: '',
     name: '',
     description: '',
     icon_url: '',
+    hero_image_url: '',
     kategori: 'Tanding',
     total_medali: 0,
     technical_delegate: '',
@@ -64,7 +66,7 @@ export default function CabangOlahraga() {
   }, [fetchCabors]);
 
   const resetForm = () => {
-    setFormData({ id: '', name: '', description: '', icon_url: '', kategori: 'Tanding', total_medali: 0, technical_delegate: '', status: 'Aktif' });
+    setFormData({ id: '', name: '', description: '', icon_url: '', hero_image_url: '', kategori: 'Tanding', total_medali: 0, technical_delegate: '', status: 'Aktif' });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -75,6 +77,7 @@ export default function CabangOlahraga() {
         name: formData.name.trim(),
         description: formData.description.trim(),
         icon_url: normalizeStoredMediaUrl(formData.icon_url),
+        hero_image_url: normalizeStoredMediaUrl(formData.hero_image_url),
         kategori: formData.kategori,
         total_medali: parseInt(formData.total_medali.toString(), 10) || 0,
         technical_delegate: formData.technical_delegate.trim(),
@@ -114,6 +117,7 @@ export default function CabangOlahraga() {
       name: item.name,
       description: item.description ?? '',
       icon_url: normalizeStoredMediaUrl(item.icon_url),
+      hero_image_url: normalizeStoredMediaUrl(item.hero_image_url),
       kategori: item.kategori || 'Tanding',
       total_medali: item.total_medali ?? 0,
       technical_delegate: item.technical_delegate ?? '',
@@ -332,7 +336,16 @@ export default function CabangOlahraga() {
           label="Logo Cabor"
           value={formData.icon_url}
           onClear={() => setFormData({...formData, icon_url: ''})}
-          onSelect={() => setIsMediaSelectorOpen(true)}
+          onSelect={() => { setMediaTarget('icon'); setIsMediaSelectorOpen(true); }}
+        />
+        <MediaInput
+          label="Hero Image Cabor"
+          value={formData.hero_image_url}
+          onClear={() => setFormData({...formData, hero_image_url: ''})}
+          onSelect={() => { setMediaTarget('hero'); setIsMediaSelectorOpen(true); }}
+          previewVariant="landscape"
+          placeholderText="Pilih Hero Image dari Media Library"
+          helpText="Opsional. Digunakan sebagai latar header halaman detail Cabor; rekomendasi rasio 16:9."
         />
         <div className="grid grid-cols-2 gap-4">
           <SelectInput
@@ -384,7 +397,12 @@ export default function CabangOlahraga() {
       <MediaSelectorModal
         isOpen={isMediaSelectorOpen}
         onClose={() => setIsMediaSelectorOpen(false)}
-        onSelect={(url) => setFormData({...formData, icon_url: url})}
+        onSelect={(url) => {
+          setFormData((current) => mediaTarget === 'hero'
+            ? { ...current, hero_image_url: url }
+            : { ...current, icon_url: url });
+          setIsMediaSelectorOpen(false);
+        }}
       />
     </div>
   );

@@ -5,6 +5,8 @@ export type NearbyCategoryKey =
   | "pusat-perbelanjaan"
   | "wisata-kuliner"
   | "coffee-shop"
+  | "catering"
+  | "travel-transportasi"
   | "rumah-sakit"
   | "lainnya";
 
@@ -31,6 +33,8 @@ const primaryCategoryMatchers = {
   "pusat-perbelanjaan": (category: string) => category === "pusat perbelanjaan" || category.includes("mal") || category.includes("mall"),
   "wisata-kuliner": (category: string) => category === "wisata kuliner" || category === "kuliner",
   "coffee-shop": (category: string) => category === "coffee shop" || category.includes("kedai kopi") || category === "kafe",
+  catering: (category: string) => category === "catering" || category === "katering" || category.includes("jasa boga"),
+  "travel-transportasi": (category: string) => category.includes("travel") || category.includes("transportasi"),
   "rumah-sakit": (category: string) => category === "rumah sakit" || category.includes("hospital"),
 } satisfies Record<Exclude<NearbyCategoryKey, "lainnya">, (category: string) => boolean>;
 
@@ -42,6 +46,8 @@ export const nearbyCategoryDefinitions: NearbyCategoryDefinition[] = [
   { key: "pusat-perbelanjaan", label: "Pusat Perbelanjaan", matches: primaryCategoryMatchers["pusat-perbelanjaan"] },
   { key: "wisata-kuliner", label: "Wisata Kuliner", matches: primaryCategoryMatchers["wisata-kuliner"] },
   { key: "coffee-shop", label: "Coffee Shop", matches: primaryCategoryMatchers["coffee-shop"] },
+  { key: "catering", label: "Catering", matches: primaryCategoryMatchers.catering },
+  { key: "travel-transportasi", label: "Travel & Transportasi", matches: primaryCategoryMatchers["travel-transportasi"] },
   { key: "rumah-sakit", label: "Rumah Sakit", matches: primaryCategoryMatchers["rumah-sakit"] },
   { key: "lainnya", label: "Lainnya", matches: (category) => !isPrimaryCategory(category) },
 ];
@@ -78,6 +84,10 @@ export function selectNearestCityGuidesByCategory(
         ? getDistanceKm(venueLatitude, venueLongitude, guide.latitude, guide.longitude)
         : undefined,
     }))
+    .filter((guide) => venueHasCoordinates
+      ? guide.distanceKm !== undefined && guide.distanceKm <= 15
+      : linkedIds.has(guide.id)
+    )
     .sort((first, second) => {
       if (venueHasCoordinates) {
         const distanceComparison = (first.distanceKm ?? Number.POSITIVE_INFINITY)

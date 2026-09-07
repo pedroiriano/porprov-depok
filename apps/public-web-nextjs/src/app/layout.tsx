@@ -1,4 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
+import Script from "next/script";
+import "@fontsource-variable/nunito/wght.css";
+import "@fontsource-variable/nunito/wght-italic.css";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Navbar } from "@/components/Navbar";
@@ -18,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "id_ID",
-    url: "https://porprov2026.depok.go.id",
+    url: "https://porprov.depok.go.id",
     title: "Portal PORPROV XV Jawa Barat 2026",
     description: "Pantau klasemen medali, jadwal, venue, dan berita terkini secara real-time di Portal resmi PORPROV XV Jawa Barat 2026.",
     siteName: "PORPROV XV 2026",
@@ -54,20 +58,36 @@ export const viewport: Viewport = {
   userScalable: true,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") || undefined;
+  const umamiWebsiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+
   return (
     <html lang="id" className="antialiased h-full" suppressHydrationWarning dir="ltr">
       <head>
         {/* eslint-disable-next-line @next/next/no-css-tags */}
         <link href="/assets/libs/remixicon/fonts/remixicon.css" rel="stylesheet" />
         {/* eslint-disable-next-line @next/next/no-css-tags */}
-        <link href="/assets/css/tailwind.css" rel="stylesheet" />
+        <link href="/assets/css/tailwind.css?v=20260810-selfhosted-fonts" rel="stylesheet" />
       </head>
       <body className="min-h-full flex flex-col bg-background-base dark:bg-slate-950 text-text-primary dark:text-slate-100 transition-colors duration-300">
+        {umamiWebsiteId && (
+          <Script
+            nonce={nonce}
+            src="/analytics/porprov-insight.js"
+            data-website-id={umamiWebsiteId}
+            data-host-url="/analytics"
+            data-domains="porprov.depok.go.id"
+            data-do-not-track="true"
+            data-exclude-search="true"
+            data-exclude-hash="true"
+            strategy="afterInteractive"
+          />
+        )}
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <Navbar />
 

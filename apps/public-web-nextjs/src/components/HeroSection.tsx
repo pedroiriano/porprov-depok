@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { useState } from "react";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import type { HeroContentModel } from "@/lib/public-models";
 
@@ -19,58 +20,20 @@ function splitHeroTitle(title: string, highlightText: string) {
 }
 
 export function HeroSection({ hero }: HeroSectionProps) {
-  const sectionRef = useRef<HTMLElement>(null);
-  const mediaRef = useRef<HTMLDivElement>(null);
   const [isCountdownFinished, setIsCountdownFinished] = useState(false);
   const title = splitHeroTitle(hero.title, hero.highlightText);
 
-  useEffect(() => {
-    const section = sectionRef.current;
-    const media = mediaRef.current;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (!section || !media || reducedMotion.matches) {
-      return;
-    }
-
-    let frame = 0;
-
-    // PERFORMANCE: Satu frame animasi cukup untuk menerapkan parallax 50% tanpa memicu React render.
-    const updateParallax = () => {
-      frame = 0;
-      const bounds = section.getBoundingClientRect();
-      if (bounds.bottom <= 0 || bounds.top >= window.innerHeight) {
-        return;
-      }
-
-      const traveled = Math.max(0, -bounds.top);
-      media.style.transform = `translate3d(0, ${traveled * 0.5}px, 0) scale(1.12)`;
-    };
-
-    const requestUpdate = () => {
-      if (frame === 0) {
-        frame = window.requestAnimationFrame(updateParallax);
-      }
-    };
-
-    updateParallax();
-    window.addEventListener("scroll", requestUpdate, { passive: true });
-    window.addEventListener("resize", requestUpdate);
-
-    return () => {
-      window.removeEventListener("scroll", requestUpdate);
-      window.removeEventListener("resize", requestUpdate);
-      if (frame !== 0) {
-        window.cancelAnimationFrame(frame);
-      }
-    };
-  }, []);
-
   return (
-    <section ref={sectionRef} className="hero-section relative isolate w-full overflow-hidden" aria-labelledby="hero-title">
-      <div ref={mediaRef} className="hero-parallax-media absolute -inset-[8%] -z-20" aria-hidden="true">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${JSON.stringify(hero.backgroundImageUrl).slice(1, -1)})` }}
+    <section className="hero-section relative isolate w-full overflow-hidden" aria-labelledby="hero-title">
+      <div className="hero-parallax-media absolute -inset-[8%] -z-20" aria-hidden="true">
+        <Image
+          src={hero.backgroundImageUrl}
+          alt=""
+          fill
+          priority
+          unoptimized
+          sizes="100vw"
+          className="object-cover object-center motion-safe:scale-[1.08]"
         />
       </div>
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(2,6,23,0.40)_0%,rgba(3,19,38,0.25)_48%,rgba(13,62,113,0.10)_100%)]" aria-hidden="true" />
@@ -82,7 +45,7 @@ export function HeroSection({ hero }: HeroSectionProps) {
           <div className="md:col-span-7 lg:col-span-8">
             <div className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold tracking-wide text-white backdrop-blur-md">
               <span className="size-2.5 rounded-full bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.9)]" aria-hidden="true" />
-              7 - 23 November 2026
+              7 - 20 November 2026
             </div>
 
             <h1 id="hero-title" className="max-w-4xl text-4xl font-black leading-[1.04] tracking-[-0.035em] text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
@@ -94,7 +57,7 @@ export function HeroSection({ hero }: HeroSectionProps) {
               )}
             </h1>
 
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-200 drop-shadow-md sm:text-lg">
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-200 drop-shadow-md sm:text-lg whitespace-pre-line">
               {hero.description}
             </p>
 

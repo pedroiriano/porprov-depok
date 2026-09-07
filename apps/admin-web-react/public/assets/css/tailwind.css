@@ -1,5 +1,4 @@
 /*! tailwindcss v4.2.2 | MIT License | https://tailwindcss.com */
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
 @layer properties;
 @layer theme, base, components, utilities;
 @layer theme {
@@ -103,7 +102,7 @@
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     --default-font-family: var(--font-sans);
     --default-mono-font-family: var(--font-mono);
-    --font-nunito: "Nunito", "serif";
+    --font-nunito: "Nunito Variable", "Nunito", "serif";
     --color-primary: #4f39f6;
     --color-primary-200: #c6d2ff;
     --color-primary-300: #a3b3ff;

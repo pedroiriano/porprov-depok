@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /apps/public-web-nextjs
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /apps/admin-web-react
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: gomod
+    directories:
+      - /packages/messaging
+      - /services/api-gateway
+      - /services/audit-service
+      - /services/livescore-service
+      - /services/master-data-service
+      - /services/medal-standing-service
+      - /services/realtime-gateway
+      - /services/schedule-service
+      - /services/user-service
+      - /services/venue-service
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 10

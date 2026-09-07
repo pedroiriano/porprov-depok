@@ -11,16 +11,45 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countCityGuides = `-- name: CountCityGuides :one
+SELECT COUNT(*) FROM city_guides
+WHERE deleted_at IS NULL
+  AND category = COALESCE(NULLIF($1::text, ''), category)
+  AND (
+    NULLIF($2::text, '') IS NULL
+    OR title ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(description, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(address, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR category ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(contact_phone, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(whatsapp, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(email, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+  )
+`
+
+type CountCityGuidesParams struct {
+	Category string `json:"category"`
+	Search   string `json:"search"`
+}
+
+func (q *Queries) CountCityGuides(ctx context.Context, arg CountCityGuidesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countCityGuides, arg.Category, arg.Search)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCabor = `-- name: CreateCabor :one
-INSERT INTO cabors (name, description, icon_url, kategori, total_medali, technical_delegate, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason
+INSERT INTO cabors (name, description, icon_url, hero_image_url, kategori, total_medali, technical_delegate, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason, slug, hero_image_url
 `
 
 type CreateCaborParams struct {
 	Name              string      `json:"name"`
 	Description       pgtype.Text `json:"description"`
 	IconUrl           pgtype.Text `json:"icon_url"`
+	HeroImageUrl      pgtype.Text `json:"hero_image_url"`
 	Kategori          pgtype.Text `json:"kategori"`
 	TotalMedali       pgtype.Int4 `json:"total_medali"`
 	TechnicalDelegate pgtype.Text `json:"technical_delegate"`
@@ -32,6 +61,7 @@ func (q *Queries) CreateCabor(ctx context.Context, arg CreateCaborParams) (Cabor
 		arg.Name,
 		arg.Description,
 		arg.IconUrl,
+		arg.HeroImageUrl,
 		arg.Kategori,
 		arg.TotalMedali,
 		arg.TechnicalDelegate,
@@ -52,25 +82,48 @@ func (q *Queries) CreateCabor(ctx context.Context, arg CreateCaborParams) (Cabor
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.Slug,
+		&i.HeroImageUrl,
 	)
 	return i, err
 }
 
 const createCityGuide = `-- name: CreateCityGuide :one
-INSERT INTO city_guides (title, category, description, address, image_url, latitude, longitude, map_route_url)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url
+INSERT INTO city_guides (
+  title, category, description, address, image_url, latitude, longitude, map_route_url,
+  contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url,
+  service_types, service_area, operating_hours, price_range, fleet_types, fleet_count
+)
+VALUES (
+  $1, $2, $3, $4, $5, $6, $7, $8,
+  $9, $10, $11, $12, $13, $14, $15,
+  $16, $17, $18, $19, $20, $21
+)
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count
 `
 
 type CreateCityGuideParams struct {
-	Title       string        `json:"title"`
-	Category    string        `json:"category"`
-	Description pgtype.Text   `json:"description"`
-	Address     pgtype.Text   `json:"address"`
-	ImageUrl    pgtype.Text   `json:"image_url"`
-	Latitude    pgtype.Float8 `json:"latitude"`
-	Longitude   pgtype.Float8 `json:"longitude"`
-	MapRouteUrl pgtype.Text   `json:"map_route_url"`
+	Title          string        `json:"title"`
+	Category       string        `json:"category"`
+	Description    pgtype.Text   `json:"description"`
+	Address        pgtype.Text   `json:"address"`
+	ImageUrl       pgtype.Text   `json:"image_url"`
+	Latitude       pgtype.Float8 `json:"latitude"`
+	Longitude      pgtype.Float8 `json:"longitude"`
+	MapRouteUrl    pgtype.Text   `json:"map_route_url"`
+	ContactPhone   pgtype.Text   `json:"contact_phone"`
+	Whatsapp       pgtype.Text   `json:"whatsapp"`
+	Email          pgtype.Text   `json:"email"`
+	WebsiteUrl     pgtype.Text   `json:"website_url"`
+	InstagramUrl   pgtype.Text   `json:"instagram_url"`
+	FacebookUrl    pgtype.Text   `json:"facebook_url"`
+	TiktokUrl      pgtype.Text   `json:"tiktok_url"`
+	ServiceTypes   []string      `json:"service_types"`
+	ServiceArea    pgtype.Text   `json:"service_area"`
+	OperatingHours pgtype.Text   `json:"operating_hours"`
+	PriceRange     pgtype.Text   `json:"price_range"`
+	FleetTypes     []string      `json:"fleet_types"`
+	FleetCount     pgtype.Int4   `json:"fleet_count"`
 }
 
 func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams) (CityGuide, error) {
@@ -83,6 +136,19 @@ func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams
 		arg.Latitude,
 		arg.Longitude,
 		arg.MapRouteUrl,
+		arg.ContactPhone,
+		arg.Whatsapp,
+		arg.Email,
+		arg.WebsiteUrl,
+		arg.InstagramUrl,
+		arg.FacebookUrl,
+		arg.TiktokUrl,
+		arg.ServiceTypes,
+		arg.ServiceArea,
+		arg.OperatingHours,
+		arg.PriceRange,
+		arg.FleetTypes,
+		arg.FleetCount,
 	)
 	var i CityGuide
 	err := row.Scan(
@@ -100,6 +166,19 @@ func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams
 		&i.Latitude,
 		&i.Longitude,
 		&i.MapRouteUrl,
+		&i.ContactPhone,
+		&i.Whatsapp,
+		&i.Email,
+		&i.WebsiteUrl,
+		&i.InstagramUrl,
+		&i.FacebookUrl,
+		&i.TiktokUrl,
+		&i.ServiceTypes,
+		&i.ServiceArea,
+		&i.OperatingHours,
+		&i.PriceRange,
+		&i.FleetTypes,
+		&i.FleetCount,
 	)
 	return i, err
 }
@@ -287,7 +366,7 @@ func (q *Queries) GetActiveHero(ctx context.Context) (Hero, error) {
 }
 
 const getCaborByID = `-- name: GetCaborByID :one
-SELECT id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason FROM cabors WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason, slug, hero_image_url FROM cabors WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetCaborByID(ctx context.Context, id pgtype.UUID) (Cabor, error) {
@@ -307,12 +386,44 @@ func (q *Queries) GetCaborByID(ctx context.Context, id pgtype.UUID) (Cabor, erro
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.Slug,
+		&i.HeroImageUrl,
+	)
+	return i, err
+}
+
+const getCaborByIdentifier = `-- name: GetCaborByIdentifier :one
+SELECT id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason, slug, hero_image_url FROM cabors
+WHERE deleted_at IS NULL
+  AND (id::text = $1::text OR slug = $1::text)
+LIMIT 1
+`
+
+func (q *Queries) GetCaborByIdentifier(ctx context.Context, identifier string) (Cabor, error) {
+	row := q.db.QueryRow(ctx, getCaborByIdentifier, identifier)
+	var i Cabor
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.IconUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Kategori,
+		&i.TotalMedali,
+		&i.TechnicalDelegate,
+		&i.Status,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.Slug,
+		&i.HeroImageUrl,
 	)
 	return i, err
 }
 
 const getCityGuideByID = `-- name: GetCityGuideByID :one
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGuide, error) {
@@ -333,6 +444,19 @@ func (q *Queries) GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGui
 		&i.Latitude,
 		&i.Longitude,
 		&i.MapRouteUrl,
+		&i.ContactPhone,
+		&i.Whatsapp,
+		&i.Email,
+		&i.WebsiteUrl,
+		&i.InstagramUrl,
+		&i.FacebookUrl,
+		&i.TiktokUrl,
+		&i.ServiceTypes,
+		&i.ServiceArea,
+		&i.OperatingHours,
+		&i.PriceRange,
+		&i.FleetTypes,
+		&i.FleetCount,
 	)
 	return i, err
 }
@@ -469,7 +593,7 @@ func (q *Queries) GetNomorTandingByID(ctx context.Context, id pgtype.UUID) (Nomo
 }
 
 const listCabors = `-- name: ListCabors :many
-SELECT id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason FROM cabors
+SELECT id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason, slug, hero_image_url FROM cabors
 WHERE deleted_at IS NULL
 ORDER BY name ASC
 `
@@ -497,6 +621,8 @@ func (q *Queries) ListCabors(ctx context.Context) ([]Cabor, error) {
 			&i.DeletedAt,
 			&i.DeletedBy,
 			&i.DeleteReason,
+			&i.Slug,
+			&i.HeroImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -509,14 +635,26 @@ func (q *Queries) ListCabors(ctx context.Context) ([]Cabor, error) {
 }
 
 const listCityGuides = `-- name: ListCityGuides :many
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url FROM city_guides
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count FROM city_guides
 WHERE deleted_at IS NULL
   AND category = COALESCE(NULLIF($1::text, ''), category)
+  AND (
+    NULLIF($2::text, '') IS NULL
+    OR title ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(description, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(address, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR category ILIKE '%' || $2::text || '%' ESCAPE '\'
+  )
 ORDER BY title ASC
 `
 
-func (q *Queries) ListCityGuides(ctx context.Context, dollar_1 string) ([]CityGuide, error) {
-	rows, err := q.db.Query(ctx, listCityGuides, dollar_1)
+type ListCityGuidesParams struct {
+	Category string `json:"category"`
+	Search   string `json:"search"`
+}
+
+func (q *Queries) ListCityGuides(ctx context.Context, arg ListCityGuidesParams) ([]CityGuide, error) {
+	rows, err := q.db.Query(ctx, listCityGuides, arg.Category, arg.Search)
 	if err != nil {
 		return nil, err
 	}
@@ -539,6 +677,98 @@ func (q *Queries) ListCityGuides(ctx context.Context, dollar_1 string) ([]CityGu
 			&i.Latitude,
 			&i.Longitude,
 			&i.MapRouteUrl,
+			&i.ContactPhone,
+			&i.Whatsapp,
+			&i.Email,
+			&i.WebsiteUrl,
+			&i.InstagramUrl,
+			&i.FacebookUrl,
+			&i.TiktokUrl,
+			&i.ServiceTypes,
+			&i.ServiceArea,
+			&i.OperatingHours,
+			&i.PriceRange,
+			&i.FleetTypes,
+			&i.FleetCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCityGuidesPaginated = `-- name: ListCityGuidesPaginated :many
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count FROM city_guides
+WHERE deleted_at IS NULL
+  AND category = COALESCE(NULLIF($1::text, ''), category)
+  AND (
+    NULLIF($2::text, '') IS NULL
+    OR title ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(description, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(address, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR category ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(contact_phone, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(whatsapp, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(email, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+  )
+ORDER BY title ASC, id ASC
+LIMIT $4::integer
+OFFSET $3::integer
+`
+
+type ListCityGuidesPaginatedParams struct {
+	Category   string `json:"category"`
+	Search     string `json:"search"`
+	PageOffset int32  `json:"page_offset"`
+	PageLimit  int32  `json:"page_limit"`
+}
+
+func (q *Queries) ListCityGuidesPaginated(ctx context.Context, arg ListCityGuidesPaginatedParams) ([]CityGuide, error) {
+	rows, err := q.db.Query(ctx, listCityGuidesPaginated,
+		arg.Category,
+		arg.Search,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CityGuide
+	for rows.Next() {
+		var i CityGuide
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Category,
+			&i.Description,
+			&i.Address,
+			&i.ImageUrl,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
+			&i.Latitude,
+			&i.Longitude,
+			&i.MapRouteUrl,
+			&i.ContactPhone,
+			&i.Whatsapp,
+			&i.Email,
+			&i.WebsiteUrl,
+			&i.InstagramUrl,
+			&i.FacebookUrl,
+			&i.TiktokUrl,
+			&i.ServiceTypes,
+			&i.ServiceArea,
+			&i.OperatingHours,
+			&i.PriceRange,
+			&i.FleetTypes,
+			&i.FleetCount,
 		); err != nil {
 			return nil, err
 		}
@@ -669,13 +899,14 @@ SET
   name = COALESCE(NULLIF($2::text, ''), name),
   description = COALESCE(NULLIF($3::text, ''), description),
   icon_url = COALESCE(NULLIF($4::text, ''), icon_url),
-  kategori = COALESCE(NULLIF($5::text, ''), kategori),
-  total_medali = COALESCE(NULLIF($6::integer, 0), total_medali),
-  technical_delegate = COALESCE(NULLIF($7::text, ''), technical_delegate),
-  status = COALESCE(NULLIF($8::text, ''), status),
+  hero_image_url = NULLIF($5::text, ''),
+  kategori = COALESCE(NULLIF($6::text, ''), kategori),
+  total_medali = COALESCE(NULLIF($7::integer, 0), total_medali),
+  technical_delegate = COALESCE(NULLIF($8::text, ''), technical_delegate),
+  status = COALESCE(NULLIF($9::text, ''), status),
   updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason
+RETURNING id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason, slug, hero_image_url
 `
 
 type UpdateCaborParams struct {
@@ -684,9 +915,10 @@ type UpdateCaborParams struct {
 	Column3 string      `json:"column_3"`
 	Column4 string      `json:"column_4"`
 	Column5 string      `json:"column_5"`
-	Column6 int32       `json:"column_6"`
-	Column7 string      `json:"column_7"`
+	Column6 string      `json:"column_6"`
+	Column7 int32       `json:"column_7"`
 	Column8 string      `json:"column_8"`
+	Column9 string      `json:"column_9"`
 }
 
 func (q *Queries) UpdateCabor(ctx context.Context, arg UpdateCaborParams) (Cabor, error) {
@@ -699,6 +931,7 @@ func (q *Queries) UpdateCabor(ctx context.Context, arg UpdateCaborParams) (Cabor
 		arg.Column6,
 		arg.Column7,
 		arg.Column8,
+		arg.Column9,
 	)
 	var i Cabor
 	err := row.Scan(
@@ -715,6 +948,8 @@ func (q *Queries) UpdateCabor(ctx context.Context, arg UpdateCaborParams) (Cabor
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.Slug,
+		&i.HeroImageUrl,
 	)
 	return i, err
 }
@@ -730,21 +965,47 @@ SET
   latitude = $7,
   longitude = $8,
   map_route_url = NULLIF($9::text, ''),
+  contact_phone = NULLIF($10::text, ''),
+  whatsapp = NULLIF($11::text, ''),
+  email = NULLIF($12::text, ''),
+  website_url = NULLIF($13::text, ''),
+  instagram_url = NULLIF($14::text, ''),
+  facebook_url = NULLIF($15::text, ''),
+  tiktok_url = NULLIF($16::text, ''),
+  service_types = $17,
+  service_area = NULLIF($18::text, ''),
+  operating_hours = NULLIF($19::text, ''),
+  price_range = NULLIF($20::text, ''),
+  fleet_types = $21,
+  fleet_count = $22,
   updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count
 `
 
 type UpdateCityGuideParams struct {
-	ID        pgtype.UUID   `json:"id"`
-	Title     string        `json:"title"`
-	Category  string        `json:"category"`
-	Column4   string        `json:"column_4"`
-	Column5   string        `json:"column_5"`
-	Column6   string        `json:"column_6"`
-	Latitude  pgtype.Float8 `json:"latitude"`
-	Longitude pgtype.Float8 `json:"longitude"`
-	Column9   string        `json:"column_9"`
+	ID           pgtype.UUID   `json:"id"`
+	Title        string        `json:"title"`
+	Category     string        `json:"category"`
+	Column4      string        `json:"column_4"`
+	Column5      string        `json:"column_5"`
+	Column6      string        `json:"column_6"`
+	Latitude     pgtype.Float8 `json:"latitude"`
+	Longitude    pgtype.Float8 `json:"longitude"`
+	Column9      string        `json:"column_9"`
+	Column10     string        `json:"column_10"`
+	Column11     string        `json:"column_11"`
+	Column12     string        `json:"column_12"`
+	Column13     string        `json:"column_13"`
+	Column14     string        `json:"column_14"`
+	Column15     string        `json:"column_15"`
+	Column16     string        `json:"column_16"`
+	ServiceTypes []string      `json:"service_types"`
+	Column18     string        `json:"column_18"`
+	Column19     string        `json:"column_19"`
+	Column20     string        `json:"column_20"`
+	FleetTypes   []string      `json:"fleet_types"`
+	FleetCount   pgtype.Int4   `json:"fleet_count"`
 }
 
 func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams) (CityGuide, error) {
@@ -758,6 +1019,19 @@ func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams
 		arg.Latitude,
 		arg.Longitude,
 		arg.Column9,
+		arg.Column10,
+		arg.Column11,
+		arg.Column12,
+		arg.Column13,
+		arg.Column14,
+		arg.Column15,
+		arg.Column16,
+		arg.ServiceTypes,
+		arg.Column18,
+		arg.Column19,
+		arg.Column20,
+		arg.FleetTypes,
+		arg.FleetCount,
 	)
 	var i CityGuide
 	err := row.Scan(
@@ -775,6 +1049,19 @@ func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams
 		&i.Latitude,
 		&i.Longitude,
 		&i.MapRouteUrl,
+		&i.ContactPhone,
+		&i.Whatsapp,
+		&i.Email,
+		&i.WebsiteUrl,
+		&i.InstagramUrl,
+		&i.FacebookUrl,
+		&i.TiktokUrl,
+		&i.ServiceTypes,
+		&i.ServiceArea,
+		&i.OperatingHours,
+		&i.PriceRange,
+		&i.FleetTypes,
+		&i.FleetCount,
 	)
 	return i, err
 }

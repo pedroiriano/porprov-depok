@@ -1,17 +1,18 @@
 /* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
 import { ScheduleMatchCard } from "@/components/ScheduleMatchCard";
 import { NearbyCityGuides } from "@/components/NearbyCityGuides";
-import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
+import { isCanonicalPublicResourceId, isCanonicalVenueIdentifier, publicApiUrl, unwrapCollection } from "@/lib/public-api";
 import { selectNearestCityGuidesByCategory } from "@/lib/nearby-city-guides";
 import {
   normalizeCabor,
   normalizeCityGuide,
   normalizeEnrichedMatch,
   normalizeVenueModel,
+  publicCaborPath,
   type RawCabor,
   type RawCityGuide,
   type RawEnrichedMatch,
@@ -21,6 +22,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const getVenue = cache(async (id: string) => {
+  if (!isCanonicalVenueIdentifier(id)) return null;
   const response = await fetch(publicApiUrl(`/venues/${encodeURIComponent(id)}`), { cache: "no-store" });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Venue Service merespons ${response.status}`);
@@ -48,6 +50,9 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const venue = await getVenue(id);
   if (!venue) notFound();
+  if (isCanonicalPublicResourceId(id) && venue.slug) {
+    permanentRedirect(`/venue/${encodeURIComponent(venue.slug)}`);
+  }
 
   const [rawCabors, rawGuides, rawMatches] = await Promise.all([
     getCollection<RawCabor>("/master-data/cabors"),
@@ -93,7 +98,7 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
 
         <aside className="space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Navigasi venue</h2><p className="mt-3 text-sm leading-relaxed text-slate-500">Gunakan tautan rute resmi untuk membuka navigasi pada perangkat Anda.</p>{venue.mapRouteUrl ? <a href={venue.mapRouteUrl} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary-500 px-4 font-black text-white hover:bg-primary-600"><i className="ri-direction-line me-2" aria-hidden="true" />Buka rute</a> : <p className="mt-5 rounded-xl bg-slate-100 p-4 text-sm dark:bg-slate-800">Tautan rute belum tersedia.</p>}{coordinateAvailable && <p className="mt-4 text-xs text-slate-500">Koordinat: {venue.latitude.toFixed(6)}, {venue.longitude.toFixed(6)}</p>}</div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Cabang olahraga</h2>{cabors.length ? <ul className="mt-4 space-y-2">{cabors.map((cabor) => <li key={cabor.id}><Link href={`/cabor/${encodeURIComponent(cabor.id)}`} className="flex min-h-11 items-center justify-between rounded-xl px-3 font-bold hover:bg-primary-500/10 hover:text-primary-600">{cabor.name}<i className="ri-arrow-right-s-line" aria-hidden="true" /></Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-500">Cabor belum ditautkan.</p>}</div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Cabang olahraga</h2>{cabors.length ? <ul className="mt-4 space-y-2">{cabors.map((cabor) => <li key={cabor.id}><Link href={publicCaborPath(cabor)} className="flex min-h-11 items-center justify-between rounded-xl px-3 font-bold hover:bg-primary-500/10 hover:text-primary-600">{cabor.name}<i className="ri-arrow-right-s-line" aria-hidden="true" /></Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-500">Cabor belum ditautkan.</p>}</div>
         </aside>
       </div>
 

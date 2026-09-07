@@ -1,10 +1,93 @@
+x-go-hardening: &go-hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+
 services:
-  admin-web:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib diisi untuk VPS}
+    security_opt: [no-new-privileges:true]
+
+  redis:
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD wajib diisi untuk VPS}
+    security_opt: [no-new-privileges:true]
+
+  nats:
+    security_opt: [no-new-privileges:true]
+
+  user-service:
+    <<: *go-hardening
+    environment:
+      APP_ENV: production
+      KEYCLOAK_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET:?KEYCLOAK_BACKEND_CLIENT_SECRET wajib diisi untuk VPS}
+
+  master-data-service:
+    <<: *go-hardening
+    environment:
+      APP_ENV: production
+
+  venue-service:
+    <<: *go-hardening
+
+  schedule-service:
+    <<: *go-hardening
+    environment:
+      APP_ENV: production
+
+  livescore-service:
+    <<: *go-hardening
+
+  medal-standing-service:
+    <<: *go-hardening
+
+  audit-service:
+    <<: *go-hardening
+
+  realtime-gateway:
+    <<: *go-hardening
+    environment:
+      APP_ENV: production
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD wajib diisi untuk VPS}
+      INTERNAL_STREAM_TOKEN: ${INTERNAL_STREAM_TOKEN:?INTERNAL_STREAM_TOKEN wajib diisi untuk VPS}
+
+  api-gateway:
+    <<: *go-hardening
+    environment:
+      APP_ENV: production
+      KEYCLOAK_ISSUER: https://porprov.depok.go.id/realms/porprov
+      CORS_ALLOWED_ORIGINS: https://porprov.depok.go.id
+      INTERNAL_STREAM_TOKEN: ${INTERNAL_STREAM_TOKEN:?INTERNAL_STREAM_TOKEN wajib diisi untuk VPS}
+
+  public-web:
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /app/.next/cache:rw,noexec,nosuid,size=128m
     build:
       args:
+        NEXT_PUBLIC_API_URL: /api/v1
+        NEXT_PUBLIC_SITE_URL: https://porprov.depok.go.id
+
+  admin-web:
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+      - /var/cache/nginx:rw,noexec,nosuid,size=32m
+      - /var/run:rw,noexec,nosuid,size=8m
+    build:
+      args:
+        VITE_API_URL: /api/v1
+        VITE_OIDC_AUTHORITY: https://porprov.depok.go.id/realms/porprov
         VITE_BASE_PATH: ${VITE_BASE_PATH:-/admin/}
 
   keycloak:
+    mem_limit: 2g
     environment:
       # SECURITY: TLS berakhir di Nginx. Keycloak tetap berkomunikasi melalui
       # HTTP hanya di jaringan privat Compose dan menerbitkan issuer HTTPS.
@@ -12,11 +95,36 @@ services:
       KC_PROXY_HEADERS: xforwarded
       # Keycloak 24 pada image aktif menerima hostname tanpa scheme. Scheme
       # eksternal berasal dari X-Forwarded-Proto Nginx.
-      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_HOST:-10.11.5.80}
+      KC_HOSTNAME: porprov.depok.go.id
       KC_HOSTNAME_STRICT: "true"
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD wajib diisi untuk VPS}
+    security_opt: [no-new-privileges:true]
     command: start
 
+  keycloak-bootstrap:
+    environment:
+      KEYCLOAK_ADMIN_SECRET: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD wajib diisi untuk VPS}
+      PORPROV_ADMIN_PASSWORD: ${PORPROV_ADMIN_PASSWORD:?PORPROV_ADMIN_PASSWORD wajib diisi untuk VPS}
+      PORPROV_KORESPONDEN_PASSWORD: ${PORPROV_KORESPONDEN_PASSWORD:?PORPROV_KORESPONDEN_PASSWORD wajib diisi untuk VPS}
+      ADMIN_REDIRECT_URIS: '["https://porprov.depok.go.id/admin/*"]'
+      ADMIN_WEB_ORIGINS: '["https://porprov.depok.go.id"]'
+    security_opt: [no-new-privileges:true]
+
   nginx:
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+      - /var/cache/nginx:rw,noexec,nosuid,size=32m
+      - /var/run:rw,noexec,nosuid,size=8m
     volumes:
       - ./nginx/nginx.vps.conf:/etc/nginx/nginx.conf:ro
       - ./tls:/etc/nginx/tls:ro
+
+  prometheus:
+    security_opt: [no-new-privileges:true]
+
+  grafana:
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD wajib diisi untuk VPS}
+    security_opt: [no-new-privileges:true]

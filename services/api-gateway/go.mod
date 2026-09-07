@@ -1,11 +1,11 @@
 module github.com/porprov-xv/porprov-depok/services/api-gateway
 
-go 1.23.0
+go 1.26.6
 
 require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0
-	github.com/go-chi/chi/v5 v5.0.12
-	github.com/go-chi/cors v1.2.1
+	github.com/go-chi/chi/v5 v5.3.2
+	github.com/go-chi/cors v1.2.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/prometheus/client_golang v1.23.2
 )
@@ -19,6 +19,6 @@ require (
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 )

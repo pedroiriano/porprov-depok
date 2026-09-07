@@ -48,17 +48,35 @@ Deployment baru boleh dinyatakan selesai jika seluruh kondisi berikut terbukti:
 
 1. commit VPS sama dengan commit yang disetujui pada remote Git;
 2. worktree VPS bersih dan tidak berisi credential/dump/ad-hoc deployment file;
-3. Compose config valid dan semua service runtime yang wajib berjalan aktif;
-4. tidak ada container berstatus `unhealthy` atau restart loop;
-5. seluruh migration database berstatus `dirty=false`;
-6. Public, Admin, API, OIDC, Media, dan stream yang relevan lolos smoke test;
-7. Admin berjalan pada HTTPS secure context dan PKCE tetap aktif;
-8. callback, issuer, CORS, dan Web Origin mengarah ke origin canonical;
-9. jumlah record penting dan checksum Media cocok dengan sumber migrasi;
-10. backup rollback, manifest SHA-256, log job, PID, status, dan commit tersedia;
-11. log pascadeploy tidak memuat `panic`, `fatal`, `conn busy`, OOM, atau loop
+3. `PORPROV_DEPLOY_COMMIT` sama dengan commit 40 karakter yang aktif dan sudah
+   dipush/review;
+4. audit penuh dependency npm dan `govulncheck` tidak menemukan vulnerability
+   reachable;
+5. response redirect HTTP dan Public/Admin/API/Upload/OIDC HTTPS memiliki tepat
+   satu CSP dengan `base-uri`, `form-action`, dan `frame-ancestors` eksplisit;
+   Public memakai nonce unik yang sama pada header dan HTML; HSTS tepat satu
+   hanya pada HTTPS serta hanya diterbitkan edge, tanpa versi Nginx atau
+   `X-Powered-By`; CSP Admin tidak memakai `style-src 'unsafe-inline'`, dan
+   seluruh HTTPS memiliki tepat satu COOP `same-origin`, COEP `require-corp`,
+   serta CORP `same-origin`;
+   CSS/HTML/CSP/network runtime tidak mereferensikan Google Fonts atau font CDN
+   lain dan font self-hosted terbukti siap melalui `document.fonts`;
+6. Compose config valid dan semua service runtime yang wajib berjalan aktif;
+7. tidak ada container berstatus `unhealthy` atau restart loop;
+8. seluruh migration database berstatus `dirty=false`;
+9. Public, semua URL sitemap, Admin beserta asset, API, OIDC discovery/login,
+   Media, 404, dan stream yang relevan lolos smoke test;
+10. Admin berjalan pada HTTPS secure context dan PKCE tetap aktif;
+11. callback, issuer, CORS, dan Web Origin mengarah ke origin canonical;
+12. jumlah record penting dan checksum Media cocok dengan sumber migrasi;
+13. backup rollback, manifest SHA-256, log job, PID, status, dan commit tersedia;
+14. ID detail Public yang malformed menghasilkan `404`, peta Venue memuat tile
+    lintas-origin tanpa error browser, dan ZAP baseline baru menghasilkan nol
+    alert High/Medium/Low serta tidak merayapi origin pihak ketiga yang tidak
+    disengaja;
+15. log pascadeploy tidak memuat `panic`, `fatal`, `conn busy`, OOM, atau loop
     error berulang;
-12. hasil, risiko, rollback point, dan pekerjaan tersisa diserahkan kepada
+16. hasil, risiko, rollback point, dan pekerjaan tersisa diserahkan kepada
     operator secara tertulis.
 
 Response HTTP `200` dari halaman saja tidak cukup untuk menyatakan deployment
@@ -355,7 +373,10 @@ Catatan:
 - `INTERNAL_STREAM_TOKEN`, password PostgreSQL/Redis/Keycloak/Grafana, dan
   akun bootstrap harus diganti dengan nilai acak yang berbeda;
 - jangan memakai default `.env.example` pada VPS;
-- Public HTTP hanya transisi intranet; Admin/OIDC/API bertoken tetap HTTPS.
+- Pada production publik, port 80 hanya redirect ke
+  `https://porprov.depok.go.id`; Public/Admin/OIDC/API memakai origin HTTPS
+  yang sama. HTTP langsung hanya boleh dipertahankan pada environment intranet
+  terpisah yang tidak diekspos sebagai domain production.
 
 Validasi tanpa mencetak secret:
 
@@ -375,6 +396,45 @@ done
 
 Gunakan sertifikat resmi PKI Diskominfo bila tersedia. Private CA proyek hanya
 fallback intranet.
+
+### 11.1 Sertifikat wildcard resmi melalui operator
+
+Jika Agent AI tidak memiliki akses SSH/DNS penuh, gunakan handoff
+operator-assisted. Folder `ssl-wildcard` tidak boleh masuk Git; salin melalui
+kanal privat ke `$HOME/ssl-wildcard` pada VPS. Compose Nginx membaca sertifikat
+aktif hanya dari `infra/docker/tls`, bukan `infra/docker/nginx/tls`.
+
+```bash
+cd "$HOME/porprov-depok/infra/docker"
+nohup bash ./install-official-tls.sh \
+  porprov.depok.go.id "$HOME/ssl-wildcard" \
+  >"$HOME/porprov-jobs/official-tls-launch.log" 2>&1 &
+
+cat "$HOME/porprov-jobs/official-tls.status"
+```
+
+Installer memvalidasi SAN/masa berlaku/full chain/kecocokan private key,
+membuat backup beserta SHA-256, memasang file secara atomik, menjalankan
+`nginx -t`, reload, menguji SNI/hostname/chain melalui loopback, dan rollback
+otomatis bila gate gagal. Status `TLS_INSTALLED_DNS_PENDING` berarti TLS pada
+VPS sudah benar tetapi domain belum memiliki DNS yang dapat di-resolve; hal
+tersebut hanya dapat diselesaikan pengelola zona DNS Diskominfo. Sertifikat
+wildcard tidak dapat membuat record DNS, tidak valid untuk alamat IP, dan
+tidak mencakup hostname dua tingkat seperti `www.porprov.depok.go.id`.
+
+Status `TLS_INSTALLED_DNS_RESOLVED` hanya membuktikan resolver VPS mengenali
+domain; verifikasi publik akhir tetap harus dijalankan dari jaringan luar:
+
+```bash
+curl --fail --show-error --head https://porprov.depok.go.id/
+openssl s_client -connect porprov.depok.go.id:443 \
+  -servername porprov.depok.go.id \
+  -verify_hostname porprov.depok.go.id -verify_return_error </dev/null
+```
+
+File resmi `depok.go.id.crt` saat ini sudah memuat leaf dan intermediate.
+`depok.go.id.ca` tidak boleh ditambahkan lagi ke `server.crt` apabila isinya
+merupakan intermediate yang sama, karena akan membuat chain duplikat.
 
 ```bash
 cd "$HOME/porprov-depok/infra/docker"
@@ -421,11 +481,11 @@ mkdir -p "$BACKUP_DIR/databases"
 chmod 700 "$HOME/porprov-backups" "$BACKUP_DIR"
 ```
 
-Dump tujuh database domain dalam custom format:
+Dump seluruh database domain dan analytics dalam custom format:
 
 ```bash
 databases=(master_data_db venue_db schedule_db livescore_db \
-  porprov_db audit_db user_service_db)
+  porprov_db audit_db user_service_db umami_db)
 for db in "${databases[@]}"; do
   docker exec porprov_postgres sh -c \
     'pg_dump -Fc --no-owner --no-privileges -U "$POSTGRES_USER" -d "$1"' \
@@ -499,7 +559,7 @@ Restore database:
 
 ```bash
 for db in master_data_db venue_db schedule_db livescore_db \
-  porprov_db audit_db user_service_db; do
+  porprov_db audit_db user_service_db umami_db; do
   dump="$HOME/porprov-migration/incoming/databases/$db.dump"
   test -s "$dump"
   docker exec -i porprov_postgres sh -c \
@@ -604,6 +664,9 @@ Aturan job:
 - build satu service boleh memakai `docker compose build <service>` lalu
   `up -d --no-deps --force-recreate <service>` jika dependency/schema tidak
   berubah; perubahan lintas domain harus memakai deploy canonical.
+- bila service tersebut adalah upstream Nginx, job yang sama wajib
+  reload/recreate Nginx setelah upstream stabil dan menjalankan smoke HTTPS;
+  Nginx dapat mempertahankan IP container lama setelah `force-recreate`.
 
 ## 15. Urutan Deployment Canonical
 
@@ -662,6 +725,31 @@ for path in \
 done
 ```
 
+Verifikasi header hardening dari origin HTTPS canonical tanpa menonaktifkan
+validasi sertifikat pada klien final:
+
+```bash
+headers="$(mktemp)"
+body="$(mktemp)"
+curl --fail --silent --show-error -D "$headers" -o "$body" \
+  https://<VPS_HOST>/venue
+grep -qi '^strict-transport-security: max-age=63072000;' "$headers"
+grep -qi '^content-security-policy:.*script-src.*nonce-' "$headers"
+! grep -qi '^content-security-policy:.*script-src[^;]*unsafe-inline' "$headers"
+! grep -qi '^x-powered-by:' "$headers"
+grep -q 'nonce=' "$body"
+rm -f "$headers" "$body"
+
+curl --fail --silent --show-error -D - -o /dev/null \
+  https://<VPS_HOST>/api/v1 | grep -qi '^strict-transport-security:'
+test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' \
+  'https://<VPS_HOST>/cabor/%2Fassets%2Fimages%2Flogo.png%26w%3D256')" = "404"
+```
+
+Nonce dari dua response HTML wajib berbeda. Pastikan konfigurasi host lama tidak
+menambahkan header CSP kedua; dua kebijakan CSP akan diterapkan sebagai irisan
+dan dapat mematahkan hydration walaupun masing-masing terlihat valid.
+
 `curl -k` hanya boleh digunakan dari VPS untuk memastikan route lokal saat CA
 belum berada di trust store shell tersebut. Uji klien final wajib tanpa bypass.
 
@@ -714,6 +802,9 @@ for db in user_service_db master_data_db venue_db schedule_db \
     'psql -U "$POSTGRES_USER" -d "$1" -Atc \
       "SELECT version || chr(58) || dirty FROM schema_migrations"' sh "$db"
 done
+docker exec porprov_postgres sh -c \
+  'psql -U "$POSTGRES_USER" -d umami_db -Atc \
+    "SELECT count(*) FROM website"'
 ```
 
 Bandingkan row count total dan aktif secara terpisah karena soft-deleted record

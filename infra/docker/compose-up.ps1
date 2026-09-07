@@ -1,5 +1,7 @@
 param(
     [switch]$NoBuild,
+    [switch]$NoDeps,
+    [switch]$ForceRecreate,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$Services
 )
@@ -41,10 +43,24 @@ $dockerVersionOutput
     exit 1
 }
 
-$composeArgs = @("compose", "up", "-d")
+$composeArgs = @(
+    "compose",
+    "--env-file", (Join-Path $scriptDir ".env"),
+    "-f", (Join-Path $scriptDir "docker-compose.yml"),
+    "-f", (Join-Path $scriptDir "docker-compose.local.yml"),
+    "up", "-d"
+)
 
 if (-not $NoBuild) {
     $composeArgs += "--build"
+}
+
+if ($NoDeps) {
+    $composeArgs += "--no-deps"
+}
+
+if ($ForceRecreate) {
+    $composeArgs += "--force-recreate"
 }
 
 if ($Services.Count -gt 0) {

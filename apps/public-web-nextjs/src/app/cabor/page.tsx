@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
-import { normalizeCabor, type CaborModel, type RawCabor } from "@/lib/public-models";
+import { normalizeCabor, publicCaborPath, type CaborModel, type RawCabor } from "@/lib/public-models";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ export default async function CaborPage() {
       ) : (
         <div className="mt-10 grid gap-[30px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {cabors.map((cabor) => (
-            <Link key={cabor.id} href={`/cabor/${encodeURIComponent(cabor.id)}`} className="group flex min-h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary-300 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:border-slate-800 dark:bg-slate-900">
+            <Link key={cabor.id} href={publicCaborPath(cabor)} className="group flex min-h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary-300 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:border-slate-800 dark:bg-slate-900">
               <span className="mx-auto flex size-20 items-center justify-center overflow-hidden rounded-full bg-primary-500/10 text-3xl text-primary-600 dark:text-primary-300">
                 {cabor.iconUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element

@@ -90,7 +90,9 @@ export function Navbar() {
         </ul>
         {/*Login button End*/}
 
-        <div id="navigation" style={{ display: isOpen ? 'block' : '' }}>
+        {/* CHANGE: Techwind membuka menu mobile melalui selector
+         * `#navigation.open`; utility `block` kalah spesifik dari CSS tema. */}
+        <div id="navigation" className={isOpen ? "open" : undefined}>
           {/* Navigation Menu*/}   
           <ul className={`navigation-menu ${isHomePage ? 'nav-light' : ''} font-bold`}>
             <li className={isCurrent('/') ? 'active' : ''}><Link href="/" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/') ? 'page' : undefined}>Beranda</Link></li>
@@ -98,6 +100,7 @@ export function Navbar() {
             <li className={isCurrent('/venue') ? 'active' : ''}><Link href="/venue" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/venue') ? 'page' : undefined}>Venue</Link></li>
             <li className={isCurrent('/jadwal') ? 'active' : ''}><Link href="/jadwal" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/jadwal') ? 'page' : undefined}>Jadwal</Link></li>
             <li className={isCurrent('/medali') ? 'active' : ''}><Link href="/medali" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/medali') ? 'page' : undefined}>Klasemen</Link></li>
+            <li className={isCurrent('/city-guide') ? 'active' : ''}><Link href="/city-guide" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/city-guide') ? 'page' : undefined}>Jelajah</Link></li>
           </ul>
         </div>
       </div>

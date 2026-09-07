@@ -20,8 +20,9 @@ def extract_text_from_docx(docx_path):
     except Exception as e:
         return f"Error reading {docx_path}: {str(e)}"
 
-docx_dir = r"D:\Porprov XV\porprov-depok\design"
-output_dir = r"D:\Porprov XV\porprov-depok\design\extracted_text"
+repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+docx_dir = os.path.join(repo_root, "design")
+output_dir = os.path.join(docx_dir, "extracted_text")
 
 os.makedirs(output_dir, exist_ok=True)
 

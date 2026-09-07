@@ -27,4 +27,5 @@ type Venue struct {
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 	DeletedBy       pgtype.Text        `json:"deleted_by"`
 	DeleteReason    pgtype.Text        `json:"delete_reason"`
+	Slug            string             `json:"slug"`
 }

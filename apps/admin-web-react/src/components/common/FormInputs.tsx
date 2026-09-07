@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { Image as PhotoIcon } from 'lucide-react';
 import { resolveMediaUrl } from '../../lib/api';
 
@@ -9,72 +9,99 @@ interface BaseInputProps {
 
 interface TextInputProps extends BaseInputProps, React.InputHTMLAttributes<HTMLInputElement> {}
 
-export const TextInput = ({ label, required, ...props }: TextInputProps) => (
-  <div>
-    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <input 
-      {...props}
-      required={required}
-      className={`form-input w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${props.className || ''}`}
-    />
-  </div>
-);
+export const TextInput = ({ label, required, id, ...props }: TextInputProps) => {
+  // ACCESSIBILITY: useId memberi pasangan label/input yang stabil tanpa mengubah API pemakai.
+  const generatedId = useId();
+  const inputId = id || generatedId;
+
+  return (
+    <div>
+      <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+        {label} {required && <span className="text-red-500" aria-hidden="true">*</span>}
+      </label>
+      <input
+        {...props}
+        id={inputId}
+        required={required}
+        aria-required={required || undefined}
+        className={`form-input w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white ${props.className || ''}`}
+      />
+    </div>
+  );
+};
 
 interface TextAreaProps extends BaseInputProps, React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
-export const TextArea = ({ label, required, ...props }: TextAreaProps) => (
-  <div>
-    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <textarea 
-      {...props}
-      required={required}
-      className={`form-input w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${props.className || ''}`}
-    />
-  </div>
-);
+export const TextArea = ({ label, required, id, ...props }: TextAreaProps) => {
+  // ACCESSIBILITY: textarea dapat difokuskan dengan menekan labelnya.
+  const generatedId = useId();
+  const inputId = id || generatedId;
+
+  return (
+    <div>
+      <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+        {label} {required && <span className="text-red-500" aria-hidden="true">*</span>}
+      </label>
+      <textarea
+        {...props}
+        id={inputId}
+        required={required}
+        aria-required={required || undefined}
+        className={`form-input w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white ${props.className || ''}`}
+      />
+    </div>
+  );
+};
 
 interface SelectInputProps extends BaseInputProps, React.SelectHTMLAttributes<HTMLSelectElement> {
   options: { value: string | number; label: string }[];
 }
 
-export const SelectInput = ({ label, required, options, ...props }: SelectInputProps) => (
-  <div>
-    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <select 
-      {...props}
-      required={required}
-      className={`form-input w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${props.className || ''}`}
-    >
-      <option value="" disabled>Pilih {label}</option>
-      {options.map((opt, i) => (
-        <option key={i} value={opt.value}>{opt.label}</option>
-      ))}
-    </select>
-  </div>
-);
+export const SelectInput = ({ label, required, options, id, ...props }: SelectInputProps) => {
+  // ACCESSIBILITY: select memiliki nama aksesibel eksplisit dari label terkait.
+  const generatedId = useId();
+  const inputId = id || generatedId;
+
+  return (
+    <div>
+      <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+        {label} {required && <span className="text-red-500" aria-hidden="true">*</span>}
+      </label>
+      <select
+        {...props}
+        id={inputId}
+        required={required}
+        aria-required={required || undefined}
+        className={`form-input w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white ${props.className || ''}`}
+      >
+        <option value="" disabled>Pilih {label}</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+};
 
 interface MediaInputProps extends BaseInputProps {
   value: string;
   onClear: () => void;
   onSelect: () => void;
   placeholderText?: string;
+  previewVariant?: "square" | "landscape";
+  helpText?: string;
 }
 
-export const MediaInput = ({ label, required, value, onClear, onSelect, placeholderText = "Pilih dari Media Library" }: MediaInputProps) => (
+export const MediaInput = ({ label, required, value, onClear, onSelect, placeholderText = "Pilih dari Media Library", previewVariant = "square", helpText }: MediaInputProps) => (
   <div>
     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
       {label} {required && <span className="text-red-500">*</span>}
     </label>
-    <div className="flex items-start gap-4">
-      <div className="w-24 h-24 rounded-md bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden shrink-0">
+    {helpText && <p className="mb-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{helpText}</p>}
+    <div className={`flex gap-4 ${previewVariant === "landscape" ? "flex-col" : "items-start"}`}>
+      <div className={`${previewVariant === "landscape" ? "aspect-video w-full" : "h-24 w-24 shrink-0"} rounded-md bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden`}>
         {value ? (
-          <img src={resolveMediaUrl(value)} alt={`Pratinjau ${label}`} className="w-full h-full object-contain bg-white dark:bg-slate-900" />
+          <img src={resolveMediaUrl(value)} alt={`Pratinjau ${label}`} className={`w-full h-full bg-white dark:bg-slate-900 ${previewVariant === "landscape" ? "object-cover" : "object-contain"}`} />
         ) : (
           <PhotoIcon className="w-8 h-8 text-slate-400" />
         )}

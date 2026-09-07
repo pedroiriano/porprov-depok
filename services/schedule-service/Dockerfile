@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26.6-alpine AS builder
 WORKDIR /src
 COPY packages/messaging/ packages/messaging/
 COPY services/schedule-service/go.mod services/schedule-service/go.sum services/schedule-service/
