@@ -44,6 +44,7 @@ export default function JadwalScreen() {
       team2: 'Kota Bogor',
       status: 'UPCOMING' as const,
       time: '16:45',
+    },
   ];
 
   const [matches, setMatches] = useState(dummyMatches);
@@ -106,7 +107,12 @@ export default function JadwalScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4">
-        <Text className="text-slate-400 font-medium text-sm mb-4 uppercase tracking-wider">Selasa, 10 Nov 2026</Text>
+        <View className="mb-4 flex-row items-center justify-between gap-3">
+          <Text className="text-slate-400 font-medium text-sm uppercase tracking-wider">Selasa, 10 Nov 2026</Text>
+          <Text className={sseConnected ? 'text-emerald-400 text-xs' : 'text-slate-500 text-xs'}>
+            {sseConnected ? 'Realtime aktif' : 'Menghubungkan realtime'}
+          </Text>
+        </View>
         
         {matches.map((match) => (
           <MatchCard

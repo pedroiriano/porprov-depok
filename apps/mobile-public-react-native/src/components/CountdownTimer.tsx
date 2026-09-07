@@ -5,37 +5,33 @@ interface CountdownProps {
   targetDate: string; // ISO String format
 }
 
+function calculateTimeLeft(targetDate: string) {
+  const target = new Date(targetDate).getTime();
+  const now = new Date().getTime();
+  const difference = target - now;
+
+  if (difference <= 0) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+  }
+
+  return {
+    days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+    minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+    seconds: Math.floor((difference % (1000 * 60)) / 1000),
+  };
+}
+
 export function CountdownTimer({ targetDate }: CountdownProps) {
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
+  const [timeLeft, setTimeLeft] = useState(() => calculateTimeLeft(targetDate));
 
   useEffect(() => {
-    const target = new Date(targetDate).getTime();
-
-    const calculateTimeLeft = () => {
-      const now = new Date().getTime();
-      const difference = target - now;
-
-      if (difference <= 0) {
-        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
-      }
-
-      return {
-        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
-        seconds: Math.floor((difference % (1000 * 60)) / 1000),
-      };
-    };
-
-    setTimeLeft(calculateTimeLeft());
+    const initialUpdate = setTimeout(() => {
+      setTimeLeft(calculateTimeLeft(targetDate));
+    }, 0);
 
     const interval = setInterval(() => {
-      const newTimeLeft = calculateTimeLeft();
+      const newTimeLeft = calculateTimeLeft(targetDate);
       setTimeLeft(newTimeLeft);
       
       if (
@@ -48,7 +44,10 @@ export function CountdownTimer({ targetDate }: CountdownProps) {
       }
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialUpdate);
+      clearInterval(interval);
+    };
   }, [targetDate]);
 
   const items = [

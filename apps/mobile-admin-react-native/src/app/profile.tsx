@@ -11,7 +11,7 @@ export default function ProfileScreen() {
     router.replace('/login');
   };
 
-  const roles = authState?.userInfo?.realm_access?.roles || [];
+  const roles: string[] = authState?.userInfo?.realm_access?.roles || [];
 
   return (
     <View style={styles.container}>

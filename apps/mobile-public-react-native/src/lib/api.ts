@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { create } from 'axios';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
@@ -13,7 +13,7 @@ const BASE_URL = Platform.OS === 'android'
   ? (debuggerHost ? `http://${lanIp}:8080/api/v1` : 'http://10.0.2.2:8080/api/v1')
   : `http://${lanIp}:8080/api/v1`;
 
-export const api = axios.create({
+export const api = create({
   baseURL: BASE_URL,
   timeout: 10000,
 });

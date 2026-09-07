@@ -1,5 +1,4 @@
 import { View, Text, ScrollView } from 'react-native';
-import { Image } from 'expo-image';
 import React, { useState, useEffect } from 'react';
 import EventSource from 'react-native-sse';
 
@@ -13,7 +12,7 @@ export default function MedaliScreen() {
     { id: '6', rank: 6, region: 'Kota Bekasi', gold: 60, silver: 55, bronze: 65 },
   ];
 
-  const [standings, setStandings] = useState(dummyStandings);
+  const [standings] = useState(dummyStandings);
   const [sseConnected, setSseConnected] = useState(false);
 
   useEffect(() => {
@@ -56,6 +55,9 @@ export default function MedaliScreen() {
       <View className="px-4 py-4 bg-slate-900 border-b border-slate-800">
         <Text className="text-white font-bold text-lg">Klasemen Medali</Text>
         <Text className="text-slate-400 text-sm">Pembaruan Terakhir: Hari ini, 15:30 WIB</Text>
+        <Text className={sseConnected ? 'text-emerald-400 text-xs mt-1' : 'text-slate-500 text-xs mt-1'}>
+          {sseConnected ? 'Realtime aktif' : 'Menghubungkan realtime'}
+        </Text>
       </View>
 
       <ScrollView className="flex-1">

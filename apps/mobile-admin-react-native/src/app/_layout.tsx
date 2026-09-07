@@ -1,9 +1,7 @@
-import { Stack, Redirect, useSegments } from 'react-router';
-import { View, Text } from 'react-native';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import '../global.css';
 import { useEffect } from 'react';
-import { useRouter } from 'expo-router';
 
 function RootLayoutNav() {
   const { token, isLoading } = useAuth();
@@ -22,7 +20,7 @@ function RootLayoutNav() {
       // Redirect away from the login page.
       router.replace('/');
     }
-  }, [token, isLoading, segments]);
+  }, [isLoading, router, segments, token]);
 
   return (
     <Stack

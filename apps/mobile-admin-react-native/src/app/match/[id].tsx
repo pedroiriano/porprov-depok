@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { Minus, Plus, Save } from 'lucide-react-native';
 import { api } from '../../lib/api';
 
 export default function MatchLiveScore() {
   const { id } = useLocalSearchParams();
-  const router = useRouter();
-
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
   const [saving, setSaving] = useState(false);

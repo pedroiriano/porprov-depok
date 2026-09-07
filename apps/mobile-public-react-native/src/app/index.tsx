@@ -22,7 +22,7 @@ export default function HomeScreen() {
         <Image 
           source={require('../../assets/extracted/page5_img1.png')} 
           className="w-48 h-48 mb-6"
-          resizeMode="contain"
+          contentFit="contain"
         />
         
         <View className="bg-white/10 p-5 rounded-3xl w-full max-w-sm border border-white/20">

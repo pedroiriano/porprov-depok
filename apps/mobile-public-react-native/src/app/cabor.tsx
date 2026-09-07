@@ -1,6 +1,5 @@
 import { View, Text, FlatList, ActivityIndicator } from 'react-native';
-import { Image } from 'expo-image';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { Trophy } from 'lucide-react-native';
 
@@ -16,22 +15,34 @@ export default function CaborScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchCabors();
-  }, []);
-
-  const fetchCabors = async () => {
+  const fetchCabors = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const res = await api.get('/master-data/cabors');
+      const res = await api.get('/master-data/cabors', { signal });
       setCabors(res.data || []);
       setError(null);
     } catch (err: any) {
-      setError(err.message || 'Gagal memuat cabang olahraga');
+      if (!signal?.aborted) {
+        setError(err.message || 'Gagal memuat cabang olahraga');
+      }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const request = setTimeout(() => {
+      void fetchCabors(controller.signal);
+    }, 0);
+
+    return () => {
+      clearTimeout(request);
+      controller.abort();
+    };
+  }, [fetchCabors]);
 
   if (loading) {
     return (
@@ -47,7 +58,7 @@ export default function CaborScreen() {
       <View className="flex-1 bg-slate-950 items-center justify-center p-6">
         <Text className="text-red-400 text-center mb-4">{error}</Text>
         <View className="bg-primary-600 px-6 py-2 rounded-lg">
-          <Text className="text-white font-bold" onPress={fetchCabors}>Coba Lagi</Text>
+          <Text className="text-white font-bold" onPress={() => void fetchCabors()}>Coba Lagi</Text>
         </View>
       </View>
     );
