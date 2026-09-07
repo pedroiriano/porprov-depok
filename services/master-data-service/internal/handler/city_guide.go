@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -24,7 +25,10 @@ const (
 )
 
 type CityGuideHandler struct {
-	queries *db.Queries
+	queries            *db.Queries
+	transactionStarter interface {
+		Begin(context.Context) (pgx.Tx, error)
+	}
 }
 
 type cityGuidePagination struct {
@@ -35,10 +39,30 @@ type cityGuidePagination struct {
 
 type cityGuideListResponse struct {
 	Data       []db.CityGuide `json:"data"`
+	Pinned     *db.CityGuide  `json:"pinned"`
 	Page       int32          `json:"page"`
 	PerPage    int32          `json:"per_page"`
 	TotalItems int64          `json:"total_items"`
 	TotalPages int32          `json:"total_pages"`
+}
+
+type cityGuideAuditEvent struct {
+	EventVersion string      `json:"eventVersion"`
+	EventType    string      `json:"eventType"`
+	ServiceName  string      `json:"service_name"`
+	EntityName   string      `json:"entity_name"`
+	EntityID     string      `json:"entity_id"`
+	Action       string      `json:"action"`
+	Actor        string      `json:"actor"`
+	RequestID    string      `json:"requestId"`
+	IPAddress    string      `json:"ipAddress"`
+	Payload      interface{} `json:"payload"`
+}
+
+type cityGuidePinQueries interface {
+	GetCityGuideByID(context.Context, pgtype.UUID) (db.CityGuide, error)
+	ClearPinnedCityGuideForVenues(context.Context) error
+	PinCityGuideForVenues(context.Context, pgtype.UUID) (db.CityGuide, error)
 }
 
 type cityGuideRequest struct {
@@ -155,24 +179,49 @@ func nullableInt32(value *int32) pgtype.Int4 {
 	return pgtype.Int4{Int32: *value, Valid: true}
 }
 
-func NewCityGuideHandler(queries *db.Queries) *CityGuideHandler {
-	return &CityGuideHandler{queries: queries}
+func NewCityGuideHandler(queries *db.Queries, transactionStarter interface {
+	Begin(context.Context) (pgx.Tx, error)
+}) *CityGuideHandler {
+	return &CityGuideHandler{queries: queries, transactionStarter: transactionStarter}
+}
+
+func buildCityGuideAuditEvent(r *http.Request, action, entityID string, payload interface{}) cityGuideAuditEvent {
+	actor := strings.TrimSpace(r.Header.Get("X-Actor-ID"))
+	if actor == "" {
+		actor = "system"
+	}
+	return cityGuideAuditEvent{
+		EventVersion: "1.0",
+		EventType:    "audit.master_data." + action,
+		ServiceName:  "master-data-service",
+		EntityName:   "CityGuide",
+		EntityID:     entityID,
+		Action:       action,
+		Actor:        actor,
+		RequestID:    strings.TrimSpace(r.Header.Get("X-Request-ID")),
+		IPAddress:    strings.TrimSpace(r.Header.Get("X-Actor-IP")),
+		Payload:      payload,
+	}
 }
 
 func publishAuditCityGuide(r *http.Request, action, entityID string, payload interface{}) {
-	actorID := r.Header.Get("X-User-Id")
-	requestID := r.Header.Get("X-Request-Id")
-	event := map[string]interface{}{
-		"service_name": "master-data-service",
-		"entity_name":  "CityGuide",
-		"entity_id":    entityID,
-		"action":       action,
-		"actor_id":     actorID,
-		"request_id":   requestID,
-		"payload":      payload,
-	}
+	event := buildCityGuideAuditEvent(r, action, entityID, payload)
 	data, _ := json.Marshal(event)
 	messaging.PublishEvent("audit.master_data."+action, data)
+}
+
+func cityGuideCanBeArchived(cityGuide db.CityGuide) bool {
+	return !cityGuide.IsPinnedVenueRecommendation
+}
+
+func replacePinnedCityGuide(ctx context.Context, queries cityGuidePinQueries, id pgtype.UUID) (db.CityGuide, error) {
+	if _, err := queries.GetCityGuideByID(ctx, id); err != nil {
+		return db.CityGuide{}, err
+	}
+	if err := queries.ClearPinnedCityGuideForVenues(ctx); err != nil {
+		return db.CityGuide{}, err
+	}
+	return queries.PinCityGuideForVenues(ctx, id)
 }
 
 func validateCityGuideRequest(req *cityGuideRequest) error {
@@ -354,9 +403,18 @@ func (h *CityGuideHandler) ListCityGuides(w http.ResponseWriter, r *http.Request
 		if totalItems > 0 {
 			totalPages = int32((totalItems + int64(pagination.PerPage) - 1) / int64(pagination.PerPage))
 		}
+		var pinned *db.CityGuide
+		pinnedGuide, pinnedErr := h.queries.GetPinnedCityGuideForVenues(r.Context())
+		if pinnedErr == nil {
+			pinned = &pinnedGuide
+		} else if !errors.Is(pinnedErr, pgx.ErrNoRows) {
+			http.Error(w, "Gagal membaca rekomendasi utama Venue", http.StatusInternalServerError)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(cityGuideListResponse{
 			Data:       cgs,
+			Pinned:     pinned,
 			Page:       pagination.Page,
 			PerPage:    pagination.PerPage,
 			TotalItems: totalItems,
@@ -487,6 +545,62 @@ func (h *CityGuideHandler) UpdateCityGuide(w http.ResponseWriter, r *http.Reques
 	_ = json.NewEncoder(w).Encode(cg)
 }
 
+func (h *CityGuideHandler) PinCityGuideForVenues(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var uuid pgtype.UUID
+	if err := uuid.Scan(id); err != nil {
+		http.Error(w, "ID City Guide tidak valid", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := h.transactionStarter.Begin(r.Context())
+	if err != nil {
+		http.Error(w, "Gagal memulai perubahan rekomendasi Venue", http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	txQueries := h.queries.WithTx(tx)
+	pinned, err := replacePinnedCityGuide(r.Context(), txQueries, uuid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		http.Error(w, "City Guide tidak ditemukan", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Gagal menetapkan rekomendasi Venue", http.StatusInternalServerError)
+		return
+	}
+	if err = tx.Commit(r.Context()); err != nil {
+		http.Error(w, "Gagal menyelesaikan rekomendasi Venue", http.StatusInternalServerError)
+		return
+	}
+
+	publishAuditCityGuide(r, "PIN_VENUE_RECOMMENDATION", id, map[string]interface{}{
+		"city_guide_id": id,
+		"title":         pinned.Title,
+	})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(pinned)
+}
+
 func (h *CityGuideHandler) DeleteCityGuide(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var uuid pgtype.UUID
+	if err := uuid.Scan(id); err != nil {
+		http.Error(w, "ID City Guide tidak valid", http.StatusBadRequest)
+		return
+	}
+	cityGuide, err := h.queries.GetCityGuideByID(r.Context(), uuid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		http.Error(w, "City Guide tidak ditemukan", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Gagal memverifikasi City Guide", http.StatusInternalServerError)
+		return
+	}
+	if !cityGuideCanBeArchived(cityGuide) {
+		http.Error(w, "Rekomendasi utama Venue harus diganti sebelum City Guide ini diarsipkan", http.StatusConflict)
+		return
+	}
 	handleSoftDelete(w, r, h.queries, "city_guide", "City Guide")
 }

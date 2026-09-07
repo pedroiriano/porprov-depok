@@ -144,6 +144,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 
 			// Reverse Proxy ke Microservices
 			// Master Data Service melalui DNS dan port internal Docker.
+			r.With(jwtMid.RequireAnyRole("super_admin")).Put("/master-data/city-guides/{id}/venue-pin", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)
 			r.Handle("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)))
 			r.Handle("/master-data", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)))
 			r.Get("/master-data/deleted", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)

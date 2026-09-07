@@ -8,7 +8,7 @@ Dokumen ini mengikat semua agent AI/Codex saat membuat, mengubah, menguji, atau 
 - Kondisi implementasi aktual wajib dibaca dari `FEATURES.md`; jangan menganggap fitur planned sebagai tersedia atau fitur yang hanya compile sebagai final.
 - `RULES.md` adalah sumber normatif. `README.md`, `AI.md`, `AGENTS.md`, `FEATURES.md`, dan `DOCUMENTATION.md` wajib konsisten dengannya.
 - Setiap perubahan aturan atau standar wajib memperbarui semua Markdown root yang terdampak dalam pekerjaan yang sama.
-- Otoritas visual dipisahkan tegas: Public memakai Techwind 3.3.0 pada `theme-reference/HTML/Landing/dist/`; Admin menargetkan Cuba Admin Dashboard pada `theme-reference/Cuba/template/` setelah gate lisensi. Admin Techwind aktif adalah baseline transisi/rollback, bukan otoritas layar baru. Visual language ketiga dan pencampuran global style Techwind/Cuba dilarang.
+- Otoritas visual dipisahkan tegas: Public memakai Techwind 3.3.0 pada `theme-reference/HTML/Landing/dist/`; Admin mengikuti kontrak Cuba melalui implementasi clean-room tanpa source/aset vendor di repository publik. Admin Techwind aktif adalah baseline transisi/rollback, bukan otoritas layar baru. Visual language ketiga dan pencampuran global style Techwind/Cuba dilarang.
 
 ## 1. Keputusan Final Stack
 
@@ -43,7 +43,7 @@ porprov-xv/
 │   ├── HTML/
 │   │   ├── Landing/
 │   │   └── Dashboard/  # baseline Admin transisi
-│   └── Cuba/            # target setelah gate lisensi
+│   └── Cuba/            # tidak memuat source/aset premium pada repository publik
 │       └── template/
 ├── apps/
 │   ├── public-web-nextjs/
@@ -102,14 +102,15 @@ Agent wajib berhenti dan bertanya: **"Konfirmasi: lanjut ke Tahap X?"** setelah 
 | Area | Sumber Tema Wajib | Adaptasi PORPROV |
 |---|---|---|
 | Public Web | Techwind 3.3.0 `theme-reference/HTML/Landing/dist/` | Navigation, hero, event/feature sections, editorial, gallery, CTA, footer, LiveScore, venue, medali, berita, dan Depok Guide diimplementasikan ulang sebagai komponen Next.js PORPROV |
-| Admin Web | Cuba Admin Dashboard; target lokal `theme-reference/Cuba/template/` setelah gate lisensi | Application shell, sidebar, topbar, KPI, form, table, calendar, profile, gallery, dan workflow operator diimplementasikan ulang sebagai komponen React PORPROV |
+| Admin Web | Cuba Admin Dashboard; provenance pembelian tercatat privat | Application shell, sidebar, topbar, KPI, form, table, calendar, profile, gallery, dan workflow operator diimplementasikan clean-room sebagai komponen React PORPROV |
 | Mobile | Design tokens PORPROV dan pola tugas produk web terdekat | Adaptasi mobile-native menggunakan identitas PORPROV; dilarang membentuk tema ketiga |
 
 
 Aturan:
 - Techwind wajib untuk Public dan Cuba wajib untuk Admin. Admin Techwind yang berjalan dipertahankan sementara sebagai baseline transisi dan rollback sampai migrasi Cuba lulus parity.
 - Folder upstream `C:\Datas\Proyek\UI\techwind-pembelajaran\source` dan `C:\Datas\Proyek\UI\cuba-pembelajaran\template` hanya boleh dibaca. Build, Docker, test, dan runtime tidak boleh bergantung pada path luar root.
-- Penyalinan, commit, atau distribusi asset/vendor Cuba dilarang sampai bukti lisensi sah diverifikasi dan dicatat (`BLOCKED_LICENSE_EVIDENCE`). Setelah lulus, snapshot minimal diimpor ke root dengan versi/checksum dan dijaga read-only.
+- Pembelian satu lisensi Cuba untuk satu end product PORPROV telah diverifikasi dan dicatat tanpa purchase code. Karena repository GitHub bersifat publik, source/aset premium Cuba dilarang di-copy, commit, atau didistribusikan melalui repository.
+- Implementasi wajib clean-room berdasarkan kontrak visual repository tanpa menyalin aset/source vendor. Implementasi berada di balik `VITE_ADMIN_CUBA_PHASE_1`; lokal boleh aktif, production wajib tetap nonaktif sampai regression gate disetujui.
 - Source Gulp, demo JavaScript, brand, logo, demo copy, dan identitas vendor tidak boleh masuk runtime. “Sama persis” berarti fidelity anatomy, hierarchy, layout, spacing, density, responsive behavior, dan interaction pattern—bukan menyalin brand atau HTML mentah.
 - Dilarang memakai visual language ketiga atau mengimpor global CSS/JavaScript Techwind dan Cuba secara bersamaan.
 - Tailwind CSS v4.x adalah alat implementasi utility dan token, bukan tema alternatif. Library komponen hanya boleh dipakai untuk perilaku teknis dan harus dinormalisasi terhadap otoritas produk.
@@ -151,6 +152,7 @@ Sebuah UI hanya boleh disebut masterpiece bila memenuhi seluruh quality bar beri
 - Data lintas domain untuk layar publik wajib dipublikasikan sebagai read-model backend melalui API Gateway. Browser tidak boleh mengorkestrasi request langsung ke beberapa port service atau menampilkan UUID referensi sebagai informasi pengguna.
 - Pencarian City Guide publik wajib memakai URL state `q/category/page`, diproses server-side, mempertahankan filter pada pagination, dan membatasi `q` tunggal maksimal 80 karakter. Query database wajib parameterized, wildcard input diperlakukan literal, dan tombstone tidak boleh ikut dicari.
 - Daftar City Guide Admin wajib memakai pagination server-side dengan `page` minimal 1, `per_page` maksimal 100, metadata total stabil, serta tetap mengecualikan tombstone. Endpoint tanpa parameter pagination mempertahankan response array untuk kompatibilitas consumer publik.
+- Master Data hanya boleh memiliki satu City Guide aktif dengan `is_pinned_venue_recommendation=true`. Pergantian pin wajib atomik, ber-JWT, khusus `super_admin`, dan diaudit; default migrasi adalah record aktif `Department Sports Lab`. Record terpin tidak boleh diarsipkan sebelum pin dipindahkan. Detail Venue wajib menampilkan pin pada kategori miliknya walaupun di luar radius 15 km, tanpa menghasilkan lebih dari satu rekomendasi per kategori.
 - Gunakan PWA installable untuk kebutuhan "Chrome App".
 - Realtime publik dapat memakai WebSocket atau SSE sesuai kebutuhan.
 

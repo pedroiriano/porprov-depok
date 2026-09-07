@@ -22,6 +22,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useTheme } from './hooks/useTheme';
 import { canAccessRole, getRealmRoles } from './lib/auth';
+import { CubaAdminShell } from './components/cuba/CubaAdminShell';
 
 const adminAssetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
 
@@ -220,6 +221,9 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
 
 export default function App({ routerBasePath }: { routerBasePath?: string }) {
   const auth = useAuth();
+  // CHANGE: Flag build-time menjaga rollback instan ke shell Techwind. Cuba
+  // foundation aktif hanya pada environment yang menyetelnya secara eksplisit.
+  const cubaFoundationEnabled = import.meta.env.VITE_ADMIN_CUBA_PHASE_1 === 'true';
   
   if (auth.isLoading) {
     return <div className="flex min-h-dvh w-full items-center justify-center bg-slate-50 px-4 font-semibold text-indigo-600 dark:bg-slate-900 dark:text-indigo-300" role="status">Memuat autentikasi...</div>;
@@ -249,24 +253,38 @@ export default function App({ routerBasePath }: { routerBasePath?: string }) {
 
   return (
     <Router basename={routerBasePath}>
+      {cubaFoundationEnabled ? (
+        <CubaAdminShell auth={auth}>
+          <Suspense fallback={<div className="flex min-h-64 items-center justify-center" role="status"><span className="size-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-slate-700 dark:border-t-blue-400" aria-hidden="true" /><span className="sr-only">Memuat halaman Admin</span></div>}>
+            <AdminRoutes />
+          </Suspense>
+        </CubaAdminShell>
+      ) : (
       <AdminLayout auth={auth}>
         <Suspense fallback={<div className="flex min-h-64 items-center justify-center" role="status"><span className="size-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" aria-hidden="true" /><span className="sr-only">Memuat halaman Admin</span></div>}>
-          <Routes>
-          <Route path="/" element={<DashboardOverview />} />
-          <Route path="/master-data" element={<MasterData />} />
-          <Route path="/hero" element={<HeroManagement />} />
-          <Route path="/livescore" element={<LiveScoreCenter />} />
-          <Route path="/audit-log" element={<AuditLog />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/medals" element={<Medals />} />
-          <Route path="/city-guide" element={<CityGuide />} />
-          <Route path="/media" element={<MediaLibrary />} />
-          <Route path="/verifikasi" element={<Medals />} />
-          <Route path="/user-management" element={<UserManagement />} />
-          <Route path="*" element={<section className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"><h1 className="text-2xl font-black">Halaman tidak ditemukan</h1><p className="mt-2 text-slate-600 dark:text-slate-400">Kembali ke dashboard untuk melanjutkan pekerjaan.</p><Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-md bg-indigo-600 px-5 font-bold text-white hover:bg-indigo-700">Kembali ke Dashboard</Link></section>} />
-          </Routes>
+          <AdminRoutes />
         </Suspense>
       </AdminLayout>
+      )}
     </Router>
+  );
+}
+
+function AdminRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<DashboardOverview />} />
+      <Route path="/master-data" element={<MasterData />} />
+      <Route path="/hero" element={<HeroManagement />} />
+      <Route path="/livescore" element={<LiveScoreCenter />} />
+      <Route path="/audit-log" element={<AuditLog />} />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/medals" element={<Medals />} />
+      <Route path="/city-guide" element={<CityGuide />} />
+      <Route path="/media" element={<MediaLibrary />} />
+      <Route path="/verifikasi" element={<Medals />} />
+      <Route path="/user-management" element={<UserManagement />} />
+      <Route path="*" element={<section className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"><h1 className="text-2xl font-black">Halaman tidak ditemukan</h1><p className="mt-2 text-slate-600 dark:text-slate-400">Kembali ke dashboard untuk melanjutkan pekerjaan.</p><Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-md bg-indigo-600 px-5 font-bold text-white hover:bg-indigo-700">Kembali ke Dashboard</Link></section>} />
+    </Routes>
   );
 }

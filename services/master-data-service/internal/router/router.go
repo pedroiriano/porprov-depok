@@ -58,6 +58,7 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler 
 		r.Route("/city-guides", func(r chi.Router) {
 			r.Post("/", cityGuideHandler.CreateCityGuide)
 			r.Get("/", cityGuideHandler.ListCityGuides)
+			r.Put("/{id}/venue-pin", cityGuideHandler.PinCityGuideForVenues)
 			r.Get("/{id}", cityGuideHandler.GetCityGuide)
 			r.Put("/{id}", cityGuideHandler.UpdateCityGuide)
 			r.Delete("/{id}", cityGuideHandler.DeleteCityGuide)

@@ -4,7 +4,7 @@
 
 Portal PORPROV XV Jawa Barat 2026 adalah platform sports event berbasis web dan mobile yang menyediakan informasi PORPROV, cabor, jadwal, venue/maps, LiveScore realtime, standings medali, galeri, Depok Guide, backend admin, dan aplikasi koresponden.
 
-Konteks governance per 6 September 2026: runtime canonical tetap satu Docker Compose dari root. Techwind menjadi otoritas visual Public; Cuba menjadi target otoritas Admin. Admin Techwind aktif tidak dihapus dan tetap menjadi baseline transisi/rollback. Karena bukti lisensi vendor belum ditemukan, penyalinan asset serta implementasi Cuba berstatus `BLOCKED_LICENSE_EVIDENCE`. Batas fitur lain tetap mengikuti status aktual `FEATURES.md`.
+Konteks governance per 7 September 2026: runtime canonical tetap satu Docker Compose dari root. Techwind menjadi otoritas visual Public; kontrak visual Cuba menjadi target Admin. Bukti pembelian satu lisensi Cuba telah diverifikasi, tetapi repository GitHub bersifat publik sehingga implementasi tetap clean-room tanpa source/aset vendor. Fondasi tersedia di balik feature flag dan baseline Techwind tetap menjadi rollback. Batas fitur lain mengikuti status aktual `FEATURES.md`.
 
 ## 2. Stack Final
 
@@ -39,7 +39,7 @@ porprov-xv/
 │   ├── HTML/
 │   │   ├── Landing/
 │   │   └── Dashboard/  # baseline Admin transisi
-│   └── Cuba/            # target setelah gate lisensi
+│   └── Cuba/            # tidak memuat source/aset premium pada repository publik
 │       └── template/
 ├── apps/
 │   ├── public-web-nextjs/
@@ -87,12 +87,12 @@ porprov-xv/
 | Area | Sumber Tema Wajib | Adaptasi PORPROV |
 |---|---|---|
 | Public Web | Techwind 3.3.0 `theme-reference/HTML/Landing/dist/` | Navigasi, hero, event sections, editorial, gallery, CTA, auth, footer, dan penyajian informasi olahraga dipetakan ke komponen Next.js PORPROV |
-| Admin Web | Cuba Admin Dashboard; target `theme-reference/Cuba/template/` setelah gate lisensi | Application shell, sidebar, topbar, KPI, form, table, calendar, gallery, profile, dan workflow operator dipetakan ke komponen React PORPROV |
+| Admin Web | Cuba Admin Dashboard; provenance satu lisensi tercatat privat | Application shell, sidebar, topbar, KPI, form, table, calendar, gallery, profile, dan workflow operator dipetakan clean-room ke komponen React PORPROV |
 | Mobile | Design tokens PORPROV dan pola tugas produk web terdekat | Diadaptasi mobile-native; tidak membentuk visual language ketiga |
 
 Techwind 3.3.0 adalah otoritas visual Public dan Cuba Admin Dashboard adalah target otoritas visual Admin; keduanya bukan runtime atau brand aplikasi. HTML/CSS vendor hanya dibaca untuk structure, rhythm, component anatomy, responsive behavior, dan interaction pattern, lalu diimplementasikan ulang sebagai React/Next.js dengan design tokens, asset, serta copywriting resmi PORPROV. Visual language ketiga dilarang.
 
-Folder upstream `C:\Datas\Proyek\UI\techwind-pembelajaran\source` dan `C:\Datas\Proyek\UI\cuba-pembelajaran\template` bersifat read-only pada mesin pengembangan dan tidak boleh menjadi dependency build/runtime. Audit 6 September 2026 tidak menemukan bukti lisensi template yang dapat diverifikasi; karena itu penyalinan/redistribusi vendor serta implementasi Cuba diblokir. Setelah bukti lisensi tersedia, snapshot minimal diimpor ke root dengan versi/checksum dan dijaga read-only.
+Folder upstream `C:\Datas\Proyek\UI\techwind-pembelajaran\source` dan `C:\Datas\Proyek\UI\cuba-pembelajaran\template` bersifat read-only pada mesin pengembangan dan tidak boleh menjadi dependency build/runtime. Bukti pembelian satu lisensi Cuba diverifikasi 7 September 2026. Karena repository `pedroiriano/porprov-depok` publik, source/aset premium tidak boleh disalin ke root atau didistribusikan; implementasi menggunakan komponen clean-room melalui feature flag.
 
 Tailwind CSS v4.x dan library UI hanya berfungsi sebagai mesin implementasi. Komponen library wajib dinormalisasi mengikuti otoritas produk dan token PORPROV. Global CSS/JavaScript Techwind dan Cuba dilarang hidup bersama.
 
@@ -127,7 +127,7 @@ Baseline responsif 27 Juli 2026 memakai matriks 9 rute Public dan 10 rute Admin 
 - URL Media Library lama yang menunjuk port diagnostik `localhost:18xxx/uploads/*` dinormalisasi ke route `/uploads/*` API Gateway agar asset tetap dapat dibaca Public Web tanpa melanggar single-edge policy.
 - Detail Cabor canonical berada di `/cabor/[slug]` dan menggabungkan nomor tanding, venue, serta Jadwal aktif. UUID Cabor lama tetap diterima dan diarahkan permanen ke slug. Hero Image Cabor bersifat opsional, dipilih dari Media Library aktif melalui form Master Data, dirender utuh tanpa crop memakai lapisan `object-contain` di atas latar blur pengisi kanvas, serta kembali ke gradasi canonical saat kosong. Detail Venue canonical berada di `/venue/[slug]`; UUID tetap diterima dan diarahkan permanen ke slug agar tautan lama serta referensi Jadwal/LiveScore tetap kompatibel. Halaman Venue menggabungkan fasilitas, cabor, rute/koordinat, Jadwal aktif, serta maksimal delapan kartu tempat terdekat. Kartu dipilih satu per kelompok Tempat Menginap, Pusat Perbelanjaan, Wisata Kuliner, Coffee Shop, Catering, Travel & Transportasi, Rumah Sakit, dan Lainnya dalam radius maksimal 15 km dengan pemeringkatan jarak Haversine dari koordinat Venue. Venue tanpa rekomendasi relevan menampilkan empty state faktual; field kontak internal Venue tidak ditayangkan.
 - Setiap kartu tempat terdekat memuat foto Media Library bila tersedia, jarak, nama, alamat, dan tautan rute. Ketika foto lokasi belum tersedia, Public Web memakai aset Techwind representatif per kategori dan menandainya sebagai `Visual kategori`; visual fallback tidak boleh dianggap sebagai foto faktual lokasi.
-- City Guide menyimpan pasangan koordinat desimal `latitude`/`longitude` sebagai sumber kebenaran serta `map_route_url` opsional. Admin mendukung pagination server-side `page/per_page` (maksimal 100), CRUD, soft delete, lokasi perangkat, pratinjau rute, serta Media Selector. Form Catering/Info Travel memisahkan telepon, WhatsApp, email, website, media sosial, jenis/area/jam layanan, dan kisaran harga; Info Travel menambah `fleet_types` serta `fleet_count`. Tidak ada field screenshot eksternal.
+- City Guide menyimpan pasangan koordinat desimal `latitude`/`longitude` sebagai sumber kebenaran serta `map_route_url` opsional. Admin mendukung pagination server-side `page/per_page` (maksimal 100), CRUD, soft delete, lokasi perangkat, pratinjau rute, Media Selector, dan satu pin rekomendasi global seluruh Venue. Endpoint `PUT /master-data/city-guides/{id}/venue-pin` khusus `super_admin` mengganti pin secara transaksional serta menulis audit event; migrasi v12 memilih `Department Sports Lab` sebagai default. Form Catering/Info Travel memisahkan telepon, WhatsApp, email, website, media sosial, jenis/area/jam layanan, dan kisaran harga; Info Travel menambah `fleet_types` serta `fleet_count`. Tidak ada field screenshot eksternal.
 - Public `/city-guide` memakai form GET dan URL state `q`, `category`, serta `page`. Server Component meneruskan `q` tunggal maksimal 80 karakter melalui API Gateway; Master Data mencari case-insensitive pada judul, deskripsi, alamat, dan kategori memakai parameterized `ILIKE` dengan `%`, `_`, serta backslash di-escape sebagai literal. Kategori dan pagination diproses setelah hasil backend tanpa mengekspos tombstone. Pagination publik merender halaman pertama/terakhir dan rentang di sekitar halaman aktif agar tetap ringkas tanpa overflow pada mobile. Label form Admin memakai pasangan `htmlFor`/`id` stabil sehingga semua field City Guide mempunyai nama aksesibel.
 - Dataset City Guide resmi berisi 165 rekomendasi dari `Booklet PORPROV XV.pdf` halaman 21–32 dalam kategori Coffee Shop, Wisata Kuliner, Tempat Menginap, Wisata Buatan, Wisata Situ, Pusat Perbelanjaan, dan Rumah Sakit. Dataset kanonis, status verifikasi, catatan listing historis, serta prosedur upsert API idempoten didokumentasikan di `docs/data/CITY_GUIDE_BOOKLET_PORPROV_XV_2026.md`.
 - `GET /api/v1/schedule/matches/enriched` adalah kontrak read-model publik yang mengembalikan nama/ikon Cabor, Nomor Tanding, Peserta A/B terurut, Kontingen, Venue, waktu, ronde, dan status. Peserta memiliki `participant_type` (`individual`, `team`, `contingent`), `slot`, identitas yang relevan, serta `display_name`. Schedule Service melakukan batch query lalu mengambil referensi aktif dari Master Data/Venue; kegagalan dependency menghasilkan `503`, dan tombstone tidak pernah masuk projection.
@@ -140,9 +140,9 @@ Baseline responsif 27 Juli 2026 memakai matriks 9 rute Public dan 10 rute Admin 
 - KPI cards, realtime notification, queue panel, approval panel.
 - Data table besar dengan server-side pagination, filter, sort, search, export.
 - Role-based menu untuk SUPER_ADMIN, ADMIN_ORGANISASI, OPERATOR, VERIFIKATOR, PETUGAS_LAPANGAN, AUDITOR.
-- Target shell, sidebar/topbar, table, form, calendar, profile, gallery, dan feedback state mengikuti mapping Cuba pada `docs/uiux/ADMIN_CUBA_VISUAL_CONTRACT.md`. Sampai gate lisensi dan parity lulus, Admin Techwind aktif tetap dipertahankan sebagai baseline/rollback; Gulp/vendor JavaScript dan global CSS kedua template tidak boleh masuk bundle React.
+- Target shell, sidebar/topbar, table, form, calendar, profile, gallery, dan feedback state mengikuti mapping Cuba pada `docs/uiux/ADMIN_CUBA_VISUAL_CONTRACT.md`. Gate runtime v5.3 untuk shell clean-room dan route representatif `/user-management` telah lulus dengan pagination server-side, pencarian/sorting, modal, tema gelap, serta dirty-form recovery. Slice awal v5.4 menerapkan tab workspace Master Data yang mendukung keyboard dan pola header/loading/empty/error Cuba pada City Guide; pencarian City Guide memakai debounce serta proteksi respons usang tanpa mengubah kontrak API atau database. Route dan tabel/form domain lain tetap dimigrasikan per slice. Sampai parity dan regression gate penuh lulus, Admin Techwind dipertahankan sebagai baseline/rollback; Gulp/vendor JavaScript dan global CSS kedua template tidak boleh masuk bundle React.
 - Migrasi dilakukan di balik feature flag: tokens → shell → primitives → route representatif → visual/accessibility regression → route tersisa. Big-bang rewrite dilarang.
-- Tabel operasional memakai `AdminDataTable` React dengan sorting aksesibel, filter/search, rows 10/25/50/100, pagination server-side, selection/bulk action aman, dan state lengkap. Modal memakai portal, focus trap, inert background, scroll lock, dirty-form guard, serta close behavior yang aman.
+- Tabel operasional ditargetkan memakai `AdminDataTable` React dengan sorting aksesibel, filter/search, rows 10/25/50/100, pagination server-side, selection/bulk action aman, dan state lengkap. `/user-management` telah memenuhi kontrak pagination server-side melalui parameter `page`, `limit`, `q`, `sort`, dan `order`; request User Service tanpa parameter tetap mendapat array legacy untuk menjaga consumer lama. Modal bersama memiliki focus trap, inert background, scroll lock, return focus, submit lock, serta close behavior aman; dirty-form guard dan draft lokal telah diterapkan pada form pengguna.
 - Aksi delete harus diberi konfirmasi aksesibel, menjelaskan bahwa data masuk Recycle Bin/arsip, dan menyediakan restore sesuai permission.
 - LiveScore Center memakai private SSE bearer-token, menampilkan current/history, dan mengirim `expectedRevision` agar update operator yang stale menghasilkan `409`.
 - Susunan Peserta A/B dibuat atau diedit melalui Master Data → Jadwal Pertandingan. LiveScore Center membaca susunan tersebut, memberi label input skor sesuai nama peserta, dan mengunci submit bila dua sisi belum lengkap.
@@ -201,7 +201,7 @@ Public Web canonical tersedia di `http://localhost:3000` dari service `public-we
 
 ### 5.4 Admin Web
 
-Admin Web canonical tersedia di `http://localhost:5173` dari service `admin-web`. Jangan menjalankan Vite kedua pada port alternatif ketika full stack aktif.
+Admin Web canonical tersedia di `http://localhost:5173` dari service `admin-web`. Compose lokal mengaktifkan fondasi shell Cuba clean-room; production tetap memakai baseline Techwind sampai regression gate disetujui. Jangan menjalankan Vite kedua pada port alternatif ketika full stack aktif.
 
 Admin Web menggunakan variabel berikut:
 
@@ -210,6 +210,7 @@ Admin Web menggunakan variabel berikut:
 | `VITE_API_URL` | `http://localhost:8000/api/v1` | Satu-satunya entry point API browser |
 | `VITE_OIDC_AUTHORITY` | `http://localhost:8080/realms/porprov` | Authority Keycloak |
 | `VITE_OIDC_CLIENT_ID` | `porprov-admin-web` | Client OIDC Admin Web |
+| `VITE_ADMIN_CUBA_PHASE_1` | `false` (`true` pada overlay lokal) | Memilih shell clean-room Cuba; `false` adalah rollback Techwind |
 
 API Gateway/Realtime menggunakan variabel keamanan berikut:
 
@@ -563,7 +564,7 @@ Implementasi aktif memakai `deleted_by TEXT` karena identitas actor berasal dari
 
 | Database/service | Migration | Entity aktif |
 |---|---:|---|
-| `master_data_db` / Master Data | v11 | Cabor dengan UUID internal, slug publik, dan Hero Image Media Library opsional; Nomor Pertandingan, Kontingen, City Guide, Media, serta Hero dinamis |
+| `master_data_db` / Master Data | v12 | Cabor dengan UUID internal, slug publik, dan Hero Image Media Library opsional; City Guide dengan satu pin rekomendasi seluruh Venue; Nomor Pertandingan, Kontingen, Media, serta Hero dinamis |
 | `venue_db` / Venue | v3 | Venue dengan UUID internal dan slug publik unik |
 | `schedule_db` / Schedule | v5 | Jadwal/Match dan Peserta A/B bertipe Individu/Tim/Kontingen dengan slot serta soft replacement |
 | `livescore_db` / LiveScore | v1 | Revision append-only, current projection, transactional outbox |
@@ -598,7 +599,7 @@ Aturan integritas yang aktif:
 - Delete dan restore bersifat idempotent. Operasi yang benar-benar mengubah state menerbitkan event audit NATS berisi actor, reason/request ID, serta snapshot record/tombstone. Audit Service kini menyimpan event yang diterima secara immutable, tetapi publisher Master/Media/Venue/Jadwal masih best-effort dan belum memakai transactional outbox.
 - Kepemilikan serta kontrak Peserta A/B antara Master Data, Schedule, dan LiveScore dicatat pada `docs/adr/ADR-0006-schedule-participant-ownership.md`.
 
-Verifikasi baseline 14 Juli 2026 mencakup `go test ./...` pada Master Data, Venue, Schedule, dan API Gateway; lint dan production build Admin; Compose config/build; runtime test delete–invisibility–restore–dependency guard–media retention; serta migration state seluruhnya `dirty=false`. Target migration aktif adalah `master=11`, `venue=3`, dan `schedule=5`; hasil verifikasi aktual dicatat pada laporan pekerjaan. Keputusan soft delete dicatat pada ADR-0002; kompatibilitas slug/UUID Venue dan Cabor pada ADR-0011/ADR-0012; Hero Image Cabor pada ADR-0013.
+Verifikasi baseline 14 Juli 2026 mencakup `go test ./...` pada Master Data, Venue, Schedule, dan API Gateway; lint dan production build Admin; Compose config/build; runtime test delete–invisibility–restore–dependency guard–media retention; serta migration state seluruhnya `dirty=false`. Target source terbaru adalah `master=12`, `venue=3`, dan `schedule=5`. Migrasi Master Data v12 diaktifkan pada runtime lokal tanggal 7 September 2026 setelah backup ber-checksum, dengan tepat satu pin default `Department Sports Lab`; rebuild service terkait dan smoke end-to-end Public/Admin/API lulus tanpa perubahan jumlah row City Guide. Keputusan soft delete dicatat pada ADR-0002; kompatibilitas slug/UUID Venue dan Cabor pada ADR-0011/ADR-0012; Hero Image Cabor pada ADR-0013; pin rekomendasi Venue pada ADR-0017.
 
 ### 16.5 LiveScore, Medali, Transactional Outbox, dan Audit Immutable
 
@@ -684,8 +685,12 @@ smoke HTTPS untuk menghindari cache resolusi DNS Docker lama pada edge.
   dirty-form guard, dan mobile full-screen bila diperlukan.
 - Upload gambar memakai validasi server menyeluruh, lossless-first, hasil akhir
   maksimal 3 MiB, dan persetujuan eksplisit sebelum fallback lossy.
-- Draft memakai server draft + IndexedDB fallback dengan conflict `409`;
-  revision history immutable dan restore selalu membuat revision baru.
+- Target final draft memakai server draft + IndexedDB fallback dengan conflict `409`.
+  Implementasi awal form pengguna saat ini memakai IndexedDB per OIDC subject,
+  retensi maksimal 7 hari, restore/discard, status autosave, dan unload guard;
+  password, token, serta credential lain tidak pernah disimpan. Server draft dan
+  conflict resolution belum diterapkan karena memerlukan kontrak backend tahap
+  berikutnya. Revision history immutable dan restore selalu membuat revision baru.
 - Security memakai least privilege, object-level authorization, threat model
   untuk fitur berisiko, sanitasi/validation, audit aman, dan dependency pinned.
 - Target Public p75 adalah LCP ≤2,5 detik, INP ≤200 ms, CLS ≤0,1. Reliability

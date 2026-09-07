@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useModalDialog } from '../hooks/useModalDialog';
 
 interface ModalProps {
   isOpen: boolean;
@@ -8,36 +9,32 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl';
+  description?: string;
+  closeDisabled?: boolean;
+  initialFocusRef?: RefObject<HTMLElement | null>;
 }
 
-export default function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: ModalProps) {
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  maxWidth = 'md',
+  description,
+  closeDisabled = false,
+  initialFocusRef,
+}: ModalProps) {
   const [mounted, setMounted] = useState(false);
+  const { dialogRef, titleId, descriptionId, requestClose } = useModalDialog({
+    isOpen: isOpen && mounted,
+    onClose,
+    closeDisabled,
+    initialFocusRef,
+  });
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
-
-  // ACCESSIBILITY: Tutup modal saat tekan Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
 
   if (!isOpen || !mounted) return null;
 
@@ -55,28 +52,35 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'md
   }[maxWidth];
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-2 backdrop-blur-sm sm:p-6">
-      {/* Click outside backdrop */}
-      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
-      
-      <div 
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-6"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) requestClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
-        className={`relative z-10 flex max-h-[calc(100dvh-1rem)] w-full flex-col rounded-xl border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-slate-900 ${maxWidthClass}`}
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
+        tabIndex={-1}
+        className={`relative flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[88dvh] dark:border-slate-700 dark:bg-slate-900 ${maxWidthClass}`}
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 p-4 sm:p-6 dark:border-gray-800">
-          <h3 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
-            {title}
-          </h3>
+          <div>
+            <h3 id={titleId} className="text-lg font-black text-slate-900 dark:text-white">{title}</h3>
+            {description && <p id={descriptionId} className="mt-1 text-sm text-slate-500 dark:text-slate-300">{description}</p>}
+          </div>
           <button 
             type="button"
-            onClick={onClose} 
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            onClick={requestClose}
+            disabled={closeDisabled}
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-slate-100"
           >
             <span className="sr-only">Tutup</span>
-            <X className="w-5 h-5" />
+            <X className="size-5" aria-hidden="true" />
           </button>
         </div>
         

@@ -2,17 +2,69 @@ package router
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/base64"
+	"encoding/json"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/cors"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/porprov-xv/porprov-depok/services/api-gateway/internal/config"
 	customMiddleware "github.com/porprov-xv/porprov-depok/services/api-gateway/internal/middleware"
 )
+
+func testJWTMiddleware(t *testing.T) (*customMiddleware.JWTMiddleware, *rsa.PrivateKey, string) {
+	t.Helper()
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("rsa.GenerateKey() error = %v", err)
+	}
+	issuer := "https://identity.example.test/realms/porprov"
+	jwksServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"keys": []map[string]string{{
+				"kty": "RSA",
+				"kid": "test-key",
+				"use": "sig",
+				"alg": "RS256",
+				"n":   base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.N.Bytes()),
+				"e":   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(privateKey.PublicKey.E)).Bytes()),
+			}},
+		})
+	}))
+	t.Cleanup(jwksServer.Close)
+	middleware, err := customMiddleware.NewJWTMiddleware(jwksServer.URL, issuer, []string{"porprov-admin-web"})
+	if err != nil {
+		t.Fatalf("NewJWTMiddleware() error = %v", err)
+	}
+	return middleware, privateKey, issuer
+}
+
+func signedTestToken(t *testing.T, privateKey *rsa.PrivateKey, issuer, role string) string {
+	t.Helper()
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"iss": issuer,
+		"sub": "operator-id",
+		"azp": "porprov-admin-web",
+		"exp": time.Now().Add(time.Hour).Unix(),
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{role},
+		},
+	})
+	token.Header["kid"] = "test-key"
+	signed, err := token.SignedString(privateKey)
+	if err != nil {
+		t.Fatalf("SignedString() error = %v", err)
+	}
+	return signed
+}
 
 func TestSetupProxyPreservesTargetBasePath(t *testing.T) {
 	t.Parallel()
@@ -34,6 +86,30 @@ func TestSetupProxyPreservesTargetBasePath(t *testing.T) {
 	}
 	if receivedPath != "/api/v1/cabors" {
 		t.Fatalf("expected upstream path /api/v1/cabors, got %q", receivedPath)
+	}
+}
+
+func TestSetupProxyPreservesPaginationQuery(t *testing.T) {
+	t.Parallel()
+
+	var receivedQuery string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, `{"data":[],"pagination":{"page":2,"limit":25,"total":0,"total_pages":1}}`)
+	}))
+	defer upstream.Close()
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/users?page=2&limit=25&q=depok&sort=username&order=asc", nil)
+	response := httptest.NewRecorder()
+	setupProxy(upstream.URL).ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", response.Code)
+	}
+	want := "page=2&limit=25&q=depok&sort=username&order=asc"
+	if receivedQuery != want {
+		t.Fatalf("expected upstream query %q, got %q", want, receivedQuery)
 	}
 }
 
@@ -62,6 +138,47 @@ func TestSetupProxyForwardsTrustedActorAndRejectsSpoofedActor(t *testing.T) {
 	}
 	if receivedIP == "203.0.113.250" || receivedIP == "" {
 		t.Fatalf("expected socket-derived actor IP, got %q", receivedIP)
+	}
+}
+
+func TestVenuePinRouteRequiresSuperAdmin(t *testing.T) {
+	jwtMiddleware, privateKey, issuer := testJWTMiddleware(t)
+	upstreamCalls := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upstreamCalls++
+		if r.URL.Path != "/city-guides/c9ba7575-956d-47c7-a502-78e55507ce97/venue-pin" {
+			t.Fatalf("unexpected upstream path %q", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer upstream.Close()
+	cfg := &config.AppConfig{
+		MasterDataURL: upstream.URL,
+		UserURL:       upstream.URL,
+		ScheduleURL:   upstream.URL,
+		VenueURL:      upstream.URL,
+		AuditURL:      upstream.URL,
+		LivescoreURL:  upstream.URL,
+		MedalsURL:     upstream.URL,
+		RealtimeURL:   upstream.URL,
+	}
+	router := SetupRouter(jwtMiddleware, cfg)
+	path := "/api/v1/master-data/city-guides/c9ba7575-956d-47c7-a502-78e55507ce97/venue-pin"
+
+	denied := httptest.NewRequest(http.MethodPut, path, nil)
+	denied.Header.Set("Authorization", "Bearer "+signedTestToken(t, privateKey, issuer, "auditor"))
+	deniedResponse := httptest.NewRecorder()
+	router.ServeHTTP(deniedResponse, denied)
+	if deniedResponse.Code != http.StatusForbidden || upstreamCalls != 0 {
+		t.Fatalf("auditor status/upstream calls = %d/%d, want 403/0", deniedResponse.Code, upstreamCalls)
+	}
+
+	allowed := httptest.NewRequest(http.MethodPut, path, nil)
+	allowed.Header.Set("Authorization", "Bearer "+signedTestToken(t, privateKey, issuer, "super_admin"))
+	allowedResponse := httptest.NewRecorder()
+	router.ServeHTTP(allowedResponse, allowed)
+	if allowedResponse.Code != http.StatusNoContent || upstreamCalls != 1 {
+		t.Fatalf("super_admin status/upstream calls = %d/%d, want 204/1", allowedResponse.Code, upstreamCalls)
 	}
 }
 

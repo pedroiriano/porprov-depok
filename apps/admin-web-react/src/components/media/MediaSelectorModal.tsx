@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image as ImageIcon, Loader2, Upload, X } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Search, Upload } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
+import Modal from '../Modal';
+import { RowsPerPageSelector, TablePagination } from '../common/TableControls';
+import { AdminMediaGrid } from '../cuba/AdminMediaGrid';
+import { AdminAlert, AdminEmptyState, AdminLoadingState } from '../cuba/AdminPrimitives';
+import { usePagination, useTableControls } from '../../hooks/useTableControls';
 import {
   apiClient,
   authConfig,
   getApiErrorMessage,
   normalizeStoredMediaUrl,
-  resolveMediaUrl,
   unwrapApiData,
 } from '../../lib/api';
 import type { MediaAsset } from '../../types/master-data';
@@ -26,9 +29,15 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
   const auth = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const [mounted, setMounted] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const {
+    currentPage,
+    rowsPerPage,
+    setCurrentPage,
+    setRowsPerPage,
+    resetPage,
+  } = useTableControls<'file_name'>({ rowsPerPage: 25 });
 
   const mediaQuery = useQuery({
     queryKey: ['media-assets'],
@@ -52,29 +61,8 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
       setUploadError('');
       await queryClient.invalidateQueries({ queryKey: ['media-assets'] });
     },
-    onError: (error) => {
-      setUploadError(getApiErrorMessage(error, 'Gagal mengunggah gambar.'));
-    },
+    onError: (error) => setUploadError(getApiErrorMessage(error, 'Gagal mengunggah gambar.')),
   });
-
-  useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    closeButtonRef.current?.focus();
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !uploadMutation.isPending) onClose();
-    };
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen, onClose, uploadMutation.isPending]);
 
   const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -94,109 +82,89 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
     uploadMutation.mutate(file);
   };
 
-  if (!isOpen || !mounted) return null;
+  const media = useMemo(() => mediaQuery.data ?? [], [mediaQuery.data]);
+  const filteredMedia = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase('id-ID');
+    if (!query) return media;
+    return media.filter((item) => item.file_name.toLocaleLowerCase('id-ID').includes(query));
+  }, [media, searchQuery]);
+  const pagination = usePagination(filteredMedia, currentPage, rowsPerPage);
 
-  const media = mediaQuery.data ?? [];
-  const modalContent = (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4">
-      <button
-        type="button"
-        aria-label="Tutup pemilih media"
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
+  useEffect(() => resetPage(), [resetPage, searchQuery]);
 
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="media-selector-title"
-        className="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl sm:max-h-[85vh] dark:bg-slate-800"
-      >
-        <header className="flex items-start justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-3 sm:items-center sm:gap-4 sm:px-6 sm:py-4 dark:border-slate-700 dark:bg-slate-800/80">
-          <div>
-            <h2 id="media-selector-title" className="text-xl font-bold text-slate-800 dark:text-white">Pilih Media</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pilih gambar yang sudah ada atau unggah gambar baru.</p>
-          </div>
-          <div className="flex items-center gap-2">
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Pilih Media"
+      description="Gunakan gambar aktif dari Media Library atau unggah gambar baru."
+      maxWidth="4xl"
+      closeDisabled={uploadMutation.isPending}
+    >
+      <div className="space-y-4 p-4 sm:p-6">
+        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 lg:flex-row lg:items-center lg:justify-between dark:border-slate-700 dark:bg-slate-800/50">
+          <label className="relative block min-w-0 flex-1">
+            <span className="sr-only">Cari media</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={handleUpload}
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Cari nama file..."
+              className="min-h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
             />
+          </label>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <RowsPerPageSelector value={rowsPerPage} onChange={setRowsPerPage} />
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleUpload} />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadMutation.isPending}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-indigo-100 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-200 disabled:opacity-50 dark:bg-indigo-500/20 dark:text-indigo-300"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {uploadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              <span className="hidden sm:inline">Unggah Baru</span>
-            </button>
-            <button
-              ref={closeButtonRef}
-              type="button"
-              onClick={onClose}
-              aria-label="Tutup"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              <X className="h-6 w-6" />
+              {uploadMutation.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
+              {uploadMutation.isPending ? 'Mengunggah...' : 'Unggah Baru'}
             </button>
           </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {(uploadError || mediaQuery.error) && (
-            <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
-              {uploadError || getApiErrorMessage(mediaQuery.error, 'Gagal memuat Media Library.')}
-            </div>
-          )}
-
-          {mediaQuery.isLoading ? (
-            <div className="flex min-h-64 items-center justify-center" aria-live="polite">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-              <span className="sr-only">Memuat media</span>
-            </div>
-          ) : media.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4">
-              {media.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    onSelect(normalizeStoredMediaUrl(item.file_url));
-                    onClose();
-                  }}
-                  className="group overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-left shadow-sm transition-all hover:ring-2 hover:ring-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 dark:border-slate-700 dark:bg-slate-900"
-                >
-                  <span className="relative flex aspect-square items-center justify-center overflow-hidden">
-                    {item.mime_type?.startsWith('image/') ? (
-                      <img
-                        src={resolveMediaUrl(item.file_url)}
-                        alt=""
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : (
-                      <ImageIcon className="h-10 w-10 text-slate-400" />
-                    )}
-                  </span>
-                  <span className="block truncate px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
-                    {item.file_name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="py-12 text-center text-slate-500 dark:text-slate-400">
-              <ImageIcon className="mx-auto mb-3 h-12 w-12 opacity-50" />
-              <p>Belum ada gambar. Unggah gambar pertama untuk melanjutkan.</p>
-            </div>
-          )}
         </div>
-      </section>
-    </div>
-  );
 
-  return createPortal(modalContent, document.body);
+        <p className="text-xs text-slate-500 dark:text-slate-300">JPG, PNG, atau WebP · maksimal 10 MB per file.</p>
+        {uploadError && <AdminAlert>{uploadError}</AdminAlert>}
+
+        {mediaQuery.isLoading ? (
+          <AdminLoadingState label="Memuat Media Library..." />
+        ) : mediaQuery.isError ? (
+          <AdminAlert>{getApiErrorMessage(mediaQuery.error, 'Gagal memuat Media Library.')}</AdminAlert>
+        ) : filteredMedia.length > 0 ? (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="p-3 sm:p-4">
+              <AdminMediaGrid
+                items={pagination.paginatedData}
+                onSelect={(item) => {
+                  onSelect(normalizeStoredMediaUrl(item.file_url));
+                  onClose();
+                }}
+              />
+            </div>
+            <TablePagination
+              startItem={pagination.startItem}
+              endItem={pagination.endItem}
+              totalItems={pagination.totalItems}
+              currentPage={pagination.safePage}
+              totalPages={pagination.totalPages}
+              onPageChange={setCurrentPage}
+              itemLabel="media"
+            />
+          </div>
+        ) : (
+          <AdminEmptyState
+            icon={ImageIcon}
+            title={media.length === 0 ? 'Belum ada media' : 'Media tidak ditemukan'}
+            description={media.length === 0 ? 'Unggah gambar pertama untuk melanjutkan.' : 'Coba kata kunci nama file yang berbeda.'}
+          />
+        )}
+      </div>
+    </Modal>
+  );
 }

@@ -6,7 +6,7 @@ Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Porta
 
 > **Kontrak peserta aktif:** Master Data memiliki referensi Kontingen; Schedule memiliki susunan Peserta A/B dengan satu jenis yang sama—Individu, Tim, atau Kontingen; LiveScore hanya memiliki revisi skor/status untuk match tersebut. Form peserta berada pada Jadwal Pertandingan dan penggantian susunan lama selalu soft delete.
 
-> **Kontrak lokasi City Guide:** Master Data menyimpan latitude dan longitude desimal sebagai pasangan wajib untuk create/update. Latitude harus `-90..90`, longitude `-180..180`. `map_route_url` opsional hanya boleh berisi URL HTTPS resmi Google Maps; consumer memprioritaskan URL valid tersebut dan menggunakan koordinat sebagai fallback saat kosong. Pencarian publik memakai `q` tunggal maksimal 80 karakter; Admin memakai pagination server-side maksimal 100 baris. Catering/Info Travel memakai kontak dan layanan terstruktur, Info Travel wajib memiliki jenis/jumlah armada, dan gambar hanya berasal dari Media Library tanpa field screenshot eksternal.
+> **Kontrak lokasi City Guide:** Master Data menyimpan latitude dan longitude desimal sebagai pasangan wajib untuk create/update. Latitude harus `-90..90`, longitude `-180..180`. `map_route_url` opsional hanya boleh berisi URL HTTPS resmi Google Maps; consumer memprioritaskan URL valid tersebut dan menggunakan koordinat sebagai fallback saat kosong. Pencarian publik memakai `q` tunggal maksimal 80 karakter; Admin memakai pagination server-side maksimal 100 baris. Tepat satu City Guide aktif dapat dipin sebagai rekomendasi utama seluruh Venue; default migrasi adalah `Department Sports Lab`, pergantian pin hanya untuk `super_admin`, dan record terpin harus diganti sebelum diarsipkan. Catering/Info Travel memakai kontak dan layanan terstruktur, Info Travel wajib memiliki jenis/jumlah armada, dan gambar hanya berasal dari Media Library tanpa field screenshot eksternal.
 
 > **Kontrak Hero Landing Page:** Master Data memiliki judul, teks sorotan opsional, isi, gambar Media Library, dan status aktif Hero. Hanya satu record aktif boleh ditayangkan; Public Web membacanya melalui API Gateway dengan fallback canonical saat dependency belum siap. Semua mutasi wajib JWT/audit dan delete Hero memakai soft delete serta Recycle Bin.
 
@@ -61,13 +61,13 @@ Jika dokumen referensi belum tersedia, agent wajib melaporkan gap tersebut, tida
 | Area | Sumber Tema Wajib | Adaptasi PORPROV |
 |---|---|---|
 | Public Web | Techwind 3.3.0 `theme-reference/HTML/Landing/dist/`: navigation, hero, section rhythm, cards, editorial, event, gallery, CTA, footer | Diubah menjadi pengalaman PORPROV yang orisinal, energik, SEO-ready, realtime, dan beridentitas Kota Depok |
-| Admin Web | Cuba Admin Dashboard; target snapshot lokal `theme-reference/Cuba/template/` setelah gate lisensi | Diubah menjadi workspace operator olahraga yang padat, cepat, role-aware, audit-friendly, dan aksesibel; Admin Techwind aktif tetap baseline transisi/rollback |
+| Admin Web | Cuba Admin Dashboard; provenance pembelian tercatat tanpa source vendor di repository publik | Diubah menjadi workspace operator olahraga yang padat, cepat, role-aware, audit-friendly, dan aksesibel melalui komponen clean-room; Admin Techwind aktif tetap baseline transisi/rollback |
 | Mobile | Design tokens PORPROV dan pola tugas dari produk web terdekat | Diadaptasi mobile-native; dilarang membuat tema ketiga |
 
 ### Standar “Masterpiece” PORPROV
 
 - Techwind adalah otoritas komposisi/interaksi Public; Cuba adalah otoritas komposisi/interaksi Admin. Keduanya bukan runtime mentah atau brand aplikasi.
-- Path upstream `C:\Datas\Proyek\UI\techwind-pembelajaran\source` dan `C:\Datas\Proyek\UI\cuba-pembelajaran\template` bersifat read-only dan tidak boleh menjadi dependency build/runtime. Penyalinan vendor Cuba dilarang sampai bukti lisensi diverifikasi (`BLOCKED_LICENSE_EVIDENCE`).
+- Path upstream `C:\Datas\Proyek\UI\techwind-pembelajaran\source` dan `C:\Datas\Proyek\UI\cuba-pembelajaran\template` bersifat read-only dan tidak boleh menjadi dependency build/runtime. Pembelian satu lisensi Cuba telah dibuktikan, tetapi source/aset vendor tetap dilarang masuk repository GitHub publik karena tidak boleh didistribusikan. Implementasi wajib clean-room, tanpa aset/source vendor, dan feature-flagged.
 - Implementasi wajib menggunakan komponen React/Next.js dan token PORPROV; source Gulp/HTML tema tidak menjadi runtime aplikasi.
 - Dilarang mencampur global CSS/JavaScript Techwind dan Cuba atau mengambil visual language ketiga. Tailwind CSS dan library komponen hanya alat implementasi perilaku teknis.
 - Setiap layar wajib mempunyai hierarki visual yang jelas, state loading/empty/error/success, responsif mobile-first, navigasi keyboard, focus state, kontras WCAG 2.2 AA, dan motion yang menghormati `prefers-reduced-motion`.

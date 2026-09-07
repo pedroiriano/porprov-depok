@@ -11,6 +11,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countUsersPage = `-- name: CountUsersPage :one
+SELECT COUNT(*)
+FROM users
+WHERE deleted_at IS NULL
+  AND (
+    $1::text = ''
+    OR username ILIKE '%' || $1::text || '%'
+    OR email ILIKE '%' || $1::text || '%'
+    OR COALESCE(full_name, '') ILIKE '%' || $1::text || '%'
+    OR role ILIKE '%' || $1::text || '%'
+  )
+`
+
+func (q *Queries) CountUsersPage(ctx context.Context, search string) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersPage, search)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
   keycloak_id, username, email, full_name, role
@@ -56,19 +76,19 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 const deleteUser = `-- name: DeleteUser :exec
 UPDATE users
 SET deleted_at = NOW(),
-    deleted_by = $2::text,
-    delete_reason = COALESCE(NULLIF($3::text, ''), delete_reason)
-WHERE id = $1
+    deleted_by = $1::varchar,
+    delete_reason = COALESCE(NULLIF($2::text, ''), delete_reason)
+WHERE id = $3
 `
 
 type DeleteUserParams struct {
-	ID           pgtype.UUID `json:"id"`
 	DeletedBy    string      `json:"deleted_by"`
 	DeleteReason string      `json:"delete_reason"`
+	ID           pgtype.UUID `json:"id"`
 }
 
 func (q *Queries) DeleteUser(ctx context.Context, arg DeleteUserParams) error {
-	_, err := q.db.Exec(ctx, deleteUser, arg.ID, arg.DeletedBy, arg.DeleteReason)
+	_, err := q.db.Exec(ctx, deleteUser, arg.DeletedBy, arg.DeleteReason, arg.ID)
 	return err
 }
 
@@ -158,33 +178,106 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const listUsersPage = `-- name: ListUsersPage :many
+SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason
+FROM users
+WHERE deleted_at IS NULL
+  AND (
+    $1::text = ''
+    OR username ILIKE '%' || $1::text || '%'
+    OR email ILIKE '%' || $1::text || '%'
+    OR COALESCE(full_name, '') ILIKE '%' || $1::text || '%'
+    OR role ILIKE '%' || $1::text || '%'
+  )
+ORDER BY
+  CASE WHEN $2::text = 'username' AND $3::text = 'asc' THEN LOWER(username) END ASC,
+  CASE WHEN $2::text = 'username' AND $3::text = 'desc' THEN LOWER(username) END DESC,
+  CASE WHEN $2::text = 'full_name' AND $3::text = 'asc' THEN LOWER(COALESCE(full_name, '')) END ASC,
+  CASE WHEN $2::text = 'full_name' AND $3::text = 'desc' THEN LOWER(COALESCE(full_name, '')) END DESC,
+  CASE WHEN $2::text = 'email' AND $3::text = 'asc' THEN LOWER(email) END ASC,
+  CASE WHEN $2::text = 'email' AND $3::text = 'desc' THEN LOWER(email) END DESC,
+  CASE WHEN $2::text = 'role' AND $3::text = 'asc' THEN LOWER(role) END ASC,
+  CASE WHEN $2::text = 'role' AND $3::text = 'desc' THEN LOWER(role) END DESC,
+  CASE WHEN $2::text = 'created_at' AND $3::text = 'asc' THEN created_at END ASC,
+  CASE WHEN $2::text = 'created_at' AND $3::text = 'desc' THEN created_at END DESC,
+  id ASC
+LIMIT $5::integer
+OFFSET $4::integer
+`
+
+type ListUsersPageParams struct {
+	Search     string `json:"search"`
+	SortBy     string `json:"sort_by"`
+	SortOrder  string `json:"sort_order"`
+	PageOffset int32  `json:"page_offset"`
+	PageLimit  int32  `json:"page_limit"`
+}
+
+func (q *Queries) ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, listUsersPage,
+		arg.Search,
+		arg.SortBy,
+		arg.SortOrder,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.KeycloakID,
+			&i.Username,
+			&i.Email,
+			&i.FullName,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET 
-  username = COALESCE(NULLIF($2::text, ''), username),
-  email = COALESCE(NULLIF($3::text, ''), email),
-  full_name = COALESCE(NULLIF($4::text, ''), full_name),
-  role = COALESCE(NULLIF($5::text, ''), role),
+  username = COALESCE(NULLIF($1::text, ''), username),
+  email = COALESCE(NULLIF($2::text, ''), email),
+  full_name = COALESCE(NULLIF($3::text, ''), full_name),
+  role = COALESCE(NULLIF($4::text, ''), role),
   updated_at = NOW()
-WHERE id = $1 AND deleted_at IS NULL
+WHERE id = $5 AND deleted_at IS NULL
 RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason
 `
 
 type UpdateUserParams struct {
-	ID       pgtype.UUID `json:"id"`
 	Username string      `json:"username"`
 	Email    string      `json:"email"`
 	FullName string      `json:"full_name"`
 	Role     string      `json:"role"`
+	ID       pgtype.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, updateUser,
-		arg.ID,
 		arg.Username,
 		arg.Email,
 		arg.FullName,
 		arg.Role,
+		arg.ID,
 	)
 	var i User
 	err := row.Scan(

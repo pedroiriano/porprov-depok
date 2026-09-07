@@ -1,10 +1,40 @@
 package handler
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/porprov-xv/porprov-depok/services/master-data-service/internal/db"
 )
+
+type cityGuidePinQueriesStub struct {
+	guide    db.CityGuide
+	getErr   error
+	clearErr error
+	pinErr   error
+	calls    []string
+}
+
+func (s *cityGuidePinQueriesStub) GetCityGuideByID(context.Context, pgtype.UUID) (db.CityGuide, error) {
+	s.calls = append(s.calls, "get")
+	return s.guide, s.getErr
+}
+
+func (s *cityGuidePinQueriesStub) ClearPinnedCityGuideForVenues(context.Context) error {
+	s.calls = append(s.calls, "clear")
+	return s.clearErr
+}
+
+func (s *cityGuidePinQueriesStub) PinCityGuideForVenues(context.Context, pgtype.UUID) (db.CityGuide, error) {
+	s.calls = append(s.calls, "pin")
+	return s.guide, s.pinErr
+}
 
 func floatPointer(value float64) *float64 {
 	return &value
@@ -157,5 +187,64 @@ func TestEscapeLikePatternTreatsWildcardsAsLiterals(t *testing.T) {
 	want := `50\%\_promo\\depok`
 	if got := escapeLikePattern(input); got != want {
 		t.Fatalf("escapeLikePattern(%q) = %q, want %q", input, got, want)
+	}
+}
+
+func TestBuildCityGuideAuditEventUsesCanonicalIdentityAndTracing(t *testing.T) {
+	request := httptest.NewRequest("PUT", "/api/v1/master-data/city-guide/guide-id/venue-pin", nil)
+	request.Header.Set("X-Actor-ID", "actor-id")
+	request.Header.Set("X-Request-ID", "request-id")
+	request.Header.Set("X-Actor-IP", "127.0.0.1")
+
+	event := buildCityGuideAuditEvent(request, "PIN_VENUE_RECOMMENDATION", "guide-id", map[string]string{"title": "Department Sports Lab"})
+	if event.Actor != "actor-id" || event.RequestID != "request-id" || event.IPAddress != "127.0.0.1" {
+		t.Fatalf("canonical audit context was not preserved: %#v", event)
+	}
+	encoded, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	if strings.Contains(string(encoded), `"actor_id"`) || strings.Contains(string(encoded), `"request_id"`) {
+		t.Fatalf("legacy audit keys must not be emitted: %s", encoded)
+	}
+}
+
+func TestCityGuideCanBeArchivedRejectsPinnedRecommendation(t *testing.T) {
+	if cityGuideCanBeArchived(db.CityGuide{IsPinnedVenueRecommendation: true}) {
+		t.Fatal("pinned venue recommendation must not be archived")
+	}
+	if !cityGuideCanBeArchived(db.CityGuide{}) {
+		t.Fatal("un-pinned City Guide should remain archivable")
+	}
+}
+
+func TestReplacePinnedCityGuideUsesAtomicMutationOrder(t *testing.T) {
+	queries := &cityGuidePinQueriesStub{guide: db.CityGuide{Title: "Department Sports Lab"}}
+	var id pgtype.UUID
+	if err := id.Scan("c9ba7575-956d-47c7-a502-78e55507ce97"); err != nil {
+		t.Fatal(err)
+	}
+
+	pinned, err := replacePinnedCityGuide(context.Background(), queries, id)
+	if err != nil {
+		t.Fatalf("replacePinnedCityGuide() error = %v", err)
+	}
+	if pinned.Title != "Department Sports Lab" || strings.Join(queries.calls, ",") != "get,clear,pin" {
+		t.Fatalf("unexpected pin result or mutation order: pinned=%#v calls=%v", pinned, queries.calls)
+	}
+}
+
+func TestReplacePinnedCityGuideStopsBeforePinWhenClearFails(t *testing.T) {
+	queries := &cityGuidePinQueriesStub{clearErr: errors.New("clear failed")}
+	var id pgtype.UUID
+	if err := id.Scan("c9ba7575-956d-47c7-a502-78e55507ce97"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := replacePinnedCityGuide(context.Background(), queries, id); err == nil {
+		t.Fatal("replacePinnedCityGuide() expected clear error")
+	}
+	if strings.Join(queries.calls, ",") != "get,clear" {
+		t.Fatalf("pin must not run after clear failure: calls=%v", queries.calls)
 	}
 }

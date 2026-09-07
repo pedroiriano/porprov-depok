@@ -85,6 +85,8 @@ services:
         VITE_API_URL: /api/v1
         VITE_OIDC_AUTHORITY: https://porprov.depok.go.id/realms/porprov
         VITE_BASE_PATH: ${VITE_BASE_PATH:-/admin/}
+        # SECURITY: Rollout production tetap off sampai regression gate disetujui.
+        VITE_ADMIN_CUBA_PHASE_1: "false"
 
   keycloak:
     mem_limit: 2g

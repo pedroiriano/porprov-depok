@@ -40,7 +40,7 @@ func main() {
 
 	// INFO: Initialize Handlers
 	masterDataHandler := handler.NewMasterDataHandler(queries, cfg.ScheduleURL)
-	cityGuideHandler := handler.NewCityGuideHandler(queries)
+	cityGuideHandler := handler.NewCityGuideHandler(queries, conn)
 	heroHandler := handler.NewHeroHandler(queries)
 
 	// INFO: Setup Chi Router
