@@ -140,9 +140,9 @@ Baseline responsif 27 Juli 2026 memakai matriks 9 rute Public dan 10 rute Admin 
 - KPI cards, realtime notification, queue panel, approval panel.
 - Data table besar dengan server-side pagination, filter, sort, search, export.
 - Role-based menu untuk SUPER_ADMIN, ADMIN_ORGANISASI, OPERATOR, VERIFIKATOR, PETUGAS_LAPANGAN, AUDITOR.
-- Target shell, sidebar/topbar, table, form, calendar, profile, gallery, dan feedback state mengikuti mapping Cuba pada `docs/uiux/ADMIN_CUBA_VISUAL_CONTRACT.md`. Gate runtime v5.3 untuk shell clean-room dan route representatif `/user-management` telah lulus dengan pagination server-side, pencarian/sorting, modal, tema gelap, serta dirty-form recovery. Slice awal v5.4 menerapkan tab workspace Master Data yang mendukung keyboard dan pola header/loading/empty/error Cuba pada City Guide; pencarian City Guide memakai debounce serta proteksi respons usang tanpa mengubah kontrak API atau database. Route dan tabel/form domain lain tetap dimigrasikan per slice. Sampai parity dan regression gate penuh lulus, Admin Techwind dipertahankan sebagai baseline/rollback; Gulp/vendor JavaScript dan global CSS kedua template tidak boleh masuk bundle React.
+- Shell, sidebar/topbar, tabel, form, profil, galeri, dan feedback state mengikuti mapping Cuba pada `docs/uiux/ADMIN_CUBA_VISUAL_CONTRACT.md`. Penutupan lokal v5.6 telah mencakup route operasional utama, role-aware navigation/guard, tabel canonical, modal aksesibel, draft recovery, revision history, serta visual acceptance terautentikasi pada 390/768/1440 px dalam light/dark. Admin Techwind tetap dipertahankan sebagai rollback production sampai deployment disetujui; Gulp/vendor JavaScript, aset premium, dan global CSS kedua template tidak masuk bundle React.
 - Migrasi dilakukan di balik feature flag: tokens → shell → primitives → route representatif → visual/accessibility regression → route tersisa. Big-bang rewrite dilarang.
-- Tabel operasional ditargetkan memakai `AdminDataTable` React dengan sorting aksesibel, filter/search, rows 10/25/50/100, pagination server-side, selection/bulk action aman, dan state lengkap. `/user-management` telah memenuhi kontrak pagination server-side melalui parameter `page`, `limit`, `q`, `sort`, dan `order`; request User Service tanpa parameter tetap mendapat array legacy untuk menjaga consumer lama. Modal bersama memiliki focus trap, inert background, scroll lock, return focus, submit lock, serta close behavior aman; dirty-form guard dan draft lokal telah diterapkan pada form pengguna.
+- Seluruh tabel operasional Admin memakai primitive `AdminDataTable`/grid Cuba canonical; selection/select-all hanya aktif untuk aksi massal yang bermakna. Endpoint yang mendukung dataset besar memakai search/sort/pagination server-side maksimal 100 baris, debounce, cancellation, dan proteksi stale response. Modal bersama memiliki focus trap, inert background, scroll lock, return focus, submit lock, close behavior aman, dirty-form guard, dan draft lokal terisolasi.
 - Aksi delete harus diberi konfirmasi aksesibel, menjelaskan bahwa data masuk Recycle Bin/arsip, dan menyediakan restore sesuai permission.
 - LiveScore Center memakai private SSE bearer-token, menampilkan current/history, dan mengirim `expectedRevision` agar update operator yang stale menghasilkan `409`.
 - Susunan Peserta A/B dibuat atau diedit melalui Master Data → Jadwal Pertandingan. LiveScore Center membaca susunan tersebut, memberi label input skor sesuai nama peserta, dan mengunci submit bila dua sisi belum lengkap.
@@ -201,7 +201,7 @@ Public Web canonical tersedia di `http://localhost:3000` dari service `public-we
 
 ### 5.4 Admin Web
 
-Admin Web canonical tersedia di `http://localhost:5173` dari service `admin-web`. Compose lokal mengaktifkan fondasi shell Cuba clean-room; production tetap memakai baseline Techwind sampai regression gate disetujui. Jangan menjalankan Vite kedua pada port alternatif ketika full stack aktif.
+Admin Web canonical tersedia di `http://localhost:5173` dari service `admin-web`. Compose lokal mengaktifkan implementasi Cuba clean-room v5.6 yang telah melewati lint/build, smoke runtime, serta visual acceptance terautentikasi; production tetap memakai baseline rollback sampai deployment disetujui. Jangan menjalankan Vite kedua pada port alternatif ketika full stack aktif.
 
 Admin Web menggunakan variabel berikut:
 
@@ -560,11 +560,11 @@ Soft delete media menyembunyikan metadata dari daftar aktif dan selector serta m
 
 ### 16.4 Implementasi Aktif Master Data, Media, Venue, dan Jadwal
 
-Implementasi aktif memakai `deleted_by TEXT` karena identitas actor berasal dari claim JWT `sub` Keycloak. API Gateway selalu menghapus `X-Actor-ID` dari request klien lalu mengisinya kembali dari JWT yang sudah tervalidasi, serta meneruskan `X-Request-ID`. Endpoint Recycle Bin dan restore memerlukan autentikasi; pemetaan role granular merupakan tahap hardening RBAC berikutnya.
+Implementasi aktif memakai `deleted_by TEXT` karena identitas actor berasal dari claim JWT `sub` Keycloak. API Gateway selalu menghapus `X-Actor-ID` dari request klien lalu mengisinya kembali dari JWT yang sudah tervalidasi, serta meneruskan `X-Request-ID`. Endpoint Recycle Bin/restore dan seluruh mutasi konten Admin memerlukan autentikasi; mutasi Master Data, Media, Hero, Venue, Jadwal, serta akun dibatasi `super_admin` di Gateway.
 
 | Database/service | Migration | Entity aktif |
 |---|---:|---|
-| `master_data_db` / Master Data | v12 | Cabor dengan UUID internal, slug publik, dan Hero Image Media Library opsional; City Guide dengan satu pin rekomendasi seluruh Venue; Nomor Pertandingan, Kontingen, Media, serta Hero dinamis |
+| `master_data_db` / Master Data | v13 | Cabor dengan UUID internal, slug publik, Hero Image Media Library opsional; City Guide dengan satu pin rekomendasi seluruh Venue; serta Media dengan checksum SHA-256, dimensi, dan actor unggahan |
 | `venue_db` / Venue | v3 | Venue dengan UUID internal dan slug publik unik |
 | `schedule_db` / Schedule | v5 | Jadwal/Match dan Peserta A/B bertipe Individu/Tim/Kontingen dengan slot serta soft replacement |
 | `livescore_db` / LiveScore | v1 | Revision append-only, current projection, transactional outbox |
@@ -599,7 +599,7 @@ Aturan integritas yang aktif:
 - Delete dan restore bersifat idempotent. Operasi yang benar-benar mengubah state menerbitkan event audit NATS berisi actor, reason/request ID, serta snapshot record/tombstone. Audit Service kini menyimpan event yang diterima secara immutable, tetapi publisher Master/Media/Venue/Jadwal masih best-effort dan belum memakai transactional outbox.
 - Kepemilikan serta kontrak Peserta A/B antara Master Data, Schedule, dan LiveScore dicatat pada `docs/adr/ADR-0006-schedule-participant-ownership.md`.
 
-Verifikasi baseline 14 Juli 2026 mencakup `go test ./...` pada Master Data, Venue, Schedule, dan API Gateway; lint dan production build Admin; Compose config/build; runtime test delete–invisibility–restore–dependency guard–media retention; serta migration state seluruhnya `dirty=false`. Target source terbaru adalah `master=12`, `venue=3`, dan `schedule=5`. Migrasi Master Data v12 diaktifkan pada runtime lokal tanggal 7 September 2026 setelah backup ber-checksum, dengan tepat satu pin default `Department Sports Lab`; rebuild service terkait dan smoke end-to-end Public/Admin/API lulus tanpa perubahan jumlah row City Guide. Keputusan soft delete dicatat pada ADR-0002; kompatibilitas slug/UUID Venue dan Cabor pada ADR-0011/ADR-0012; Hero Image Cabor pada ADR-0013; pin rekomendasi Venue pada ADR-0017.
+Verifikasi baseline 14 Juli 2026 mencakup `go test ./...` pada Master Data, Venue, Schedule, dan API Gateway; lint dan production build Admin; Compose config/build; runtime test delete–invisibility–restore–dependency guard–media retention; serta migration state seluruhnya `dirty=false`. Target source terbaru adalah `master=13`, `venue=3`, dan `schedule=5`. Migrasi Master Data v12 diaktifkan pada 7 September 2026 dengan satu pin default `Department Sports Lab`. Migrasi additive v13 diaktifkan lokal pada 8 September 2026 setelah backup `master_data_db.dump` tervalidasi SHA-256 `2F12482DC6EBEF3AD9B643D28ABE5F91DE1B9386F7E461E09ABB6B327575A363`; jumlah Media tetap 378 dan state migration `13|false`. Keputusan soft delete dicatat pada ADR-0002; kompatibilitas slug/UUID Venue dan Cabor pada ADR-0011/ADR-0012; Hero Image Cabor pada ADR-0013; pin rekomendasi Venue pada ADR-0017.
 
 ### 16.5 LiveScore, Medali, Transactional Outbox, dan Audit Immutable
 
@@ -685,12 +685,13 @@ smoke HTTPS untuk menghindari cache resolusi DNS Docker lama pada edge.
   dirty-form guard, dan mobile full-screen bila diperlukan.
 - Upload gambar memakai validasi server menyeluruh, lossless-first, hasil akhir
   maksimal 3 MiB, dan persetujuan eksplisit sebelum fallback lossy.
-- Target final draft memakai server draft + IndexedDB fallback dengan conflict `409`.
-  Implementasi awal form pengguna saat ini memakai IndexedDB per OIDC subject,
-  retensi maksimal 7 hari, restore/discard, status autosave, dan unload guard;
-  password, token, serta credential lain tidak pernah disimpan. Server draft dan
-  conflict resolution belum diterapkan karena memerlukan kontrak backend tahap
-  berikutnya. Revision history immutable dan restore selalu membuat revision baru.
+- Draft lokal v5.6 memakai IndexedDB per OIDC subject, route, entity, dan versi
+  form dengan retensi maksimal 7 hari, restore/discard, status autosave,
+  visibility/unload guard, dan konfirmasi dirty-close. Password, token, serta
+  credential lain tidak pernah disimpan. Target lanjutan server draft lintas
+  perangkat dengan conflict `409` belum diterapkan. Revision history generik
+  membaca audit immutable dan memuat payload lama ke form; penyimpanan tetap
+  membuat revisi baru, bukan menimpa histori.
 - Security memakai least privilege, object-level authorization, threat model
   untuk fitur berisiko, sanitasi/validation, audit aman, dan dependency pinned.
 - Target Public p75 adalah LCP ≤2,5 detik, INP ≤200 ms, CLS ≤0,1. Reliability

@@ -3,20 +3,35 @@ package handler
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
+	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/porprov-xv/porprov-depok/services/master-data-service/internal/db"
 )
 
-const maxMediaUploadSize = 10 << 20
+const (
+	maxMediaSourceSize = 20 << 20
+	maxMediaUploadSize = 3 << 20
+	maxMediaDimension  = 8192
+	maxMediaPixels     = 40_000_000
+	multipartOverhead  = 1 << 20
+)
 
 var allowedMediaTypes = map[string]string{
 	"image/jpeg": ".jpg",
@@ -32,10 +47,184 @@ func randomMediaName(extension string) (string, error) {
 	return hex.EncodeToString(buffer) + extension, nil
 }
 
+type mediaPolicy struct {
+	AllowedMIMETypes []string `json:"allowed_mime_types"`
+	MaxSourceBytes   int64    `json:"max_source_bytes"`
+	MaxFinalBytes    int64    `json:"max_final_bytes"`
+	MaxWidth         int      `json:"max_width"`
+	MaxHeight        int      `json:"max_height"`
+	MaxPixels        int      `json:"max_pixels"`
+}
+
+type mediaListFilters struct {
+	Search    string
+	SortKey   string
+	SortOrder string
+	Page      int32
+	PerPage   int32
+	Paginated bool
+}
+
+type mediaListResponse struct {
+	Data         []db.MediaAsset `json:"data"`
+	Page         int32           `json:"page"`
+	PerPage      int32           `json:"per_page"`
+	TotalItems   int64           `json:"total_items"`
+	TotalPages   int32           `json:"total_pages"`
+	LibraryItems int64           `json:"library_items"`
+	LibraryBytes int64           `json:"library_bytes"`
+	TotalFormats int64           `json:"total_formats"`
+}
+
+func currentMediaPolicy() mediaPolicy {
+	return mediaPolicy{
+		AllowedMIMETypes: []string{"image/jpeg", "image/png", "image/webp"},
+		MaxSourceBytes:   maxMediaSourceSize,
+		MaxFinalBytes:    maxMediaUploadSize,
+		MaxWidth:         maxMediaDimension,
+		MaxHeight:        maxMediaDimension,
+		MaxPixels:        maxMediaPixels,
+	}
+}
+
+func parseMediaListFilters(values url.Values) (mediaListFilters, error) {
+	filters := mediaListFilters{SortKey: "created_at", SortOrder: "desc", Page: 1, PerPage: 25}
+	for _, key := range []string{"q", "sort", "order", "page", "per_page"} {
+		if len(values[key]) > 1 {
+			return filters, errors.New("filter Media Library hanya boleh memiliki satu nilai")
+		}
+	}
+	filters.Search = strings.TrimSpace(values.Get("q"))
+	if len([]rune(filters.Search)) > 80 {
+		return filters, errors.New("pencarian Media Library maksimal 80 karakter")
+	}
+	if value := strings.TrimSpace(values.Get("sort")); value != "" {
+		if value != "created_at" && value != "name" {
+			return filters, errors.New("sort Media Library tidak valid")
+		}
+		filters.SortKey = value
+	}
+	if value := strings.ToLower(strings.TrimSpace(values.Get("order"))); value != "" {
+		if value != "asc" && value != "desc" {
+			return filters, errors.New("order Media Library tidak valid")
+		}
+		filters.SortOrder = value
+	}
+	if value := strings.TrimSpace(values.Get("page")); value != "" {
+		page, err := strconv.ParseInt(value, 10, 32)
+		if err != nil || page < 1 {
+			return filters, errors.New("page Media Library harus minimal 1")
+		}
+		filters.Page = int32(page)
+	}
+	if value := strings.TrimSpace(values.Get("per_page")); value != "" {
+		perPage, err := strconv.ParseInt(value, 10, 32)
+		if err != nil || perPage < 1 || perPage > 100 {
+			return filters, errors.New("per_page Media Library harus antara 1 sampai 100")
+		}
+		filters.PerPage = int32(perPage)
+	}
+	filters.Paginated = len(values) > 0
+	return filters, nil
+}
+
+func (h *MasterDataHandler) GetMediaPolicy(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(currentMediaPolicy())
+}
+
+func safeOriginalMediaName(value, extension string) string {
+	name := strings.TrimSpace(filepath.Base(value))
+	name = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) || r == '/' || r == '\\' {
+			return -1
+		}
+		return r
+	}, name)
+	if name == "" || name == "." {
+		return "media" + extension
+	}
+	if len(name) > 180 {
+		name = strings.TrimSpace(name[:180])
+	}
+	return name
+}
+
+func declaredMediaType(value string) string {
+	parsed, _, err := mime.ParseMediaType(strings.TrimSpace(value))
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(parsed)
+}
+
+func webPDimensions(data []byte) (int, int, error) {
+	if len(data) < 30 || string(data[:4]) != "RIFF" || string(data[8:12]) != "WEBP" {
+		return 0, 0, errors.New("invalid WebP container")
+	}
+	payload := data[20:]
+	switch string(data[12:16]) {
+	case "VP8X":
+		width := 1 + int(payload[4]) + int(payload[5])<<8 + int(payload[6])<<16
+		height := 1 + int(payload[7]) + int(payload[8])<<8 + int(payload[9])<<16
+		return width, height, nil
+	case "VP8L":
+		if len(payload) < 5 || payload[0] != 0x2f {
+			return 0, 0, errors.New("invalid lossless WebP header")
+		}
+		width := 1 + int(payload[1]) + (int(payload[2]&0x3f) << 8)
+		height := 1 + int(payload[2]>>6) + (int(payload[3]) << 2) + (int(payload[4]&0x0f) << 10)
+		return width, height, nil
+	case "VP8 ":
+		if len(payload) < 10 || payload[3] != 0x9d || payload[4] != 0x01 || payload[5] != 0x2a {
+			return 0, 0, errors.New("invalid lossy WebP header")
+		}
+		width := (int(payload[6]) | int(payload[7])<<8) & 0x3fff
+		height := (int(payload[8]) | int(payload[9])<<8) & 0x3fff
+		return width, height, nil
+	default:
+		return 0, 0, errors.New("unsupported WebP encoding")
+	}
+}
+
+func validatedMediaMetadata(data []byte, declaredType string) (mimeType, extension string, width, height int, err error) {
+	if len(data) == 0 || len(data) > maxMediaUploadSize {
+		return "", "", 0, 0, errors.New("ukuran gambar harus 1 byte sampai 3 MiB")
+	}
+	mimeType = http.DetectContentType(data)
+	extension, allowed := allowedMediaTypes[mimeType]
+	if !allowed {
+		return "", "", 0, 0, errors.New("format harus JPG, PNG, atau WebP")
+	}
+	if declaredMediaType(declaredType) != mimeType {
+		return "", "", 0, 0, errors.New("tipe file tidak sesuai dengan signature gambar")
+	}
+	if mimeType == "image/webp" {
+		width, height, err = webPDimensions(data)
+	} else {
+		var config image.Config
+		config, _, err = image.DecodeConfig(bytes.NewReader(data))
+		width, height = config.Width, config.Height
+	}
+	if err != nil || width <= 0 || height <= 0 {
+		return "", "", 0, 0, errors.New("struktur gambar tidak valid")
+	}
+	if width > maxMediaDimension || height > maxMediaDimension || int64(width)*int64(height) > maxMediaPixels {
+		return "", "", 0, 0, errors.New("dimensi gambar melampaui batas aman")
+	}
+	return mimeType, extension, width, height, nil
+}
+
 func (h *MasterDataHandler) UploadMedia(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxMediaUploadSize+1024)
+	actor := strings.TrimSpace(r.Header.Get("X-Actor-ID"))
+	if actor == "" {
+		http.Error(w, "Identitas actor diperlukan", http.StatusUnauthorized)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxMediaUploadSize+multipartOverhead)
 	if err := r.ParseMultipartForm(maxMediaUploadSize); err != nil {
-		http.Error(w, "Ukuran gambar maksimal 10 MB", http.StatusRequestEntityTooLarge)
+		http.Error(w, "Ukuran hasil gambar maksimal 3 MiB", http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -49,18 +238,14 @@ func (h *MasterDataHandler) UploadMedia(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Ukuran gambar tidak valid", http.StatusUnprocessableEntity)
 		return
 	}
-
-	sniff := make([]byte, 512)
-	bytesRead, readErr := io.ReadFull(file, sniff)
-	if readErr != nil && !errors.Is(readErr, io.ErrUnexpectedEOF) {
+	data, readErr := io.ReadAll(io.LimitReader(file, maxMediaUploadSize+1))
+	if readErr != nil {
 		http.Error(w, "Gagal membaca file", http.StatusBadRequest)
 		return
 	}
-	sniff = sniff[:bytesRead]
-	mimeType := http.DetectContentType(sniff)
-	extension, allowed := allowedMediaTypes[mimeType]
-	if !allowed {
-		http.Error(w, "Format harus JPG, PNG, atau WebP", http.StatusUnsupportedMediaType)
+	mimeType, extension, width, height, validationErr := validatedMediaMetadata(data, header.Header.Get("Content-Type"))
+	if validationErr != nil {
+		http.Error(w, validationErr.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
@@ -81,7 +266,7 @@ func (h *MasterDataHandler) UploadMedia(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_, copyErr := io.Copy(out, io.MultiReader(bytes.NewReader(sniff), file))
+	_, copyErr := io.Copy(out, bytes.NewReader(data))
 	closeErr := out.Close()
 	if copyErr != nil || closeErr != nil {
 		_ = os.Remove(filePath)
@@ -90,10 +275,14 @@ func (h *MasterDataHandler) UploadMedia(w http.ResponseWriter, r *http.Request) 
 	}
 
 	media, err := h.queries.CreateMedia(r.Context(), db.CreateMediaParams{
-		FileName: strings.TrimSpace(filepath.Base(header.Filename)),
-		FileUrl:  "/uploads/" + filename,
-		MimeType: pgtype.Text{String: mimeType, Valid: true},
-		FileSize: pgtype.Int4{Int32: int32(header.Size), Valid: true},
+		FileName:       safeOriginalMediaName(header.Filename, extension),
+		FileUrl:        "/uploads/" + filename,
+		MimeType:       pgtype.Text{String: mimeType, Valid: true},
+		FileSize:       pgtype.Int4{Int32: int32(len(data)), Valid: true},
+		ChecksumSha256: pgtype.Text{String: fmt.Sprintf("%x", sha256.Sum256(data)), Valid: true},
+		Width:          pgtype.Int4{Int32: int32(width), Valid: true},
+		Height:         pgtype.Int4{Int32: int32(height), Valid: true},
+		UploadedBy:     pgtype.Text{String: actor, Valid: true},
 	})
 	if err != nil {
 		_ = os.Remove(filePath)
@@ -113,6 +302,43 @@ func (h *MasterDataHandler) UploadMedia(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *MasterDataHandler) ListMedia(w http.ResponseWriter, r *http.Request) {
+	filters, parseErr := parseMediaListFilters(r.URL.Query())
+	if parseErr != nil {
+		http.Error(w, parseErr.Error(), http.StatusBadRequest)
+		return
+	}
+	if filters.Paginated {
+		search := escapeLikePattern(filters.Search)
+		media, err := h.queries.ListMediaPaginated(r.Context(), db.ListMediaPaginatedParams{
+			Search: search, SortKey: filters.SortKey, SortOrder: filters.SortOrder,
+			PageOffset: (filters.Page - 1) * filters.PerPage, PageLimit: filters.PerPage,
+		})
+		if err != nil {
+			http.Error(w, "Gagal mengambil media", http.StatusInternalServerError)
+			return
+		}
+		totalItems, err := h.queries.CountMedia(r.Context(), search)
+		if err != nil {
+			http.Error(w, "Gagal menghitung media", http.StatusInternalServerError)
+			return
+		}
+		stats, err := h.queries.GetMediaStats(r.Context())
+		if err != nil {
+			http.Error(w, "Gagal menghitung statistik media", http.StatusInternalServerError)
+			return
+		}
+		if media == nil {
+			media = []db.MediaAsset{}
+		}
+		totalPages := int32(0)
+		if totalItems > 0 {
+			totalPages = int32((totalItems + int64(filters.PerPage) - 1) / int64(filters.PerPage))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(mediaListResponse{Data: media, Page: filters.Page, PerPage: filters.PerPage, TotalItems: totalItems, TotalPages: totalPages, LibraryItems: stats.TotalItems, LibraryBytes: stats.TotalBytes, TotalFormats: stats.TotalFormats})
+		return
+	}
+
 	media, err := h.queries.GetMedia(r.Context())
 	if err != nil {
 		http.Error(w, "Gagal mengambil media", http.StatusInternalServerError)

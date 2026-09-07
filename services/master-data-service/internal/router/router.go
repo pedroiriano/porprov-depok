@@ -64,6 +64,7 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler 
 			r.Delete("/{id}", cityGuideHandler.DeleteCityGuide)
 		})
 		r.Route("/media", func(r chi.Router) {
+			r.Get("/policy", masterDataHandler.GetMediaPolicy)
 			r.Post("/upload", masterDataHandler.UploadMedia)
 			r.Get("/", masterDataHandler.ListMedia)
 			r.Delete("/{id}", masterDataHandler.DeleteMedia)

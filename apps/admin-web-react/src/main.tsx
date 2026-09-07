@@ -20,6 +20,11 @@ const oidcConfig = {
   // SECURITY: Redirect OIDC harus kembali ke base path deployment yang sama.
   redirect_uri: oidcRedirectUrl,
   post_logout_redirect_uri: oidcRedirectUrl,
+  // RELIABILITY: Perpanjang sesi sebelum token kedaluwarsa dan sinkronkan
+  // logout lintas tab tanpa menyimpan credential aplikasi di browser.
+  automaticSilentRenew: true,
+  monitorSession: true,
+  revokeTokensOnSignout: true,
   onSigninCallback: () => {
     window.history.replaceState({}, document.title, window.location.pathname)
   }

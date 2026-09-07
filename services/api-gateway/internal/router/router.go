@@ -133,6 +133,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 		// Rute terproteksi (butuh token JWT Keycloak)
 		r.Group(func(r chi.Router) {
 			r.Use(jwtMid.RequireAuth)
+			superAdminOnly := jwtMid.RequireAnyRole("super_admin")
 			r.Get("/profile", handler.ProfileHandler)
 			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Get("/analytics/overview", analyticsHandler.Overview)
 
@@ -142,18 +143,25 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/roles/*", setupProxy(cfg.UserURL))
 			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/roles", setupProxy(cfg.UserURL))
 
-			// Reverse Proxy ke Microservices
-			// Master Data Service melalui DNS dan port internal Docker.
-			r.With(jwtMid.RequireAnyRole("super_admin")).Put("/master-data/city-guides/{id}/venue-pin", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)
-			r.Handle("/master-data/*", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)))
-			r.Handle("/master-data", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)))
-			r.Get("/master-data/deleted", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)
+			// SECURITY: Seluruh mutasi konten, jadwal, dan venue hanya boleh
+			// melewati super_admin. Endpoint baca publik tetap didaftarkan pada
+			// allowlist di bawah; koleksi internal Admin juga dibatasi eksplisit.
+			masterDataProxy := http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL))
+			r.With(superAdminOnly).Get("/master-data/deleted", masterDataProxy.ServeHTTP)
+			r.With(superAdminOnly).Get("/master-data/media", masterDataProxy.ServeHTTP)
+			r.With(superAdminOnly).Get("/master-data/media/policy", masterDataProxy.ServeHTTP)
+			r.With(superAdminOnly).Get("/master-data/heroes", masterDataProxy.ServeHTTP)
+			r.With(superAdminOnly).Get("/master-data/heroes/{id}", masterDataProxy.ServeHTTP)
+			r.With(superAdminOnly).Method(http.MethodPost, "/master-data/*", masterDataProxy)
+			r.With(superAdminOnly).Method(http.MethodPut, "/master-data/*", masterDataProxy)
+			r.With(superAdminOnly).Method(http.MethodDelete, "/master-data/*", masterDataProxy)
 
-			// Schedule Service melalui DNS dan port internal Docker.
-			r.Handle("/schedule/*", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)))
-			r.Handle("/schedule", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)))
-			r.Get("/schedule/deleted", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)).ServeHTTP)
-			r.Get("/schedule/matches/deleted", http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL)).ServeHTTP)
+			scheduleProxy := http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL))
+			r.With(superAdminOnly).Get("/schedule/deleted", scheduleProxy.ServeHTTP)
+			r.With(superAdminOnly).Get("/schedule/matches/deleted", scheduleProxy.ServeHTTP)
+			r.With(superAdminOnly).Method(http.MethodPost, "/schedule/*", scheduleProxy)
+			r.With(superAdminOnly).Method(http.MethodPut, "/schedule/*", scheduleProxy)
+			r.With(superAdminOnly).Method(http.MethodDelete, "/schedule/*", scheduleProxy)
 
 			// Audit immutable hanya dapat dibaca role audit/super admin.
 			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
@@ -175,14 +183,14 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 			privateStreamProxy := setupProxyWithHeaders(cfg.RealtimeURL, map[string]string{"X-Internal-Stream-Token": cfg.InternalStreamToken})
 			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden", "verifikator", "auditor")).Get("/stream/admin/events", http.StripPrefix("/api/v1/stream", privateStreamProxy).ServeHTTP)
 
-			// Venue Service Protected Routes (POST, PUT, DELETE)
-			r.Post("/venues", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
-			r.Post("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
-			r.Put("/venues", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
-			r.Put("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
-			r.Delete("/venues", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
-			r.Delete("/venues/*", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
-			r.Get("/venues/deleted", http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL)).ServeHTTP)
+			venueProxy := http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL))
+			r.With(superAdminOnly).Post("/venues", venueProxy.ServeHTTP)
+			r.With(superAdminOnly).Post("/venues/*", venueProxy.ServeHTTP)
+			r.With(superAdminOnly).Put("/venues", venueProxy.ServeHTTP)
+			r.With(superAdminOnly).Put("/venues/*", venueProxy.ServeHTTP)
+			r.With(superAdminOnly).Delete("/venues", venueProxy.ServeHTTP)
+			r.With(superAdminOnly).Delete("/venues/*", venueProxy.ServeHTTP)
+			r.With(superAdminOnly).Get("/venues/deleted", venueProxy.ServeHTTP)
 		})
 
 		// Rute Terbuka (Public)

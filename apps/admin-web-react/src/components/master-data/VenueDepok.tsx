@@ -12,6 +12,8 @@ import { useTableControls, usePagination } from '../../hooks/useTableControls';
 import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
+import RevisionHistory from '../common/RevisionHistory';
+import { applyRevisionFields } from '../../lib/revision';
 
 type VenueSortKey = 'name' | 'address' | 'capacity';
 
@@ -333,8 +335,10 @@ export default function VenueDepok() {
         submitting={submitting}
         submitText={formData.id ? 'Simpan perubahan' : 'Simpan venue'}
         size="large"
+        draft={{ entityId: formData.id || 'new-venue', version: 'venue-v1', value: formData, onRestore: setFormData }}
       >
         {formError && <AdminAlert>{formError}</AdminAlert>}
+        <RevisionHistory entityName="Venue" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
         <fieldset className="space-y-4 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">1. Informasi dasar</legend>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

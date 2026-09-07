@@ -3,6 +3,9 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import type { SortDirection } from '../../hooks/useTableControls';
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from './AdminPrimitives';
 
+const emptySelection = new Set<string>();
+const ignoreSelection = () => undefined;
+
 export type AdminDataTableColumn<T, K extends string> = {
   key: string;
   label: string;
@@ -52,8 +55,8 @@ export function AdminDataTable<T, K extends string>({
   sortKey,
   sortDirection,
   onSort,
-  selectedIds,
-  onSelectedIdsChange,
+  selectedIds = emptySelection,
+  onSelectedIdsChange = ignoreSelection,
   isRowSelectable = () => true,
   getRowLabel,
   rowActions,
@@ -74,8 +77,8 @@ export function AdminDataTable<T, K extends string>({
   sortKey: K;
   sortDirection: SortDirection;
   onSort: (key: K) => void;
-  selectedIds: Set<string>;
-  onSelectedIdsChange: (selected: Set<string>) => void;
+  selectedIds?: Set<string>;
+  onSelectedIdsChange?: (selected: Set<string>) => void;
   isRowSelectable?: (row: T) => boolean;
   getRowLabel?: (row: T) => string;
   rowActions?: (row: T) => ReactNode;

@@ -12,6 +12,8 @@ import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { useTableControls, usePagination } from '../../hooks/useTableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
+import RevisionHistory from '../common/RevisionHistory';
+import { applyRevisionFields } from '../../lib/revision';
 
 const emptyForm = {
   id: '',
@@ -263,8 +265,10 @@ export default function NomorTanding() {
         submitting={submitting}
         submitText={formData.id ? 'Simpan perubahan' : 'Simpan nomor'}
         size="large"
+        draft={{ entityId: formData.id || 'new-nomor-tanding', version: 'nomor-tanding-v1', value: formData, onRestore: setFormData }}
       >
         {formError && <AdminAlert>{formError}</AdminAlert>}
+        <RevisionHistory entityName="NomorTanding" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
         <fieldset className="space-y-4 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">Klasifikasi nomor pertandingan</legend>
         <div>

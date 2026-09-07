@@ -91,16 +91,20 @@ type Kontingen struct {
 }
 
 type MediaAsset struct {
-	ID           pgtype.UUID        `json:"id"`
-	FileName     string             `json:"file_name"`
-	FileUrl      string             `json:"file_url"`
-	MimeType     pgtype.Text        `json:"mime_type"`
-	FileSize     pgtype.Int4        `json:"file_size"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
-	DeletedBy    pgtype.Text        `json:"deleted_by"`
-	DeleteReason pgtype.Text        `json:"delete_reason"`
+	ID             pgtype.UUID        `json:"id"`
+	FileName       string             `json:"file_name"`
+	FileUrl        string             `json:"file_url"`
+	MimeType       pgtype.Text        `json:"mime_type"`
+	FileSize       pgtype.Int4        `json:"file_size"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy      pgtype.Text        `json:"deleted_by"`
+	DeleteReason   pgtype.Text        `json:"delete_reason"`
+	ChecksumSha256 pgtype.Text        `json:"checksum_sha256"`
+	Width          pgtype.Int4        `json:"width"`
+	Height         pgtype.Int4        `json:"height"`
+	UploadedBy     pgtype.Text        `json:"uploaded_by"`
 }
 
 type NomorTanding struct {

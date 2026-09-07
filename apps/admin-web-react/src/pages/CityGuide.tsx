@@ -12,6 +12,8 @@ import { useTableControls } from '../hooks/useTableControls';
 import { TablePagination, RowsPerPageSelector } from '../components/common/TableControls';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../components/cuba/AdminPrimitives';
 import { AdminDataTable, type AdminDataTableColumn } from '../components/cuba/AdminDataTable';
+import RevisionHistory from '../components/common/RevisionHistory';
+import { applyRevisionFields } from '../lib/revision';
 
 interface CityGuideRecord {
   id: string;
@@ -642,8 +644,9 @@ export default function CityGuide() {
         )}
       </div>
 
-      <ModalForm isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); setErrorMessage(''); }} title={formData.id ? 'Edit City Guide' : 'Tambah City Guide'} onSubmit={handleSave} submitting={submitting} submitText={formData.id ? 'Simpan Perubahan' : 'Simpan Data'} size="large">
+      <ModalForm isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); setErrorMessage(''); }} title={formData.id ? 'Edit City Guide' : 'Tambah City Guide'} onSubmit={handleSave} submitting={submitting} submitText={formData.id ? 'Simpan Perubahan' : 'Simpan Data'} size="large" draft={{ entityId: formData.id || 'new-city-guide', version: 'city-guide-v1', value: formData, onRestore: setFormData }}>
         {errorMessage && <AdminAlert>{errorMessage}</AdminAlert>}
+        <RevisionHistory entityName="CityGuide" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
         <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Identitas usaha atau lokasi</legend>
         <div className="grid gap-4 md:grid-cols-2">

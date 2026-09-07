@@ -112,7 +112,7 @@ export default function UserManagement() {
   const currentSubject = auth.user?.profile.sub;
   const draftFields = useMemo(() => getDraftFields(formData), [formData]);
   const draftKey = currentSubject
-    ? `${currentSubject}:${editingUser ? `edit:${editingUser.id}` : 'create'}`
+    ? `${currentSubject}:${window.location.pathname}:${editingUser ? `edit:${editingUser.id}` : 'create'}:user-v1`
     : '';
   const persistedFieldsDirty = !sameDraftFields(draftFields, formBaseline);
   const formDirty = persistedFieldsDirty || formData.password.length > 0;

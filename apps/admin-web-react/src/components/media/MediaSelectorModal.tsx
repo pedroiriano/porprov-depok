@@ -1,36 +1,34 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image as ImageIcon, Loader2, Search, Upload } from 'lucide-react';
+import { Image as ImageIcon, Search } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import Modal from '../Modal';
 import { RowsPerPageSelector, TablePagination } from '../common/TableControls';
 import { AdminMediaGrid } from '../cuba/AdminMediaGrid';
 import { AdminAlert, AdminEmptyState, AdminLoadingState } from '../cuba/AdminPrimitives';
-import { usePagination, useTableControls } from '../../hooks/useTableControls';
+import { useTableControls } from '../../hooks/useTableControls';
 import {
   apiClient,
   authConfig,
   getApiErrorMessage,
   normalizeStoredMediaUrl,
-  unwrapApiData,
 } from '../../lib/api';
 import type { MediaAsset } from '../../types/master-data';
+import MediaUploadButton from './MediaUploadButton';
 
 interface MediaSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (url: string) => void;
 }
-
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
-const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+interface MediaListResponse { data: MediaAsset[]; page: number; per_page: number; total_items: number; total_pages: number }
 
 export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaSelectorModalProps) {
   const auth = useAuth();
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const {
     currentPage,
     rowsPerPage,
@@ -40,15 +38,18 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
   } = useTableControls<'file_name'>({ rowsPerPage: 25 });
 
   const mediaQuery = useQuery({
-    queryKey: ['media-assets'],
+    queryKey: ['media-assets', 'selector', currentPage, rowsPerPage, debouncedSearch],
     enabled: isOpen,
-    queryFn: async () => {
-      const response = await apiClient.get<MediaAsset[] | { data: MediaAsset[] }>(
-        '/master-data/media',
-        authConfig(auth.user?.access_token),
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams({ page: String(currentPage), per_page: String(rowsPerPage), sort: 'created_at', order: 'desc' });
+      if (debouncedSearch) params.set('q', debouncedSearch);
+      const response = await apiClient.get<MediaListResponse>(
+        `/master-data/media?${params}`,
+        { ...authConfig(auth.user?.access_token), signal },
       );
-      return unwrapApiData(response.data) ?? [];
+      return response.data;
     },
+    placeholderData: (previous) => previous,
   });
 
   const uploadMutation = useMutation({
@@ -64,33 +65,20 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
     onError: (error) => setUploadError(getApiErrorMessage(error, 'Gagal mengunggah gambar.')),
   });
 
-  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
+  const media = useMemo(() => mediaQuery.data?.data ?? [], [mediaQuery.data]);
+  const totalItems = mediaQuery.data?.total_items ?? 0;
+  const totalPages = Math.max(1, mediaQuery.data?.total_pages ?? 1);
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+  const endItem = Math.min(currentPage * rowsPerPage, totalItems);
 
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      setUploadError('Format harus JPG, PNG, atau WebP.');
-      return;
-    }
-    if (file.size > MAX_IMAGE_SIZE) {
-      setUploadError('Ukuran gambar maksimal 10 MB.');
-      return;
-    }
-
-    setUploadError('');
-    uploadMutation.mutate(file);
-  };
-
-  const media = useMemo(() => mediaQuery.data ?? [], [mediaQuery.data]);
-  const filteredMedia = useMemo(() => {
-    const query = searchQuery.trim().toLocaleLowerCase('id-ID');
-    if (!query) return media;
-    return media.filter((item) => item.file_name.toLocaleLowerCase('id-ID').includes(query));
-  }, [media, searchQuery]);
-  const pagination = usePagination(filteredMedia, currentPage, rowsPerPage);
-
-  useEffect(() => resetPage(), [resetPage, searchQuery]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+  useEffect(() => resetPage(), [debouncedSearch, resetPage]);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, setCurrentPage, totalPages]);
 
   return (
     <Modal
@@ -116,31 +104,22 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
           </label>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <RowsPerPageSelector value={rowsPerPage} onChange={setRowsPerPage} />
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleUpload} />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadMutation.isPending}
-              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {uploadMutation.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
-              {uploadMutation.isPending ? 'Mengunggah...' : 'Unggah Baru'}
-            </button>
+            <MediaUploadButton compact busy={uploadMutation.isPending} onUpload={(file) => uploadMutation.mutateAsync(file)} onError={setUploadError} />
           </div>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-300">JPG, PNG, atau WebP · maksimal 10 MB per file.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-300">JPG, PNG, atau WebP · sumber maksimal 20 MiB · hasil maksimal 3 MiB · kompresi lossy hanya setelah persetujuan.</p>
         {uploadError && <AdminAlert>{uploadError}</AdminAlert>}
 
         {mediaQuery.isLoading ? (
           <AdminLoadingState label="Memuat Media Library..." />
         ) : mediaQuery.isError ? (
           <AdminAlert>{getApiErrorMessage(mediaQuery.error, 'Gagal memuat Media Library.')}</AdminAlert>
-        ) : filteredMedia.length > 0 ? (
+        ) : media.length > 0 ? (
           <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
             <div className="p-3 sm:p-4">
               <AdminMediaGrid
-                items={pagination.paginatedData}
+                items={media}
                 onSelect={(item) => {
                   onSelect(normalizeStoredMediaUrl(item.file_url));
                   onClose();
@@ -148,11 +127,11 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
               />
             </div>
             <TablePagination
-              startItem={pagination.startItem}
-              endItem={pagination.endItem}
-              totalItems={pagination.totalItems}
-              currentPage={pagination.safePage}
-              totalPages={pagination.totalPages}
+              startItem={startItem}
+              endItem={endItem}
+              totalItems={totalItems}
+              currentPage={currentPage}
+              totalPages={totalPages}
               onPageChange={setCurrentPage}
               itemLabel="media"
             />
@@ -160,8 +139,8 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
         ) : (
           <AdminEmptyState
             icon={ImageIcon}
-            title={media.length === 0 ? 'Belum ada media' : 'Media tidak ditemukan'}
-            description={media.length === 0 ? 'Unggah gambar pertama untuk melanjutkan.' : 'Coba kata kunci nama file yang berbeda.'}
+            title={debouncedSearch ? 'Media tidak ditemukan' : 'Belum ada media'}
+            description={debouncedSearch ? 'Coba kata kunci nama file yang berbeda.' : 'Unggah gambar pertama untuk melanjutkan.'}
           />
         )}
       </div>
