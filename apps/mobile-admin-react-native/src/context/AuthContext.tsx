@@ -2,7 +2,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -47,32 +46,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (response?.type === 'success') {
-      const { code } = response.params;
-      exchangeCodeForToken(code);
+    if (response?.type !== 'success') {
+      return;
     }
-  }, [response]);
 
-  const exchangeCodeForToken = async (code: string) => {
-    try {
-      const res = await AuthSession.exchangeCodeAsync(
-        {
-          clientId,
-          code,
-          redirectUri,
-          extraParams: request?.codeVerifier ? { code_verifier: request.codeVerifier } : undefined,
-        },
-        discovery
-      );
-      
-      if (res.accessToken) {
-        setToken(res.accessToken);
-        await SecureStore.setItemAsync('userToken', res.accessToken);
+    const { code } = response.params;
+    const tokenExchange = setTimeout(async () => {
+      try {
+        const res = await AuthSession.exchangeCodeAsync(
+          {
+            clientId,
+            code,
+            redirectUri,
+            extraParams: request?.codeVerifier ? { code_verifier: request.codeVerifier } : undefined,
+          },
+          discovery
+        );
+
+        if (res.accessToken) {
+          setToken(res.accessToken);
+          await SecureStore.setItemAsync('userToken', res.accessToken);
+        }
+      } catch (err) {
+        console.error('Exchange error:', err);
       }
-    } catch (err) {
-      console.error('Exchange error:', err);
-    }
-  };
+    }, 0);
+
+    return () => clearTimeout(tokenExchange);
+  }, [redirectUri, request, response]);
 
   const login = () => {
     promptAsync();

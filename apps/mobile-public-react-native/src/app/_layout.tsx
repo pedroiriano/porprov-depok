@@ -1,5 +1,4 @@
 import { Tabs } from 'expo-router';
-import { View, Text } from 'react-native';
 import { Home, Trophy, CalendarDays, Medal } from 'lucide-react-native';
 import '../global.css';
 
