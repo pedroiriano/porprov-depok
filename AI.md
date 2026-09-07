@@ -94,6 +94,8 @@ Tailwind CSS v4 wajib mengikat utility `dark:*` hanya ke class `.dark`, selaras 
 
 Quality gate standar wajib: format, lint/typecheck, test terkait, build terdampak, diff check, dan secret scan dasar. Security test spesifik risiko tetap wajib. Full DevSecOps hanya atas instruksi eksplisit atau release gate final. Commit/push memerlukan otorisasi delivery; merge memerlukan protected CI PASS pada SHA final dan instruksi merge; deploy, migrasi, serta akses VPS memerlukan izin terpisah. Gunakan klaim “tidak ada defect diketahui pada scope” berdasarkan acceptance criteria, bukan janji absolut.
 
+Exception dependency harus exact-ID, exact-package, exact-project, beralasan, termitigasi, disetujui, dan otomatis gagal setelah expiry. Exception aktif sampai 7 Oktober 2026 hanya mencakup dua advisory High `image-size` melalui Metro build-time pada Public/Admin Mobile; semua Critical/High lain tetap memblokir CI sesuai `docs/security/NPM_AUDIT_EXCEPTION_IMAGE_SIZE_2026-09-07.md`.
+
 ## Prinsip Data yang Tidak Boleh Dilanggar
 
 - Semua penghapusan data persisten adalah soft delete.

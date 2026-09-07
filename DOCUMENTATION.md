@@ -452,12 +452,18 @@ Keputusan integrasi ini dicatat pada `docs/adr/ADR-0001-master-data-media-integr
   hanya diperlakukan sebagai konten pasif dengan cache singkat.
 - API Gateway menyanitasi body upstream `5xx` menjadi error JSON stabil.
 - Runtime Go minimum 1.26.6 dan `golang.org/x/text` minimum 0.39.0 sesuai gate
-  CI 6 September 2026. Seluruh dependency npm, termasuk toolchain
-  development/build, wajib nol advisory pada audit penuh; override terarah
-  mematok `browserslist` 4.28.9, `nanoid` 3.3.18, dan `js-yaml` 4.3.1.
+  CI 6 September 2026. Dependency npm, termasuk toolchain development/build,
+  wajib nol Critical/High kecuali exception exact-ID yang disetujui, memiliki
+  mitigasi, dan otomatis kedaluwarsa. Web saat ini nol vulnerability; Mobile
+  hanya mengizinkan dua advisory `image-size` melalui Metro sampai 7 Oktober
+  2026 sesuai `docs/security/NPM_AUDIT_EXCEPTION_IMAGE_SIZE_2026-09-07.md`.
+  Override Web mematok `browserslist` 4.28.9, `nanoid` 3.3.18, dan `js-yaml`
+  4.3.1.
 - Git security gate berada pada `.github/workflows/security.yml` dan mencakup
-  secret literal scan, npm audit, lint/build, unit test, govulncheck, CodeQL,
-  dan dependency review. Seluruh action dipin ke SHA.
+  secret literal scan, npm audit, lint/build/typecheck Web dan Mobile, unit
+  test, govulncheck, CodeQL, serta dependency review. Seluruh action dipin ke
+  SHA. Mobile juga menjalankan `expo install --check` dan export Web
+  representatif untuk kedua aplikasi React Native.
 - Production override memakai container read-only/no-new-privileges/capability
   minimum dan menolak secret placeholder serta origin selain
   `https://porprov.depok.go.id`.

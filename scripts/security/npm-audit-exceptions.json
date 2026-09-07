@@ -1,0 +1,26 @@
+{
+  "exceptions": [
+    {
+      "id": "GHSA-5p2g-fcmc-qvqq",
+      "package": "image-size",
+      "severity": "high",
+      "expiresOn": "2026-10-07",
+      "projects": [
+        "apps/mobile-public-react-native",
+        "apps/mobile-admin-react-native"
+      ],
+      "reason": "No patched npm release exists. The package is reached through Metro build tooling and is not shipped in the application runtime bundle."
+    },
+    {
+      "id": "GHSA-w3rx-r6r6-pgpr",
+      "package": "image-size",
+      "severity": "high",
+      "expiresOn": "2026-10-07",
+      "projects": [
+        "apps/mobile-public-react-native",
+        "apps/mobile-admin-react-native"
+      ],
+      "reason": "No patched npm release exists. The package is reached through Metro build tooling and is not shipped in the application runtime bundle."
+    }
+  ]
+}

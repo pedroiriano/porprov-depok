@@ -15,6 +15,7 @@ Dokumen ini menjelaskan cara menerapkan aturan v5. Jika terjadi konflik, `RULES.
 - Target kualitas adalah **tidak ada defect yang diketahui pada scope yang diubah**. Klaim “bebas bug” hanya boleh diganti dengan acceptance criteria dan bukti uji yang terukur.
 - Quality gate standar selalu mencakup format, lint/typecheck, test terkait, build modul terdampak, diff check, dan secret scan dasar.
 - Pengujian keamanan spesifik risiko tetap wajib untuk auth, authorization, SSO, SQL/migration, upload, secret, dependency, public API, container, redirect, dan permission.
+- Exception dependency hanya dapat diterima dengan advisory ID, package, project, alasan, mitigasi, persetujuan, serta expiry eksplisit. Enforcement wajib fail-closed untuk temuan lain dan setelah expiry; exception aktif dicatat pada `docs/security/NPM_AUDIT_EXCEPTION_IMAGE_SIZE_2026-09-07.md`.
 - Full DevSecOps—broad SAST, SBOM, Trivy, CodeQL, `govulncheck`, audit dependency penuh, provenance, ZAP, dan suite release—dijalankan hanya atas instruksi eksplisit atau pada release gate final.
 - Commit/push hanya boleh dilakukan setelah quality gate standar lulus dan pengguna memberi otorisasi delivery eksplisit. Merge hanya setelah protected CI lulus pada SHA final dan pengguna memberi instruksi merge eksplisit. Deploy selalu memerlukan instruksi terpisah.
 

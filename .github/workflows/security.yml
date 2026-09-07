@@ -47,6 +47,31 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  mobile:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [apps/mobile-public-react-native, apps/mobile-admin-react-native]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+      - run: npm ci
+      - name: Audit dependencies with time-bounded exceptions
+        run: node ../../scripts/security/check-npm-audit.mjs ${{ matrix.app }}
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run check:expo
+      - name: Build representative Expo web export
+        run: npm run build:web -- --output-dir "$RUNNER_TEMP/expo-export"
+
   go:
     runs-on: ubuntu-latest
     strategy:
