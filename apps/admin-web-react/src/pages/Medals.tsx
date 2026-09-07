@@ -4,12 +4,13 @@ import { useAuth } from 'react-oidc-context';
 import { useLocation } from '../lib/router';
 import Modal from '../components/Modal';
 import ModalForm from '../components/common/ModalForm';
-import { AdminAlert, AdminEmptyState, AdminLoadingState, AdminPageHeader } from '../components/cuba/AdminPrimitives';
+import { AdminAlert, AdminPageHeader } from '../components/cuba/AdminPrimitives';
+import { AdminDataTable, type AdminDataTableColumn } from '../components/cuba/AdminDataTable';
 import { AdminWorkspaceTabs } from '../components/cuba/AdminWorkspaceTabs';
 import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../lib/api';
 // INFO: Import table controls
 import { useTableControls, usePagination } from '../hooks/useTableControls';
-import { TablePagination, RowsPerPageSelector, SortableHeader } from '../components/common/TableControls';
+import { TablePagination, RowsPerPageSelector } from '../components/common/TableControls';
 
 interface Kontingen { id: string; name: string }
 interface Standing { id: string; kontingen_id: string; gold: number; silver: number; bronze: number; updated_at: string }
@@ -152,6 +153,44 @@ export default function Medals() {
 
   const stdPagination = usePagination(sortedStandings, stdTable.currentPage, stdTable.rowsPerPage);
 
+  const submissionColumns = useMemo<Array<AdminDataTableColumn<Submission, SubmissionSortKey>>>(() => [
+    {
+      key: 'kontingen',
+      label: 'Kontingen',
+      sortKey: 'kontingen',
+      className: 'min-w-64',
+      render: (item) => (
+        <div>
+          <p className="font-black text-slate-950 dark:text-white">{kontingenMap.get(item.kontingen_id) || item.kontingen_id}</p>
+          {item.notes && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{item.notes}</p>}
+        </div>
+      ),
+    },
+    {
+      key: 'medals',
+      label: 'Medali',
+      className: 'whitespace-nowrap text-center font-bold',
+      headerClassName: 'text-center',
+      render: (item) => <><span className="text-yellow-700 dark:text-yellow-300">{item.gold} E</span> · <span className="text-slate-500 dark:text-slate-400">{item.silver} P</span> · <span className="text-yellow-900 dark:text-yellow-500">{item.bronze} B</span></>,
+    },
+    { key: 'submitter', label: 'Pengaju', render: (item) => <span className="text-sm text-slate-700 dark:text-slate-200">{item.submitted_by}</span> },
+    {
+      key: 'status',
+      label: 'Status',
+      sortKey: 'status',
+      render: (item) => <span className={`rounded-full border px-2.5 py-1 text-xs font-black ${item.status === 'OFFICIAL' ? 'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : item.status === 'REJECTED' ? 'border-red-200 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200' : item.status === 'VERIFIED' ? 'border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200' : 'border-yellow-200 bg-yellow-100 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200'}`}>{item.status}</span>,
+    },
+    { key: 'submitted_at', label: 'Tanggal', sortKey: 'submitted_at', className: 'whitespace-nowrap', render: (item) => <time className="text-sm text-slate-600 dark:text-slate-300" dateTime={item.submitted_at}>{new Date(item.submitted_at).toLocaleString('id-ID')}</time> },
+  ], [kontingenMap]);
+
+  const standingColumns = useMemo<Array<AdminDataTableColumn<Standing, StandingSortKey>>>(() => [
+    { key: 'kontingen', label: 'Kontingen', sortKey: 'kontingen', className: 'min-w-64', render: (item) => <span className="font-black text-slate-950 dark:text-white">{kontingenMap.get(item.kontingen_id) || item.kontingen_id}</span> },
+    { key: 'gold', label: 'Emas', sortKey: 'gold', className: 'text-center font-black text-yellow-700 dark:text-yellow-300', headerClassName: 'text-center', render: (item) => item.gold },
+    { key: 'silver', label: 'Perak', sortKey: 'silver', className: 'text-center font-bold text-slate-500 dark:text-slate-300', headerClassName: 'text-center', render: (item) => item.silver },
+    { key: 'bronze', label: 'Perunggu', sortKey: 'bronze', className: 'text-center font-bold text-yellow-900 dark:text-yellow-500', headerClassName: 'text-center', render: (item) => item.bronze },
+    { key: 'total', label: 'Total', sortKey: 'total', className: 'text-center text-xl font-black text-blue-700 dark:text-blue-200', headerClassName: 'text-center', render: (item) => item.gold + item.silver + item.bronze },
+  ], [kontingenMap]);
+
   const createSubmission = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!token) return;
@@ -239,78 +278,33 @@ export default function Medals() {
           </div>
         </div>
 
-        {loading ? (
-          <AdminLoadingState label="Memuat antrean verifikasi..." />
-        ) : sortedSubmissions.length === 0 ? (
-          <AdminEmptyState icon={ShieldCheck} title="Tidak ada pengajuan" description="Tidak ada pengajuan yang cocok dengan pencarian dan filter status ini." />
-        ) : (
-          <>
-            <div className="overflow-x-auto min-h-[200px]">
-              <table className="w-full border-collapse text-left min-w-[900px]">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
-                  <tr>
-                    <SortableHeader<SubmissionSortKey> sortKey="kontingen" currentSortKey={subTable.sortKey} direction={subTable.sortDirection} onSort={subTable.handleSort} className="p-4 font-medium">Kontingen</SortableHeader>
-                    <th className="p-4 font-medium text-center">Medali</th>
-                    <th className="p-4 font-medium">Pengaju</th>
-                    <SortableHeader<SubmissionSortKey> sortKey="status" currentSortKey={subTable.sortKey} direction={subTable.sortDirection} onSort={subTable.handleSort} className="p-4 font-medium">Status</SortableHeader>
-                    <SortableHeader<SubmissionSortKey> sortKey="submitted_at" currentSortKey={subTable.sortKey} direction={subTable.sortDirection} onSort={subTable.handleSort} className="p-4 font-medium">Tanggal</SortableHeader>
-                    <th className="p-4 font-medium text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {subPagination.paginatedData.map((item) => (
-                    <tr key={item.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                      <td className="p-4">
-                        <p className="font-bold text-slate-900 dark:text-white">{kontingenMap.get(item.kontingen_id) || item.kontingen_id}</p>
-                        {item.notes && <p className="mt-1 text-sm text-slate-500">{item.notes}</p>}
-                      </td>
-                      <td className="p-4 text-center font-bold">
-                        <span className="text-amber-500">{item.gold} E</span> · <span className="text-slate-500 dark:text-slate-400">{item.silver} P</span> · <span className="text-amber-700">{item.bronze} B</span>
-                      </td>
-                      <td className="p-4 text-sm text-slate-900 dark:text-white">{item.submitted_by}</td>
-                      <td className="p-4">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.status === 'OFFICIAL' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : item.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800' : item.status === 'VERIFIED' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800'}`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-sm text-slate-600 dark:text-slate-400">
-                        {new Date(item.submitted_at).toLocaleString('id-ID')}
-                      </td>
-                      <td className="p-4">
-                        <div className="flex justify-end gap-2">
-                          {item.status === 'PENDING' && canVerify && (
-                            <>
-                              <button type="button" disabled={submitting} onClick={() => requestTransition(item, 'verify')} className="inline-flex min-h-11 items-center rounded-xl bg-blue-600 px-3 text-sm font-bold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
-                                <CheckCircle2 className="mr-1 h-4 w-4" />Verifikasi
-                              </button>
-                              <button type="button" disabled={submitting} onClick={() => requestTransition(item, 'reject')} className="inline-flex min-h-11 items-center rounded-xl border border-red-300 px-3 text-sm font-bold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40 disabled:opacity-50">
-                                <XCircle className="mr-1 h-4 w-4" />Tolak
-                              </button>
-                            </>
-                          )}
-                          {item.status === 'VERIFIED' && canPublish && (
-                            <button type="button" disabled={submitting} onClick={() => requestTransition(item, 'publish')} className="inline-flex min-h-11 items-center rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50">
-                              <Send className="mr-1 h-4 w-4" />Publikasikan
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            <TablePagination
-              currentPage={subTable.currentPage}
-              totalPages={subPagination.totalPages}
-              totalItems={subPagination.totalItems}
-              startItem={subPagination.startItem}
-              endItem={subPagination.endItem}
-              onPageChange={subTable.handleChangePage}
-            />
-          </>
-        )}
+        <AdminDataTable<Submission, SubmissionSortKey>
+          caption="Antrean verifikasi perolehan medali"
+          rows={subPagination.paginatedData}
+          columns={submissionColumns}
+          getRowId={(item) => item.id}
+          sortKey={subTable.sortKey}
+          sortDirection={subTable.sortDirection}
+          onSort={subTable.handleSort}
+          selectionEnabled={false}
+          loading={loading}
+          loadingLabel="Memuat antrean verifikasi..."
+          emptyTitle="Tidak ada pengajuan"
+          emptyDescription="Tidak ada pengajuan yang cocok dengan pencarian dan filter status ini."
+          minWidthClassName="min-w-[900px]"
+          rowActions={(item) => (
+            <>
+              {item.status === 'PENDING' && canVerify && (
+                <>
+                  <button type="button" disabled={submitting} onClick={() => requestTransition(item, 'verify')} className="inline-flex min-h-11 items-center rounded-xl bg-blue-600 px-3 text-sm font-bold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"><CheckCircle2 className="mr-1 size-4" aria-hidden="true" />Verifikasi</button>
+                  <button type="button" disabled={submitting} onClick={() => requestTransition(item, 'reject')} className="inline-flex min-h-11 items-center rounded-xl border border-red-300 px-3 text-sm font-bold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40"><XCircle className="mr-1 size-4" aria-hidden="true" />Tolak</button>
+                </>
+              )}
+              {item.status === 'VERIFIED' && canPublish && <button type="button" disabled={submitting} onClick={() => requestTransition(item, 'publish')} className="inline-flex min-h-11 items-center rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"><Send className="mr-1 size-4" aria-hidden="true" />Publikasikan</button>}
+            </>
+          )}
+        />
+        {!loading && sortedSubmissions.length > 0 && <TablePagination currentPage={subTable.currentPage} totalPages={subPagination.totalPages} totalItems={subPagination.totalItems} startItem={subPagination.startItem} endItem={subPagination.endItem} onPageChange={subTable.handleChangePage} itemLabel="pengajuan" />}
       </section>}
 
       {/* Standings Section */}
@@ -325,49 +319,22 @@ export default function Medals() {
           </div>
         </div>
         
-        {loading ? (
-          <AdminLoadingState label="Memuat klasemen resmi..." />
-        ) : sortedStandings.length === 0 ? (
-          <AdminEmptyState icon={Medal} title="Belum ada klasemen" description={standingQuery ? 'Tidak ada kontingen yang cocok dengan pencarian.' : 'Belum ada medali yang berstatus OFFICIAL.'} />
-        ) : (
-          <>
-            <div className="overflow-x-auto min-h-[200px]">
-              <table className="w-full border-collapse text-left min-w-[650px]">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
-                  <tr>
-                    <SortableHeader<StandingSortKey> sortKey="kontingen" currentSortKey={stdTable.sortKey} direction={stdTable.sortDirection} onSort={stdTable.handleSort} className="p-4 font-medium">Kontingen</SortableHeader>
-                    <SortableHeader<StandingSortKey> sortKey="gold" currentSortKey={stdTable.sortKey} direction={stdTable.sortDirection} onSort={stdTable.handleSort} className="p-4 font-medium text-center">Emas</SortableHeader>
-                    <SortableHeader<StandingSortKey> sortKey="silver" currentSortKey={stdTable.sortKey} direction={stdTable.sortDirection} onSort={stdTable.handleSort} className="p-4 font-medium text-center">Perak</SortableHeader>
-                    <SortableHeader<StandingSortKey> sortKey="bronze" currentSortKey={stdTable.sortKey} direction={stdTable.sortDirection} onSort={stdTable.handleSort} className="p-4 font-medium text-center">Perunggu</SortableHeader>
-                    <SortableHeader<StandingSortKey> sortKey="total" currentSortKey={stdTable.sortKey} direction={stdTable.sortDirection} onSort={stdTable.handleSort} className="p-4 font-medium text-center">Total</SortableHeader>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {stdPagination.paginatedData.map((item) => (
-                    <tr key={item.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                      <td className="p-4 font-bold text-slate-900 dark:text-white">
-                        {kontingenMap.get(item.kontingen_id) || item.kontingen_id}
-                      </td>
-                      <td className="p-4 text-center font-black text-amber-500">{item.gold}</td>
-                      <td className="p-4 text-center font-bold text-slate-500 dark:text-slate-400">{item.silver}</td>
-                      <td className="p-4 text-center font-bold text-amber-700">{item.bronze}</td>
-                      <td className="p-4 text-center text-xl font-black text-blue-600 dark:text-blue-300">{item.gold + item.silver + item.bronze}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            <TablePagination
-              currentPage={stdTable.currentPage}
-              totalPages={stdPagination.totalPages}
-              totalItems={stdPagination.totalItems}
-              startItem={stdPagination.startItem}
-              endItem={stdPagination.endItem}
-              onPageChange={stdTable.handleChangePage}
-            />
-          </>
-        )}
+        <AdminDataTable<Standing, StandingSortKey>
+          caption="Klasemen medali resmi"
+          rows={stdPagination.paginatedData}
+          columns={standingColumns}
+          getRowId={(item) => item.id}
+          sortKey={stdTable.sortKey}
+          sortDirection={stdTable.sortDirection}
+          onSort={stdTable.handleSort}
+          selectionEnabled={false}
+          loading={loading}
+          loadingLabel="Memuat klasemen resmi..."
+          emptyTitle="Belum ada klasemen"
+          emptyDescription={standingQuery ? 'Tidak ada kontingen yang cocok dengan pencarian.' : 'Belum ada medali yang berstatus OFFICIAL.'}
+          minWidthClassName="min-w-[650px]"
+        />
+        {!loading && sortedStandings.length > 0 && <TablePagination currentPage={stdTable.currentPage} totalPages={stdPagination.totalPages} totalItems={stdPagination.totalItems} startItem={stdPagination.startItem} endItem={stdPagination.endItem} onPageChange={stdTable.handleChangePage} itemLabel="kontingen" />}
       </section>}
 
       <ModalForm 
@@ -377,6 +344,7 @@ export default function Medals() {
         onSubmit={createSubmission} 
         submitting={submitting} 
         submitText="Kirim untuk verifikasi"
+        draft={{ entityId: 'new-medal-submission', version: 'medal-submission-v1', value: form, onRestore: setForm }}
       >
         <label className="block text-sm font-bold text-slate-900 dark:text-white">
           Kontingen

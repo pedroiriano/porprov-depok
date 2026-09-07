@@ -192,9 +192,9 @@ RETURNING *;
 
 -- name: CreateMedia :one
 INSERT INTO media_assets (
-  file_name, file_url, mime_type, file_size
+  file_name, file_url, mime_type, file_size, checksum_sha256, width, height, uploaded_by
 ) VALUES (
-  $1, $2, $3, $4
+  $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING *;
 
@@ -202,6 +202,29 @@ RETURNING *;
 SELECT * FROM media_assets
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC;
+
+-- name: ListMediaPaginated :many
+SELECT * FROM media_assets
+WHERE deleted_at IS NULL
+  AND (sqlc.arg(search)::text = '' OR file_name ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\')
+ORDER BY
+  CASE WHEN sqlc.arg(sort_key)::text = 'name' AND sqlc.arg(sort_order)::text = 'asc' THEN LOWER(file_name) END ASC,
+  CASE WHEN sqlc.arg(sort_key)::text = 'name' AND sqlc.arg(sort_order)::text = 'desc' THEN LOWER(file_name) END DESC,
+  CASE WHEN sqlc.arg(sort_key)::text = 'created_at' AND sqlc.arg(sort_order)::text = 'asc' THEN created_at END ASC,
+  created_at DESC, id DESC
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+
+-- name: CountMedia :one
+SELECT COUNT(*) FROM media_assets
+WHERE deleted_at IS NULL
+  AND (sqlc.arg(search)::text = '' OR file_name ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\');
+
+-- name: GetMediaStats :one
+SELECT COUNT(*) AS total_items,
+       COALESCE(SUM(file_size), 0)::bigint AS total_bytes,
+       COUNT(DISTINCT mime_type) AS total_formats
+FROM media_assets
+WHERE deleted_at IS NULL;
 
 -- name: GetMediaByID :one
 SELECT * FROM media_assets

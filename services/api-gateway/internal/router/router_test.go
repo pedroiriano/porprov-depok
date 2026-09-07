@@ -182,6 +182,61 @@ func TestVenuePinRouteRequiresSuperAdmin(t *testing.T) {
 	}
 }
 
+func TestContentMutationRoutesRequireSuperAdmin(t *testing.T) {
+	jwtMiddleware, privateKey, issuer := testJWTMiddleware(t)
+	upstreamCalls := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		upstreamCalls++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer upstream.Close()
+
+	cfg := &config.AppConfig{
+		MasterDataURL: upstream.URL,
+		UserURL:       upstream.URL,
+		ScheduleURL:   upstream.URL,
+		VenueURL:      upstream.URL,
+		AuditURL:      upstream.URL,
+		LivescoreURL:  upstream.URL,
+		MedalsURL:     upstream.URL,
+		RealtimeURL:   upstream.URL,
+	}
+	router := SetupRouter(jwtMiddleware, cfg)
+
+	deniedCases := []struct {
+		method string
+		path   string
+		role   string
+	}{
+		{method: http.MethodPost, path: "/api/v1/master-data/cabors", role: "auditor"},
+		{method: http.MethodPost, path: "/api/v1/schedule/matches", role: "koresponden"},
+		{method: http.MethodPut, path: "/api/v1/venues/venue-id", role: "auditor"},
+		{method: http.MethodGet, path: "/api/v1/master-data/media", role: "koresponden"},
+	}
+	for _, testCase := range deniedCases {
+		t.Run(testCase.method+" "+testCase.path, func(t *testing.T) {
+			request := httptest.NewRequest(testCase.method, testCase.path, nil)
+			request.Header.Set("Authorization", "Bearer "+signedTestToken(t, privateKey, issuer, testCase.role))
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			if response.Code != http.StatusForbidden {
+				t.Fatalf("status = %d, want 403", response.Code)
+			}
+		})
+	}
+	if upstreamCalls != 0 {
+		t.Fatalf("denied routes reached upstream %d times, want 0", upstreamCalls)
+	}
+
+	allowed := httptest.NewRequest(http.MethodPost, "/api/v1/master-data/cabors", nil)
+	allowed.Header.Set("Authorization", "Bearer "+signedTestToken(t, privateKey, issuer, "super_admin"))
+	allowedResponse := httptest.NewRecorder()
+	router.ServeHTTP(allowedResponse, allowed)
+	if allowedResponse.Code != http.StatusNoContent || upstreamCalls != 1 {
+		t.Fatalf("super_admin status/upstream calls = %d/%d, want 204/1", allowedResponse.Code, upstreamCalls)
+	}
+}
+
 func TestSetupProxyInjectsTrustedInternalStreamToken(t *testing.T) {
 	t.Parallel()
 	var receivedToken string

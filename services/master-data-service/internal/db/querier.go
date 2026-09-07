@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	ClearPinnedCityGuideForVenues(ctx context.Context) error
 	CountCityGuides(ctx context.Context, arg CountCityGuidesParams) (int64, error)
+	CountMedia(ctx context.Context, search string) (int64, error)
 	CreateCabor(ctx context.Context, arg CreateCaborParams) (Cabor, error)
 	CreateCityGuide(ctx context.Context, arg CreateCityGuideParams) (CityGuide, error)
 	CreateHero(ctx context.Context, arg CreateHeroParams) (Hero, error)
@@ -27,6 +28,7 @@ type Querier interface {
 	GetKontingenByID(ctx context.Context, id pgtype.UUID) (Kontingen, error)
 	GetMedia(ctx context.Context) ([]MediaAsset, error)
 	GetMediaByID(ctx context.Context, id pgtype.UUID) (MediaAsset, error)
+	GetMediaStats(ctx context.Context) (GetMediaStatsRow, error)
 	GetNomorTandingByID(ctx context.Context, id pgtype.UUID) (NomorTanding, error)
 	GetPinnedCityGuideForVenues(ctx context.Context) (CityGuide, error)
 	ListCabors(ctx context.Context) ([]Cabor, error)
@@ -34,6 +36,7 @@ type Querier interface {
 	ListCityGuidesPaginated(ctx context.Context, arg ListCityGuidesPaginatedParams) ([]CityGuide, error)
 	ListHeroes(ctx context.Context) ([]Hero, error)
 	ListKontingens(ctx context.Context) ([]Kontingen, error)
+	ListMediaPaginated(ctx context.Context, arg ListMediaPaginatedParams) ([]MediaAsset, error)
 	ListNomorTandings(ctx context.Context) ([]NomorTanding, error)
 	PinCityGuideForVenues(ctx context.Context, id pgtype.UUID) (CityGuide, error)
 	UpdateCabor(ctx context.Context, arg UpdateCaborParams) (Cabor, error)

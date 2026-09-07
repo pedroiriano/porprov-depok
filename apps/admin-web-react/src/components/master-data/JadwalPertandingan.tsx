@@ -20,6 +20,8 @@ import type {
 import { requestSoftDeleteReason } from '../../lib/soft-delete';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
+import RevisionHistory from '../common/RevisionHistory';
+import { applyRevisionFields } from '../../lib/revision';
 
 interface ParticipantDraft {
   participant_type: ParticipantType;
@@ -408,9 +410,10 @@ export default function JadwalPertandingan() {
         )}
       </div>
 
-      <ModalForm isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); setFormError(''); }} title={formData.id ? 'Edit Jadwal & Peserta' : 'Tambah Jadwal & Peserta'} onSubmit={handleSave} submitting={submitting} submitText={formData.id ? 'Simpan perubahan' : 'Simpan jadwal'} size="large">
+      <ModalForm isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); setFormError(''); }} title={formData.id ? 'Edit Jadwal & Peserta' : 'Tambah Jadwal & Peserta'} onSubmit={handleSave} submitting={submitting} submitText={formData.id ? 'Simpan perubahan' : 'Simpan jadwal'} size="large" draft={{ entityId: formData.id || 'new-jadwal', version: 'jadwal-v1', value: formData, onRestore: setFormData }}>
         {formError && <AdminAlert>{formError}</AdminAlert>}
         {referenceError && <AdminAlert tone="warning">{referenceError}</AdminAlert>}
+        <RevisionHistory entityName="Match" entityId={formData.id} onRestore={(payload) => { const historical = payload.match; if (historical && typeof historical === 'object' && !Array.isArray(historical)) setFormData((current) => applyRevisionFields(current, historical as Record<string, unknown>)); }} />
         <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">Konteks pertandingan</legend>
         <div className="grid gap-4 md:grid-cols-2">

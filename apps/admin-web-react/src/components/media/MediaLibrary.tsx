@@ -1,33 +1,32 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileImage, FolderOpen, HardDrive, Image as ImageIcon, Loader2, Search, Upload } from 'lucide-react';
+import { FileImage, FolderOpen, HardDrive, Image as ImageIcon, Loader2, Search } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import Modal from '../Modal';
 import { RowsPerPageSelector, TablePagination } from '../common/TableControls';
 import { AdminMediaGrid } from '../cuba/AdminMediaGrid';
 import { AdminAlert, AdminEmptyState, AdminErrorState, AdminLoadingState, AdminPageHeader } from '../cuba/AdminPrimitives';
-import { usePagination, useTableControls } from '../../hooks/useTableControls';
+import { useTableControls } from '../../hooks/useTableControls';
 import {
   apiClient,
   authConfig,
   getApiErrorMessage,
   resolveMediaUrl,
-  unwrapApiData,
 } from '../../lib/api';
 import { formatMediaSize } from '../../lib/mediaFormat';
 import type { MediaAsset } from '../../types/master-data';
+import MediaUploadButton from './MediaUploadButton';
 
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
-const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 type MediaSort = 'newest' | 'oldest' | 'name';
+interface MediaListResponse { data: MediaAsset[]; page: number; per_page: number; total_items: number; total_pages: number; library_items: number; library_bytes: number; total_formats: number }
 
 export default function MediaLibrary() {
   const auth = useAuth();
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [actionError, setActionError] = useState('');
   const [notice, setNotice] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortBy, setSortBy] = useState<MediaSort>('newest');
   const [archiveTarget, setArchiveTarget] = useState<MediaAsset | null>(null);
   const [archiveReason, setArchiveReason] = useState('Diarsipkan melalui Media Library');
@@ -40,14 +39,19 @@ export default function MediaLibrary() {
   } = useTableControls<'file_name'>({ rowsPerPage: 10 });
 
   const mediaQuery = useQuery({
-    queryKey: ['media-assets'],
-    queryFn: async () => {
-      const response = await apiClient.get<MediaAsset[] | { data: MediaAsset[] }>(
-        '/master-data/media',
-        authConfig(auth.user?.access_token),
+    queryKey: ['media-assets', currentPage, rowsPerPage, debouncedSearch, sortBy],
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams({ page: String(currentPage), per_page: String(rowsPerPage) });
+      if (debouncedSearch) params.set('q', debouncedSearch);
+      params.set('sort', sortBy === 'name' ? 'name' : 'created_at');
+      params.set('order', sortBy === 'oldest' || sortBy === 'name' ? 'asc' : 'desc');
+      const response = await apiClient.get<MediaListResponse>(
+        `/master-data/media?${params}`,
+        { ...authConfig(auth.user?.access_token), signal },
       );
-      return unwrapApiData(response.data) ?? [];
+      return response.data;
     },
+    placeholderData: (previous) => previous,
   });
 
   const uploadMutation = useMutation({
@@ -84,25 +88,6 @@ export default function MediaLibrary() {
     onError: (error) => setActionError(getApiErrorMessage(error, 'Gagal mengarsipkan media.')),
   });
 
-  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    setNotice('');
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      setActionError('Format harus JPG, PNG, atau WebP.');
-      return;
-    }
-    if (file.size > MAX_IMAGE_SIZE) {
-      setActionError('Ukuran gambar maksimal 10 MB.');
-      return;
-    }
-
-    setActionError('');
-    uploadMutation.mutate(file);
-  };
-
   const copyToClipboard = async (item: MediaAsset) => {
     try {
       await navigator.clipboard.writeText(resolveMediaUrl(item.file_url));
@@ -113,24 +98,23 @@ export default function MediaLibrary() {
     }
   };
 
-  const media = useMemo(() => mediaQuery.data ?? [], [mediaQuery.data]);
-  const filteredMedia = useMemo(() => {
-    const query = searchQuery.trim().toLocaleLowerCase('id-ID');
-    const result = query
-      ? media.filter((item) => item.file_name.toLocaleLowerCase('id-ID').includes(query))
-      : [...media];
-    return result.sort((left, right) => {
-      if (sortBy === 'name') return left.file_name.localeCompare(right.file_name, 'id-ID');
-      const delta = new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
-      return sortBy === 'oldest' ? delta : -delta;
-    });
-  }, [media, searchQuery, sortBy]);
-  const pagination = usePagination(filteredMedia, currentPage, rowsPerPage);
-  const totalBytes = media.reduce((total, item) => total + (item.file_size ?? 0), 0);
-  const totalFormats = new Set(media.map((item) => item.mime_type).filter(Boolean)).size;
+  const media = useMemo(() => mediaQuery.data?.data ?? [], [mediaQuery.data]);
+  const totalItems = mediaQuery.data?.total_items ?? 0;
+  const totalPages = Math.max(1, mediaQuery.data?.total_pages ?? 1);
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+  const endItem = Math.min(currentPage * rowsPerPage, totalItems);
+  const totalBytes = mediaQuery.data?.library_bytes ?? 0;
+  const totalFormats = mediaQuery.data?.total_formats ?? 0;
   const isMutating = uploadMutation.isPending || deleteMutation.isPending;
 
-  useEffect(() => resetPage(), [resetPage, searchQuery, sortBy]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+  useEffect(() => resetPage(), [debouncedSearch, resetPage, sortBy]);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, setCurrentPage, totalPages]);
 
   return (
     <section aria-labelledby="media-library-title">
@@ -139,18 +123,12 @@ export default function MediaLibrary() {
         title="Media Library"
         description="Kelola gambar aktif untuk Hero, cabang olahraga, venue, dan City Guide dari satu galeri terkontrol."
         actions={(
-          <>
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleUpload} />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isMutating}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-black text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {uploadMutation.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
-              {uploadMutation.isPending ? 'Mengunggah...' : 'Unggah Gambar'}
-            </button>
-          </>
+          <MediaUploadButton
+            busy={isMutating}
+            onUpload={(file) => uploadMutation.mutateAsync(file)}
+            onError={setActionError}
+            onNotice={setNotice}
+          />
         )}
       />
 
@@ -158,7 +136,7 @@ export default function MediaLibrary() {
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-200"><FolderOpen className="size-5" aria-hidden="true" /></span><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Media aktif</p><p className="text-2xl font-black text-slate-950 dark:text-white">{media.length}</p></div></div>
+          <div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-200"><FolderOpen className="size-5" aria-hidden="true" /></span><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Media aktif</p><p className="text-2xl font-black text-slate-950 dark:text-white">{mediaQuery.data?.library_items ?? 0}</p></div></div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-200"><HardDrive className="size-5" aria-hidden="true" /></span><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Ukuran tersimpan</p><p className="text-xl font-black text-slate-950 dark:text-white">{formatMediaSize(totalBytes)}</p></div></div>
@@ -200,25 +178,25 @@ export default function MediaLibrary() {
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="mb-4 text-xs text-slate-500 dark:text-slate-300">JPG, PNG, atau WebP · maksimal 10 MB per file · pengarsipan tidak menghapus file fisik.</p>
+          <p className="mb-4 text-xs text-slate-500 dark:text-slate-300">JPG, PNG, atau WebP · sumber maksimal 20 MiB · hasil otomatis maksimal 3 MiB · fallback lossy selalu meminta persetujuan · pengarsipan tidak menghapus file fisik.</p>
           {mediaQuery.isLoading ? (
             <AdminLoadingState label="Memuat Media Library..." />
           ) : mediaQuery.isError ? (
             <AdminErrorState message={getApiErrorMessage(mediaQuery.error, 'Gagal memuat Media Library.')} onRetry={() => void mediaQuery.refetch()} />
-          ) : pagination.paginatedData.length > 0 ? (
-            <AdminMediaGrid items={pagination.paginatedData} onCopy={(item) => void copyToClipboard(item)} onArchive={setArchiveTarget} busy={deleteMutation.isPending} />
+          ) : media.length > 0 ? (
+            <AdminMediaGrid items={media} onCopy={(item) => void copyToClipboard(item)} onArchive={setArchiveTarget} busy={deleteMutation.isPending} />
           ) : (
-            <AdminEmptyState icon={ImageIcon} title={media.length === 0 ? 'Belum ada media' : 'Media tidak ditemukan'} description={media.length === 0 ? 'Unggah gambar pertama untuk mulai membangun galeri.' : 'Coba kata kunci pencarian yang berbeda.'} />
+            <AdminEmptyState icon={ImageIcon} title={debouncedSearch ? 'Media tidak ditemukan' : 'Belum ada media'} description={debouncedSearch ? 'Coba kata kunci pencarian yang berbeda.' : 'Unggah gambar pertama untuk mulai membangun galeri.'} />
           )}
         </div>
 
-        {!mediaQuery.isLoading && !mediaQuery.isError && filteredMedia.length > 0 && (
+        {!mediaQuery.isLoading && !mediaQuery.isError && totalItems > 0 && (
           <TablePagination
-            startItem={pagination.startItem}
-            endItem={pagination.endItem}
-            totalItems={pagination.totalItems}
-            currentPage={pagination.safePage}
-            totalPages={pagination.totalPages}
+            startItem={startItem}
+            endItem={endItem}
+            totalItems={totalItems}
+            currentPage={currentPage}
+            totalPages={totalPages}
             onPageChange={setCurrentPage}
             itemLabel="media"
           />

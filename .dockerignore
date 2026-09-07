@@ -12,4 +12,5 @@
 **/uploads
 **/public/sw.js
 runtime-backups
+.tmp
 **/*.log

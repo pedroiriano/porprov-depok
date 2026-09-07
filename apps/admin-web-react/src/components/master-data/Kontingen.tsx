@@ -11,6 +11,8 @@ import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { useTableControls, usePagination } from '../../hooks/useTableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
+import RevisionHistory from '../common/RevisionHistory';
+import { applyRevisionFields } from '../../lib/revision';
 
 type SortKeyType = 'name' | 'region_type';
 
@@ -274,8 +276,10 @@ export default function Kontingen() {
         submitting={submitting}
         submitText={isEditing ? 'Simpan perubahan' : 'Simpan kontingen'}
         size="large"
+        draft={{ entityId: formData.id || 'new-kontingen', version: 'kontingen-v1', value: formData, onRestore: setFormData }}
       >
         {formError && <AdminAlert>{formError}</AdminAlert>}
+        <RevisionHistory entityName="Kontingen" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
         <fieldset className="space-y-4 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">Identitas kontingen</legend>
         <div className="grid gap-4 md:grid-cols-2">

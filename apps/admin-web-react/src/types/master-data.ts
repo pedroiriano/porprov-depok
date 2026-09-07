@@ -4,6 +4,10 @@ export interface MediaAsset {
   file_url: string;
   mime_type: string | null;
   file_size: number | null;
+  checksum_sha256: string | null;
+  width: number | null;
+  height: number | null;
+  uploaded_by: string | null;
   created_at: string;
 }
 

@@ -8,6 +8,7 @@ $excluded = @(
     'go.sum'
 )
 $credentialPattern = '(?i)(password|passwd|secret|token|private[_-]?key)\s*[:=]\s*["''][^"'']{8,}["'']'
+$validationMessagePattern = '(?i)\berrors\.(password|passwd|secret|token|private[_-]?key)\s*=\s*["''](?:password|kata sandi)\s+(?:harus|wajib|tidak|minimal|maksimal)\b'
 $privateKeyPattern = '-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'
 $databaseDumpPattern = '^-- PostgreSQL database dump(?: complete)?$'
 $violations = [System.Collections.Generic.List[string]]::new()
@@ -26,6 +27,10 @@ foreach ($file in (git ls-files)) {
         $lineNumber++
         if ($line -match '\$\{[A-Z0-9_]+(?::[-?+][^}]*)?\}') { continue }
         if ($line -match '["'']\$[A-Z_][A-Z0-9_]*["'']') { continue }
+        # INFO: Validation copy can name a credential field without containing
+        # a credential. The narrow exception keeps config.password literals
+        # and arbitrary error messages detectable.
+        if ($line -match $validationMessagePattern) { continue }
         if ($line -match $credentialPattern -or $line -match $privateKeyPattern -or $line -match $databaseDumpPattern) {
             $violations.Add("${file}:${lineNumber}")
         }

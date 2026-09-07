@@ -43,12 +43,12 @@ const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
   {
     label: 'Operasional',
     items: [
-      { icon: Database, label: 'Master Data', path: '/master-data' },
-      { icon: PanelsTopLeft, label: 'Hero Utama', path: '/hero' },
+      { icon: Database, label: 'Master Data', path: '/master-data', roles: ['super_admin'] },
+      { icon: PanelsTopLeft, label: 'Hero Utama', path: '/hero', roles: ['super_admin'] },
       { icon: Activity, label: 'LiveScore Center', path: '/livescore', roles: ['koresponden'] },
       { icon: Medal, label: 'Perolehan Medali', path: '/medals', roles: ['koresponden'] },
-      { icon: MapPinned, label: 'City Guide', path: '/city-guide' },
-      { icon: Images, label: 'Media Library', path: '/media' },
+      { icon: MapPinned, label: 'City Guide', path: '/city-guide', roles: ['super_admin'] },
+      { icon: Images, label: 'Media Library', path: '/media', roles: ['super_admin'] },
       { icon: FileCheck, label: 'Verifikasi', path: '/verifikasi', roles: ['verifikator'] },
     ],
   },

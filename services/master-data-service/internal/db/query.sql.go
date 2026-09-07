@@ -52,6 +52,19 @@ func (q *Queries) CountCityGuides(ctx context.Context, arg CountCityGuidesParams
 	return count, err
 }
 
+const countMedia = `-- name: CountMedia :one
+SELECT COUNT(*) FROM media_assets
+WHERE deleted_at IS NULL
+  AND ($1::text = '' OR file_name ILIKE '%' || $1::text || '%' ESCAPE '\')
+`
+
+func (q *Queries) CountMedia(ctx context.Context, search string) (int64, error) {
+	row := q.db.QueryRow(ctx, countMedia, search)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCabor = `-- name: CreateCabor :one
 INSERT INTO cabors (name, description, icon_url, hero_image_url, kategori, total_medali, technical_delegate, status)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -279,18 +292,22 @@ func (q *Queries) CreateKontingen(ctx context.Context, arg CreateKontingenParams
 
 const createMedia = `-- name: CreateMedia :one
 INSERT INTO media_assets (
-  file_name, file_url, mime_type, file_size
+  file_name, file_url, mime_type, file_size, checksum_sha256, width, height, uploaded_by
 ) VALUES (
-  $1, $2, $3, $4
+  $1, $2, $3, $4, $5, $6, $7, $8
 )
-RETURNING id, file_name, file_url, mime_type, file_size, created_at, updated_at, deleted_at, deleted_by, delete_reason
+RETURNING id, file_name, file_url, mime_type, file_size, created_at, updated_at, deleted_at, deleted_by, delete_reason, checksum_sha256, width, height, uploaded_by
 `
 
 type CreateMediaParams struct {
-	FileName string      `json:"file_name"`
-	FileUrl  string      `json:"file_url"`
-	MimeType pgtype.Text `json:"mime_type"`
-	FileSize pgtype.Int4 `json:"file_size"`
+	FileName       string      `json:"file_name"`
+	FileUrl        string      `json:"file_url"`
+	MimeType       pgtype.Text `json:"mime_type"`
+	FileSize       pgtype.Int4 `json:"file_size"`
+	ChecksumSha256 pgtype.Text `json:"checksum_sha256"`
+	Width          pgtype.Int4 `json:"width"`
+	Height         pgtype.Int4 `json:"height"`
+	UploadedBy     pgtype.Text `json:"uploaded_by"`
 }
 
 func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (MediaAsset, error) {
@@ -299,6 +316,10 @@ func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (Media
 		arg.FileUrl,
 		arg.MimeType,
 		arg.FileSize,
+		arg.ChecksumSha256,
+		arg.Width,
+		arg.Height,
+		arg.UploadedBy,
 	)
 	var i MediaAsset
 	err := row.Scan(
@@ -312,6 +333,10 @@ func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (Media
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.ChecksumSha256,
+		&i.Width,
+		&i.Height,
+		&i.UploadedBy,
 	)
 	return i, err
 }
@@ -525,7 +550,7 @@ func (q *Queries) GetKontingenByID(ctx context.Context, id pgtype.UUID) (Konting
 }
 
 const getMedia = `-- name: GetMedia :many
-SELECT id, file_name, file_url, mime_type, file_size, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM media_assets
+SELECT id, file_name, file_url, mime_type, file_size, created_at, updated_at, deleted_at, deleted_by, delete_reason, checksum_sha256, width, height, uploaded_by FROM media_assets
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
 `
@@ -550,6 +575,10 @@ func (q *Queries) GetMedia(ctx context.Context) ([]MediaAsset, error) {
 			&i.DeletedAt,
 			&i.DeletedBy,
 			&i.DeleteReason,
+			&i.ChecksumSha256,
+			&i.Width,
+			&i.Height,
+			&i.UploadedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -562,7 +591,7 @@ func (q *Queries) GetMedia(ctx context.Context) ([]MediaAsset, error) {
 }
 
 const getMediaByID = `-- name: GetMediaByID :one
-SELECT id, file_name, file_url, mime_type, file_size, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM media_assets
+SELECT id, file_name, file_url, mime_type, file_size, created_at, updated_at, deleted_at, deleted_by, delete_reason, checksum_sha256, width, height, uploaded_by FROM media_assets
 WHERE id = $1 AND deleted_at IS NULL
 LIMIT 1
 `
@@ -581,7 +610,32 @@ func (q *Queries) GetMediaByID(ctx context.Context, id pgtype.UUID) (MediaAsset,
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.ChecksumSha256,
+		&i.Width,
+		&i.Height,
+		&i.UploadedBy,
 	)
+	return i, err
+}
+
+const getMediaStats = `-- name: GetMediaStats :one
+SELECT COUNT(*) AS total_items,
+       COALESCE(SUM(file_size), 0)::bigint AS total_bytes,
+       COUNT(DISTINCT mime_type) AS total_formats
+FROM media_assets
+WHERE deleted_at IS NULL
+`
+
+type GetMediaStatsRow struct {
+	TotalItems   int64 `json:"total_items"`
+	TotalBytes   int64 `json:"total_bytes"`
+	TotalFormats int64 `json:"total_formats"`
+}
+
+func (q *Queries) GetMediaStats(ctx context.Context) (GetMediaStatsRow, error) {
+	row := q.db.QueryRow(ctx, getMediaStats)
+	var i GetMediaStatsRow
+	err := row.Scan(&i.TotalItems, &i.TotalBytes, &i.TotalFormats)
 	return i, err
 }
 
@@ -905,6 +959,67 @@ func (q *Queries) ListKontingens(ctx context.Context) ([]Kontingen, error) {
 			&i.DeletedAt,
 			&i.DeletedBy,
 			&i.DeleteReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMediaPaginated = `-- name: ListMediaPaginated :many
+SELECT id, file_name, file_url, mime_type, file_size, created_at, updated_at, deleted_at, deleted_by, delete_reason, checksum_sha256, width, height, uploaded_by FROM media_assets
+WHERE deleted_at IS NULL
+  AND ($1::text = '' OR file_name ILIKE '%' || $1::text || '%' ESCAPE '\')
+ORDER BY
+  CASE WHEN $2::text = 'name' AND $3::text = 'asc' THEN LOWER(file_name) END ASC,
+  CASE WHEN $2::text = 'name' AND $3::text = 'desc' THEN LOWER(file_name) END DESC,
+  CASE WHEN $2::text = 'created_at' AND $3::text = 'asc' THEN created_at END ASC,
+  created_at DESC, id DESC
+LIMIT $5 OFFSET $4
+`
+
+type ListMediaPaginatedParams struct {
+	Search     string `json:"search"`
+	SortKey    string `json:"sort_key"`
+	SortOrder  string `json:"sort_order"`
+	PageOffset int32  `json:"page_offset"`
+	PageLimit  int32  `json:"page_limit"`
+}
+
+func (q *Queries) ListMediaPaginated(ctx context.Context, arg ListMediaPaginatedParams) ([]MediaAsset, error) {
+	rows, err := q.db.Query(ctx, listMediaPaginated,
+		arg.Search,
+		arg.SortKey,
+		arg.SortOrder,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MediaAsset
+	for rows.Next() {
+		var i MediaAsset
+		if err := rows.Scan(
+			&i.ID,
+			&i.FileName,
+			&i.FileUrl,
+			&i.MimeType,
+			&i.FileSize,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
+			&i.ChecksumSha256,
+			&i.Width,
+			&i.Height,
+			&i.UploadedBy,
 		); err != nil {
 			return nil, err
 		}

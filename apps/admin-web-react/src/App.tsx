@@ -67,6 +67,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
   const canOperateScores = canAccessRole(roles, ['koresponden']);
   const canSubmitMedals = canAccessRole(roles, ['koresponden']);
   const canVerifyMedals = canAccessRole(roles, ['verifikator']);
+  const canManageContent = canAccessRole(roles, ['super_admin']);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -115,12 +116,12 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
           
           <ul className="sidebar-menu border-t border-white/10" style={{ height: 'calc(100% - 70px)' }}>
             <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" isActive={location.pathname === '/'} />
-            <SidebarItem icon={Database} label="Master Data" path="/master-data" isActive={location.pathname.startsWith('/master-data')} />
-            <SidebarItem icon={PanelsTopLeft} label="Hero Utama" path="/hero" isActive={location.pathname.startsWith('/hero')} />
+            {canManageContent && <SidebarItem icon={Database} label="Master Data" path="/master-data" isActive={location.pathname.startsWith('/master-data')} />}
+            {canManageContent && <SidebarItem icon={PanelsTopLeft} label="Hero Utama" path="/hero" isActive={location.pathname.startsWith('/hero')} />}
             {canOperateScores && <SidebarItem icon={Activity} label="LiveScore Center" path="/livescore" isActive={location.pathname.startsWith('/livescore')} />}
             {canSubmitMedals && <SidebarItem icon={Medal} label="Perolehan Medali" path="/medals" isActive={location.pathname.startsWith('/medals')} />}
-            <SidebarItem icon={MapPinned} label="City Guide" path="/city-guide" isActive={location.pathname.startsWith('/city-guide')} />
-            <SidebarItem icon={Images} label="Media Library" path="/media" isActive={location.pathname.startsWith('/media')} />
+            {canManageContent && <SidebarItem icon={MapPinned} label="City Guide" path="/city-guide" isActive={location.pathname.startsWith('/city-guide')} />}
+            {canManageContent && <SidebarItem icon={Images} label="Media Library" path="/media" isActive={location.pathname.startsWith('/media')} />}
             {canVerifyMedals && (
               <>
                 <SidebarItem icon={FileCheck} label="Verifikasi" path="/verifikasi" isActive={location.pathname.startsWith('/verifikasi')} />
@@ -274,17 +275,37 @@ function AdminRoutes() {
   return (
     <Routes>
       <Route path="/" element={<DashboardOverview />} />
-      <Route path="/master-data" element={<MasterData />} />
-      <Route path="/hero" element={<HeroManagement />} />
-      <Route path="/livescore" element={<LiveScoreCenter />} />
-      <Route path="/audit-log" element={<AuditLog />} />
+      <Route path="/master-data" element={<AdminRouteGuard allowedRoles={['super_admin']}><MasterData /></AdminRouteGuard>} />
+      <Route path="/hero" element={<AdminRouteGuard allowedRoles={['super_admin']}><HeroManagement /></AdminRouteGuard>} />
+      <Route path="/livescore" element={<AdminRouteGuard allowedRoles={['koresponden']}><LiveScoreCenter /></AdminRouteGuard>} />
+      <Route path="/audit-log" element={<AdminRouteGuard allowedRoles={['auditor']}><AuditLog /></AdminRouteGuard>} />
       <Route path="/profile" element={<Profile />} />
-      <Route path="/medals" element={<Medals />} />
-      <Route path="/city-guide" element={<CityGuide />} />
-      <Route path="/media" element={<MediaLibrary />} />
-      <Route path="/verifikasi" element={<Medals />} />
-      <Route path="/user-management" element={<UserManagement />} />
+      <Route path="/medals" element={<AdminRouteGuard allowedRoles={['koresponden']}><Medals /></AdminRouteGuard>} />
+      <Route path="/city-guide" element={<AdminRouteGuard allowedRoles={['super_admin']}><CityGuide /></AdminRouteGuard>} />
+      <Route path="/media" element={<AdminRouteGuard allowedRoles={['super_admin']}><MediaLibrary /></AdminRouteGuard>} />
+      <Route path="/verifikasi" element={<AdminRouteGuard allowedRoles={['verifikator']}><Medals /></AdminRouteGuard>} />
+      <Route path="/user-management" element={<AdminRouteGuard allowedRoles={['super_admin']}><UserManagement /></AdminRouteGuard>} />
       <Route path="*" element={<section className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"><h1 className="text-2xl font-black">Halaman tidak ditemukan</h1><p className="mt-2 text-slate-600 dark:text-slate-400">Kembali ke dashboard untuk melanjutkan pekerjaan.</p><Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-md bg-indigo-600 px-5 font-bold text-white hover:bg-indigo-700">Kembali ke Dashboard</Link></section>} />
     </Routes>
+  );
+}
+
+function AdminRouteGuard({ allowedRoles, children }: { allowedRoles: string[]; children: React.ReactNode }) {
+  const auth = useAuth();
+  const roles = getRealmRoles(auth.user);
+
+  if (canAccessRole(roles, allowedRoles)) return children;
+
+  // SECURITY: Guard presentasi mencegah akses route langsung. API Gateway tetap
+  // menjadi otoritas final dan menerapkan matrix role yang sama pada mutasi.
+  return (
+    <section role="alert" className="mx-auto flex min-h-80 max-w-2xl flex-col items-center justify-center rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm dark:border-red-900/70 dark:bg-slate-900">
+      <span className="grid size-14 place-items-center rounded-2xl bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-200">
+        <ShieldAlert className="size-7" aria-hidden="true" />
+      </span>
+      <h1 className="mt-4 text-2xl font-black text-slate-950 dark:text-white">Akses dibatasi</h1>
+      <p className="mt-2 max-w-lg text-sm text-slate-600 dark:text-slate-300">Akun Anda tidak memiliki peran yang diperlukan untuk membuka workspace ini.</p>
+      <Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950">Kembali ke Dashboard</Link>
+    </section>
   );
 }

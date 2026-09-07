@@ -15,6 +15,8 @@ import {
   unwrapApiData,
 } from '../lib/api';
 import type { HeroContent } from '../types/master-data';
+import RevisionHistory from '../components/common/RevisionHistory';
+import { applyRevisionFields } from '../lib/revision';
 
 interface HeroFormState {
   title: string;
@@ -235,7 +237,8 @@ export default function HeroManagement() {
         </div>
       )}
 
-      <ModalForm isOpen={formOpen} onClose={() => !saveMutation.isPending && setFormOpen(false)} title={editing ? 'Edit Hero Utama' : 'Tambah Hero Utama'} onSubmit={submit} submitting={saveMutation.isPending} submitText={editing ? 'Simpan Perubahan' : 'Tambah Hero'} size="large">
+      <ModalForm isOpen={formOpen} onClose={() => !saveMutation.isPending && setFormOpen(false)} title={editing ? 'Edit Hero Utama' : 'Tambah Hero Utama'} onSubmit={submit} submitting={saveMutation.isPending} submitText={editing ? 'Simpan Perubahan' : 'Tambah Hero'} size="large" draft={{ entityId: editing?.id || 'new-hero', version: 'hero-v1', value: form, onRestore: setForm }}>
+        <RevisionHistory entityName="Hero" entityId={editing?.id} onRestore={(payload) => setForm((current) => applyRevisionFields(current, payload))} />
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/35 dark:text-blue-100">
           <p className="flex items-center gap-2 font-black"><Sparkles className="size-4" aria-hidden="true" /> Panduan Hero Web Publik</p>
           <p className="mt-1 leading-relaxed">Gunakan judul ringkas, isi dua sampai tiga baris, serta gambar lanskap dari Media Library. Teks sorotan harus merupakan bagian dari judul.</p>

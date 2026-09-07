@@ -11,6 +11,8 @@ import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { useTableControls, usePagination } from '../../hooks/useTableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
+import RevisionHistory from '../common/RevisionHistory';
+import { applyRevisionFields } from '../../lib/revision';
 
 type SortKeyType = 'name' | 'kategori' | 'total_medali' | 'technical_delegate' | 'status';
 
@@ -282,8 +284,10 @@ export default function CabangOlahraga() {
         submitting={submitting}
         submitText={formData.id ? 'Simpan perubahan' : 'Simpan cabor'}
         size="large"
+        draft={{ entityId: formData.id || 'new-cabor', version: 'cabor-v1', value: formData, onRestore: setFormData }}
       >
         {formError && <AdminAlert>{formError}</AdminAlert>}
+        <RevisionHistory entityName="Cabor" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
         <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">Identitas cabang olahraga</legend>
           <div className="grid gap-4 md:grid-cols-2">
