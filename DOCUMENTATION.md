@@ -454,9 +454,11 @@ Keputusan integrasi ini dicatat pada `docs/adr/ADR-0001-master-data-media-integr
 - Runtime Go minimum 1.26.6 dan `golang.org/x/text` minimum 0.39.0 sesuai gate
   CI 6 September 2026. Dependency npm, termasuk toolchain development/build,
   wajib nol Critical/High kecuali exception exact-ID yang disetujui, memiliki
-  mitigasi, dan otomatis kedaluwarsa. Web saat ini nol vulnerability; Mobile
-  hanya mengizinkan dua advisory `image-size` melalui Metro sampai 7 Oktober
-  2026 sesuai `docs/security/NPM_AUDIT_EXCEPTION_IMAGE_SIZE_2026-09-07.md`.
+  mitigasi, dan otomatis kedaluwarsa. Web saat ini nol vulnerability; lockfile
+  Mobile dengan Metro 0.84.5 saat ini nol Critical/High dan memiliki 14
+  Moderate. CI tetap memiliki exception kontingensi hanya untuk dua advisory
+  `image-size` sampai 7 Oktober 2026 sesuai
+  `docs/security/NPM_AUDIT_EXCEPTION_IMAGE_SIZE_2026-09-07.md`.
   Override Web mematok `browserslist` 4.28.9, `nanoid` 3.3.18, dan `js-yaml`
   4.3.1.
 - Git security gate berada pada `.github/workflows/security.yml` dan mencakup
