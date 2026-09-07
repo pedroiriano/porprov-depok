@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Edit, Loader2, Plus, Search, Trash } from 'lucide-react';
+import { Edit, Plus, Search, Trash } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../../lib/api';
 import type { Cabor, NomorTanding as NomorTandingRecord } from '../../types/master-data';
@@ -8,8 +8,10 @@ import SearchableSelect from '../common/SearchableSelect';
 import type { SelectOption } from '../common/SearchableSelect';
 import { SelectInput, TextInput } from '../common/FormInputs';
 import { requestSoftDeleteReason } from '../../lib/soft-delete';
-import { TablePagination, RowsPerPageSelector, SortableHeader } from '../common/TableControls';
+import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { useTableControls, usePagination } from '../../hooks/useTableControls';
+import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
+import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
 
 const emptyForm = {
   id: '',
@@ -30,7 +32,11 @@ export default function NomorTanding() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [listError, setListError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [operationMessage, setOperationMessage] = useState('');
+  const [archiving, setArchiving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const table = useTableControls<SortKeyType>({ sortKey: 'cabor', sortDirection: 'asc', rowsPerPage: 10 });
 
@@ -45,9 +51,9 @@ export default function NomorTanding() {
       ]);
       setItems(unwrapApiData(itemsResponse.data) || []);
       setCabors(unwrapApiData(caborsResponse.data) || []);
-      setErrorMessage('');
+      setListError('');
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, 'Gagal memuat nomor pertandingan.'));
+      setListError(getApiErrorMessage(error, 'Gagal memuat nomor pertandingan.'));
     } finally {
       setLoading(false);
     }
@@ -111,12 +117,15 @@ export default function NomorTanding() {
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!formData.cabor_id) {
-      setErrorMessage('Cabang olahraga wajib dipilih.');
+      setFormError('Cabang olahraga wajib dipilih.');
       return;
     }
 
     try {
       setSubmitting(true);
+      setFormError('');
+      setOperationMessage('');
+      const wasEditing = Boolean(formData.id);
       const payload = {
         cabor_id: formData.cabor_id,
         name: formData.name.trim(),
@@ -131,21 +140,31 @@ export default function NomorTanding() {
       setIsModalOpen(false);
       resetForm();
       await fetchData();
+      setOperationMessage(wasEditing ? 'Nomor pertandingan berhasil diperbarui.' : 'Nomor pertandingan berhasil ditambahkan.');
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, 'Gagal menyimpan nomor pertandingan.'));
+      setFormError(getApiErrorMessage(error, 'Gagal menyimpan nomor pertandingan.'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (item: NomorTandingRecord) => {
-    const reason = requestSoftDeleteReason(`Nomor pertandingan ${item.name}`);
+  const handleArchive = async (ids: string[]) => {
+    const reason = requestSoftDeleteReason(ids.length > 1 ? `${ids.length} nomor pertandingan ini` : 'Nomor pertandingan ini');
     if (reason === null) return;
     try {
-      await apiClient.delete(`/master-data/nomor-tandings/${item.id}`, { ...requestConfig(), data: { reason } });
+      setArchiving(true);
+      setListError('');
+      setOperationMessage('');
+      for (const id of ids) {
+        await apiClient.delete(`/master-data/nomor-tandings/${id}`, { ...requestConfig(), data: { reason } });
+      }
+      setSelectedIds(new Set());
       await fetchData();
+      setOperationMessage(`${ids.length} nomor pertandingan berhasil diarsipkan.`);
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, 'Gagal mengarsipkan nomor pertandingan.'));
+      setListError(getApiErrorMessage(error, 'Gagal mengarsipkan nomor pertandingan.'));
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -157,134 +176,74 @@ export default function NomorTanding() {
       gender_category: item.gender_category,
       match_type: item.match_type,
     });
+    setFormError('');
     setIsModalOpen(true);
   };
 
+  const columns = useMemo<Array<AdminDataTableColumn<NomorTandingRecord, SortKeyType>>>(() => [
+    { key: 'cabor', label: 'Cabang Olahraga', sortKey: 'cabor', render: (item) => <span className="font-black text-slate-950 dark:text-white">{caborById.get(item.cabor_id) ?? item.cabor_id}</span> },
+    { key: 'name', label: 'Nomor', sortKey: 'name', render: (item) => <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{item.name}</span> },
+    { key: 'gender', label: 'Kategori', sortKey: 'gender_category', render: (item) => <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black capitalize text-blue-800 dark:bg-blue-950/50 dark:text-blue-200">{item.gender_category}</span> },
+    { key: 'type', label: 'Tipe', sortKey: 'match_type', render: (item) => <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black capitalize text-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.match_type}</span> },
+  ], [caborById]);
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Nomor Pertandingan</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola nomor yang dipakai saat menyusun jadwal pertandingan.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => { resetForm(); setIsModalOpen(true); }}
-          className="flex min-h-11 items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm hover:bg-indigo-700"
-        >
-          <Plus className="h-5 w-5" /> Tambah Nomor
-        </button>
-      </div>
+      <AdminPageHeader
+        eyebrow="Struktur pertandingan"
+        title="Nomor Pertandingan"
+        description="Kelola nomor dan klasifikasi yang menjadi dasar penyusunan jadwal pertandingan."
+        actions={<button type="button" onClick={() => { resetForm(); setFormError(''); setIsModalOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah nomor</button>}
+      />
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      {operationMessage && <AdminAlert tone="success">{operationMessage}</AdminAlert>}
+
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         {/* Toolbar */}
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input 
-              className="min-h-11 w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500" 
+          <label className="relative block w-full md:max-w-sm">
+            <span className="sr-only">Cari nomor pertandingan</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input
+              type="search"
+              maxLength={80}
+              className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
               value={search} 
               onChange={(event) => setSearch(event.target.value)} 
               placeholder="Cari nomor atau cabang olahraga..." 
             />
-          </div>
+          </label>
           <RowsPerPageSelector
             value={table.rowsPerPage}
             onChange={table.handleRowsPerPageChange}
           />
         </div>
         
-        {/* Table Content */}
-        <div className="min-h-64 overflow-x-auto">
-          {errorMessage && <div role="alert" className="m-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">{errorMessage}</div>}
-          
-          {loading ? (
-            <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div>
-          ) : paginatedData.length === 0 ? (
-            <div className="flex h-48 items-center justify-center text-slate-500 dark:text-slate-400">Belum ada nomor pertandingan.</div>
-          ) : (
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
-                  <SortableHeader
-                    field="cabor"
-                    label="Cabang Olahraga"
-                    sortKey={table.sortKey}
-                    sortDirection={table.sortDirection}
-                    onSort={table.handleSort}
-                    className="p-4 font-medium"
-                  />
-                  <SortableHeader
-                    field="name"
-                    label="Nomor"
-                    sortKey={table.sortKey}
-                    sortDirection={table.sortDirection}
-                    onSort={table.handleSort}
-                    className="p-4 font-medium"
-                  />
-                  <SortableHeader
-                    field="gender_category"
-                    label="Kategori"
-                    sortKey={table.sortKey}
-                    sortDirection={table.sortDirection}
-                    onSort={table.handleSort}
-                    className="p-4 font-medium"
-                  />
-                  <SortableHeader
-                    field="match_type"
-                    label="Tipe"
-                    sortKey={table.sortKey}
-                    sortDirection={table.sortDirection}
-                    onSort={table.handleSort}
-                    className="p-4 font-medium"
-                  />
-                  <th className="p-4 font-medium text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {paginatedData.map((item) => (
-                  <tr key={item.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                    <td className="p-4 font-semibold text-slate-900 dark:text-white">
-                      {caborById.get(item.cabor_id) ?? item.cabor_id}
-                    </td>
-                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300">
-                      {item.name}
-                    </td>
-                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300 capitalize">
-                      {item.gender_category}
-                    </td>
-                    <td className="p-4 text-sm text-slate-600 dark:text-slate-300 capitalize">
-                      {item.match_type}
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button 
-                          type="button" 
-                          onClick={() => editItem(item)} 
-                          aria-label={`Edit ${item.name}`} 
-                          className="rounded-md p-2 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => void handleDelete(item)} 
-                          aria-label={`Arsipkan ${item.name}`} 
-                          className="rounded-md p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
-                        >
-                          <Trash className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="nomor" />
+
+        <AdminDataTable<NomorTandingRecord, SortKeyType>
+          caption="Daftar nomor pertandingan PORPROV"
+          rows={paginatedData}
+          columns={columns}
+          getRowId={(item) => item.id}
+          getRowLabel={(item) => item.name}
+          selectionLabel="nomor"
+          sortKey={table.sortKey}
+          sortDirection={table.sortDirection}
+          onSort={table.handleSort}
+          selectedIds={selectedIds}
+          onSelectedIdsChange={setSelectedIds}
+          loading={loading}
+          loadingLabel="Memuat nomor pertandingan..."
+          error={listError}
+          onRetry={fetchData}
+          emptyTitle={search ? 'Nomor pertandingan tidak ditemukan' : 'Belum ada nomor pertandingan'}
+          emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan nomor pertandingan setelah cabang olahraga tersedia.'}
+          rowActions={(item) => <><button type="button" onClick={() => editItem(item)} aria-label={`Edit ${item.name}`} title="Edit nomor" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button><button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan nomor" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button></>}
+        />
 
         {/* Footer Pagination */}
-        {totalPages > 1 && (
+        {!loading && !listError && totalItems > 0 && (
           <TablePagination
             currentPage={table.currentPage}
             totalPages={totalPages}
@@ -298,17 +257,22 @@ export default function NomorTanding() {
 
       <ModalForm
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); resetForm(); }}
+        onClose={() => { setIsModalOpen(false); resetForm(); setFormError(''); }}
         title={formData.id ? 'Edit Nomor Pertandingan' : 'Tambah Nomor Pertandingan'}
         onSubmit={handleSave}
         submitting={submitting}
-        submitText="Simpan Nomor"
+        submitText={formData.id ? 'Simpan perubahan' : 'Simpan nomor'}
+        size="large"
       >
+        {formError && <AdminAlert>{formError}</AdminAlert>}
+        <fieldset className="space-y-4 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+          <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">Klasifikasi nomor pertandingan</legend>
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Cabang Olahraga <span className="text-red-500">*</span></label>
-          <SearchableSelect options={caborOptions} value={formData.cabor_id} onChange={(value) => setFormData({ ...formData, cabor_id: value })} placeholder="Pilih cabang olahraga..." />
+          <SearchableSelect options={caborOptions} value={formData.cabor_id} onChange={(value) => setFormData({ ...formData, cabor_id: value })} placeholder="Pilih cabang olahraga..." ariaLabel="Cabang Olahraga" />
         </div>
-        <TextInput label="Nama Nomor" required value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} placeholder="Contoh: Tunggal Putra" />
+        <div className="grid gap-4 md:grid-cols-2">
+        <TextInput label="Nama Nomor" required maxLength={160} value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} placeholder="Contoh: Tunggal Putra" />
         <SelectInput label="Kategori Gender" required value={formData.gender_category} onChange={(event) => setFormData({ ...formData, gender_category: event.target.value })} options={[
           { value: 'putra', label: 'Putra' }, 
           { value: 'putri', label: 'Putri' }, 
@@ -321,6 +285,8 @@ export default function NomorTanding() {
           { value: 'terukur', label: 'Terukur' }, 
           { value: 'beregu', label: 'Beregu' },
         ]} />
+        </div>
+        </fieldset>
       </ModalForm>
     </div>
   );

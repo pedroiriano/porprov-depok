@@ -114,6 +114,13 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
                   {guide.nearbyCategoryLabel}
                 </span>
 
+                {guide.isPinnedVenueRecommendation && (
+                  <span className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-blue-700 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white shadow-lg">
+                    <i className="ri-pushpin-fill" aria-hidden="true" />
+                    Rekomendasi Utama
+                  </span>
+                )}
+
                 <span className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-slate-950/80 px-3 py-1.5 text-xs font-black text-white backdrop-blur-md">
                   <i className="ri-navigation-line text-primary-300" aria-hidden="true" />
                   {formatDistance(guide.distanceKm)}

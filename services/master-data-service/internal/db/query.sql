@@ -103,7 +103,7 @@ WHERE deleted_at IS NULL
     OR COALESCE(address, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
     OR category ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
   )
-ORDER BY title ASC;
+ORDER BY is_pinned_venue_recommendation DESC, title ASC;
 
 -- name: ListCityGuidesPaginated :many
 SELECT * FROM city_guides
@@ -119,7 +119,7 @@ WHERE deleted_at IS NULL
     OR COALESCE(whatsapp, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
     OR COALESCE(email, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
   )
-ORDER BY title ASC, id ASC
+ORDER BY is_pinned_venue_recommendation DESC, title ASC, id ASC
 LIMIT sqlc.arg(page_limit)::integer
 OFFSET sqlc.arg(page_offset)::integer;
 
@@ -140,6 +140,27 @@ WHERE deleted_at IS NULL
 
 -- name: GetCityGuideByID :one
 SELECT * FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
+
+-- name: GetPinnedCityGuideForVenues :one
+SELECT * FROM city_guides
+WHERE is_pinned_venue_recommendation = TRUE
+  AND deleted_at IS NULL
+LIMIT 1;
+
+-- name: ClearPinnedCityGuideForVenues :exec
+UPDATE city_guides
+SET is_pinned_venue_recommendation = FALSE,
+    updated_at = NOW()
+WHERE is_pinned_venue_recommendation = TRUE
+  AND deleted_at IS NULL;
+
+-- name: PinCityGuideForVenues :one
+UPDATE city_guides
+SET is_pinned_venue_recommendation = TRUE,
+    updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING *;
 
 -- name: UpdateCityGuide :one
 UPDATE city_guides

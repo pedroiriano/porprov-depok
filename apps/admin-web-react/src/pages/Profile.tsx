@@ -1,78 +1,55 @@
-import { useAuth } from "react-oidc-context";
-import { User, Mail, Shield, Key } from "lucide-react";
+import { BadgeCheck, ExternalLink, KeyRound, Mail, ShieldCheck, User } from 'lucide-react';
+import { useAuth } from 'react-oidc-context';
+import { AdminEmptyState, AdminPageHeader } from '../components/cuba/AdminPrimitives';
 import { getRealmRoles } from '../lib/auth';
+
+function IdentityField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+      <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-200">{icon}</span><div className="min-w-0"><dt className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">{label}</dt><dd className="mt-1 break-words font-black text-slate-950 dark:text-white">{value}</dd></div></div>
+    </div>
+  );
+}
 
 export default function Profile() {
   const auth = useAuth();
+  if (!auth.isAuthenticated) return <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"><AdminEmptyState icon={User} title="Sesi belum tersedia" description="Silakan masuk kembali untuk melihat profil akun." /></div>;
 
-  if (!auth.isAuthenticated) {
-    return <div className="text-slate-500 dark:text-slate-400">Silakan login.</div>;
-  }
-
-  // INFO: Use getRealmRoles to parse from both ID token and Access Token
+  const profile = auth.user?.profile;
   const roles = getRealmRoles(auth.user);
+  const username = String(profile?.preferred_username || profile?.name || 'Pengguna');
+  const displayName = String(profile?.name || profile?.preferred_username || 'Pengguna PORPROV');
+  const email = String(profile?.email || 'Email belum tersedia');
+  const accountUrl = `${(import.meta.env.VITE_OIDC_AUTHORITY || 'http://localhost:8080/realms/porprov').replace(/\/$/, '')}/account/`;
+  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase() || 'U';
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <h1 className="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800 dark:text-white">
-          <User className="text-indigo-600" /> Profil Pengguna
-        </h1>
-        
-        <div className="flex flex-col md:flex-row gap-8">
-          <div className="flex-1 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Nama Pengguna (Username)</label>
-              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50">
-                <User className="w-5 h-5 text-slate-400" />
-                <span className="font-medium text-slate-900 dark:text-white">{auth.user?.profile.preferred_username || auth.user?.profile.name}</span>
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Email</label>
-              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50">
-                <Mail className="w-5 h-5 text-slate-400" />
-                <span className="font-medium text-slate-900 dark:text-white">{auth.user?.profile.email || "Tidak ada email"}</span>
-              </div>
-            </div>
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader eyebrow="Identitas operator" title="Profil Akun" description="Informasi ini berasal dari sesi OIDC Keycloak. Perubahan identitas dan keamanan akun dilakukan melalui Account Console." />
 
-            <div>
-              <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Peran (Role)</label>
-              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50">
-                <Shield className="w-5 h-5 text-slate-400" />
-                <div className="flex gap-2">
-                  {roles && roles.length > 0 ? (
-                    roles.map((role: string) => (
-                      <span key={role} className="px-2 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-xs font-bold rounded">
-                        {role}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="font-medium text-slate-900 dark:text-white">User Standar</span>
-                  )}
-                </div>
-              </div>
-            </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(260px,0.55fr)_minmax(0,1.45fr)]">
+        <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="mx-auto grid size-24 place-items-center rounded-3xl bg-blue-600 text-3xl font-black text-white shadow-lg shadow-blue-600/20" aria-hidden="true">{initials}</div>
+          <h2 className="mt-4 break-words text-xl font-black text-slate-950 dark:text-white">{displayName}</h2>
+          <p className="mt-1 break-all text-sm text-slate-500 dark:text-slate-300">@{username}</p>
+          <span className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"><BadgeCheck className="size-4" aria-hidden="true" />Terautentikasi via Keycloak</span>
+          <a href={accountUrl} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"><KeyRound className="size-4" aria-hidden="true" />Manajemen Akun<ExternalLink className="size-3.5" aria-hidden="true" /></a>
+          <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Account Console dibuka pada tab baru. Portal Admin tidak menyimpan ulang password Anda.</p>
+        </aside>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900" aria-labelledby="identity-title">
+          <div><h2 id="identity-title" className="text-lg font-black text-slate-950 dark:text-white">Informasi identitas</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Claim yang aman untuk ditampilkan dari sesi pengguna aktif.</p></div>
+          <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+            <IdentityField icon={<User className="size-5" aria-hidden="true" />} label="Nama pengguna" value={username} />
+            <IdentityField icon={<Mail className="size-5" aria-hidden="true" />} label="Email" value={email} />
+          </dl>
+
+          <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-700">
+            <h3 className="flex items-center gap-2 font-black text-slate-950 dark:text-white"><ShieldCheck className="size-5 text-blue-600 dark:text-blue-300" aria-hidden="true" />Peran aktif</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Hak akses akhir tetap divalidasi oleh API Gateway pada setiap permintaan.</p>
+            {roles.length > 0 ? <ul className="mt-4 flex flex-wrap gap-2" aria-label="Daftar peran akun">{roles.map((role) => <li key={role} className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200">{role}</li>)}</ul> : <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Tidak ada realm role aplikasi pada sesi ini.</p>}
           </div>
-          
-          <div className="w-full md:w-64">
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 flex flex-col items-center text-center">
-              <div className="w-24 h-24 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center text-4xl font-bold mb-4">
-                {String(auth.user?.profile.preferred_username || "U").charAt(0).toUpperCase()}
-              </div>
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{auth.user?.profile.name || auth.user?.profile.preferred_username}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Terautentikasi via Keycloak</p>
-              
-              <button 
-                onClick={() => window.open((import.meta.env.VITE_OIDC_AUTHORITY || 'http://localhost:8080/realms/porprov') + '/account/', '_blank')} 
-                className="w-full py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center gap-2 transition-colors"
-              >
-                <Key className="w-4 h-4" /> Manajemen Akun
-              </button>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   );

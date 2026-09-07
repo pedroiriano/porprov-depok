@@ -54,7 +54,7 @@ export function TablePagination({
           type="button"
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"
           aria-label="Halaman pertama"
         >
           <ChevronsLeft className="h-4 w-4" />
@@ -63,7 +63,7 @@ export function TablePagination({
           type="button"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"
           aria-label="Halaman sebelumnya"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -74,10 +74,10 @@ export function TablePagination({
             key={page}
             type="button"
             onClick={() => onPageChange(page)}
-            className={`inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
+            className={`inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               page === currentPage
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'border border-slate-300 text-slate-600 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200'
             }`}
             aria-label={`Halaman ${page}`}
             aria-current={page === currentPage ? 'page' : undefined}
@@ -90,7 +90,7 @@ export function TablePagination({
           type="button"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"
           aria-label="Halaman berikutnya"
         >
           <ChevronRight className="h-4 w-4" />
@@ -99,7 +99,7 @@ export function TablePagination({
           type="button"
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"
           aria-label="Halaman terakhir"
         >
           <ChevronsRight className="h-4 w-4" />
@@ -125,7 +125,7 @@ export function RowsPerPageSelector({ value, rowsPerPage, onChange }: RowsPerPag
         <select
           value={selectedValue}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="min-h-11 appearance-none rounded-lg border border-slate-300 bg-white py-1 pl-3 pr-8 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          className="min-h-11 appearance-none rounded-xl border border-slate-300 bg-white py-1 pl-3 pr-8 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
         >
           {ROWS_PER_PAGE_OPTIONS.map((opt) => (
             <option key={opt} value={opt} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{opt}</option>
@@ -174,10 +174,10 @@ export function SortableHeader<K extends string>({
     <button
       type="button"
       onClick={() => onSort(key)}
-      className="group inline-flex items-center gap-1 font-medium uppercase tracking-wider hover:text-indigo-600 dark:hover:text-indigo-400"
+      className="group inline-flex min-h-11 items-center gap-1 font-bold uppercase tracking-wider hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:hover:text-blue-200"
     >
       {textLabel}
-      <span className={`ml-0.5 inline-flex transition-colors ${isActive ? 'text-indigo-500' : 'text-slate-400 dark:text-slate-600'}`}>
+      <span className={`ml-0.5 inline-flex transition-colors ${isActive ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400 dark:text-slate-600'}`}>
         {isActive ? (
           <ArrowUpDown className={`h-3.5 w-3.5 transition-transform ${activeDir === 'desc' ? 'rotate-180' : ''}`} />
         ) : (
@@ -190,7 +190,15 @@ export function SortableHeader<K extends string>({
   // CHANGE: Jika dipanggil dengan className (misal: "p-4 font-medium" untuk <th>), 
   // maka render sebagai <th> agar struktur HTML table valid.
   if (className) {
-    return <th className={className}>{content}</th>;
+    return (
+      <th
+        className={className}
+        scope="col"
+        aria-sort={isActive ? (activeDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      >
+        {content}
+      </th>
+    );
   }
   
   return content;

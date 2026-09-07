@@ -196,6 +196,7 @@ export interface RawCityGuide {
   price_range?: Parameters<typeof readPgText>[0];
   fleet_types?: unknown;
   fleet_count?: Parameters<typeof readPgNumber>[0];
+  is_pinned_venue_recommendation?: unknown;
 }
 
 export interface CityGuideModel {
@@ -221,6 +222,7 @@ export interface CityGuideModel {
   priceRange: string;
   fleetTypes: string[];
   fleetCount: number;
+  isPinnedVenueRecommendation: boolean;
 }
 
 function hasPgNumber(value: Parameters<typeof readPgNumber>[0]): boolean {
@@ -296,6 +298,7 @@ export function normalizeCityGuide(raw: RawCityGuide, index = 0): CityGuideModel
     priceRange: readPgText(raw.price_range),
     fleetTypes: Array.isArray(raw.fleet_types) ? raw.fleet_types.filter((value): value is string => typeof value === "string" && value.trim().length > 0) : [],
     fleetCount: readPgNumber(raw.fleet_count),
+    isPinnedVenueRecommendation: raw.is_pinned_venue_recommendation === true,
   };
 }
 

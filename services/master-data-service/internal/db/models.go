@@ -58,6 +58,8 @@ type CityGuide struct {
 	FleetTypes []string `json:"fleet_types"`
 	// Jumlah seluruh unit armada aktif yang ditawarkan penyedia transportasi.
 	FleetCount pgtype.Int4 `json:"fleet_count"`
+	// Exactly one active City Guide may be prioritized on every public Venue detail page.
+	IsPinnedVenueRecommendation bool `json:"is_pinned_venue_recommendation"`
 }
 
 type Hero struct {

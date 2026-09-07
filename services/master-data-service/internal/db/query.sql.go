@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearPinnedCityGuideForVenues = `-- name: ClearPinnedCityGuideForVenues :exec
+UPDATE city_guides
+SET is_pinned_venue_recommendation = FALSE,
+    updated_at = NOW()
+WHERE is_pinned_venue_recommendation = TRUE
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) ClearPinnedCityGuideForVenues(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, clearPinnedCityGuideForVenues)
+	return err
+}
+
 const countCityGuides = `-- name: CountCityGuides :one
 SELECT COUNT(*) FROM city_guides
 WHERE deleted_at IS NULL
@@ -99,7 +112,7 @@ VALUES (
   $9, $10, $11, $12, $13, $14, $15,
   $16, $17, $18, $19, $20, $21
 )
-RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation
 `
 
 type CreateCityGuideParams struct {
@@ -179,6 +192,7 @@ func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams
 		&i.PriceRange,
 		&i.FleetTypes,
 		&i.FleetCount,
+		&i.IsPinnedVenueRecommendation,
 	)
 	return i, err
 }
@@ -423,7 +437,7 @@ func (q *Queries) GetCaborByIdentifier(ctx context.Context, identifier string) (
 }
 
 const getCityGuideByID = `-- name: GetCityGuideByID :one
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGuide, error) {
@@ -457,6 +471,7 @@ func (q *Queries) GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGui
 		&i.PriceRange,
 		&i.FleetTypes,
 		&i.FleetCount,
+		&i.IsPinnedVenueRecommendation,
 	)
 	return i, err
 }
@@ -592,6 +607,49 @@ func (q *Queries) GetNomorTandingByID(ctx context.Context, id pgtype.UUID) (Nomo
 	return i, err
 }
 
+const getPinnedCityGuideForVenues = `-- name: GetPinnedCityGuideForVenues :one
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation FROM city_guides
+WHERE is_pinned_venue_recommendation = TRUE
+  AND deleted_at IS NULL
+LIMIT 1
+`
+
+func (q *Queries) GetPinnedCityGuideForVenues(ctx context.Context) (CityGuide, error) {
+	row := q.db.QueryRow(ctx, getPinnedCityGuideForVenues)
+	var i CityGuide
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Category,
+		&i.Description,
+		&i.Address,
+		&i.ImageUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.Latitude,
+		&i.Longitude,
+		&i.MapRouteUrl,
+		&i.ContactPhone,
+		&i.Whatsapp,
+		&i.Email,
+		&i.WebsiteUrl,
+		&i.InstagramUrl,
+		&i.FacebookUrl,
+		&i.TiktokUrl,
+		&i.ServiceTypes,
+		&i.ServiceArea,
+		&i.OperatingHours,
+		&i.PriceRange,
+		&i.FleetTypes,
+		&i.FleetCount,
+		&i.IsPinnedVenueRecommendation,
+	)
+	return i, err
+}
+
 const listCabors = `-- name: ListCabors :many
 SELECT id, name, description, icon_url, created_at, updated_at, kategori, total_medali, technical_delegate, status, deleted_at, deleted_by, delete_reason, slug, hero_image_url FROM cabors
 WHERE deleted_at IS NULL
@@ -635,7 +693,7 @@ func (q *Queries) ListCabors(ctx context.Context) ([]Cabor, error) {
 }
 
 const listCityGuides = `-- name: ListCityGuides :many
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count FROM city_guides
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation FROM city_guides
 WHERE deleted_at IS NULL
   AND category = COALESCE(NULLIF($1::text, ''), category)
   AND (
@@ -645,7 +703,7 @@ WHERE deleted_at IS NULL
     OR COALESCE(address, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
     OR category ILIKE '%' || $2::text || '%' ESCAPE '\'
   )
-ORDER BY title ASC
+ORDER BY is_pinned_venue_recommendation DESC, title ASC
 `
 
 type ListCityGuidesParams struct {
@@ -690,6 +748,7 @@ func (q *Queries) ListCityGuides(ctx context.Context, arg ListCityGuidesParams) 
 			&i.PriceRange,
 			&i.FleetTypes,
 			&i.FleetCount,
+			&i.IsPinnedVenueRecommendation,
 		); err != nil {
 			return nil, err
 		}
@@ -702,7 +761,7 @@ func (q *Queries) ListCityGuides(ctx context.Context, arg ListCityGuidesParams) 
 }
 
 const listCityGuidesPaginated = `-- name: ListCityGuidesPaginated :many
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count FROM city_guides
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation FROM city_guides
 WHERE deleted_at IS NULL
   AND category = COALESCE(NULLIF($1::text, ''), category)
   AND (
@@ -715,7 +774,7 @@ WHERE deleted_at IS NULL
     OR COALESCE(whatsapp, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
     OR COALESCE(email, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
   )
-ORDER BY title ASC, id ASC
+ORDER BY is_pinned_venue_recommendation DESC, title ASC, id ASC
 LIMIT $4::integer
 OFFSET $3::integer
 `
@@ -769,6 +828,7 @@ func (q *Queries) ListCityGuidesPaginated(ctx context.Context, arg ListCityGuide
 			&i.PriceRange,
 			&i.FleetTypes,
 			&i.FleetCount,
+			&i.IsPinnedVenueRecommendation,
 		); err != nil {
 			return nil, err
 		}
@@ -893,6 +953,51 @@ func (q *Queries) ListNomorTandings(ctx context.Context) ([]NomorTanding, error)
 	return items, nil
 }
 
+const pinCityGuideForVenues = `-- name: PinCityGuideForVenues :one
+UPDATE city_guides
+SET is_pinned_venue_recommendation = TRUE,
+    updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation
+`
+
+func (q *Queries) PinCityGuideForVenues(ctx context.Context, id pgtype.UUID) (CityGuide, error) {
+	row := q.db.QueryRow(ctx, pinCityGuideForVenues, id)
+	var i CityGuide
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Category,
+		&i.Description,
+		&i.Address,
+		&i.ImageUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.Latitude,
+		&i.Longitude,
+		&i.MapRouteUrl,
+		&i.ContactPhone,
+		&i.Whatsapp,
+		&i.Email,
+		&i.WebsiteUrl,
+		&i.InstagramUrl,
+		&i.FacebookUrl,
+		&i.TiktokUrl,
+		&i.ServiceTypes,
+		&i.ServiceArea,
+		&i.OperatingHours,
+		&i.PriceRange,
+		&i.FleetTypes,
+		&i.FleetCount,
+		&i.IsPinnedVenueRecommendation,
+	)
+	return i, err
+}
+
 const updateCabor = `-- name: UpdateCabor :one
 UPDATE cabors
 SET
@@ -980,7 +1085,7 @@ SET
   fleet_count = $22,
   updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation
 `
 
 type UpdateCityGuideParams struct {
@@ -1062,6 +1167,7 @@ func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams
 		&i.PriceRange,
 		&i.FleetTypes,
 		&i.FleetCount,
+		&i.IsPinnedVenueRecommendation,
 	)
 	return i, err
 }

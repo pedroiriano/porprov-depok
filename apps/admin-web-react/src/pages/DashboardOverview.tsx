@@ -1,229 +1,121 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Users, Trophy, Activity, AlertTriangle, Medal, MapPin, Map, Flag, type LucideIcon } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Activity, CalendarDays, Flag, Map, MapPin, Medal, RefreshCw, ScrollText } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
-import { apiClient, authConfig, unwrapApiData } from '../lib/api';
-import { canAccessRole, getRealmRoles } from '../lib/auth';
 import VisitorAnalytics from '../components/VisitorAnalytics';
+import { AdminAlert, AdminEmptyState, AdminLoadingState, AdminPageHeader } from '../components/cuba/AdminPrimitives';
+import { canAccessRole, getRealmRoles } from '../lib/auth';
+import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../lib/api';
+import type { MatchSchedule } from '../types/master-data';
 
-interface StatCardProps {
-  title: string;
-  value: string;
-  icon: LucideIcon;
-  trend: string;
-  colorClass: string;
+interface DashboardStats { cabors: number; venues: number; cityGuides: number; kontingens: number }
+interface CityGuideSummary { total_items?: number }
+interface AuditPreview { id: string; action: string; actor_id?: string; entity_name?: string; created_at: string }
+
+function OverviewCard({ icon, label, value, tone = 'blue' }: { icon: ReactNode; label: string; value: number | string; tone?: 'blue' | 'emerald' | 'amber' | 'rose' }) {
+  const styles = {
+    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-200',
+    emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-200',
+    amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-200',
+    rose: 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-200',
+  }[tone];
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex items-center gap-3"><span className={`grid size-11 shrink-0 place-items-center rounded-xl ${styles}`}>{icon}</span><div className="min-w-0"><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">{label}</p><p className="mt-1 text-2xl font-black text-slate-950 dark:text-white">{value}</p></div></div>
+    </article>
+  );
 }
 
-const StatCard = ({ title, value, icon: Icon, trend, colorClass }: StatCardProps) => (
-  <div className="card p-6 flex items-start justify-between">
-    <div>
-      <p className="text-sm font-medium text-text-muted mb-1">{title}</p>
-      <h3 className="text-3xl font-bold text-text-primary">{value}</h3>
-      <p className={`text-xs font-medium mt-2 ${trend.startsWith('+') ? 'text-success-500' : 'text-danger-500'}`}>
-        {trend} dibanding kemarin
-      </p>
-    </div>
-    <div className={`p-3 rounded-xl ${colorClass}`}>
-      <Icon className="w-6 h-6" />
-    </div>
-  </div>
-);
+const actionTone = (action: string) => {
+  if (action.includes('CREATE')) return 'bg-emerald-500';
+  if (action.includes('UPDATE') || action.includes('VERIFIED')) return 'bg-blue-500';
+  if (action.includes('DELETE') || action.includes('REJECTED')) return 'bg-red-500';
+  return 'bg-amber-500';
+};
 
 export default function DashboardOverview() {
   const auth = useAuth();
   const token = auth.user?.access_token;
-  const canViewAnalytics = canAccessRole(getRealmRoles(auth.user), ['auditor']);
-  
-  const [logs, setLogs] = useState<any[]>([]);
-  const [logsLoading, setLogsLoading] = useState(true);
+  const roles = getRealmRoles(auth.user);
+  const canViewAnalytics = canAccessRole(roles, ['auditor']);
+  const canViewAudit = canAccessRole(roles, ['auditor']);
+  const [logs, setLogs] = useState<AuditPreview[]>([]);
+  const [logsLoading, setLogsLoading] = useState(canViewAudit);
   const [logsError, setLogsError] = useState('');
+  const [stats, setStats] = useState<DashboardStats>({ cabors: 0, venues: 0, cityGuides: 0, kontingens: 0 });
+  const [matches, setMatches] = useState<MatchSchedule[]>([]);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState('');
 
-  const [stats, setStats] = useState({
-    cabors: 0,
-    venues: 0,
-    cityGuides: 0,
-    kontingens: 0,
-  });
-  const [statsLoading, setStatsLoading] = useState(true);
-
-  const loadStats = useCallback(async () => {
+  const loadOverview = useCallback(async () => {
     if (!token) return;
-    setStatsLoading(true);
+    setOverviewLoading(true);
+    setOverviewError('');
     try {
       const config = authConfig(token);
-      const [caborsRes, venuesRes, cityGuidesRes, kontingensRes] = await Promise.all([
-        apiClient.get('/master-data/cabors', config),
-        apiClient.get('/venues', config),
-        apiClient.get('/master-data/city-guides', config),
-        apiClient.get('/master-data/kontingens', config),
+      const [caborsRes, venuesRes, cityGuidesRes, kontingensRes, matchesRes] = await Promise.all([
+        apiClient.get<unknown[]>('/master-data/cabors', config),
+        apiClient.get<unknown[]>('/venues', config),
+        apiClient.get<CityGuideSummary>('/master-data/city-guides?page=1&per_page=1', config),
+        apiClient.get<unknown[]>('/master-data/kontingens', config),
+        apiClient.get<MatchSchedule[]>('/schedule/matches/enriched', config),
       ]);
-      
+      const cabors = unwrapApiData<unknown[]>(caborsRes.data);
+      const venues = unwrapApiData<unknown[]>(venuesRes.data);
+      const kontingens = unwrapApiData<unknown[]>(kontingensRes.data);
       setStats({
-        cabors: unwrapApiData<any[]>(caborsRes.data)?.length || 0,
-        venues: unwrapApiData<any[]>(venuesRes.data)?.length || 0,
-        cityGuides: unwrapApiData<any[]>(cityGuidesRes.data)?.length || 0,
-        kontingens: unwrapApiData<any[]>(kontingensRes.data)?.length || 0,
+        cabors: Array.isArray(cabors) ? cabors.length : 0,
+        venues: Array.isArray(venues) ? venues.length : 0,
+        cityGuides: cityGuidesRes.data.total_items || 0,
+        kontingens: Array.isArray(kontingens) ? kontingens.length : 0,
       });
-    } catch (e) {
-      console.error("Gagal memuat statistik", e);
-    } finally {
-      setStatsLoading(false);
-    }
+      setMatches(unwrapApiData<MatchSchedule[]>(matchesRes.data) || []);
+    } catch (cause) {
+      setOverviewError(getApiErrorMessage(cause, 'Ringkasan operasional belum dapat dimuat.'));
+    } finally { setOverviewLoading(false); }
   }, [token]);
 
   const loadLogs = useCallback(async () => {
-    if (!token) return;
+    if (!token || !canViewAudit) { setLogsLoading(false); return; }
     setLogsLoading(true);
     setLogsError('');
     try {
-      const response = await apiClient.get('/audit/logs?limit=10', authConfig(token));
-      setLogs(unwrapApiData<any[]>(response.data) || []);
-    } catch {
-      setLogsError('Gagal memuat log sistem terkini.');
-    } finally {
-      setLogsLoading(false);
-    }
-  }, [token]);
+      const response = await apiClient.get<AuditPreview[]>('/audit/logs?limit=10', authConfig(token));
+      setLogs(unwrapApiData<AuditPreview[]>(response.data) || []);
+    } catch (cause) {
+      setLogsError(getApiErrorMessage(cause, 'Log sistem terkini belum dapat dimuat.'));
+    } finally { setLogsLoading(false); }
+  }, [canViewAudit, token]);
 
-  useEffect(() => {
-    loadLogs();
-    loadStats();
-  }, [loadLogs, loadStats]);
+  useEffect(() => { void loadOverview(); void loadLogs(); }, [loadLogs, loadOverview]);
+
+  const upcomingMatches = useMemo(() => [...matches]
+    .sort((first, second) => new Date(first.match_date).getTime() - new Date(second.match_date).getTime())
+    .slice(0, 5), [matches]);
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">Workspace Panitia</p>
-        <h1 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Dashboard Operasional</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Pantau pertandingan, aktivitas sistem, dan pekerjaan penting dalam satu layar.</p>
-      </header>
+      <AdminPageHeader eyebrow="Workspace panitia" title="Dashboard Operasional" description="Ringkasan faktual master data, jadwal, analytics, dan aktivitas sistem untuk membantu operator menentukan pekerjaan berikutnya." actions={<button type="button" onClick={() => { void loadOverview(); void loadLogs(); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"><RefreshCw className="size-4" aria-hidden="true" />Perbarui</button>} />
+
+      {overviewError && <AdminAlert tone="danger">{overviewError}</AdminAlert>}
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Ringkasan master data">
+        <OverviewCard icon={<Medal className="size-5" aria-hidden="true" />} label="Cabang olahraga" value={overviewLoading ? '…' : stats.cabors} />
+        <OverviewCard icon={<MapPin className="size-5" aria-hidden="true" />} label="Venue" value={overviewLoading ? '…' : stats.venues} tone="emerald" />
+        <OverviewCard icon={<Map className="size-5" aria-hidden="true" />} label="City Guide" value={overviewLoading ? '…' : stats.cityGuides} tone="amber" />
+        <OverviewCard icon={<Flag className="size-5" aria-hidden="true" />} label="Kontingen" value={overviewLoading ? '…' : stats.kontingens} tone="rose" />
+      </section>
 
       {token && canViewAnalytics && <VisitorAnalytics token={token} />}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Total Atlet Terdaftar" 
-          value="0" 
-          icon={Users} 
-          trend="0%" 
-          colorClass="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
-        />
-        <StatCard 
-          title="Medali Didistribusikan" 
-          value="0" 
-          icon={Trophy} 
-          trend="+0" 
-          colorClass="bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300"
-        />
-        <StatCard 
-          title="Skor Masuk (Hari Ini)" 
-          value="0" 
-          icon={Activity} 
-          trend="+0" 
-          colorClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-        />
-        <StatCard 
-          title="Insiden Sistem" 
-          value="0" 
-          icon={AlertTriangle} 
-          trend="-0" 
-          colorClass="bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
-        />
-        <StatCard 
-          title="Total Cabang Olahraga" 
-          value={statsLoading ? "..." : stats.cabors.toString()} 
-          icon={Medal} 
-          trend={statsLoading ? "Memuat" : "Real-time"} 
-          colorClass="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
-        />
-        <StatCard 
-          title="Total Venue" 
-          value={statsLoading ? "..." : stats.venues.toString()} 
-          icon={MapPin} 
-          trend={statsLoading ? "Memuat" : "Real-time"} 
-          colorClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-        />
-        <StatCard 
-          title="Total City Guide" 
-          value={statsLoading ? "..." : stats.cityGuides.toString()} 
-          icon={Map} 
-          trend={statsLoading ? "Memuat" : "Real-time"} 
-          colorClass="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300"
-        />
-        <StatCard 
-          title="Total Kontingen" 
-          value={statsLoading ? "..." : stats.kontingens.toString()} 
-          icon={Flag} 
-          trend={statsLoading ? "Memuat" : "Real-time"} 
-          colorClass="bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Matches */}
-        <section className="card lg:col-span-2" aria-labelledby="active-match-title">
-          <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-            <h2 id="active-match-title" className="font-bold text-lg">Pertandingan Sedang Berlangsung</h2>
-            <button type="button" className="min-h-11 rounded-md px-3 text-sm text-indigo-600 dark:text-indigo-400 font-bold hover:bg-indigo-50 dark:hover:bg-indigo-500/10">Lihat Semua</button>
-          </div>
-          <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  <tr>
-                    <th className="p-4">Waktu</th>
-                    <th className="p-4">Cabang Olahraga</th>
-                    <th className="p-4">Pertandingan</th>
-                    <th className="p-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {[
-                    { time: '14:00', cabor: 'Sepak Bola', match: 'Depok vs Bogor', status: 'Live' },
-                    { time: '14:30', cabor: 'Bulutangkis', match: 'Ginting vs Jojo', status: 'Live' },
-                    { time: '15:00', cabor: 'Renang', match: 'Final 100m Gaya Bebas', status: 'Menunggu' },
-                  ].map((item, i) => (
-                    <tr key={i} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60">
-                      <td className="p-4 font-medium">{item.time}</td>
-                      <td className="p-4 text-text-secondary">{item.cabor}</td>
-                      <td className="p-4 font-semibold">{item.match}</td>
-                      <td className="p-4">
-                        <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
-                          item.status === 'Live' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
-                        }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-          </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.6fr)]">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="upcoming-match-title">
+          <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700"><div><h2 id="upcoming-match-title" className="flex items-center gap-2 font-black text-slate-950 dark:text-white"><CalendarDays className="size-5 text-blue-600 dark:text-blue-300" aria-hidden="true" />Jadwal terdekat</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Data langsung dari Jadwal Pertandingan.</p></div><a href={`${import.meta.env.BASE_URL}master-data?tab=jadwal`} className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-black text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-blue-200 dark:hover:bg-blue-950/40">Kelola jadwal</a></div>
+          {overviewLoading ? <AdminLoadingState label="Memuat jadwal..." /> : upcomingMatches.length === 0 ? <AdminEmptyState icon={CalendarDays} title="Belum ada jadwal" description="Buat pertandingan lengkap dengan Peserta A/B agar siap digunakan oleh LiveScore." action={<a href={`${import.meta.env.BASE_URL}master-data?tab=jadwal`} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700">Buka Jadwal Pertandingan</a>} /> : <ol className="divide-y divide-slate-200 dark:divide-slate-700">{upcomingMatches.map((match) => <li key={match.id} className="grid gap-2 p-4 transition-colors hover:bg-blue-50/50 sm:grid-cols-[150px_minmax(0,1fr)_auto] sm:items-center dark:hover:bg-blue-950/20"><div><p className="text-sm font-black text-slate-900 dark:text-white">{new Date(match.match_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</p><p className="text-xs text-slate-500 dark:text-slate-300">{new Date(match.match_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p></div><div className="min-w-0"><p className="truncate font-black text-slate-950 dark:text-white">{match.cabor_name || 'Cabang belum tersedia'} · {match.nomor_tanding_name || 'Nomor belum tersedia'}</p><p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-300">{match.venue_name || 'Venue belum tersedia'} · {match.round}</p></div><span className="w-fit rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200">{match.status}</span></li>)}</ol>}
         </section>
 
-        {/* System Logs */}
-        <section className="card p-5 flex flex-col h-full" aria-labelledby="system-log-title">
-          <h2 id="system-log-title" className="font-bold text-lg mb-4">Log Sistem Terkini</h2>
-          <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-4">
-            {logsLoading ? (
-              <div className="flex justify-center py-4"><span className="text-sm text-text-muted">Memuat log...</span></div>
-            ) : logsError ? (
-              <div className="flex justify-center py-4"><span className="text-sm text-danger-500">{logsError}</span></div>
-            ) : logs.length === 0 ? (
-              <div className="flex justify-center py-4"><span className="text-sm text-text-muted">Tidak ada log terbaru.</span></div>
-            ) : logs.map((log) => (
-              <div key={log.id} className="flex gap-3 items-start">
-                <div className={`mt-0.5 shrink-0 w-2 h-2 rounded-full ${
-                  log.action === 'CREATE' ? 'bg-success-500' : log.action === 'UPDATE' ? 'bg-warning-500' : log.action === 'DELETE' ? 'bg-danger-500' : 'bg-blue-500'
-                }`}></div>
-                <div>
-                  <p className="text-sm font-medium">
-                    <span className="font-bold">{log.actor_id || 'Sistem'}</span> melakukan {log.action} pada data {log.entity_name}
-                  </p>
-                  <p className="text-xs text-text-muted mt-1">{new Date(log.created_at).toLocaleString('id-ID')}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-700 dark:bg-slate-900" aria-labelledby="system-log-title">
+          <div className="flex items-center justify-between gap-3"><h2 id="system-log-title" className="flex items-center gap-2 font-black text-slate-950 dark:text-white"><ScrollText className="size-5 text-blue-600 dark:text-blue-300" aria-hidden="true" />Log sistem terkini</h2>{canViewAudit && <a href={`${import.meta.env.BASE_URL}audit-log`} className="min-h-11 rounded-xl px-3 py-2 text-sm font-black text-blue-700 hover:bg-blue-50 dark:text-blue-200 dark:hover:bg-blue-950/40">Lihat audit</a>}</div>
+          {!canViewAudit ? <AdminEmptyState icon={Activity} title="Akses terbatas" description="Ringkasan audit hanya tersedia bagi auditor dan super admin." /> : logsLoading ? <AdminLoadingState label="Memuat log..." /> : logsError ? <div className="mt-4"><AdminAlert tone="danger">{logsError}</AdminAlert></div> : logs.length === 0 ? <AdminEmptyState icon={ScrollText} title="Belum ada log terbaru" description="Event terbaru akan muncul setelah aktivitas terproses." /> : <ol className="mt-5 space-y-4">{logs.slice(0, 6).map((log) => <li key={log.id} className="flex items-start gap-3"><span className={`mt-1.5 size-2.5 shrink-0 rounded-full ${actionTone(log.action)}`} aria-hidden="true" /><div className="min-w-0"><p className="break-words text-sm text-slate-700 dark:text-slate-200"><strong>{log.actor_id || 'Sistem'}</strong> melakukan {log.action} pada {log.entity_name || 'entitas sistem'}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{new Date(log.created_at).toLocaleString('id-ID')}</p></div></li>)}</ol>}
         </section>
       </div>
     </div>

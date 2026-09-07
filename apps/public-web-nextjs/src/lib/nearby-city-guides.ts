@@ -75,6 +75,7 @@ export function selectNearestCityGuidesByCategory(
 ): NearbyCityGuide[] {
   const venueHasCoordinates = hasCoordinates(venueLatitude, venueLongitude);
   const linkedIds = new Set(linkedGuideIds);
+  const pinnedGuide = guides.find((guide) => guide.isPinnedVenueRecommendation);
 
   const rankedGuides = guides
     .filter((guide) => !venueHasCoordinates || hasCoordinates(guide.latitude, guide.longitude))
@@ -101,7 +102,17 @@ export function selectNearestCityGuidesByCategory(
     });
 
   return nearbyCategoryDefinitions.flatMap((definition) => {
-    const selected = rankedGuides.find((guide) => definition.matches(normalizeCategory(guide.category)));
+    // CHANGE: Satu pin global selalu menang pada kategorinya, termasuk di luar radius 15 km.
+    const pinnedForCategory = pinnedGuide && definition.matches(normalizeCategory(pinnedGuide.category))
+      ? {
+          ...pinnedGuide,
+          distanceKm: venueHasCoordinates && hasCoordinates(pinnedGuide.latitude, pinnedGuide.longitude)
+            ? getDistanceKm(venueLatitude, venueLongitude, pinnedGuide.latitude, pinnedGuide.longitude)
+            : undefined,
+        }
+      : undefined;
+    const selected = pinnedForCategory
+      ?? rankedGuides.find((guide) => definition.matches(normalizeCategory(guide.category)));
     return selected ? [{
       ...selected,
       nearbyCategoryKey: definition.key,

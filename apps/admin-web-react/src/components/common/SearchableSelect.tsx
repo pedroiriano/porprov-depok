@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { Search, ChevronDown, Check } from 'lucide-react';
 
 export interface SelectOption {
@@ -12,6 +12,7 @@ interface SearchableSelectProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  ariaLabel?: string;
   disabled?: boolean;
 }
 
@@ -20,11 +21,13 @@ export default function SearchableSelect({
   value,
   onChange,
   placeholder = 'Pilih opsi...',
+  ariaLabel,
   disabled = false
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
 
   // Find the selected option label
   const selectedOption = options.find(opt => opt.value === value);
@@ -57,9 +60,13 @@ export default function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg shadow-sm text-sm text-left transition-colors ${
-          disabled ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border-slate-200 dark:border-slate-700' : 
-          'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20'
+        aria-label={ariaLabel || placeholder}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={listboxId}
+        className={`flex min-h-11 w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm shadow-sm transition-colors ${
+          disabled ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800' :
+          'border-slate-300 bg-white hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900'
         }`}
       >
         <span className={`block truncate ${!selectedOption ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
@@ -69,30 +76,32 @@ export default function SearchableSelect({
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden animate-fade-in-up">
+        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg animate-fade-in-up dark:border-slate-700 dark:bg-slate-800">
           <div className="p-2 border-b border-slate-100 dark:border-slate-700">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
-                type="text"
+                type="search"
                 autoFocus
                 placeholder="Cari..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900 dark:text-white"
+                className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               />
             </div>
           </div>
-          <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+          <div id={listboxId} role="listbox" aria-label={ariaLabel || placeholder} className="max-h-60 overflow-y-auto custom-scrollbar p-1">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
+                  role="option"
+                  aria-selected={value === opt.value}
                   onClick={() => handleSelect(opt.value)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors ${
+                  className={`flex min-h-11 w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${
                     value === opt.value
-                      ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-medium'
+                      ? 'bg-blue-50 font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-200'
                       : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
                   }`}
                 >

@@ -1,12 +1,12 @@
 # Kontrak Visual Admin Cuba PORPROV v1
 
-Status: **Normatif untuk pekerjaan Admin baru; implementasi `BLOCKED_LICENSE_EVIDENCE`**
+Status: **Normatif; license purchase verified, clean-room foundation aktif**
 
 Tanggal: **6 September 2026**
 
 ## 1. Tujuan dan Batas
 
-Cuba Admin Dashboard adalah otoritas visual target untuk `apps/admin-web-react`. Dokumen ini tidak mengizinkan penyalinan aset vendor sebelum lisensi diverifikasi dan tidak mengubah Admin Techwind yang sedang berjalan. Cuba dibaca sebagai referensi anatomi/layout/interaksi, lalu diimplementasikan sebagai komponen React PORPROV dengan kontrak API, OIDC, RBAC, audit, dan route existing tetap utuh.
+Cuba Admin Dashboard adalah otoritas visual target untuk `apps/admin-web-react`. Bukti pembelian satu lisensi telah diverifikasi, tetapi source/aset vendor tidak boleh masuk repository GitHub publik. Implementasi wajib clean-room dari kontrak ini, dengan Admin Techwind dipertahankan sebagai rollback. Kontrak API, OIDC, RBAC, audit, dan route existing wajib tetap utuh.
 
 ## 2. Pemetaan Canonical
 
@@ -39,7 +39,7 @@ Semua primitive memakai design tokens PORPROV, TypeScript props yang terdokument
 
 ## 4. Strategi Migrasi
 
-1. Verifikasi lisensi dan buat snapshot vendor lokal read-only ber-checksum.
+1. Gunakan kontrak repository untuk implementasi clean-room; jangan salin source/aset premium ke repository publik atau menjadikannya dependency runtime.
 2. Definisikan token PORPROV untuk light/dark tanpa mengubah kontrak runtime.
 3. Implementasikan shell Cuba di balik feature flag dengan route yang sama.
 4. Migrasikan primitives bersama (`AdminDataTable`, modal, form, feedback).

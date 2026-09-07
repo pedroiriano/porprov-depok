@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ChevronDown, Edit, ExternalLink, Loader2, LocateFixed, MapPinned, Plus, Search, Trash, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, Edit, ExternalLink, Loader2, LocateFixed, MapPinned, Pin, Plus, Search, Trash, X } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import ModalForm from '../components/common/ModalForm';
 import { MediaInput, SelectInput, TextArea, TextInput } from '../components/common/FormInputs';
 import { apiClient, authConfig, getApiErrorMessage } from '../lib/api';
+import { canAccessRole, getRealmRoles } from '../lib/auth';
 import { requestSoftDeleteReason } from '../lib/soft-delete';
 import MediaSelectorModal from '../components/media/MediaSelectorModal';
 // INFO: Import table controls
 import { useTableControls } from '../hooks/useTableControls';
-import { TablePagination, RowsPerPageSelector, SortableHeader } from '../components/common/TableControls';
+import { TablePagination, RowsPerPageSelector } from '../components/common/TableControls';
+import { AdminAlert, AdminPageHeader, BulkActionBar } from '../components/cuba/AdminPrimitives';
+import { AdminDataTable, type AdminDataTableColumn } from '../components/cuba/AdminDataTable';
 
 interface CityGuideRecord {
   id: string;
@@ -33,10 +36,12 @@ interface CityGuideRecord {
   price_range: string | null;
   fleet_types: string[];
   fleet_count: number | null;
+  is_pinned_venue_recommendation: boolean;
 }
 
 interface CityGuideListResponse {
   data: CityGuideRecord[];
+  pinned: CityGuideRecord | null;
   page: number;
   per_page: number;
   total_items: number;
@@ -158,15 +163,23 @@ export default function CityGuide() {
   const [isMediaSelectorOpen, setIsMediaSelectorOpen] = useState(false);
   const [formData, setFormData] = useState<CityGuideFormState>(createEmptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [locating, setLocating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [operationMessage, setOperationMessage] = useState('');
+  const [pinnedGuide, setPinnedGuide] = useState<CityGuideRecord | null>(null);
+  const [pinningID, setPinningID] = useState('');
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const auth = useAuth();
+  const canManageVenuePin = canAccessRole(getRealmRoles(auth.user), ['super_admin']);
 
   // INFO: State pencarian dan kategori filter
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const requestRef = useRef(0);
 
   // INFO: Hook controls
   const table = useTableControls<CityGuideSortKey>({ sortKey: 'title', sortDirection: 'asc', rowsPerPage: 10 });
@@ -174,17 +187,25 @@ export default function CityGuide() {
 
   const getAuthConfig = useCallback(() => authConfig(auth.user?.access_token), [auth.user?.access_token]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
   const fetchGuides = useCallback(async () => {
+    const requestID = ++requestRef.current;
     try {
       setLoading(true);
       const params = new URLSearchParams({
         page: String(currentPage),
         per_page: String(rowsPerPage),
       });
-      if (searchQuery.trim()) params.set('q', searchQuery.trim());
+      if (debouncedSearch) params.set('q', debouncedSearch);
       if (categoryFilter) params.set('category', categoryFilter);
       const response = await apiClient.get<CityGuideListResponse>(`/master-data/city-guides?${params.toString()}`, getAuthConfig());
+      if (requestID !== requestRef.current) return;
       setGuides(response.data.data || []);
+      setPinnedGuide(response.data.pinned || null);
       setTotalItems(response.data.total_items || 0);
       setTotalPages(response.data.total_pages || 0);
       if (response.data.total_pages > 0 && currentPage > response.data.total_pages) {
@@ -192,11 +213,11 @@ export default function CityGuide() {
       }
       setErrorMessage('');
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, 'Gagal memuat data City Guide.'));
+      if (requestID === requestRef.current) setErrorMessage(getApiErrorMessage(error, 'Gagal memuat data City Guide.'));
     } finally {
-      setLoading(false);
+      if (requestID === requestRef.current) setLoading(false);
     }
-  }, [categoryFilter, currentPage, getAuthConfig, rowsPerPage, searchQuery, setCurrentPage]);
+  }, [categoryFilter, currentPage, debouncedSearch, getAuthConfig, rowsPerPage, setCurrentPage]);
 
   useEffect(() => {
     void fetchGuides();
@@ -205,12 +226,14 @@ export default function CityGuide() {
   // CHANGE: Reset ke halaman 1 saat filter/search/rowsPerPage berubah
   useEffect(() => {
     resetPage();
-  }, [searchQuery, categoryFilter, table.rowsPerPage, resetPage]);
+  }, [debouncedSearch, categoryFilter, table.rowsPerPage, resetPage]);
 
   // PERFORMANCE: Halaman difilter server-side; sorting lokal hanya mengurutkan halaman aktif.
   const sortedGuides = useMemo(() => {
     const result = [...guides];
     result.sort((a, b) => {
+      const pinnedComparison = Number(b.is_pinned_venue_recommendation) - Number(a.is_pinned_venue_recommendation);
+      if (pinnedComparison !== 0) return pinnedComparison;
       let comparison = 0;
       switch (table.sortKey) {
         case 'title':
@@ -356,16 +379,86 @@ export default function CityGuide() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    const reason = requestSoftDeleteReason('City Guide ini');
+  const handleArchive = async (ids: string[]) => {
+    const reason = requestSoftDeleteReason(ids.length > 1 ? `${ids.length} City Guide ini` : 'City Guide ini');
     if (reason === null) return;
     try {
-      await apiClient.delete(`/master-data/city-guides/${id}`, { ...getAuthConfig(), data: { reason } });
+      setArchiving(true);
+      setErrorMessage('');
+      setOperationMessage('');
+      for (const id of ids) {
+        await apiClient.delete(`/master-data/city-guides/${id}`, { ...getAuthConfig(), data: { reason } });
+      }
+      setSelectedIds(new Set());
       await fetchGuides();
+      setOperationMessage(`${ids.length} City Guide berhasil diarsipkan.`);
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error, 'Gagal mengarsipkan data City Guide.'));
+    } finally {
+      setArchiving(false);
     }
   };
+
+  const handlePinForVenues = async (item: CityGuideRecord) => {
+    if (item.is_pinned_venue_recommendation) return;
+    const confirmed = window.confirm(`Jadikan ${item.title} sebagai satu rekomendasi utama yang selalu muncul pada seluruh halaman Venue?`);
+    if (!confirmed) return;
+    try {
+      setPinningID(item.id);
+      setErrorMessage('');
+      setOperationMessage('');
+      await apiClient.put(`/master-data/city-guides/${item.id}/venue-pin`, undefined, getAuthConfig());
+      setOperationMessage(`${item.title} berhasil dipin sebagai rekomendasi utama seluruh Venue.`);
+      await fetchGuides();
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, 'Gagal mengganti rekomendasi utama Venue.'));
+    } finally {
+      setPinningID('');
+    }
+  };
+
+  const columns: Array<AdminDataTableColumn<CityGuideRecord, CityGuideSortKey>> = [
+    {
+      key: 'title',
+      label: 'Judul',
+      sortKey: 'title',
+      render: (item) => <div className="flex flex-col items-start gap-1"><span className="font-black text-slate-950 dark:text-white">{item.title}</span>{item.is_pinned_venue_recommendation && <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-black text-blue-800 dark:bg-blue-950/60 dark:text-blue-200"><Pin className="size-3" aria-hidden="true" />Rekomendasi utama</span>}</div>,
+    },
+    {
+      key: 'category',
+      label: 'Kategori',
+      sortKey: 'category',
+      render: (item) => <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.category}</span>,
+    },
+    {
+      key: 'address',
+      label: 'Alamat',
+      sortKey: 'address',
+      className: 'max-w-80',
+      render: (item) => <span className="block text-sm text-slate-600 dark:text-slate-300">{item.address || '-'}</span>,
+    },
+    {
+      key: 'route',
+      label: 'Rute',
+      sortKey: 'map_route_url',
+      render: (item) => {
+        const routeURL = cityGuideRouteURL(item);
+        const usesConfiguredURL = Boolean(item.map_route_url?.trim() && isValidGoogleMapsURL(item.map_route_url));
+        return routeURL ? <div className="flex flex-col items-start gap-1"><a href={routeURL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-black text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-blue-200 dark:hover:bg-blue-950/40"><MapPinned className="size-4" aria-hidden="true" /><span>Buka rute</span><ExternalLink className="size-3.5" aria-hidden="true" /></a><span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-bold ${usesConfiguredURL ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'}`}>{usesConfiguredURL ? 'URL tersimpan' : 'Fallback koordinat'}</span></div> : <span className="text-sm font-bold text-amber-700 dark:text-amber-300">Belum ditentukan</span>;
+      },
+    },
+    {
+      key: 'contact',
+      label: 'Kontak / Armada',
+      render: (item) => <div className="flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300"><span>{item.whatsapp ? `WA ${item.whatsapp}` : item.contact_phone || item.email || '-'}</span>{item.category === 'Info Travel' && <span className="text-xs font-black text-blue-700 dark:text-blue-200">{item.fleet_count || 0} armada · {(item.fleet_types || []).join(', ') || '-'}</span>}</div>,
+    },
+  ];
+
+  const cityGuideActions = (item: CityGuideRecord) => <>
+    {canManageVenuePin && <button type="button" onClick={() => void handlePinForVenues(item)} disabled={item.is_pinned_venue_recommendation || pinningID !== ''} aria-label={item.is_pinned_venue_recommendation ? `${item.title} sedang dipin untuk seluruh Venue` : `Pin ${item.title} untuk seluruh Venue`} title={item.is_pinned_venue_recommendation ? 'Rekomendasi utama aktif' : 'Jadikan rekomendasi utama seluruh Venue'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200">{pinningID === item.id ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Pin className="size-4" aria-hidden="true" />}</button>}
+    <button type="button" onClick={() => openEditForm(item)} aria-label={`Edit ${item.title}`} title="Edit City Guide" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>
+    <button type="button" onClick={() => void handleArchive([item.id])} disabled={item.is_pinned_venue_recommendation || archiving} aria-label={item.is_pinned_venue_recommendation ? `${item.title} harus diganti pinnya sebelum diarsipkan` : `Arsipkan ${item.title}`} title={item.is_pinned_venue_recommendation ? 'Ganti rekomendasi utama sebelum mengarsipkan' : 'Arsipkan City Guide'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>
+  </>;
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -404,31 +497,40 @@ export default function CityGuide() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">City Guide Kota Depok</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola panduan kota, URL rute Google Maps, dan koordinat fallback yang terverifikasi.</p>
-        </div>
-        <button type="button" onClick={openCreateForm} className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-indigo-700">
-          <Plus className="h-5 w-5" /> Tambah Panduan
-        </button>
-      </div>
+      <AdminPageHeader
+        eyebrow="Informasi Kota Depok"
+        title="City Guide"
+        description="Kelola panduan kota, kontak resmi, URL rute Google Maps, dan koordinat fallback yang terverifikasi."
+        actions={<button type="button" onClick={openCreateForm} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm transition-colors hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah panduan</button>}
+      />
 
-      {errorMessage && !isModalOpen && <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"><AlertCircle className="h-5 w-5 shrink-0" />{errorMessage}</div>}
+      {operationMessage && !isModalOpen && <AdminAlert tone="success">{operationMessage}</AdminAlert>}
 
-      <div className="min-h-[300px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      {!loading && (
+        <section className={`flex items-start gap-3 rounded-2xl border p-4 ${pinnedGuide ? 'border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950/35 dark:text-blue-100' : 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100'}`} aria-labelledby="venue-pin-title">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-blue-600 shadow-sm dark:bg-slate-900 dark:text-blue-300"><Pin className="size-5" aria-hidden="true" /></span>
+          <div>
+            <h3 id="venue-pin-title" className="text-sm font-black">Rekomendasi utama seluruh Venue</h3>
+            <p className="mt-1 text-sm">{pinnedGuide ? <><strong>{pinnedGuide.title}</strong> selalu diprioritaskan pada setiap halaman detail Venue.</> : <>Belum ada rekomendasi utama. Pilih ikon pin pada salah satu City Guide.</>}</p>
+          </div>
+        </section>
+      )}
+
+      <div className="min-h-[300px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {/* Toolbar — pencarian, filter kategori, rows per page */}
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
             {/* Search input */}
-            <div className="relative flex-1 sm:max-w-xs">
+            <label className="relative flex-1 sm:max-w-xs">
+              <span className="sr-only">Cari City Guide</span>
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
-                type="text"
+                type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Cari judul, alamat, deskripsi..."
-                className="min-h-11 w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
+                aria-label="Cari City Guide"
+                className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
               />
               {searchQuery && (
                 <button
@@ -440,14 +542,16 @@ export default function CityGuide() {
                   <X className="h-4 w-4" />
                 </button>
               )}
-            </div>
+            </label>
 
             {/* Filter kategori */}
-            <div className="relative">
+            <label className="relative">
+              <span className="sr-only">Filter kategori City Guide</span>
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="min-h-11 appearance-none rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-9 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                aria-label="Filter kategori City Guide"
+                className="min-h-11 appearance-none rounded-xl border border-slate-300 bg-white py-2 pl-3 pr-9 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Semua Kategori</option>
                 {categories.map((cat) => (
@@ -455,7 +559,7 @@ export default function CityGuide() {
                 ))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            </div>
+            </label>
           </div>
 
           <RowsPerPageSelector
@@ -469,9 +573,9 @@ export default function CityGuide() {
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Filter aktif:</span>
             {searchQuery && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 py-1 pl-2.5 pr-1.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 py-1 pl-2.5 pr-1.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                 Pencarian: &quot;{searchQuery}&quot;
-                <button type="button" onClick={() => setSearchQuery('')} className="rounded-full p-0.5 hover:bg-indigo-200 dark:hover:bg-indigo-800" aria-label="Hapus filter pencarian"><X className="h-3 w-3" /></button>
+                <button type="button" onClick={() => setSearchQuery('')} className="rounded-full p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800" aria-label="Hapus filter pencarian"><X className="h-3 w-3" /></button>
               </span>
             )}
             {categoryFilter && (
@@ -490,94 +594,41 @@ export default function CityGuide() {
           </div>
         )}
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /><span className="sr-only">Memuat City Guide</span></div>
-          ) : sortedGuides.length === 0 ? (
-            <div className="flex h-48 flex-col items-center justify-center text-slate-500 dark:text-slate-400">
-              <MapPinned className="mb-3 h-10 w-10" />
-              {guides.length === 0 ? (
-                <p>Belum ada data City Guide.</p>
-              ) : (
-                <>
-                  <p className="font-medium">Tidak ada data yang sesuai filter.</p>
-                  <p className="mt-1 text-sm">Coba ubah kata kunci pencarian atau filter kategori.</p>
-                </>
-              )}
-            </div>
-          ) : (
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
-                  <th className="p-4">
-                    <SortableHeader<CityGuideSortKey>
-                      label="Judul"
-                      columnKey="title"
-                      activeSortKey={table.sortKey}
-                      sortDirection={table.sortDirection}
-                      onSort={table.handleSort}
-                    />
-                  </th>
-                  <th className="p-4">
-                    <SortableHeader<CityGuideSortKey>
-                      label="Kategori"
-                      columnKey="category"
-                      activeSortKey={table.sortKey}
-                      sortDirection={table.sortDirection}
-                      onSort={table.handleSort}
-                    />
-                  </th>
-                  <th className="p-4">
-                    <SortableHeader<CityGuideSortKey>
-                      label="Alamat"
-                      columnKey="address"
-                      activeSortKey={table.sortKey}
-                      sortDirection={table.sortDirection}
-                      onSort={table.handleSort}
-                    />
-                  </th>
-                  <th className="p-4">
-                    <SortableHeader<CityGuideSortKey>
-                      label="URL Google Maps (Rute)"
-                      columnKey="map_route_url"
-                      activeSortKey={table.sortKey}
-                      sortDirection={table.sortDirection}
-                      onSort={table.handleSort}
-                    />
-                  </th>
-                  <th className="p-4 font-medium">Kontak / Armada</th>
-                  <th className="p-4 text-right font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">{sortedGuides.map((item) => {
-                const routeURL = cityGuideRouteURL(item);
-                const usesConfiguredURL = Boolean(item.map_route_url?.trim() && isValidGoogleMapsURL(item.map_route_url));
-                return <tr key={item.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                  <td className="p-4 font-semibold text-slate-900 dark:text-white">{item.title}</td>
-                  <td className="p-4 text-sm">
-                    <span className="inline-block rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">{item.category}</span>
-                  </td>
-                  <td className="max-w-80 p-4 text-sm text-slate-600 dark:text-slate-300">{item.address || '-'}</td>
-                  <td className="p-4">{routeURL ? <div className="flex flex-col items-start gap-1"><a href={routeURL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-bold text-indigo-700 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-indigo-300 dark:hover:bg-indigo-950/50"><MapPinned className="h-4 w-4" /><span>Rute ke {item.title}</span><ExternalLink className="h-3.5 w-3.5" /></a><span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-bold ${usesConfiguredURL ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'}`}>{usesConfiguredURL ? 'URL tersimpan' : 'Fallback koordinat'}</span></div> : <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Belum ditentukan</span>}</td>
-                  <td className="p-4 text-sm text-slate-600 dark:text-slate-300">
-                    <div className="flex flex-col gap-1">
-                      <span>{item.whatsapp ? `WA ${item.whatsapp}` : item.contact_phone || item.email || '-'}</span>
-                      {item.category === 'Info Travel' && <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">{item.fleet_count || 0} armada · {(item.fleet_types || []).join(', ') || '-'}</span>}
-                    </div>
-                  </td>
-                  <td className="p-4 text-right"><div className="flex justify-end gap-2">
-                    <button type="button" onClick={() => openEditForm(item)} aria-label={`Edit ${item.title}`} className="rounded-md p-2 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950"><Edit className="h-4 w-4" /></button>
-                    <button type="button" onClick={() => void handleDelete(item.id)} aria-label={`Arsipkan ${item.title}`} className="rounded-md p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"><Trash className="h-4 w-4" /></button>
-                  </div></td>
-                </tr>;
-              })}</tbody>
-            </table>
-          )}
-        </div>
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          onClear={() => setSelectedIds(new Set())}
+          onDelete={() => void handleArchive([...selectedIds])}
+          deleting={archiving}
+          itemLabel="panduan"
+          actionLabel="Arsipkan terpilih"
+          loadingLabel="Mengarsipkan..."
+        />
+
+        <AdminDataTable<CityGuideRecord, CityGuideSortKey>
+          caption="Daftar City Guide Kota Depok"
+          rows={sortedGuides}
+          columns={columns}
+          getRowId={(item) => item.id}
+          getRowLabel={(item) => item.title}
+          selectionLabel="panduan"
+          sortKey={table.sortKey}
+          sortDirection={table.sortDirection}
+          onSort={table.handleSort}
+          selectedIds={selectedIds}
+          onSelectedIdsChange={setSelectedIds}
+          isRowSelectable={(item) => !item.is_pinned_venue_recommendation}
+          loading={loading}
+          loadingLabel="Memuat City Guide..."
+          error={!isModalOpen ? errorMessage : ''}
+          onRetry={() => void fetchGuides()}
+          emptyTitle={debouncedSearch || categoryFilter ? 'Tidak ada panduan yang sesuai' : 'Belum ada data City Guide'}
+          emptyDescription={debouncedSearch || categoryFilter ? 'Ubah kata kunci atau kategori untuk memperluas hasil.' : 'Tambahkan panduan pertama untuk mulai melengkapi informasi Kota Depok.'}
+          rowActions={cityGuideActions}
+          minWidthClassName="min-w-[1120px]"
+        />
 
         {/* Footer */}
-        {!loading && totalItems > 0 && (
+        {!loading && !errorMessage && totalItems > 0 && (
           <TablePagination
             currentPage={table.currentPage}
             totalPages={totalPages}
@@ -592,8 +643,8 @@ export default function CityGuide() {
       </div>
 
       <ModalForm isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); setErrorMessage(''); }} title={formData.id ? 'Edit City Guide' : 'Tambah City Guide'} onSubmit={handleSave} submitting={submitting} submitText={formData.id ? 'Simpan Perubahan' : 'Simpan Data'} size="large">
-        {errorMessage && <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"><AlertCircle className="h-5 w-5 shrink-0" />{errorMessage}</div>}
-        <fieldset className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+        {errorMessage && <AdminAlert>{errorMessage}</AdminAlert>}
+        <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Identitas usaha atau lokasi</legend>
         <div className="grid gap-4 md:grid-cols-2">
           <TextInput label={formData.category === 'Catering' || formData.category === 'Info Travel' ? 'Nama Usaha' : 'Judul'} required maxLength={255} value={formData.title} onChange={(event) => setFormData((current) => ({ ...current, title: event.target.value }))} />
@@ -606,7 +657,7 @@ export default function CityGuide() {
         </fieldset>
 
         {(formData.category === 'Catering' || formData.category === 'Info Travel') && (
-          <fieldset className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+          <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
             <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Kontak resmi</legend>
             <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Isi minimal satu kontak yang dapat digunakan pengunjung. Field Screenshot tidak digunakan; gambar dipilih dari Media Library.</p>
             <div className="grid gap-4 md:grid-cols-2">
@@ -622,7 +673,7 @@ export default function CityGuide() {
         )}
 
         {(formData.category === 'Catering' || formData.category === 'Info Travel') && (
-          <fieldset className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+          <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
             <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Informasi layanan</legend>
             <div className="grid gap-4 md:grid-cols-2">
               <TextInput label="Jenis Layanan" value={formData.service_types} onChange={(event) => setFormData((current) => ({ ...current, service_types: event.target.value }))} placeholder={formData.category === 'Catering' ? 'Nasi kotak, prasmanan, snack box' : 'Sewa kendaraan, antar-jemput, perjalanan wisata'} />
@@ -635,7 +686,7 @@ export default function CityGuide() {
         )}
 
         {formData.category === 'Info Travel' && (
-          <fieldset className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 dark:border-indigo-800 dark:bg-indigo-950/20">
+          <fieldset className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-800 dark:bg-blue-950/20">
             <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Armada Travel / Jasa Transportasi</legend>
             <div className="grid gap-4 md:grid-cols-2">
               <TextInput label="Jenis Armada" required value={formData.fleet_types} onChange={(event) => setFormData((current) => ({ ...current, fleet_types: event.target.value }))} placeholder="HiAce, minibus, bus medium" />
@@ -645,7 +696,7 @@ export default function CityGuide() {
           </fieldset>
         )}
 
-        <fieldset className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+        <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Lokasi dan rute</legend>
         <div>
           <TextInput label="URL Google Maps (Rute)" type="url" maxLength={2048} value={formData.map_route_url} onChange={(event) => setFormData((current) => ({ ...current, map_route_url: event.target.value }))} placeholder="https://www.google.com/maps/dir/?api=1&destination=..." />
@@ -653,12 +704,12 @@ export default function CityGuide() {
         </div>
 
         <div className="mt-4">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><p className="text-sm text-slate-500 dark:text-slate-400">Gunakan koordinat desimal agar lokasi dapat dibuka tepat di aplikasi peta.</p><button type="button" onClick={useCurrentLocation} disabled={locating} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-indigo-300 px-3 text-sm font-bold text-indigo-700 transition-colors hover:bg-indigo-50 disabled:opacity-60 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-950"><LocateFixed className={`h-4 w-4 ${locating ? 'animate-pulse' : ''}`} />{locating ? 'Mengambil lokasi...' : 'Gunakan Lokasi Saat Ini'}</button></div>
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><p className="text-sm text-slate-500 dark:text-slate-400">Gunakan koordinat desimal agar lokasi dapat dibuka tepat di aplikasi peta.</p><button type="button" onClick={useCurrentLocation} disabled={locating} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-300 px-3 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-50 disabled:opacity-60 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"><LocateFixed className={`h-4 w-4 ${locating ? 'animate-pulse' : ''}`} />{locating ? 'Mengambil lokasi...' : 'Gunakan Lokasi Saat Ini'}</button></div>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <TextInput label="Latitude" type="number" inputMode="decimal" step="any" min={-90} max={90} required value={formData.latitude} onChange={(event) => setFormData((current) => ({ ...current, latitude: event.target.value }))} placeholder="Contoh: -6.402484" />
             <TextInput label="Longitude" type="number" inputMode="decimal" step="any" min={-180} max={180} required value={formData.longitude} onChange={(event) => setFormData((current) => ({ ...current, longitude: event.target.value }))} placeholder="Contoh: 106.742061" />
           </div>
-          {formMapPreviewURL && <a href={formMapPreviewURL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-indigo-50 px-4 text-sm font-bold text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-indigo-950/50 dark:text-indigo-200 dark:hover:bg-indigo-950"><MapPinned className="h-4 w-4" />{configuredMapURL ? 'Pratinjau URL Google Maps' : 'Pratinjau rute dari koordinat'}<ExternalLink className="h-3.5 w-3.5" /></a>}
+          {formMapPreviewURL && <a href={formMapPreviewURL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-50 px-4 text-sm font-bold text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-950/50 dark:text-blue-200 dark:hover:bg-blue-950"><MapPinned className="h-4 w-4" />{configuredMapURL ? 'Pratinjau URL Google Maps' : 'Pratinjau rute dari koordinat'}<ExternalLink className="h-3.5 w-3.5" /></a>}
         </div>
         </fieldset>
 

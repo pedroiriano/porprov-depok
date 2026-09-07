@@ -28,10 +28,10 @@ Prompt lanjutan harus singkat, terarah, dan dapat disalin sebagai satu blok. Min
 | Produk | Otoritas visual | Status dan batas |
 |---|---|---|
 | Public Web | Techwind 3.3.0, snapshot lokal `theme-reference/HTML/Landing/dist/` | Aktif; `index-business.html` pada upstream lokal menjadi referensi hero, bukan runtime dependency |
-| Admin Web | Cuba Admin Dashboard, target snapshot lokal `theme-reference/Cuba/template/` | Target v5; implementasi dan penyalinan vendor diblokir sampai bukti lisensi tersedia |
+| Admin Web | Cuba Admin Dashboard; provenance satu lisensi tercatat privat | Target v5; clean-room feature-flagged wajib karena repository publik tidak boleh mendistribusikan source/aset premium |
 | Mobile | Design tokens PORPROV dan pola tugas dari produk web terdekat | Tidak boleh menjadi salinan desktop atau membuat tema ketiga |
 
-Folder `C:\Datas\Proyek\UI\techwind-pembelajaran\source` dan `C:\Datas\Proyek\UI\cuba-pembelajaran\template` hanya upstream read-only pada mesin pengembangan saat ini. Build, test, Docker, dan runtime PORPROV tidak boleh bergantung pada path di luar root repository. Setelah bukti lisensi diverifikasi, snapshot yang diperlukan harus diimpor secara terkontrol ke root, dicatat checksum/versinya, dan dijaga sebagai referensi vendor read-only.
+Folder `C:\Datas\Proyek\UI\techwind-pembelajaran\source` dan `C:\Datas\Proyek\UI\cuba-pembelajaran\template` hanya upstream read-only pada mesin pengembangan. Bukti pembelian satu lisensi Cuba telah diverifikasi, tetapi build, test, Docker, runtime, dan repository GitHub publik tidak boleh bergantung atau memuat source/aset premium. Implementasi wajib clean-room dari kontrak repository.
 
 “Sama persis” berarti fidelity terhadap struktur komponen, proporsi, hierarchy, density, spacing, responsive behavior, dan interaction pattern yang relevan. Brand, logo, demo copy, data tiruan, HTML/Gulp/vendor JavaScript mentah, serta identitas template tidak boleh masuk produk. Implementasi tetap berupa React/Next.js yang aksesibel dengan data dan identitas PORPROV.
 

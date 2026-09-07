@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, Loader2, Medal, Plus, RefreshCw, Send, ShieldCheck, XCircle } from 'lucide-react';
+import { CheckCircle2, Medal, Plus, RefreshCw, Search, Send, ShieldCheck, Trophy, XCircle } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
+import { useLocation } from '../lib/router';
+import Modal from '../components/Modal';
 import ModalForm from '../components/common/ModalForm';
+import { AdminAlert, AdminEmptyState, AdminLoadingState, AdminPageHeader } from '../components/cuba/AdminPrimitives';
+import { AdminWorkspaceTabs } from '../components/cuba/AdminWorkspaceTabs';
 import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../lib/api';
 // INFO: Import table controls
 import { useTableControls, usePagination } from '../hooks/useTableControls';
@@ -16,9 +20,13 @@ interface Submission {
 
 type SubmissionSortKey = 'kontingen' | 'status' | 'submitted_at';
 type StandingSortKey = 'kontingen' | 'gold' | 'silver' | 'bronze' | 'total';
+type MedalWorkspace = 'standings' | 'verification';
+type TransitionAction = 'verify' | 'reject' | 'publish';
 
 export default function Medals() {
   const auth = useAuth();
+  const location = useLocation();
+  const verificationRoute = location.pathname.endsWith('/verifikasi');
   const token = auth.user?.access_token;
   const realmAccess = auth.user?.profile.realm_access as { roles?: string[] } | undefined;
   const roles = realmAccess?.roles || [];
@@ -34,6 +42,15 @@ export default function Medals() {
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [form, setForm] = useState({ kontingen_id: '', gold: 0, silver: 0, bronze: 0, evidence_url: '', notes: '' });
+  const [activeWorkspace, setActiveWorkspace] = useState<MedalWorkspace>(verificationRoute ? 'verification' : 'standings');
+  const [submissionQuery, setSubmissionQuery] = useState('');
+  const [standingQuery, setStandingQuery] = useState('');
+  const [pendingTransition, setPendingTransition] = useState<{ submission: Submission; action: TransitionAction } | null>(null);
+  const [transitionReason, setTransitionReason] = useState('');
+
+  useEffect(() => {
+    setActiveWorkspace(verificationRoute ? 'verification' : 'standings');
+  }, [verificationRoute]);
 
   // INFO: Initialize table controls for Submissions
   const subTable = useTableControls<SubmissionSortKey>({ sortKey: 'submitted_at', sortDirection: 'desc', rowsPerPage: 10 });
@@ -41,6 +58,7 @@ export default function Medals() {
   
   // INFO: Initialize table controls for Standings
   const stdTable = useTableControls<StandingSortKey>({ sortKey: 'gold', sortDirection: 'desc', rowsPerPage: 10 });
+  const { resetPage: resetStandingPage } = stdTable;
 
   // CHANGE: Reset submissions page when filter changes
   useEffect(() => {
@@ -68,9 +86,25 @@ export default function Medals() {
   useEffect(() => { void loadData(); }, [loadData]);
   const kontingenMap = useMemo(() => new Map(kontingens.map((item) => [item.id, item.name])), [kontingens]);
 
+  useEffect(() => { resetSubmissionPage(); }, [submissionQuery, resetSubmissionPage]);
+  useEffect(() => { resetStandingPage(); }, [standingQuery, resetStandingPage]);
+
+  const filteredSubmissions = useMemo(() => {
+    const query = submissionQuery.trim().toLocaleLowerCase('id-ID');
+    if (!query) return submissions;
+    return submissions.filter((item) => [kontingenMap.get(item.kontingen_id), item.submitted_by, item.status, item.notes]
+      .some((value) => value?.toLocaleLowerCase('id-ID').includes(query)));
+  }, [kontingenMap, submissionQuery, submissions]);
+
+  const filteredStandings = useMemo(() => {
+    const query = standingQuery.trim().toLocaleLowerCase('id-ID');
+    if (!query) return standings;
+    return standings.filter((item) => (kontingenMap.get(item.kontingen_id) || item.kontingen_id).toLocaleLowerCase('id-ID').includes(query));
+  }, [kontingenMap, standingQuery, standings]);
+
   // PERFORMANCE: Sort submissions
   const sortedSubmissions = useMemo(() => {
-    return [...submissions].sort((a, b) => {
+    return [...filteredSubmissions].sort((a, b) => {
       if (subTable.sortKey === 'kontingen') {
         const nameA = kontingenMap.get(a.kontingen_id) || a.kontingen_id;
         const nameB = kontingenMap.get(b.kontingen_id) || b.kontingen_id;
@@ -86,13 +120,13 @@ export default function Medals() {
       }
       return 0;
     });
-  }, [submissions, subTable.sortKey, subTable.sortDirection, kontingenMap]);
+  }, [filteredSubmissions, subTable.sortKey, subTable.sortDirection, kontingenMap]);
 
   const subPagination = usePagination(sortedSubmissions, subTable.currentPage, subTable.rowsPerPage);
 
   // PERFORMANCE: Sort standings
   const sortedStandings = useMemo(() => {
-    return [...standings].sort((a, b) => {
+    return [...filteredStandings].sort((a, b) => {
       if (stdTable.sortKey === 'kontingen') {
         const nameA = kontingenMap.get(a.kontingen_id) || a.kontingen_id;
         const nameB = kontingenMap.get(b.kontingen_id) || b.kontingen_id;
@@ -114,7 +148,7 @@ export default function Medals() {
       }
       return 0;
     });
-  }, [standings, stdTable.sortKey, stdTable.sortDirection, kontingenMap]);
+  }, [filteredStandings, stdTable.sortKey, stdTable.sortDirection, kontingenMap]);
 
   const stdPagination = usePagination(sortedStandings, stdTable.currentPage, stdTable.rowsPerPage);
 
@@ -133,63 +167,68 @@ export default function Medals() {
     } finally { setSubmitting(false); }
   };
 
-  const transition = async (submission: Submission, action: 'verify' | 'reject' | 'publish') => {
-    if (!token) return;
-    let reason = '';
-    if (action === 'reject') {
-      reason = window.prompt('Masukkan alasan penolakan (minimal 5 karakter):')?.trim() || '';
-      if (reason.length < 5) return;
-    }
+  const requestTransition = (submission: Submission, action: TransitionAction) => {
+    setTransitionReason('');
+    setPendingTransition({ submission, action });
+  };
+
+  const transition = async () => {
+    if (!token || !pendingTransition) return;
+    const { submission, action } = pendingTransition;
+    const reason = transitionReason.trim();
+    if (action === 'reject' && reason.length < 5) return;
     setSubmitting(true);
     try {
       await apiClient.post(`/medals/submissions/${submission.id}/${action}`, { reason }, authConfig(token));
-      setFeedback({ type: 'success', message: action === 'publish' ? 'Perolehan medali resmi telah dipublikasikan.' : `Pengajuan berhasil di-${action}.` });
+      setFeedback({ type: 'success', message: action === 'publish' ? 'Perolehan medali resmi telah dipublikasikan.' : action === 'verify' ? 'Pengajuan berhasil diverifikasi.' : 'Pengajuan berhasil ditolak.' });
+      setPendingTransition(null);
+      setTransitionReason('');
       await loadData();
     } catch (error) {
       setFeedback({ type: 'error', message: getApiErrorMessage(error, 'Transisi workflow gagal.') });
     } finally { setSubmitting(false); }
   };
 
-  return (
-    <div className="flex flex-col gap-6 p-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">Verification Workflow</p>
-          <h1 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Perolehan Medali</h1>
-          <p className="mt-1 text-sm text-slate-500">Pengajuan tidak mengubah klasemen sampai diverifikasi dan dipublikasikan.</p>
-        </div>
-        <div className="flex gap-3">
-          <button type="button" onClick={() => void loadData()} className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-4 font-bold transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
-            <RefreshCw className="mr-2 h-4 w-4" />Perbarui
-          </button>
-          {canSubmit && (
-            <button type="button" onClick={() => setModalOpen(true)} className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 font-bold text-white transition-colors hover:bg-indigo-700">
-              <Plus className="mr-2 h-4 w-4" />Ajukan medali
-            </button>
-          )}
-        </div>
-      </header>
-      
-      {feedback && (
-        <div role={feedback.type === 'error' ? 'alert' : 'status'} className={`flex items-start gap-2 rounded-xl border p-4 text-sm ${feedback.type === 'error' ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'}`}>
-          {feedback.type === 'error' ? <AlertCircle className="h-5 w-5 shrink-0" /> : <CheckCircle2 className="h-5 w-5 shrink-0" />}
-          {feedback.message}
-        </div>
-      )}
+  const pendingCount = submissions.filter((item) => item.status === 'PENDING').length;
+  const verifiedCount = submissions.filter((item) => item.status === 'VERIFIED').length;
+  const officialTotal = standings.reduce((total, item) => total + item.gold + item.silver + item.bronze, 0);
 
-      {/* Submissions Section */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
+  return (
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow={verificationRoute ? 'Controlled approval workflow' : 'Official medal workspace'}
+        title={verificationRoute ? 'Verifikasi Perolehan Medali' : 'Perolehan Medali'}
+        description={verificationRoute ? 'Tinjau pengajuan sesuai kewenangan. Verifikasi dan publikasi dipisahkan agar klasemen resmi tetap audit-friendly.' : 'Pantau klasemen resmi dan ajukan perubahan medali. Pengajuan baru tidak mengubah publikasi sebelum melewati verifikasi.'}
+        actions={<><button type="button" onClick={() => void loadData()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"><RefreshCw className="size-4" aria-hidden="true" />Perbarui</button>{canSubmit && <button type="button" onClick={() => setModalOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"><Plus className="size-4" aria-hidden="true" />Ajukan medali</button>}</>}
+      />
+
+      {feedback && <AdminAlert tone={feedback.type === 'error' ? 'danger' : 'success'}>{feedback.message}</AdminAlert>}
+
+      <section className="grid gap-3 sm:grid-cols-3" aria-label="Ringkasan workflow medali">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Menunggu verifikasi</p><p className="mt-1 text-2xl font-black text-amber-700 dark:text-amber-200">{pendingCount}</p></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Siap publikasi</p><p className="mt-1 text-2xl font-black text-blue-700 dark:text-blue-200">{verifiedCount}</p></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Medali official</p><p className="mt-1 text-2xl font-black text-emerald-700 dark:text-emerald-200">{officialTotal}</p></div>
+      </section>
+
+      <AdminWorkspaceTabs activeTab={activeWorkspace} ariaLabel="Workspace perolehan medali" onChange={setActiveWorkspace} tabs={[{ id: 'standings', label: 'Klasemen Resmi', icon: <Trophy className="size-4" aria-hidden="true" /> }, { id: 'verification', label: 'Antrean Verifikasi', icon: <ShieldCheck className="size-4" aria-hidden="true" /> }]} />
+
+      {/* CHANGE: route /verifikasi dan /medals berbagi kontrak data, tetapi membuka workspace yang sesuai tugas. */}
+      {activeWorkspace === 'verification' && <section id="panel-verification" role="tabpanel" aria-labelledby="tab-verification" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-700 lg:flex-row lg:items-center lg:justify-between">
           <h2 className="flex items-center gap-2 font-black text-slate-900 dark:text-white">
-            <ShieldCheck className="h-5 w-5 text-indigo-600" />Antrean verifikasi
+            <ShieldCheck className="size-5 text-blue-600 dark:text-blue-300" aria-hidden="true" />Antrean verifikasi
           </h2>
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <label className="relative min-w-0 flex-1 sm:min-w-64">
+              <span className="sr-only">Cari pengajuan</span><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <input type="search" value={submissionQuery} onChange={(event) => setSubmissionQuery(event.target.value)} placeholder="Cari kontingen atau pengaju..." className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
+            </label>
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
               Status 
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-                <option value="" className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">Semua</option>
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                <option value="">Semua</option>
                 {['PENDING','VERIFIED','REJECTED','OFFICIAL'].map((value) => (
-                  <option key={value} className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">{value}</option>
+                  <option key={value}>{value}</option>
                 ))}
               </select>
             </label>
@@ -201,13 +240,9 @@ export default function Medals() {
         </div>
 
         {loading ? (
-          <div className="flex min-h-[200px] items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-          </div>
-        ) : submissions.length === 0 ? (
-          <div className="flex min-h-[200px] flex-col items-center justify-center p-10 text-slate-500 dark:text-slate-400">
-            <p>Tidak ada pengajuan pada filter ini.</p>
-          </div>
+          <AdminLoadingState label="Memuat antrean verifikasi..." />
+        ) : sortedSubmissions.length === 0 ? (
+          <AdminEmptyState icon={ShieldCheck} title="Tidak ada pengajuan" description="Tidak ada pengajuan yang cocok dengan pencarian dan filter status ini." />
         ) : (
           <>
             <div className="overflow-x-auto min-h-[200px]">
@@ -245,16 +280,16 @@ export default function Medals() {
                         <div className="flex justify-end gap-2">
                           {item.status === 'PENDING' && canVerify && (
                             <>
-                              <button type="button" disabled={submitting} onClick={() => void transition(item, 'verify')} className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50">
+                              <button type="button" disabled={submitting} onClick={() => requestTransition(item, 'verify')} className="inline-flex min-h-11 items-center rounded-xl bg-blue-600 px-3 text-sm font-bold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
                                 <CheckCircle2 className="mr-1 h-4 w-4" />Verifikasi
                               </button>
-                              <button type="button" disabled={submitting} onClick={() => void transition(item, 'reject')} className="inline-flex min-h-9 items-center rounded-lg border border-red-300 px-3 text-sm font-bold text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40 disabled:opacity-50">
+                              <button type="button" disabled={submitting} onClick={() => requestTransition(item, 'reject')} className="inline-flex min-h-11 items-center rounded-xl border border-red-300 px-3 text-sm font-bold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40 disabled:opacity-50">
                                 <XCircle className="mr-1 h-4 w-4" />Tolak
                               </button>
                             </>
                           )}
                           {item.status === 'VERIFIED' && canPublish && (
-                            <button type="button" disabled={submitting} onClick={() => void transition(item, 'publish')} className="inline-flex min-h-9 items-center rounded-lg bg-emerald-600 px-3 text-sm font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50">
+                            <button type="button" disabled={submitting} onClick={() => requestTransition(item, 'publish')} className="inline-flex min-h-11 items-center rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50">
                               <Send className="mr-1 h-4 w-4" />Publikasikan
                             </button>
                           )}
@@ -276,24 +311,24 @@ export default function Medals() {
             />
           </>
         )}
-      </section>
+      </section>}
 
       {/* Standings Section */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
+      {activeWorkspace === 'standings' && <section id="panel-standings" role="tabpanel" aria-labelledby="tab-standings" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-700 lg:flex-row lg:items-center lg:justify-between">
           <h2 className="flex items-center gap-2 font-black text-slate-900 dark:text-white">
             <Medal className="h-5 w-5 text-amber-500" />Klasemen resmi
           </h2>
-          <RowsPerPageSelector
-            rowsPerPage={stdTable.rowsPerPage}
-            onChange={stdTable.handleChangeRowsPerPage}
-          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <label className="relative min-w-0 flex-1 sm:min-w-64"><span className="sr-only">Cari kontingen</span><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input type="search" value={standingQuery} onChange={(event) => setStandingQuery(event.target.value)} placeholder="Cari kontingen..." className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" /></label>
+            <RowsPerPageSelector rowsPerPage={stdTable.rowsPerPage} onChange={stdTable.handleChangeRowsPerPage} />
+          </div>
         </div>
         
-        {standings.length === 0 ? (
-          <div className="flex min-h-[200px] flex-col items-center justify-center p-10 text-slate-500 dark:text-slate-400">
-            <p>Belum ada medali yang berstatus OFFICIAL.</p>
-          </div>
+        {loading ? (
+          <AdminLoadingState label="Memuat klasemen resmi..." />
+        ) : sortedStandings.length === 0 ? (
+          <AdminEmptyState icon={Medal} title="Belum ada klasemen" description={standingQuery ? 'Tidak ada kontingen yang cocok dengan pencarian.' : 'Belum ada medali yang berstatus OFFICIAL.'} />
         ) : (
           <>
             <div className="overflow-x-auto min-h-[200px]">
@@ -316,7 +351,7 @@ export default function Medals() {
                       <td className="p-4 text-center font-black text-amber-500">{item.gold}</td>
                       <td className="p-4 text-center font-bold text-slate-500 dark:text-slate-400">{item.silver}</td>
                       <td className="p-4 text-center font-bold text-amber-700">{item.bronze}</td>
-                      <td className="p-4 text-center text-xl font-black text-indigo-600 dark:text-indigo-400">{item.gold + item.silver + item.bronze}</td>
+                      <td className="p-4 text-center text-xl font-black text-blue-600 dark:text-blue-300">{item.gold + item.silver + item.bronze}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -333,7 +368,7 @@ export default function Medals() {
             />
           </>
         )}
-      </section>
+      </section>}
 
       <ModalForm 
         isOpen={modalOpen} 
@@ -349,7 +384,7 @@ export default function Medals() {
             required 
             value={form.kontingen_id} 
             onChange={(event) => setForm({ ...form, kontingen_id: event.target.value })} 
-            className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
           >
             <option value="" className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">Pilih kontingen</option>
             {kontingens.map((item) => (
@@ -359,15 +394,15 @@ export default function Medals() {
         </label>
         
         <div className="grid grid-cols-3 gap-3">
-          {(['gold','silver','bronze'] as const).map((field) => (
-            <label key={field} className="text-sm font-bold capitalize text-slate-900 dark:text-white">
-              {field}
+          {([['gold', 'Emas'], ['silver', 'Perak'], ['bronze', 'Perunggu']] as const).map(([field, label]) => (
+            <label key={field} className="text-sm font-bold text-slate-900 dark:text-white">
+              {label}
               <input 
                 type="number" 
                 min="0" 
                 value={form[field]} 
                 onChange={(event) => setForm({ ...form, [field]: Number(event.target.value) })} 
-                className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white" 
+                className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               />
             </label>
           ))}
@@ -379,7 +414,7 @@ export default function Medals() {
             type="url" 
             value={form.evidence_url} 
             onChange={(event) => setForm({ ...form, evidence_url: event.target.value })} 
-            className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white" 
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             placeholder="https://..." 
           />
         </label>
@@ -389,10 +424,27 @@ export default function Medals() {
           <textarea 
             value={form.notes} 
             onChange={(event) => setForm({ ...form, notes: event.target.value })} 
-            className="mt-2 min-h-24 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white" 
+            className="mt-2 min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
           />
         </label>
       </ModalForm>
+
+      <Modal
+        isOpen={Boolean(pendingTransition)}
+        onClose={() => { setPendingTransition(null); setTransitionReason(''); }}
+        closeDisabled={submitting}
+        title={pendingTransition?.action === 'publish' ? 'Publikasikan perolehan medali?' : pendingTransition?.action === 'reject' ? 'Tolak pengajuan medali?' : 'Verifikasi pengajuan medali?'}
+        description="Tindakan ini tercatat pada audit trail sesuai identitas dan peran Anda."
+      >
+        <div className="space-y-4 p-4 sm:p-6">
+          {pendingTransition && <AdminAlert tone={pendingTransition.action === 'reject' ? 'warning' : 'success'}><strong>{kontingenMap.get(pendingTransition.submission.kontingen_id) || pendingTransition.submission.kontingen_id}</strong> · {pendingTransition.submission.gold} emas, {pendingTransition.submission.silver} perak, {pendingTransition.submission.bronze} perunggu.</AdminAlert>}
+          {pendingTransition?.action === 'reject' && <label htmlFor="medal-rejection-reason" className="block text-sm font-bold text-slate-700 dark:text-slate-200">Alasan penolakan <span className="text-red-500" aria-hidden="true">*</span><textarea id="medal-rejection-reason" required minLength={5} value={transitionReason} onChange={(event) => setTransitionReason(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" placeholder="Jelaskan alasan penolakan (minimal 5 karakter)" /></label>}
+          <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end dark:border-slate-700">
+            <button type="button" disabled={submitting} onClick={() => { setPendingTransition(null); setTransitionReason(''); }} className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">Batal</button>
+            <button type="button" disabled={submitting || (pendingTransition?.action === 'reject' && transitionReason.trim().length < 5)} onClick={() => void transition()} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50 ${pendingTransition?.action === 'reject' ? 'bg-red-600 hover:bg-red-700' : pendingTransition?.action === 'publish' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'}`}>{pendingTransition?.action === 'publish' ? <Send className="size-4" aria-hidden="true" /> : pendingTransition?.action === 'reject' ? <XCircle className="size-4" aria-hidden="true" /> : <CheckCircle2 className="size-4" aria-hidden="true" />}{submitting ? 'Memproses...' : pendingTransition?.action === 'publish' ? 'Publikasikan' : pendingTransition?.action === 'reject' ? 'Tolak pengajuan' : 'Verifikasi'}</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
