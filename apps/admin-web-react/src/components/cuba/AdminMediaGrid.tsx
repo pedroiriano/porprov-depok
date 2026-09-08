@@ -19,11 +19,12 @@ export function AdminMediaGrid({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
       {items.map((item) => {
+        const previewURL = item.derivatives?.find((derivative) => derivative.variant === 'thumbnail')?.file_url || item.file_url;
         const preview = (
           <span className="relative flex aspect-square items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-950">
             {item.mime_type?.startsWith('image/') ? (
               <img
-                src={resolveMediaUrl(item.file_url)}
+                src={resolveMediaUrl(previewURL)}
                 alt={onSelect ? '' : item.file_name}
                 loading="lazy"
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03] group-focus-visible:scale-[1.03]"

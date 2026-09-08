@@ -5,6 +5,7 @@ import {
   Database,
   FileCheck,
   Images,
+  HeartPulse,
   LayoutDashboard,
   LogOut,
   MapPinned,
@@ -37,25 +38,26 @@ const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
   {
     label: 'Ringkasan',
     items: [
-      { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+      { icon: LayoutDashboard, label: 'Dasbor', path: '/' },
     ],
   },
   {
     label: 'Operasional',
     items: [
-      { icon: Database, label: 'Master Data', path: '/master-data', roles: ['super_admin'] },
-      { icon: PanelsTopLeft, label: 'Hero Utama', path: '/hero', roles: ['super_admin'] },
-      { icon: Activity, label: 'LiveScore Center', path: '/livescore', roles: ['koresponden'] },
+      { icon: Database, label: 'Data Utama', path: '/master-data', roles: ['super_admin'] },
+      { icon: PanelsTopLeft, label: 'Tampilan Utama', path: '/hero', roles: ['super_admin'] },
+      { icon: Activity, label: 'Pusat Skor Langsung', path: '/livescore', roles: ['koresponden'] },
       { icon: Medal, label: 'Perolehan Medali', path: '/medals', roles: ['koresponden'] },
-      { icon: MapPinned, label: 'City Guide', path: '/city-guide', roles: ['super_admin'] },
-      { icon: Images, label: 'Media Library', path: '/media', roles: ['super_admin'] },
+      { icon: MapPinned, label: 'Panduan Kota', path: '/city-guide', roles: ['super_admin'] },
+      { icon: Images, label: 'Pustaka Media', path: '/media', roles: ['super_admin'] },
       { icon: FileCheck, label: 'Verifikasi', path: '/verifikasi', roles: ['verifikator'] },
     ],
   },
   {
     label: 'Administrasi',
     items: [
-      { icon: ShieldAlert, label: 'Audit Log', path: '/audit-log', roles: ['auditor'] },
+      { icon: ShieldAlert, label: 'Log Audit', path: '/audit-log', roles: ['auditor'] },
+      { icon: HeartPulse, label: 'Kesehatan Integrasi', path: '/integration-health', roles: ['super_admin', 'auditor'] },
       { icon: Users, label: 'Manajemen Akun', path: '/user-management', roles: ['super_admin'] },
       { icon: User, label: 'Profil Akun', path: '/profile' },
     ],
@@ -141,7 +143,7 @@ export function CubaAdminShell({
         inert={isMobile && !sidebarOpen ? true : undefined}
       >
         <div className="flex h-[76px] shrink-0 items-center justify-between border-b border-white/10 px-5">
-          <Link to="/" className="flex min-h-11 items-center gap-3" aria-label="Dashboard PORPROV">
+          <Link to="/" className="flex min-h-11 items-center gap-3" aria-label="Dasbor PORPROV">
             <span className="grid size-10 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20">
               <img
                 src={`${import.meta.env.BASE_URL}assets/images/logo-porprov.png`}
@@ -151,7 +153,7 @@ export function CubaAdminShell({
             </span>
             <span>
               <span className="block text-sm font-black tracking-wide">PORPROV DEPOK</span>
-              <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-blue-100">Admin Workspace</span>
+              <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-blue-100">Ruang Kerja Admin</span>
             </span>
           </Link>
           <button
@@ -195,7 +197,7 @@ export function CubaAdminShell({
         <div className="border-t border-white/10 p-4">
           <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-white/10">
             <p className="text-xs font-black text-white">PORPROV XV 2026</p>
-            <p className="mt-1 text-xs leading-relaxed text-blue-100">Workspace operator Kota Depok</p>
+            <p className="mt-1 text-xs leading-relaxed text-blue-100">Ruang kerja operator Kota Depok</p>
           </div>
         </div>
       </aside>
@@ -215,13 +217,13 @@ export function CubaAdminShell({
                 <Menu className="size-5" aria-hidden="true" />
               </button>
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--admin-muted)]">Workspace Admin</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--admin-muted)]">Ruang Kerja Admin</p>
                 <h1 className="truncate text-lg font-black text-[var(--admin-heading)] sm:text-xl">{currentPage?.label || 'PORPROV Depok'}</h1>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="hidden rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700 ring-1 ring-blue-200 sm:inline-flex dark:bg-blue-950/50 dark:text-blue-200 dark:ring-blue-800">Cuba Foundation</span>
+              <span className="hidden rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200 sm:inline-flex dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-800">Sistem siap</span>
               <button
                 type="button"
                 className="admin-cuba-icon-button"

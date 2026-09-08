@@ -4,15 +4,16 @@ import { useAuth } from 'react-oidc-context';
 import MediaSelectorModal from '../media/MediaSelectorModal';
 import ModalForm from '../common/ModalForm';
 import { TextInput, SelectInput, MediaInput, TextArea } from '../common/FormInputs';
-import { apiClient, authConfig, getApiErrorMessage, normalizeStoredMediaUrl, unwrapApiData } from '../../lib/api';
+import { apiClient, authConfig, getApiErrorMessage, normalizeStoredMediaUrl, type PaginatedApiResponse } from '../../lib/api';
 import type { Cabor } from '../../types/master-data';
 import { requestSoftDeleteReason } from '../../lib/soft-delete';
 import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
-import { useTableControls, usePagination } from '../../hooks/useTableControls';
+import { useTableControls } from '../../hooks/useTableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 type SortKeyType = 'name' | 'kategori' | 'total_medali' | 'technical_delegate' | 'status';
 
@@ -37,6 +38,8 @@ export default function CabangOlahraga() {
   const [archiving, setArchiving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
+  const deferredSearch = useDebouncedValue(search);
+  const [totalItems, setTotalItems] = useState(0);
   const [listError, setListError] = useState('');
   const [formError, setFormError] = useState('');
   const [operationMessage, setOperationMessage] = useState('');
@@ -55,22 +58,30 @@ export default function CabangOlahraga() {
     };
   }, [isModalOpen, isMediaSelectorOpen]);
 
-  const fetchCabors = useCallback(async () => {
+  const fetchCabors = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const res = await apiClient.get<Cabor[] | { data: Cabor[] }>('/master-data/cabors', authConfig(auth.user?.access_token));
-      setCabors(unwrapApiData(res.data) || []);
+      const res = await apiClient.get<PaginatedApiResponse<Cabor>>('/master-data/cabors', {
+        ...authConfig(auth.user?.access_token),
+        signal,
+        params: { page: table.currentPage, per_page: table.rowsPerPage, q: deferredSearch.trim(), sort: table.sortKey || 'name', direction: table.sortDirection },
+      });
+      setCabors(res.data.data || []);
+      setTotalItems(res.data.total || 0);
       setListError('');
     } catch (error) {
+      if (signal?.aborted) return;
       console.error('Failed to fetch cabors:', error);
       setListError(getApiErrorMessage(error, 'Gagal memuat data cabang olahraga.'));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [auth.user?.access_token]);
+  }, [auth.user?.access_token, deferredSearch, table.currentPage, table.rowsPerPage, table.sortDirection, table.sortKey]);
 
   useEffect(() => {
-    void fetchCabors();
+    const controller = new AbortController();
+    void fetchCabors(controller.signal);
+    return () => controller.abort();
   }, [fetchCabors]);
 
   const resetForm = () => {
@@ -117,12 +128,16 @@ export default function CabangOlahraga() {
       setArchiving(true);
       setListError('');
       setOperationMessage('');
-      for (const id of ids) {
-        await apiClient.delete(`/master-data/cabors/${id}`, { ...authConfig(auth.user?.access_token), data: { reason } });
-      }
-      setSelectedIds(new Set());
+      const results = await Promise.allSettled(ids.map((id) => apiClient.delete(`/master-data/cabors/${id}`, { ...authConfig(auth.user?.access_token), data: { reason } })));
+      const failedIds = ids.filter((_, index) => results[index].status === 'rejected');
+      const succeeded = ids.length - failedIds.length;
+      setSelectedIds(new Set(failedIds));
       await fetchCabors();
-      setOperationMessage(`${ids.length} cabang olahraga berhasil diarsipkan.`);
+      if (failedIds.length > 0) {
+        setListError(`${succeeded} cabang olahraga berhasil diarsipkan, tetapi ${failedIds.length} lainnya gagal. Data yang gagal tetap dipilih agar dapat dicoba lagi.`);
+      } else {
+        setOperationMessage(`${succeeded} cabang olahraga berhasil diarsipkan dan dapat dipulihkan dari Arsip Terhapus.`);
+      }
     } catch (error) {
       console.error('Failed to delete cabor:', error);
       setListError(getApiErrorMessage(error, 'Gagal mengarsipkan data cabang olahraga.'));
@@ -147,43 +162,14 @@ export default function CabangOlahraga() {
     setIsModalOpen(true);
   };
 
-  // INFO: Filters data based on search input
-  const filteredCabors = useMemo(() => {
-    return cabors.filter((item) =>
-      [item.name, item.kategori, item.technical_delegate]
-        .some((value) => value?.toLowerCase().includes(search.toLowerCase())),
-    );
-  }, [cabors, search]);
-
-  // INFO: Reset page to 1 when search changes
+  // INFO: Pencarian baru selalu dimulai dari halaman pertama.
   useEffect(() => {
     table.resetPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
-
-  // INFO: Sorts the filtered data
-  const sortedCabors = useMemo(() => {
-    if (!table.sortKey) return filteredCabors;
-    return [...filteredCabors].sort((a, b) => {
-      const aVal = a[table.sortKey as keyof Cabor];
-      const bVal = b[table.sortKey as keyof Cabor];
-      if (aVal === bVal) return 0;
-      if (typeof aVal === 'number' && typeof bVal === 'number') {
-        return table.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-      }
-      const aString = String(aVal || '').toLowerCase();
-      const bString = String(bVal || '').toLowerCase();
-      if (table.sortDirection === 'asc') return aString > bString ? 1 : -1;
-      return aString < bString ? 1 : -1;
-    });
-  }, [filteredCabors, table.sortKey, table.sortDirection]);
-
-  // INFO: Pagination hook
-  const { paginatedData, totalItems, totalPages, startItem, endItem } = usePagination(
-    sortedCabors,
-    table.currentPage,
-    table.rowsPerPage
-  );
+  const totalPages = Math.max(1, Math.ceil(totalItems / table.rowsPerPage));
+  const startItem = totalItems === 0 ? 0 : (table.currentPage - 1) * table.rowsPerPage + 1;
+  const endItem = Math.min(table.currentPage * table.rowsPerPage, totalItems);
 
   const columns = useMemo<Array<AdminDataTableColumn<Cabor, SortKeyType>>>(() => [
     {
@@ -206,7 +192,7 @@ export default function CabangOlahraga() {
     },
     {
       key: 'technical_delegate',
-      label: 'Technical Delegate',
+      label: 'Delegasi Teknis',
       sortKey: 'technical_delegate',
       className: 'max-w-72',
       render: (item) => <span className="block truncate text-sm text-slate-600 dark:text-slate-300">{item.technical_delegate || '-'}</span>,
@@ -235,7 +221,7 @@ export default function CabangOlahraga() {
           <label className="relative block w-full md:max-w-sm">
             <span className="sr-only">Cari cabang olahraga</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input type="search" maxLength={80} placeholder="Cari nama, kategori, atau technical delegate" value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
+            <input type="search" maxLength={80} placeholder="Cari nama, kategori, atau delegasi teknis" value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
           </label>
           <RowsPerPageSelector value={table.rowsPerPage} onChange={table.handleRowsPerPageChange} />
         </div>
@@ -244,7 +230,7 @@ export default function CabangOlahraga() {
 
         <AdminDataTable<Cabor, SortKeyType>
           caption="Daftar cabang olahraga PORPROV"
-          rows={paginatedData}
+          rows={cabors}
           columns={columns}
           getRowId={(item) => item.id}
           getRowLabel={(item) => item.name}
@@ -287,7 +273,7 @@ export default function CabangOlahraga() {
         draft={{ entityId: formData.id || 'new-cabor', version: 'cabor-v1', value: formData, onRestore: setFormData }}
       >
         {formError && <AdminAlert>{formError}</AdminAlert>}
-        <RevisionHistory entityName="Cabor" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
+        <RevisionHistory entityName="Cabor" displayName="Cabang olahraga" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
         <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">Identitas cabang olahraga</legend>
           <div className="grid gap-4 md:grid-cols-2">
@@ -295,7 +281,7 @@ export default function CabangOlahraga() {
             <SelectInput label="Kategori" required value={formData.kategori} onChange={(e) => setFormData({...formData, kategori: e.target.value})} options={[{ value: 'Tanding', label: 'Tanding' }, { value: 'Seni/Terukur', label: 'Seni/Terukur' }, { value: 'E-Sports', label: 'E-Sports' }, { value: 'Eksibisi', label: 'Eksibisi' }]} />
             <SelectInput label="Status" required value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} options={[{ value: 'Aktif', label: 'Aktif' }, { value: 'Eksibisi', label: 'Eksibisi' }, { value: 'Non-Aktif', label: 'Non-Aktif' }]} />
             <TextInput label="Total Medali" type="number" min="0" value={formData.total_medali} onChange={(e) => setFormData({...formData, total_medali: parseInt(e.target.value) || 0})} />
-            <TextInput label="Technical Delegate" maxLength={160} value={formData.technical_delegate} onChange={(e) => setFormData({...formData, technical_delegate: e.target.value})} placeholder="Nama technical delegate" />
+            <TextInput label="Delegasi Teknis" maxLength={160} value={formData.technical_delegate} onChange={(e) => setFormData({...formData, technical_delegate: e.target.value})} placeholder="Nama delegasi teknis" />
             <div className="md:col-span-2"><TextArea label="Deskripsi/Keterangan" rows={3} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Keterangan tambahan..." /></div>
           </div>
         </fieldset>
@@ -303,7 +289,7 @@ export default function CabangOlahraga() {
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">Media publik</legend>
           <div className="grid gap-5 md:grid-cols-2">
             <MediaInput label="Logo Cabor" value={formData.icon_url} onClear={() => setFormData({...formData, icon_url: ''})} onSelect={() => { setMediaTarget('icon'); setIsMediaSelectorOpen(true); }} />
-            <MediaInput label="Hero Image Cabor" value={formData.hero_image_url} onClear={() => setFormData({...formData, hero_image_url: ''})} onSelect={() => { setMediaTarget('hero'); setIsMediaSelectorOpen(true); }} previewVariant="landscape" placeholderText="Pilih Hero Image dari Media Library" helpText="Opsional. Rekomendasi rasio 16:9 untuk header detail Cabor." />
+            <MediaInput label="Gambar Utama Cabang Olahraga" value={formData.hero_image_url} onClear={() => setFormData({...formData, hero_image_url: ''})} onSelect={() => { setMediaTarget('hero'); setIsMediaSelectorOpen(true); }} previewVariant="landscape" placeholderText="Pilih gambar utama dari Pustaka Media" helpText="Opsional. Rekomendasi rasio 16:9 untuk kepala halaman detail cabang olahraga." />
           </div>
         </fieldset>
       </ModalForm>

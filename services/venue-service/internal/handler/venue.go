@@ -119,6 +119,15 @@ func (h *VenueHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 	if venues == nil {
 		venues = []db.Venue{}
 	}
+	page, err := parseVenuePageRequest(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if page != nil {
+		writeVenuePage(w, venues, page)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(venues)

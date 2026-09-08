@@ -1,0 +1,9 @@
+**
+!services/
+services/**
+!services/realtime-gateway/
+!services/realtime-gateway/**
+services/realtime-gateway/.tmp/
+services/realtime-gateway/*.exe
+services/realtime-gateway/tmp_build/
+services/realtime-gateway/*.zip

@@ -412,3 +412,11 @@ func TestPublicLivescoreProjectionDoesNotRequireJWT(t *testing.T) {
 		t.Fatalf("expected public livescore status 200, got %d", response.Code)
 	}
 }
+
+func TestServiceBaseURLRemovesConfiguredPath(t *testing.T) {
+	t.Parallel()
+	got := serviceBaseURL("http://user-service:8001/api/v1/users?debug=true")
+	if got != "http://user-service:8001" {
+		t.Fatalf("serviceBaseURL() = %q", got)
+	}
+}

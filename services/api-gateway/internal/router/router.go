@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -17,10 +18,40 @@ import (
 	"github.com/porprov-xv/porprov-depok/services/api-gateway/internal/config"
 	"github.com/porprov-xv/porprov-depok/services/api-gateway/internal/handler"
 	customMiddleware "github.com/porprov-xv/porprov-depok/services/api-gateway/internal/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const upstreamErrorBody = `{"error":{"code":"UPSTREAM_ERROR","message":"Layanan sementara tidak tersedia"}}`
+
+var (
+	httpRequestsTotal   = promauto.NewCounterVec(prometheus.CounterOpts{Name: "porprov_gateway_http_requests_total", Help: "Jumlah request API Gateway menurut route dan kelas status."}, []string{"method", "route", "status_class"})
+	httpRequestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{Name: "porprov_gateway_http_request_duration_seconds", Help: "Durasi request API Gateway.", Buckets: prometheus.DefBuckets}, []string{"method", "route"})
+	uploadFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{Name: "porprov_gateway_upload_failures_total", Help: "Jumlah unggahan media yang gagal pada API Gateway."})
+)
+
+func requestMetrics(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		started := time.Now()
+		wrapped := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		next.ServeHTTP(wrapped, r)
+		route := chi.RouteContext(r.Context()).RoutePattern()
+		if route == "" {
+			route = "unmatched"
+		}
+		status := wrapped.Status()
+		if status == 0 {
+			status = http.StatusOK
+		}
+		statusClass := strconv.Itoa(status/100) + "xx"
+		httpRequestsTotal.WithLabelValues(r.Method, route, statusClass).Inc()
+		httpRequestDuration.WithLabelValues(r.Method, route).Observe(time.Since(started).Seconds())
+		if r.URL.Path == "/api/v1/master-data/media/upload" && status >= http.StatusBadRequest {
+			uploadFailuresTotal.Inc()
+		}
+	})
+}
 
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -97,10 +128,23 @@ func setupProxy(targetURL string) http.HandlerFunc {
 	return setupProxyWithHeaders(targetURL, nil)
 }
 
+func serviceBaseURL(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return rawURL
+	}
+	parsed.Path = ""
+	parsed.RawPath = ""
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return strings.TrimRight(parsed.String(), "/")
+}
+
 // SetupRouter mengonfigurasi dan mengembalikan Chi mux router
 func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) *chi.Mux {
 	r := chi.NewRouter()
 	analyticsHandler := handler.NewAnalyticsHandler(cfg.UmamiURL, cfg.UmamiUsername, cfg.UmamiPassword, cfg.UmamiWebsiteID)
+	integrationHealthHandler := handler.NewIntegrationHealthHandler(cfg)
 	r.Use(securityHeaders)
 	r.Use(middleware.RequestSize(12 << 20))
 
@@ -116,6 +160,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 
 	// Middlewares bawaan Chi
 	r.Use(middleware.RequestID) // Men-generate request_id untuk tracing
+	r.Use(requestMetrics)
 	r.Use(middleware.Logger)    // TODO: Ganti dengan Zap/Zerolog nanti
 	r.Use(middleware.Recoverer) // Mencegah panic mematikan server
 
@@ -136,6 +181,11 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 			superAdminOnly := jwtMid.RequireAnyRole("super_admin")
 			r.Get("/profile", handler.ProfileHandler)
 			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Get("/analytics/overview", analyticsHandler.Overview)
+			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Get("/integrations/health", integrationHealthHandler.ServeHTTP)
+
+			// INFO: Draft form selalu dibatasi pada subject token oleh User Service.
+			draftProxy := setupProxy(serviceBaseURL(cfg.UserURL))
+			r.Handle("/drafts", draftProxy)
 
 			// User Management Service - Hanya Super Admin
 			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/users/*", setupProxy(cfg.UserURL))

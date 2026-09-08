@@ -45,9 +45,10 @@ func main() {
 
 	// INFO: Menginisialisasi Handler
 	userHandler := handler.NewUserHandler(queries, cfg)
+	draftHandler := handler.NewDraftHandler(conn)
 
 	// INFO: Setup Chi Router
-	r := router.SetupRouter(userHandler)
+	r := router.SetupRouter(userHandler, draftHandler)
 
 	// INFO: Setup HTTP Server
 	srv := &http.Server{

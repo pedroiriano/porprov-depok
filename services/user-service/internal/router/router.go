@@ -10,7 +10,7 @@ import (
 	"github.com/porprov-xv/porprov-depok/services/user-service/internal/handler"
 )
 
-func SetupRouter(userHandler *handler.UserHandler) *chi.Mux {
+func SetupRouter(userHandler *handler.UserHandler, draftHandler *handler.DraftHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
@@ -40,6 +40,12 @@ func SetupRouter(userHandler *handler.UserHandler) *chi.Mux {
 	})
 
 	r.Get("/api/v1/roles", userHandler.GetRoles)
+
+	r.Route("/api/v1/drafts", func(r chi.Router) {
+		r.Get("/", draftHandler.Get)
+		r.Put("/", draftHandler.Save)
+		r.Delete("/", draftHandler.Delete)
+	})
 
 	return r
 }

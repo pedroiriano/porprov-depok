@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, RotateCcw, Upload, X } from 'lucide-react';
 import Modal from '../Modal';
 import {
   compressMediaWithConsent,
@@ -11,7 +11,7 @@ import {
 interface MediaUploadButtonProps {
   busy: boolean;
   compact?: boolean;
-  onUpload: (file: File) => Promise<void>;
+  onUpload: (file: File, options: { signal: AbortSignal; onProgress: (percentage: number) => void }) => Promise<void>;
   onError: (message: string) => void;
   onNotice?: (message: string) => void;
 }
@@ -20,12 +20,32 @@ export default function MediaUploadButton({ busy, compact = false, onUpload, onE
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preparing, setPreparing] = useState(false);
   const [pendingLossy, setPendingLossy] = useState<Extract<MediaPreparation, { status: 'needs-lossy-consent' }> | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadController, setUploadController] = useState<AbortController | null>(null);
+  const [retryFile, setRetryFile] = useState<File | null>(null);
   const isBusy = busy || preparing;
 
   const uploadPrepared = async (file: File, message?: string) => {
     onError('');
-    await onUpload(file);
-    if (message) onNotice?.(message);
+    setRetryFile(null);
+    setUploadProgress(0);
+    const controller = new AbortController();
+    setUploadController(controller);
+    try {
+      await onUpload(file, { signal: controller.signal, onProgress: setUploadProgress });
+      setUploadProgress(100);
+      if (message) onNotice?.(message);
+    } catch (error) {
+      setRetryFile(file);
+      if (controller.signal.aborted) {
+        onError('Unggahan dibatalkan. Anda dapat mencobanya kembali.');
+        return;
+      }
+      throw error;
+    } finally {
+      setUploadController(null);
+      setUploadProgress(null);
+    }
   };
 
   const handleFile = async (file?: File) => {
@@ -39,7 +59,7 @@ export default function MediaUploadButton({ busy, compact = false, onUpload, onE
       }
       await uploadPrepared(
         prepared.file,
-        prepared.mode === 'lossless' ? 'Gambar berhasil dikompresi lossless dan diunggah.' : undefined,
+        prepared.mode === 'lossless' ? 'Gambar berhasil dipadatkan tanpa penurunan kualitas dan diunggah.' : undefined,
       );
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Gagal menyiapkan gambar.');
@@ -53,7 +73,7 @@ export default function MediaUploadButton({ busy, compact = false, onUpload, onE
     setPreparing(true);
     try {
       const compressed = await compressMediaWithConsent(pendingLossy.file);
-      await uploadPrepared(compressed, 'Gambar dikompresi berkualitas tinggi dengan persetujuan Anda dan berhasil diunggah.');
+      await uploadPrepared(compressed, 'Gambar dipadatkan dengan penurunan kualitas minimal sesuai persetujuan Anda dan berhasil diunggah.');
       setPendingLossy(null);
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Gagal mengompresi gambar.');
@@ -85,16 +105,28 @@ export default function MediaUploadButton({ busy, compact = false, onUpload, onE
         {isBusy ? 'Memproses...' : compact ? 'Unggah Baru' : 'Unggah Gambar'}
       </button>
 
+      {uploadProgress !== null && (
+        <div className="min-w-48" role="status" aria-live="polite">
+          <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold text-slate-600 dark:text-slate-300"><span>Mengunggah gambar</span><span>{uploadProgress}%</span></div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"><div className="h-full rounded-full bg-blue-600 transition-[width] motion-reduce:transition-none" style={{ width: `${uploadProgress}%` }} /></div>
+          <button type="button" onClick={() => uploadController?.abort()} className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-black text-red-700 hover:bg-red-50 dark:text-red-200 dark:hover:bg-red-950/40"><X className="size-4" aria-hidden="true" />Batalkan unggahan</button>
+        </div>
+      )}
+
+      {retryFile && uploadProgress === null && (
+        <button type="button" disabled={isBusy} onClick={() => void uploadPrepared(retryFile).catch(() => undefined)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-300 px-4 text-sm font-black text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/40"><RotateCcw className="size-4" aria-hidden="true" />Coba unggah lagi</button>
+      )}
+
       <Modal
         isOpen={pendingLossy !== null}
         onClose={() => !isBusy && setPendingLossy(null)}
         title="Persetujuan kompresi gambar"
-        description="Kompresi lossless belum dapat mencapai batas akhir 3 MiB."
+        description="Pemadatan tanpa penurunan kualitas belum dapat mencapai batas akhir 3 MiB."
         closeDisabled={isBusy}
       >
         <div className="space-y-4 p-4 sm:p-6">
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Untuk melanjutkan, sistem akan mengubah gambar ke WebP berkualitas tinggi dan bila diperlukan mengurangi dimensinya secara bertahap. Perubahan ini bersifat lossy, tetapi dioptimalkan agar tetap tajam untuk web.
+            Untuk melanjutkan, sistem akan mengubah gambar ke WebP berkualitas tinggi dan bila diperlukan mengurangi dimensinya secara bertahap. Proses ini dapat sedikit menurunkan kualitas, tetapi gambar tetap dioptimalkan agar tajam untuk web.
           </p>
           {pendingLossy && <p className="rounded-xl bg-slate-100 p-3 text-sm font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{pendingLossy.file.name} · {pendingLossy.width} × {pendingLossy.height} px</p>}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

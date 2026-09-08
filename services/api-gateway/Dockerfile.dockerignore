@@ -1,0 +1,9 @@
+**
+!services/
+!services/api-gateway/
+!services/api-gateway/**
+**/.tmp
+**/*.exe
+**/tmp_build
+**/*.zip
+**/uploads

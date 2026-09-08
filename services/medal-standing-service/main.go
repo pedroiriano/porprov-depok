@@ -68,8 +68,14 @@ func main() {
 			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
 			return
 		}
+		var pendingItems, retryCount int64
+		var oldestPendingSeconds float64
+		if err := pool.QueryRow(r.Context(), `SELECT COUNT(*),COALESCE(SUM(attempts),0),COALESCE(EXTRACT(EPOCH FROM NOW()-MIN(created_at)),0) FROM outbox_events WHERE published_at IS NULL`).Scan(&pendingItems, &retryCount, &oldestPendingSeconds); err != nil {
+			http.Error(w, "operational queue unavailable", http.StatusServiceUnavailable)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "medal-standing-service is healthy"})
+		json.NewEncoder(w).Encode(map[string]any{"status": "healthy", "pending_items": pendingItems, "retry_count": retryCount, "oldest_pending_seconds": oldestPendingSeconds})
 	}
 	r.Get("/health", healthHandler)
 	r.Head("/health", healthHandler)

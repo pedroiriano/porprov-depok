@@ -27,6 +27,9 @@ type AppConfig struct {
 	UmamiUsername       string
 	UmamiPassword       string
 	UmamiWebsiteID      string
+	NATSMonitorURL      string
+	RedisAddress        string
+	PostgresAddress     string
 }
 
 func csvValues(value string, fallback []string) []string {
@@ -114,5 +117,8 @@ func LoadConfig() *AppConfig {
 		UmamiUsername:       envOrDefault("UMAMI_USERNAME", "admin"),
 		UmamiPassword:       envOrDefault("UMAMI_PASSWORD", "replace-with-a-long-random-umami-password"),
 		UmamiWebsiteID:      envOrDefault("UMAMI_WEBSITE_ID", "e013f972-fc45-440c-a872-575545e6e65f"),
+		NATSMonitorURL:      envOrDefault("NATS_MONITOR_URL", "http://localhost:18222/healthz"),
+		RedisAddress:        envOrDefault("REDIS_ADDRESS", "localhost:16379"),
+		PostgresAddress:     envOrDefault("POSTGRES_ADDRESS", "localhost:15432"),
 	}
 }

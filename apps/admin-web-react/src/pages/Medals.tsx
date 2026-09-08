@@ -8,6 +8,7 @@ import { AdminAlert, AdminPageHeader } from '../components/cuba/AdminPrimitives'
 import { AdminDataTable, type AdminDataTableColumn } from '../components/cuba/AdminDataTable';
 import { AdminWorkspaceTabs } from '../components/cuba/AdminWorkspaceTabs';
 import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../lib/api';
+import { getRealmRoles } from '../lib/auth';
 // INFO: Import table controls
 import { useTableControls, usePagination } from '../hooks/useTableControls';
 import { TablePagination, RowsPerPageSelector } from '../components/common/TableControls';
@@ -24,13 +25,16 @@ type StandingSortKey = 'kontingen' | 'gold' | 'silver' | 'bronze' | 'total';
 type MedalWorkspace = 'standings' | 'verification';
 type TransitionAction = 'verify' | 'reject' | 'publish';
 
+const submissionStatusLabels: Record<Submission['status'], string> = {
+  PENDING: 'Menunggu', VERIFIED: 'Terverifikasi', REJECTED: 'Ditolak', OFFICIAL: 'Resmi',
+};
+
 export default function Medals() {
   const auth = useAuth();
   const location = useLocation();
   const verificationRoute = location.pathname.endsWith('/verifikasi');
   const token = auth.user?.access_token;
-  const realmAccess = auth.user?.profile.realm_access as { roles?: string[] } | undefined;
-  const roles = realmAccess?.roles || [];
+  const roles = getRealmRoles(auth.user);
   const canSubmit = roles.includes('super_admin') || roles.includes('koresponden');
   const canVerify = roles.includes('super_admin') || roles.includes('verifikator');
   const canPublish = roles.includes('super_admin');
@@ -80,7 +84,7 @@ export default function Medals() {
       setKontingens(unwrapApiData<Kontingen[]>(kontingenResponse.data) || []);
       setFeedback(null);
     } catch (error) {
-      setFeedback({ type: 'error', message: getApiErrorMessage(error, 'Gagal memuat workflow Medali.') });
+      setFeedback({ type: 'error', message: getApiErrorMessage(error, 'Gagal memuat alur perolehan medali.') });
     } finally { setLoading(false); }
   }, [statusFilter, token]);
 
@@ -178,7 +182,7 @@ export default function Medals() {
       key: 'status',
       label: 'Status',
       sortKey: 'status',
-      render: (item) => <span className={`rounded-full border px-2.5 py-1 text-xs font-black ${item.status === 'OFFICIAL' ? 'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : item.status === 'REJECTED' ? 'border-red-200 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200' : item.status === 'VERIFIED' ? 'border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200' : 'border-yellow-200 bg-yellow-100 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200'}`}>{item.status}</span>,
+      render: (item) => <span className={`rounded-full border px-2.5 py-1 text-xs font-black ${item.status === 'OFFICIAL' ? 'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : item.status === 'REJECTED' ? 'border-red-200 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200' : item.status === 'VERIFIED' ? 'border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200' : 'border-yellow-200 bg-yellow-100 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200'}`}>{submissionStatusLabels[item.status]}</span>,
     },
     { key: 'submitted_at', label: 'Tanggal', sortKey: 'submitted_at', className: 'whitespace-nowrap', render: (item) => <time className="text-sm text-slate-600 dark:text-slate-300" dateTime={item.submitted_at}>{new Date(item.submitted_at).toLocaleString('id-ID')}</time> },
   ], [kontingenMap]);
@@ -224,7 +228,7 @@ export default function Medals() {
       setTransitionReason('');
       await loadData();
     } catch (error) {
-      setFeedback({ type: 'error', message: getApiErrorMessage(error, 'Transisi workflow gagal.') });
+      setFeedback({ type: 'error', message: getApiErrorMessage(error, 'Perubahan status pengajuan gagal.') });
     } finally { setSubmitting(false); }
   };
 
@@ -235,21 +239,21 @@ export default function Medals() {
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow={verificationRoute ? 'Controlled approval workflow' : 'Official medal workspace'}
+        eyebrow={verificationRoute ? 'Alur persetujuan terkendali' : 'Pencatatan medali resmi'}
         title={verificationRoute ? 'Verifikasi Perolehan Medali' : 'Perolehan Medali'}
-        description={verificationRoute ? 'Tinjau pengajuan sesuai kewenangan. Verifikasi dan publikasi dipisahkan agar klasemen resmi tetap audit-friendly.' : 'Pantau klasemen resmi dan ajukan perubahan medali. Pengajuan baru tidak mengubah publikasi sebelum melewati verifikasi.'}
+        description={verificationRoute ? 'Tinjau pengajuan sesuai kewenangan. Verifikasi dan publikasi dipisahkan agar klasemen resmi mudah diaudit.' : 'Pantau klasemen resmi dan ajukan perubahan medali. Pengajuan baru tidak mengubah publikasi sebelum melewati verifikasi.'}
         actions={<><button type="button" onClick={() => void loadData()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"><RefreshCw className="size-4" aria-hidden="true" />Perbarui</button>{canSubmit && <button type="button" onClick={() => setModalOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"><Plus className="size-4" aria-hidden="true" />Ajukan medali</button>}</>}
       />
 
       {feedback && <AdminAlert tone={feedback.type === 'error' ? 'danger' : 'success'}>{feedback.message}</AdminAlert>}
 
-      <section className="grid gap-3 sm:grid-cols-3" aria-label="Ringkasan workflow medali">
+      <section className="grid gap-3 sm:grid-cols-3" aria-label="Ringkasan alur medali">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Menunggu verifikasi</p><p className="mt-1 text-2xl font-black text-amber-700 dark:text-amber-200">{pendingCount}</p></div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Siap publikasi</p><p className="mt-1 text-2xl font-black text-blue-700 dark:text-blue-200">{verifiedCount}</p></div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Medali official</p><p className="mt-1 text-2xl font-black text-emerald-700 dark:text-emerald-200">{officialTotal}</p></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Medali resmi</p><p className="mt-1 text-2xl font-black text-emerald-700 dark:text-emerald-200">{officialTotal}</p></div>
       </section>
 
-      <AdminWorkspaceTabs activeTab={activeWorkspace} ariaLabel="Workspace perolehan medali" onChange={setActiveWorkspace} tabs={[{ id: 'standings', label: 'Klasemen Resmi', icon: <Trophy className="size-4" aria-hidden="true" /> }, { id: 'verification', label: 'Antrean Verifikasi', icon: <ShieldCheck className="size-4" aria-hidden="true" /> }]} />
+      <AdminWorkspaceTabs activeTab={activeWorkspace} ariaLabel="Bagian perolehan medali" onChange={setActiveWorkspace} tabs={[{ id: 'standings', label: 'Klasemen Resmi', icon: <Trophy className="size-4" aria-hidden="true" /> }, { id: 'verification', label: 'Antrean Verifikasi', icon: <ShieldCheck className="size-4" aria-hidden="true" /> }]} />
 
       {/* CHANGE: route /verifikasi dan /medals berbagi kontrak data, tetapi membuka workspace yang sesuai tugas. */}
       {activeWorkspace === 'verification' && <section id="panel-verification" role="tabpanel" aria-labelledby="tab-verification" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -266,8 +270,8 @@ export default function Medals() {
               Status 
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                 <option value="">Semua</option>
-                {['PENDING','VERIFIED','REJECTED','OFFICIAL'].map((value) => (
-                  <option key={value}>{value}</option>
+                {(['PENDING','VERIFIED','REJECTED','OFFICIAL'] as Submission['status'][]).map((value) => (
+                  <option key={value} value={value}>{submissionStatusLabels[value]}</option>
                 ))}
               </select>
             </label>
@@ -331,7 +335,7 @@ export default function Medals() {
           loading={loading}
           loadingLabel="Memuat klasemen resmi..."
           emptyTitle="Belum ada klasemen"
-          emptyDescription={standingQuery ? 'Tidak ada kontingen yang cocok dengan pencarian.' : 'Belum ada medali yang berstatus OFFICIAL.'}
+          emptyDescription={standingQuery ? 'Tidak ada kontingen yang cocok dengan pencarian.' : 'Belum ada medali berstatus Resmi.'}
           minWidthClassName="min-w-[650px]"
         />
         {!loading && sortedStandings.length > 0 && <TablePagination currentPage={stdTable.currentPage} totalPages={stdPagination.totalPages} totalItems={stdPagination.totalItems} startItem={stdPagination.startItem} endItem={stdPagination.endItem} onPageChange={stdTable.handleChangePage} itemLabel="kontingen" />}
@@ -402,7 +406,7 @@ export default function Medals() {
         onClose={() => { setPendingTransition(null); setTransitionReason(''); }}
         closeDisabled={submitting}
         title={pendingTransition?.action === 'publish' ? 'Publikasikan perolehan medali?' : pendingTransition?.action === 'reject' ? 'Tolak pengajuan medali?' : 'Verifikasi pengajuan medali?'}
-        description="Tindakan ini tercatat pada audit trail sesuai identitas dan peran Anda."
+        description="Tindakan ini tercatat pada riwayat aktivitas sesuai identitas dan peran Anda."
       >
         <div className="space-y-4 p-4 sm:p-6">
           {pendingTransition && <AdminAlert tone={pendingTransition.action === 'reject' ? 'warning' : 'success'}><strong>{kontingenMap.get(pendingTransition.submission.kontingen_id) || pendingTransition.submission.kontingen_id}</strong> · {pendingTransition.submission.gold} emas, {pendingTransition.submission.silver} perak, {pendingTransition.submission.bronze} perunggu.</AdminAlert>}

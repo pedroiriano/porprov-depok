@@ -1,0 +1,195 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PORPROV Admin Enterprise API",
+    "version": "11.0.0",
+    "description": "Kontrak awal endpoint lintas perangkat, kesehatan integrasi, dan media Admin."
+  },
+  "servers": [{ "url": "/api/v1" }],
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/drafts": {
+      "get": {
+        "summary": "Membaca draf milik pengguna aktif",
+        "parameters": [
+          { "$ref": "#/components/parameters/Route" },
+          { "$ref": "#/components/parameters/Entity" },
+          { "$ref": "#/components/parameters/FormVersion" }
+        ],
+        "responses": {
+          "200": { "description": "Draf ditemukan", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FormDraft" } } } },
+          "204": { "description": "Draf tidak ditemukan" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "put": {
+        "summary": "Menyimpan draf dengan versi optimistis",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SaveDraft" } } } },
+        "responses": {
+          "200": { "description": "Draf tersimpan", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FormDraft" } } } },
+          "409": { "description": "Draf berubah di perangkat lain" },
+          "422": { "description": "Draf tidak aman atau tidak valid" }
+        }
+      },
+      "delete": {
+        "summary": "Menghapus draf milik pengguna aktif",
+        "parameters": [
+          { "$ref": "#/components/parameters/Route" },
+          { "$ref": "#/components/parameters/Entity" },
+          { "$ref": "#/components/parameters/FormVersion" }
+        ],
+        "responses": { "204": { "description": "Draf tidak ada lagi" } }
+      }
+    },
+    "/integrations/health": {
+      "get": {
+        "summary": "Membaca kesehatan integrasi tanpa target internal",
+        "responses": {
+          "200": { "description": "Hasil pemeriksaan", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IntegrationHealth" } } } },
+          "403": { "description": "Peran tidak diizinkan" }
+        }
+      }
+    },
+    "/master-data/media": {
+      "get": {
+        "summary": "Membaca Pustaka Media beserta turunan gambar",
+        "responses": { "200": { "description": "Daftar media" }, "403": { "description": "Peran tidak diizinkan" } }
+      }
+    },
+    "/master-data/cabors": {
+      "get": {
+        "summary": "Membaca cabang olahraga untuk tabel Admin",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["name", "kategori", "total_medali", "technical_delegate", "status"] } }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
+      }
+    },
+    "/master-data/kontingens": {
+      "get": {
+        "summary": "Membaca kontingen untuk tabel Admin",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["name", "region_type"] } }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
+      }
+    },
+    "/master-data/nomor-tandings": {
+      "get": {
+        "summary": "Membaca nomor pertandingan untuk tabel Admin",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["name", "gender_category", "match_type"] } }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
+      }
+    },
+    "/venues": {
+      "get": {
+        "summary": "Membaca lokasi pertandingan untuk tabel Admin",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["name", "address", "capacity", "readiness_status"] } }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
+      }
+    },
+    "/schedule/matches/enriched": {
+      "get": {
+        "summary": "Membaca jadwal beserta peserta untuk tabel Admin",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["match_date", "nomor_tanding", "venue", "round", "status"] } }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" } },
+    "parameters": {
+      "Route": { "name": "route", "in": "query", "required": true, "schema": { "type": "string", "maxLength": 255 } },
+      "Entity": { "name": "entity", "in": "query", "required": true, "schema": { "type": "string", "maxLength": 255 } },
+      "FormVersion": { "name": "form_version", "in": "query", "required": true, "schema": { "type": "string", "maxLength": 80 } },
+      "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+      "PerPage": { "name": "per_page", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 10 } },
+      "Query": { "name": "q", "in": "query", "schema": { "type": "string", "maxLength": 80 } },
+      "Direction": { "name": "direction", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" } }
+    },
+    "responses": {
+      "Unauthorized": { "description": "Autentikasi diperlukan" },
+      "InvalidListQuery": { "description": "Parameter pencarian, pagination, atau pengurutan tidak valid" },
+      "PaginatedList": {
+        "description": "Daftar berhalaman. Permintaan kompatibilitas tanpa parameter pagination dapat tetap menghasilkan array pada endpoint lama.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PaginatedRecords" } } }
+      }
+    },
+    "schemas": {
+      "FormDraft": {
+        "type": "object",
+        "required": ["id", "route_key", "entity_key", "form_version", "payload", "version", "updated_at", "expires_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "route_key": { "type": "string" },
+          "entity_key": { "type": "string" },
+          "form_version": { "type": "string" },
+          "payload": { "type": "object", "additionalProperties": true },
+          "version": { "type": "integer", "minimum": 1 },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "expires_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SaveDraft": {
+        "type": "object",
+        "required": ["route_key", "entity_key", "form_version", "payload", "expected_version"],
+        "properties": {
+          "route_key": { "type": "string", "maxLength": 255 },
+          "entity_key": { "type": "string", "maxLength": 255 },
+          "form_version": { "type": "string", "maxLength": 80 },
+          "payload": { "type": "object", "additionalProperties": true },
+          "expected_version": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "IntegrationStatus": {
+        "type": "object",
+        "required": ["key", "available", "latency_ms"],
+        "properties": {
+          "key": { "type": "string" },
+          "available": { "type": "boolean" },
+          "latency_ms": { "type": "integer", "minimum": 0 },
+          "pending_items": { "type": "integer", "minimum": 0 },
+          "retry_count": { "type": "integer", "minimum": 0 },
+          "oldest_pending_seconds": { "type": "number", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "IntegrationHealth": {
+        "type": "object",
+        "required": ["checked_at", "integrations"],
+        "properties": {
+          "checked_at": { "type": "string", "format": "date-time" },
+          "integrations": { "type": "array", "items": { "$ref": "#/components/schemas/IntegrationStatus" } }
+        }
+      },
+      "PaginatedRecords": {
+        "type": "object",
+        "required": ["data", "total", "page", "per_page", "total_pages"],
+        "properties": {
+          "data": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "total": { "type": "integer", "minimum": 0 },
+          "page": { "type": "integer", "minimum": 1 },
+          "per_page": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "total_pages": { "type": "integer", "minimum": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

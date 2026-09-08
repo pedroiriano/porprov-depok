@@ -1,5 +1,7 @@
 # AI.md — Panduan Masuk Agent AI/Codex Portal PORPROV v5
 
+> **Baseline Tahap 11:** source Admin menyediakan draf formulir server dengan fallback IndexedDB, konflik `409`, riwayat yang dapat membandingkan dua catatan, Kesehatan Integrasi read-only, dan turunan media thumbnail/list/detail. Antarmuka manusia mengikuti `docs/uiux/ADMIN_LANGUAGE_STYLE_GUIDE.md`; istilah internal tidak boleh menjadi copy UI. Migrasi lokal v3 User dan v14 Master Data belum boleh disebut aktif sebelum backup/checksum dan runtime gate lulus.
+
 > **WAJIB DIBACA PERTAMA.** Agent AI/Codex wajib membaca keenam dokumen tata kelola root—`README.md`, `AI.md`, `AGENTS.md`, `RULES.md`, `FEATURES.md`, dan `DOCUMENTATION.md`—sebelum menganalisis, menulis, atau mengubah kode. Untuk seluruh pekerjaan VPS, `DEPLOYMENT_VPS.md` juga wajib dibaca lengkap.
 
 ## Konteks Aplikasi Aktif

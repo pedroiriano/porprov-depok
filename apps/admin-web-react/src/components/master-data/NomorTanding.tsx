@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Edit, Plus, Search, Trash } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
-import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../../lib/api';
+import { apiClient, authConfig, getApiErrorMessage, type PaginatedApiResponse, unwrapApiData } from '../../lib/api';
 import type { Cabor, NomorTanding as NomorTandingRecord } from '../../types/master-data';
 import ModalForm from '../common/ModalForm';
 import SearchableSelect from '../common/SearchableSelect';
@@ -9,11 +9,12 @@ import type { SelectOption } from '../common/SearchableSelect';
 import { SelectInput, TextInput } from '../common/FormInputs';
 import { requestSoftDeleteReason } from '../../lib/soft-delete';
 import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
-import { useTableControls, usePagination } from '../../hooks/useTableControls';
+import { useTableControls } from '../../hooks/useTableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 const emptyForm = {
   id: '',
@@ -23,7 +24,7 @@ const emptyForm = {
   match_type: 'tanding',
 };
 
-type SortKeyType = 'cabor' | 'name' | 'gender_category' | 'match_type';
+type SortKeyType = 'name' | 'gender_category' | 'match_type';
 
 export default function NomorTanding() {
   const auth = useAuth();
@@ -31,6 +32,8 @@ export default function NomorTanding() {
   const [cabors, setCabors] = useState<Cabor[]>([]);
   const [formData, setFormData] = useState(emptyForm);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDebouncedValue(search);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,79 +43,50 @@ export default function NomorTanding() {
   const [archiving, setArchiving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const table = useTableControls<SortKeyType>({ sortKey: 'cabor', sortDirection: 'asc', rowsPerPage: 10 });
+  const table = useTableControls<SortKeyType>({ sortKey: 'name', sortDirection: 'asc', rowsPerPage: 10 });
 
   const requestConfig = useCallback(() => authConfig(auth.user?.access_token), [auth.user?.access_token]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       const [itemsResponse, caborsResponse] = await Promise.all([
-        apiClient.get<NomorTandingRecord[] | { data: NomorTandingRecord[] }>('/master-data/nomor-tandings', requestConfig()),
+        apiClient.get<PaginatedApiResponse<NomorTandingRecord>>('/master-data/nomor-tandings', {
+          ...requestConfig(),
+          signal,
+          params: { page: table.currentPage, per_page: table.rowsPerPage, q: deferredSearch.trim(), sort: table.sortKey || 'name', direction: table.sortDirection },
+        }),
         apiClient.get<Cabor[] | { data: Cabor[] }>('/master-data/cabors', requestConfig()),
       ]);
-      setItems(unwrapApiData(itemsResponse.data) || []);
+      setItems(itemsResponse.data.data || []);
+      setTotalItems(itemsResponse.data.total || 0);
       setCabors(unwrapApiData(caborsResponse.data) || []);
       setListError('');
     } catch (error) {
+      if (signal?.aborted) return;
       setListError(getApiErrorMessage(error, 'Gagal memuat nomor pertandingan.'));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [requestConfig]);
+  }, [deferredSearch, requestConfig, table.currentPage, table.rowsPerPage, table.sortDirection, table.sortKey]);
 
   useEffect(() => {
-    void fetchData();
+    const controller = new AbortController();
+    void fetchData(controller.signal);
+    return () => controller.abort();
   }, [fetchData]);
 
   const caborById = useMemo(() => new Map(cabors.map((item) => [item.id, item.name])), [cabors]);
   const caborOptions: SelectOption[] = cabors.map((item) => ({ value: item.id, label: item.name, subLabel: item.kategori || undefined }));
   
-  // INFO: Filters data based on search input
-  const filteredItems = useMemo(() => {
-    return items.filter((item) =>
-      `${item.name} ${caborById.get(item.cabor_id) ?? ''} ${item.gender_category} ${item.match_type}`
-        .toLowerCase()
-        .includes(search.toLowerCase())
-    );
-  }, [items, search, caborById]);
-
-  // INFO: Reset page to 1 when search changes
+  // INFO: Pencarian baru selalu dimulai dari halaman pertama.
   useEffect(() => {
     table.resetPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
-
-  // INFO: Sorts the filtered data
-  const sortedItems = useMemo(() => {
-    if (!table.sortKey) return filteredItems;
-    return [...filteredItems].sort((a, b) => {
-      let aVal = '';
-      let bVal = '';
-      
-      if (table.sortKey === 'cabor') {
-        aVal = caborById.get(a.cabor_id) || a.cabor_id;
-        bVal = caborById.get(b.cabor_id) || b.cabor_id;
-      } else {
-        aVal = String(a[table.sortKey as keyof NomorTandingRecord] || '');
-        bVal = String(b[table.sortKey as keyof NomorTandingRecord] || '');
-      }
-
-      if (aVal === bVal) return 0;
-      const aString = aVal.toLowerCase();
-      const bString = bVal.toLowerCase();
-      
-      if (table.sortDirection === 'asc') return aString > bString ? 1 : -1;
-      return aString < bString ? 1 : -1;
-    });
-  }, [filteredItems, table.sortKey, table.sortDirection, caborById]);
-
-  // INFO: Pagination hook
-  const { paginatedData, totalItems, totalPages, startItem, endItem } = usePagination(
-    sortedItems,
-    table.currentPage,
-    table.rowsPerPage
-  );
+  const totalPages = Math.max(1, Math.ceil(totalItems / table.rowsPerPage));
+  const startItem = totalItems === 0 ? 0 : (table.currentPage - 1) * table.rowsPerPage + 1;
+  const endItem = Math.min(table.currentPage * table.rowsPerPage, totalItems);
 
   const resetForm = () => setFormData(emptyForm);
 
@@ -157,12 +131,16 @@ export default function NomorTanding() {
       setArchiving(true);
       setListError('');
       setOperationMessage('');
-      for (const id of ids) {
-        await apiClient.delete(`/master-data/nomor-tandings/${id}`, { ...requestConfig(), data: { reason } });
-      }
-      setSelectedIds(new Set());
+      const results = await Promise.allSettled(ids.map((id) => apiClient.delete(`/master-data/nomor-tandings/${id}`, { ...requestConfig(), data: { reason } })));
+      const failedIds = ids.filter((_, index) => results[index].status === 'rejected');
+      const succeeded = ids.length - failedIds.length;
+      setSelectedIds(new Set(failedIds));
       await fetchData();
-      setOperationMessage(`${ids.length} nomor pertandingan berhasil diarsipkan.`);
+      if (failedIds.length > 0) {
+        setListError(`${succeeded} nomor pertandingan berhasil diarsipkan, tetapi ${failedIds.length} lainnya gagal. Data yang gagal tetap dipilih agar dapat dicoba lagi.`);
+      } else {
+        setOperationMessage(`${succeeded} nomor pertandingan berhasil diarsipkan dan dapat dipulihkan dari Arsip Terhapus.`);
+      }
     } catch (error) {
       setListError(getApiErrorMessage(error, 'Gagal mengarsipkan nomor pertandingan.'));
     } finally {
@@ -183,7 +161,7 @@ export default function NomorTanding() {
   };
 
   const columns = useMemo<Array<AdminDataTableColumn<NomorTandingRecord, SortKeyType>>>(() => [
-    { key: 'cabor', label: 'Cabang Olahraga', sortKey: 'cabor', render: (item) => <span className="font-black text-slate-950 dark:text-white">{caborById.get(item.cabor_id) ?? item.cabor_id}</span> },
+    { key: 'cabor', label: 'Cabang Olahraga', render: (item) => <span className="font-black text-slate-950 dark:text-white">{caborById.get(item.cabor_id) ?? item.cabor_id}</span> },
     { key: 'name', label: 'Nomor', sortKey: 'name', render: (item) => <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{item.name}</span> },
     { key: 'gender', label: 'Kategori', sortKey: 'gender_category', render: (item) => <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black capitalize text-blue-800 dark:bg-blue-950/50 dark:text-blue-200">{item.gender_category}</span> },
     { key: 'type', label: 'Tipe', sortKey: 'match_type', render: (item) => <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black capitalize text-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.match_type}</span> },
@@ -212,7 +190,7 @@ export default function NomorTanding() {
               className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
               value={search} 
               onChange={(event) => setSearch(event.target.value)} 
-              placeholder="Cari nomor atau cabang olahraga..." 
+              placeholder="Cari nomor, kategori, atau tipe pertandingan..."
             />
           </label>
           <RowsPerPageSelector
@@ -225,7 +203,7 @@ export default function NomorTanding() {
 
         <AdminDataTable<NomorTandingRecord, SortKeyType>
           caption="Daftar nomor pertandingan PORPROV"
-          rows={paginatedData}
+          rows={items}
           columns={columns}
           getRowId={(item) => item.id}
           getRowLabel={(item) => item.name}
@@ -268,7 +246,7 @@ export default function NomorTanding() {
         draft={{ entityId: formData.id || 'new-nomor-tanding', version: 'nomor-tanding-v1', value: formData, onRestore: setFormData }}
       >
         {formError && <AdminAlert>{formError}</AdminAlert>}
-        <RevisionHistory entityName="NomorTanding" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
+        <RevisionHistory entityName="NomorTanding" displayName="Nomor pertandingan" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
         <fieldset className="space-y-4 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">Klasifikasi nomor pertandingan</legend>
         <div>

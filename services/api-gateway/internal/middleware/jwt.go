@@ -9,6 +9,8 @@ import (
 	"github.com/MicahParks/keyfunc/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/porprov-xv/porprov-depok/services/api-gateway/pkg/response"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type contextKey string
@@ -17,6 +19,11 @@ const (
 	// INFO: UserContextKey menyimpan klaim JWT tervalidasi pada context request.
 	UserContextKey contextKey = "user_claims"
 )
+
+var authenticationFailures = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "porprov_gateway_authentication_failures_total",
+	Help: "Jumlah kegagalan autentikasi tanpa menyimpan token atau identitas pengguna.",
+}, []string{"reason"})
 
 // SECURITY: ActorIDFromContext mengembalikan subject JWT tervalidasi untuk audit downstream.
 func ActorIDFromContext(ctx context.Context) string {
@@ -101,12 +108,14 @@ func (m *JWTMiddleware) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
+			authenticationFailures.WithLabelValues("missing_header").Inc()
 			response.Error(w, r, http.StatusUnauthorized, "Missing Authorization header", nil)
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			authenticationFailures.WithLabelValues("invalid_header").Inc()
 			response.Error(w, r, http.StatusUnauthorized, "Invalid Authorization header format", nil)
 			return
 		}
@@ -120,6 +129,7 @@ func (m *JWTMiddleware) RequireAuth(next http.Handler) http.Handler {
 			jwt.WithLeeway(30*time.Second),
 		)
 		if err != nil || !token.Valid {
+			authenticationFailures.WithLabelValues("invalid_or_expired_token").Inc()
 			// SECURITY: Pastikan kita tidak membocorkan detail internal error token kepada klien
 			response.Error(w, r, http.StatusUnauthorized, "Invalid or expired token", nil)
 			return
@@ -128,10 +138,12 @@ func (m *JWTMiddleware) RequireAuth(next http.Handler) http.Handler {
 		// SECURITY: Ekstrak klaim hanya dari token yang telah tervalidasi.
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
+			authenticationFailures.WithLabelValues("invalid_claims").Inc()
 			response.Error(w, r, http.StatusUnauthorized, "Invalid token claims", nil)
 			return
 		}
 		if subject, _ := claims["sub"].(string); strings.TrimSpace(subject) == "" || !m.hasAllowedClient(claims) {
+			authenticationFailures.WithLabelValues("invalid_subject_or_client").Inc()
 			response.Error(w, r, http.StatusUnauthorized, "Token subject or client is not allowed", nil)
 			return
 		}

@@ -14,10 +14,10 @@ const entityLabels: Record<DeletedRecord['entity_type'], string> = {
   cabor: 'Cabang Olahraga',
   nomor_tanding: 'Nomor Pertandingan',
   kontingen: 'Kontingen',
-  city_guide: 'City Guide',
+  city_guide: 'Panduan Kota',
   media: 'Media',
-  hero: 'Hero Utama',
-  venue: 'Venue',
+  hero: 'Tampilan Utama',
+  venue: 'Lokasi Pertandingan',
   match: 'Jadwal Pertandingan',
 };
 
@@ -168,14 +168,14 @@ export default function RecycleBin() {
     { key: 'name', label: 'Data', sortKey: 'display_name', render: (record) => <span className="font-black text-slate-950 dark:text-white">{record.display_name}</span> },
     { key: 'type', label: 'Jenis', sortKey: 'entity_type', render: (record) => <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-800 dark:bg-blue-950/50 dark:text-blue-200">{entityLabels[record.entity_type]}</span> },
     { key: 'deleted', label: 'Diarsipkan', sortKey: 'deleted_at', className: 'whitespace-nowrap', render: (record) => <span className="text-sm text-slate-600 dark:text-slate-300">{new Date(record.deleted_at).toLocaleString('id-ID')}</span> },
-    { key: 'actor', label: 'Actor & Alasan', sortKey: 'deleted_by', className: 'min-w-72', render: (record) => <div className="text-sm"><p className="font-bold text-slate-700 dark:text-slate-200">{record.deleted_by || 'Tidak diketahui'}</p><p className="mt-1 max-w-sm text-slate-500 dark:text-slate-400">{record.delete_reason || 'Tanpa alasan'}</p></div> },
+    { key: 'actor', label: 'Pelaku dan Alasan', sortKey: 'deleted_by', className: 'min-w-72', render: (record) => <div className="text-sm"><p className="font-bold text-slate-700 dark:text-slate-200">{record.deleted_by || 'Tidak diketahui'}</p><p className="mt-1 max-w-sm text-slate-500 dark:text-slate-400">{record.delete_reason || 'Tanpa alasan'}</p></div> },
   ], []);
 
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
         eyebrow="Pemulihan data"
-        title="Recycle Bin"
+        title="Arsip Terhapus"
         description="Data diarsipkan tanpa penghapusan fisik dan dapat dipulihkan sesuai kewenangan."
         actions={<span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" aria-live="polite"><ArchiveRestore className="size-4 text-blue-600 dark:text-blue-300" aria-hidden="true" />{records.length} data diarsipkan</span>}
       />
@@ -186,7 +186,7 @@ export default function RecycleBin() {
         {/* Toolbar */}
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
           <label className="relative block w-full md:max-w-sm">
-            <span className="sr-only">Cari data di Recycle Bin</span>
+            <span className="sr-only">Cari data di Arsip Terhapus</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <input
               type="search"
@@ -194,7 +194,7 @@ export default function RecycleBin() {
               className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
               value={search} 
               onChange={(event) => setSearch(event.target.value)} 
-              placeholder="Cari nama, jenis, actor, atau alasan..." 
+              placeholder="Cari nama, jenis, pelaku, atau alasan..."
             />
           </label>
 
@@ -219,11 +219,11 @@ export default function RecycleBin() {
           selectedIds={selectedIds}
           onSelectedIdsChange={setSelectedIds}
           loading={deletedQuery.isLoading}
-          loadingLabel="Memuat Recycle Bin..."
-          error={deletedQuery.isError ? getApiErrorMessage(deletedQuery.error, 'Gagal memuat Recycle Bin.') : ''}
+          loadingLabel="Memuat Arsip Terhapus..."
+          error={deletedQuery.isError ? getApiErrorMessage(deletedQuery.error, 'Gagal memuat Arsip Terhapus.') : ''}
           onRetry={() => void deletedQuery.refetch()}
-          emptyTitle={search ? 'Data arsip tidak ditemukan' : 'Recycle Bin masih kosong'}
-          emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Data yang diarsipkan dengan soft delete akan tampil di sini.'}
+          emptyTitle={search ? 'Data arsip tidak ditemukan' : 'Arsip Terhapus masih kosong'}
+          emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Data yang diarsipkan akan tampil di sini dan tetap dapat dipulihkan.'}
           minWidthClassName="min-w-[920px]"
           rowActions={(record) => <button type="button" onClick={() => requestRestore(record)} disabled={restoreMutation.isPending || restoring} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-200 px-3 py-2 text-sm font-black text-blue-700 transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/40" aria-label={`Pulihkan ${record.display_name}`}>{restoreMutation.isPending && restoreMutation.variables && recordKey(restoreMutation.variables) === recordKey(record) ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <RotateCcw className="size-4" aria-hidden="true" />}Pulihkan</button>}
         />

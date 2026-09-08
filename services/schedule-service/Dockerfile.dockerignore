@@ -1,0 +1,12 @@
+**
+!packages/
+!packages/messaging/
+!packages/messaging/**
+!services/
+!services/schedule-service/
+!services/schedule-service/**
+**/.tmp
+**/*.exe
+**/tmp_build
+**/*.zip
+**/uploads

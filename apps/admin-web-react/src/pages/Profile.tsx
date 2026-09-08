@@ -19,7 +19,7 @@ export default function Profile() {
   const roles = getRealmRoles(auth.user);
   const username = String(profile?.preferred_username || profile?.name || 'Pengguna');
   const displayName = String(profile?.name || profile?.preferred_username || 'Pengguna PORPROV');
-  const email = String(profile?.email || 'Email belum tersedia');
+  const email = String(profile?.email || 'Surel belum tersedia');
   const accountUrl = `${(import.meta.env.VITE_OIDC_AUTHORITY || 'http://localhost:8080/realms/porprov').replace(/\/$/, '')}/account/`;
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase() || 'U';
 
@@ -41,12 +41,12 @@ export default function Profile() {
           <div><h2 id="identity-title" className="text-lg font-black text-slate-950 dark:text-white">Informasi identitas</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Claim yang aman untuk ditampilkan dari sesi pengguna aktif.</p></div>
           <dl className="mt-5 grid gap-4 sm:grid-cols-2">
             <IdentityField icon={<User className="size-5" aria-hidden="true" />} label="Nama pengguna" value={username} />
-            <IdentityField icon={<Mail className="size-5" aria-hidden="true" />} label="Email" value={email} />
+            <IdentityField icon={<Mail className="size-5" aria-hidden="true" />} label="Surel" value={email} />
           </dl>
 
           <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-700">
             <h3 className="flex items-center gap-2 font-black text-slate-950 dark:text-white"><ShieldCheck className="size-5 text-blue-600 dark:text-blue-300" aria-hidden="true" />Peran aktif</h3>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Hak akses akhir tetap divalidasi oleh API Gateway pada setiap permintaan.</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Hak akses akun selalu diperiksa kembali pada setiap tindakan.</p>
             {roles.length > 0 ? <ul className="mt-4 flex flex-wrap gap-2" aria-label="Daftar peran akun">{roles.map((role) => <li key={role} className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200">{role}</li>)}</ul> : <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Tidak ada realm role aplikasi pada sesi ini.</p>}
           </div>
         </section>
