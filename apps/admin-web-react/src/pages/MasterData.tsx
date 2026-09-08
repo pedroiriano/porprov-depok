@@ -8,6 +8,7 @@ import NomorTanding from '../components/master-data/NomorTanding';
 import RecycleBin from '../components/master-data/RecycleBin';
 import { AdminPageHeader } from '../components/cuba/AdminPrimitives';
 import { AdminWorkspaceTabs } from '../components/cuba/AdminWorkspaceTabs';
+import { useAuthorization } from '../contexts/authorization';
 
 const masterTabs = [
   { id: 'cabor', label: 'Cabang Olahraga', icon: <Network className="size-4" aria-hidden="true" /> },
@@ -21,9 +22,13 @@ const masterTabs = [
 type MasterTabId = (typeof masterTabs)[number]['id'];
 
 export default function MasterData() {
+  const authorization = useAuthorization();
+  const visibleTabs = authorization.hasPermission('master_data.restore')
+    ? masterTabs
+    : masterTabs.filter((tab) => tab.id !== 'recycle-bin');
   const [activeTab, setActiveTab] = useState<MasterTabId>(() => {
     const requestedTab = new URLSearchParams(window.location.search).get('tab');
-    return masterTabs.some((tab) => tab.id === requestedTab) ? requestedTab as MasterTabId : 'cabor';
+    return requestedTab !== 'recycle-bin' && masterTabs.some((tab) => tab.id === requestedTab) ? requestedTab as MasterTabId : 'cabor';
   });
 
   const changeTab = (tab: MasterTabId) => {
@@ -39,7 +44,7 @@ export default function MasterData() {
         title="Data Utama"
         description="Kelola cabang olahraga, nomor pertandingan, kontingen, lokasi, jadwal, dan arsip sesuai urutan kerja operator."
       />
-      <AdminWorkspaceTabs activeTab={activeTab} ariaLabel="Kategori Data Utama" onChange={changeTab} tabs={[...masterTabs]} />
+      <AdminWorkspaceTabs activeTab={activeTab} ariaLabel="Kategori Data Utama" onChange={changeTab} tabs={[...visibleTabs]} />
 
       <div id={`panel-${activeTab}`} role="tabpanel" aria-labelledby={`tab-${activeTab}`} tabIndex={0}>
         {activeTab === 'cabor' && <CabangOlahraga />}

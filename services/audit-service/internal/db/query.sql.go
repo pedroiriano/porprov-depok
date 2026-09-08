@@ -12,7 +12,7 @@ import (
 const insertAuditLog = `-- name: InsertAuditLog :one
 INSERT INTO audit_logs (service_name, entity_name, entity_id, action, payload)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, service_name, entity_name, entity_id, action, payload, created_at
+RETURNING id, service_name, entity_name, entity_id, action, payload, created_at, event_id, event_version, event_type, actor_id, request_id, ip_address, payload_hash, actor_username, actor_display_name, actor_kind
 `
 
 type InsertAuditLogParams struct {
@@ -40,12 +40,22 @@ func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) 
 		&i.Action,
 		&i.Payload,
 		&i.CreatedAt,
+		&i.EventID,
+		&i.EventVersion,
+		&i.EventType,
+		&i.ActorID,
+		&i.RequestID,
+		&i.IpAddress,
+		&i.PayloadHash,
+		&i.ActorUsername,
+		&i.ActorDisplayName,
+		&i.ActorKind,
 	)
 	return i, err
 }
 
 const listAuditLogs = `-- name: ListAuditLogs :many
-SELECT id, service_name, entity_name, entity_id, action, payload, created_at FROM audit_logs
+SELECT id, service_name, entity_name, entity_id, action, payload, created_at, event_id, event_version, event_type, actor_id, request_id, ip_address, payload_hash, actor_username, actor_display_name, actor_kind FROM audit_logs
 ORDER BY created_at DESC
 `
 
@@ -66,6 +76,16 @@ func (q *Queries) ListAuditLogs(ctx context.Context) ([]AuditLog, error) {
 			&i.Action,
 			&i.Payload,
 			&i.CreatedAt,
+			&i.EventID,
+			&i.EventVersion,
+			&i.EventType,
+			&i.ActorID,
+			&i.RequestID,
+			&i.IpAddress,
+			&i.PayloadHash,
+			&i.ActorUsername,
+			&i.ActorDisplayName,
+			&i.ActorKind,
 		); err != nil {
 			return nil, err
 		}

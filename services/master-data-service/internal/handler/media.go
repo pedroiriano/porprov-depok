@@ -183,7 +183,7 @@ func generateMediaDerivatives(data []byte, mimeType, extension, uploadDir, baseN
 			return nil, err
 		}
 		checksum := sha256.Sum256(encoded.Bytes())
-		items = append(items, generatedDerivative{path: path, metadata: db.MediaDerivative{Variant: spec.variant, FileURL: "/uploads/" + name, Width: int32(width), Height: int32(height), FileSize: int32(encoded.Len()), ChecksumSHA256: fmt.Sprintf("%x", checksum)}})
+		items = append(items, generatedDerivative{path: path, metadata: db.MediaDerivative{Variant: spec.variant, FileUrl: "/uploads/" + name, Width: int32(width), Height: int32(height), FileSize: int32(encoded.Len()), ChecksumSha256: fmt.Sprintf("%x", checksum)}})
 	}
 	return items, nil
 }

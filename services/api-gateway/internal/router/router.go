@@ -106,6 +106,13 @@ func setupProxyWithHeaders(targetURL string, trustedHeaders map[string]string) h
 		if actorID := customMiddleware.ActorIDFromContext(req.Context()); actorID != "" {
 			req.Header.Set("X-Actor-ID", actorID)
 		}
+		actorUsername, actorDisplayName := customMiddleware.ActorIdentityFromContext(req.Context())
+		if actorUsername != "" {
+			req.Header.Set("X-Actor-Username", actorUsername)
+		}
+		if actorDisplayName != "" {
+			req.Header.Set("X-Actor-Display-Name", actorDisplayName)
+		}
 		if host, _, splitErr := net.SplitHostPort(req.RemoteAddr); splitErr == nil {
 			req.Header.Set("X-Actor-IP", host)
 		}
@@ -145,6 +152,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 	r := chi.NewRouter()
 	analyticsHandler := handler.NewAnalyticsHandler(cfg.UmamiURL, cfg.UmamiUsername, cfg.UmamiPassword, cfg.UmamiWebsiteID)
 	integrationHealthHandler := handler.NewIntegrationHealthHandler(cfg)
+	permissionAuthorizer := customMiddleware.NewPermissionAuthorizer(cfg.UserURL)
 	r.Use(securityHeaders)
 	r.Use(middleware.RequestSize(12 << 20))
 
@@ -178,69 +186,99 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 		// Rute terproteksi (butuh token JWT Keycloak)
 		r.Group(func(r chi.Router) {
 			r.Use(jwtMid.RequireAuth)
-			superAdminOnly := jwtMid.RequireAnyRole("super_admin")
-			r.Get("/profile", handler.ProfileHandler)
-			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Get("/analytics/overview", analyticsHandler.Overview)
-			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Get("/integrations/health", integrationHealthHandler.ServeHTTP)
+			permissionOnly := permissionAuthorizer.RequirePermission
+			r.With(permissionAuthorizer.RequireActive).Get("/profile", handler.ProfileHandler)
+			r.With(permissionOnly("dashboard.view")).Get("/analytics/overview", analyticsHandler.Overview)
+			r.With(permissionOnly("integration.view")).Get("/integrations/health", integrationHealthHandler.ServeHTTP)
 
 			// INFO: Draft form selalu dibatasi pada subject token oleh User Service.
 			draftProxy := setupProxy(serviceBaseURL(cfg.UserURL))
-			r.Handle("/drafts", draftProxy)
+			r.With(permissionAuthorizer.RequireActive).Handle("/drafts", draftProxy)
 
-			// User Management Service - Hanya Super Admin
-			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/users/*", setupProxy(cfg.UserURL))
-			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/users", setupProxy(cfg.UserURL))
-			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/roles/*", setupProxy(cfg.UserURL))
-			r.With(jwtMid.RequireAnyRole("super_admin")).Handle("/roles", setupProxy(cfg.UserURL))
+			// User Management Service: setiap mutasi diperiksa dengan izin aksi.
+			userProxy := setupProxy(cfg.UserURL)
+			r.With(permissionOnly("user.view")).Get("/users", userProxy.ServeHTTP)
+			r.With(permissionOnly("user.view")).Get("/users/{id}", userProxy.ServeHTTP)
+			r.With(permissionOnly("user.create")).Post("/users", userProxy.ServeHTTP)
+			r.With(permissionOnly("user.update")).Put("/users/{id}", userProxy.ServeHTTP)
+			r.With(permissionOnly("user.status")).Put("/users/{id}/status", userProxy.ServeHTTP)
+			r.With(permissionOnly("user.restore")).Post("/users/{id}/restore", userProxy.ServeHTTP)
+			r.With(permissionOnly("user.archive")).Delete("/users/{id}", userProxy.ServeHTTP)
+			userBaseProxy := setupProxy(serviceBaseURL(cfg.UserURL))
+			r.With(permissionOnly("role.view")).Get("/access-roles", userBaseProxy)
+			r.With(permissionOnly("role.view")).Get("/access-roles/permissions", userBaseProxy)
+			r.With(permissionOnly("role.create")).Post("/access-roles", userBaseProxy.ServeHTTP)
+			r.With(permissionOnly("role.update")).Put("/access-roles/{id}", userBaseProxy.ServeHTTP)
+			r.With(permissionOnly("role.status")).Put("/access-roles/{id}/status", userBaseProxy.ServeHTTP)
+			r.With(permissionOnly("role.restore")).Post("/access-roles/{id}/restore", userBaseProxy.ServeHTTP)
+			r.With(permissionOnly("role.archive")).Delete("/access-roles/{id}", userBaseProxy.ServeHTTP)
+			r.Handle("/authorization/session", userBaseProxy)
+			r.With(permissionOnly("audit.view")).Post("/user-directory/lookup", userBaseProxy.ServeHTTP)
+			r.With(permissionOnly("notification.view")).Handle("/notifications", userBaseProxy)
+			r.With(permissionOnly("notification.view")).Handle("/notifications/*", userBaseProxy)
 
-			// SECURITY: Seluruh mutasi konten, jadwal, dan venue hanya boleh
-			// melewati super_admin. Endpoint baca publik tetap didaftarkan pada
-			// allowlist di bawah; koleksi internal Admin juga dibatasi eksplisit.
+			// SECURITY: Permission granular adalah otoritas final agar peran kustom
+			// memiliki enforcement yang sama dengan peran bawaan.
 			masterDataProxy := http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL))
-			r.With(superAdminOnly).Get("/master-data/deleted", masterDataProxy.ServeHTTP)
-			r.With(superAdminOnly).Get("/master-data/media", masterDataProxy.ServeHTTP)
-			r.With(superAdminOnly).Get("/master-data/media/policy", masterDataProxy.ServeHTTP)
-			r.With(superAdminOnly).Get("/master-data/heroes", masterDataProxy.ServeHTTP)
-			r.With(superAdminOnly).Get("/master-data/heroes/{id}", masterDataProxy.ServeHTTP)
-			r.With(superAdminOnly).Method(http.MethodPost, "/master-data/*", masterDataProxy)
-			r.With(superAdminOnly).Method(http.MethodPut, "/master-data/*", masterDataProxy)
-			r.With(superAdminOnly).Method(http.MethodDelete, "/master-data/*", masterDataProxy)
+			r.With(permissionOnly("city_guide.view")).Get("/master-data/city-guides/manage", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("city_guide.view")).Get("/master-data/city-guide-categories/manage", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("city_guide.view")).Get("/master-data/city-guide-categories/manage/deleted", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("city_guide.create")).Post("/master-data/city-guide-categories/manage", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("city_guide.update")).Put("/master-data/city-guide-categories/manage/{id}", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("city_guide.update")).Put("/master-data/city-guide-categories/manage/{id}/status", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("city_guide.restore")).Post("/master-data/city-guide-categories/manage/{id}/restore", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("city_guide.archive")).Delete("/master-data/city-guide-categories/manage/{id}", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.restore")).Get("/master-data/deleted", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.restore")).Post("/master-data/deleted/{entity}/{id}/restore", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("media.view")).Get("/master-data/media", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("media.view")).Get("/master-data/media/policy", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("media.create")).Post("/master-data/media/upload", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("media.archive")).Delete("/master-data/media/{id}", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.view")).Get("/master-data/heroes", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.view")).Get("/master-data/heroes/{id}", masterDataProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.create")).Method(http.MethodPost, "/master-data/*", masterDataProxy)
+			r.With(permissionOnly("master_data.update")).Method(http.MethodPut, "/master-data/*", masterDataProxy)
+			r.With(permissionOnly("master_data.archive")).Method(http.MethodDelete, "/master-data/*", masterDataProxy)
 
 			scheduleProxy := http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL))
-			r.With(superAdminOnly).Get("/schedule/deleted", scheduleProxy.ServeHTTP)
-			r.With(superAdminOnly).Get("/schedule/matches/deleted", scheduleProxy.ServeHTTP)
-			r.With(superAdminOnly).Method(http.MethodPost, "/schedule/*", scheduleProxy)
-			r.With(superAdminOnly).Method(http.MethodPut, "/schedule/*", scheduleProxy)
-			r.With(superAdminOnly).Method(http.MethodDelete, "/schedule/*", scheduleProxy)
+			r.With(permissionOnly("master_data.restore")).Get("/schedule/deleted", scheduleProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.restore")).Get("/schedule/matches/deleted", scheduleProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.restore")).Post("/schedule/matches/{id}/restore", scheduleProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.create")).Method(http.MethodPost, "/schedule/*", scheduleProxy)
+			r.With(permissionOnly("master_data.update")).Method(http.MethodPut, "/schedule/*", scheduleProxy)
+			r.With(permissionOnly("master_data.archive")).Method(http.MethodDelete, "/schedule/*", scheduleProxy)
 
 			// Audit immutable hanya dapat dibaca role audit/super admin.
-			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
-			r.With(jwtMid.RequireAnyRole("super_admin", "auditor")).Handle("/audit", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
+			r.With(permissionOnly("audit.view")).Handle("/audit/*", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
+			r.With(permissionOnly("audit.view")).Handle("/audit", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
 
 			// Livescore Service (Port 8083) - Hanya admin/koresponden yang boleh mengupdate skor
-			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden")).Handle("/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
-			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden")).Handle("/livescore", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
+			r.With(permissionOnly("livescore.view")).Get("/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)).ServeHTTP)
+			r.With(permissionOnly("livescore.view")).Get("/livescore", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)).ServeHTTP)
+			r.With(permissionOnly("livescore.manage")).Method(http.MethodPost, "/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
+			r.With(permissionOnly("livescore.manage")).Method(http.MethodPut, "/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
 
 			// Workflow Medali: koresponden submit, verifikator memeriksa, super admin memublikasikan.
-			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden")).Post("/medals/add", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
-			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden")).Post("/medals/submissions", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
-			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden", "verifikator")).Get("/medals/submissions", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
-			r.With(jwtMid.RequireAnyRole("super_admin", "verifikator")).Post("/medals/submissions/{submissionID}/verify", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
-			r.With(jwtMid.RequireAnyRole("super_admin", "verifikator")).Post("/medals/submissions/{submissionID}/reject", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
-			r.With(jwtMid.RequireAnyRole("super_admin")).Post("/medals/submissions/{submissionID}/publish", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(permissionOnly("medal.create")).Post("/medals/add", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(permissionOnly("medal.create")).Post("/medals/submissions", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(permissionOnly("medal.view")).Get("/medals/submissions", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(permissionOnly("medal.verify")).Post("/medals/submissions/{submissionID}/verify", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(permissionOnly("medal.verify")).Post("/medals/submissions/{submissionID}/reject", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
+			r.With(permissionOnly("medal.publish")).Post("/medals/submissions/{submissionID}/publish", http.StripPrefix("/api/v1/medals", setupProxy(cfg.MedalsURL)).ServeHTTP)
 
 			// Private SSE memakai JWT di edge dan shared token hanya pada hop internal.
 			privateStreamProxy := setupProxyWithHeaders(cfg.RealtimeURL, map[string]string{"X-Internal-Stream-Token": cfg.InternalStreamToken})
-			r.With(jwtMid.RequireAnyRole("super_admin", "koresponden", "verifikator", "auditor")).Get("/stream/admin/events", http.StripPrefix("/api/v1/stream", privateStreamProxy).ServeHTTP)
+			r.With(permissionOnly("dashboard.view")).Get("/stream/admin/events", http.StripPrefix("/api/v1/stream", privateStreamProxy).ServeHTTP)
 
 			venueProxy := http.StripPrefix("/api/v1/venues", setupProxy(cfg.VenueURL))
-			r.With(superAdminOnly).Post("/venues", venueProxy.ServeHTTP)
-			r.With(superAdminOnly).Post("/venues/*", venueProxy.ServeHTTP)
-			r.With(superAdminOnly).Put("/venues", venueProxy.ServeHTTP)
-			r.With(superAdminOnly).Put("/venues/*", venueProxy.ServeHTTP)
-			r.With(superAdminOnly).Delete("/venues", venueProxy.ServeHTTP)
-			r.With(superAdminOnly).Delete("/venues/*", venueProxy.ServeHTTP)
-			r.With(superAdminOnly).Get("/venues/deleted", venueProxy.ServeHTTP)
+			r.With(permissionOnly("venue.create")).Post("/venues", venueProxy.ServeHTTP)
+			r.With(permissionOnly("venue.create")).Post("/venues/*", venueProxy.ServeHTTP)
+			r.With(permissionOnly("venue.update")).Put("/venues", venueProxy.ServeHTTP)
+			r.With(permissionOnly("venue.restore")).Post("/venues/{id}/restore", venueProxy.ServeHTTP)
+			r.With(permissionOnly("venue.update")).Put("/venues/*", venueProxy.ServeHTTP)
+			r.With(permissionOnly("venue.archive")).Delete("/venues", venueProxy.ServeHTTP)
+			r.With(permissionOnly("venue.archive")).Delete("/venues/*", venueProxy.ServeHTTP)
+			r.With(permissionOnly("venue.restore")).Get("/venues/deleted", venueProxy.ServeHTTP)
 		})
 
 		// Rute Terbuka (Public)
@@ -264,6 +302,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 		r.Get("/master-data/kontingens/{id}", publicMasterData.ServeHTTP)
 		r.Get("/master-data/city-guides", publicMasterData.ServeHTTP)
 		r.Get("/master-data/city-guides/{id}", publicMasterData.ServeHTTP)
+		r.Get("/master-data/city-guide-categories", publicMasterData.ServeHTTP)
 
 		// Public Schedule Service (GET)
 		// INFO: Jadwal aktif adalah data publik. Endpoint deleted tetap ditolak oleh

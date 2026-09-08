@@ -95,7 +95,7 @@ func TestGenerateMediaDerivativesPreservesOriginalAndCreatesVariants(t *testing.
 	}
 	expectedWidths := map[string]int32{"thumbnail": 320, "list": 720, "detail": 1440}
 	for _, item := range items {
-		if item.metadata.ChecksumSHA256 == "" || item.metadata.FileSize <= 0 || item.metadata.Width <= 0 || item.metadata.Height <= 0 {
+		if item.metadata.ChecksumSha256 == "" || item.metadata.FileSize <= 0 || item.metadata.Width <= 0 || item.metadata.Height <= 0 {
 			t.Fatalf("incomplete derivative metadata: %#v", item.metadata)
 		}
 		if _, err := os.Stat(item.path); err != nil {

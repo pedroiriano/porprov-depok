@@ -10,7 +10,7 @@ import (
 	"github.com/porprov-xv/porprov-depok/services/master-data-service/internal/handler"
 )
 
-func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler *handler.CityGuideHandler, heroHandler *handler.HeroHandler) *chi.Mux {
+func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler *handler.CityGuideHandler, cityGuideCategoryHandler *handler.CityGuideCategoryHandler, heroHandler *handler.HeroHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
@@ -58,10 +58,21 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler 
 		r.Route("/city-guides", func(r chi.Router) {
 			r.Post("/", cityGuideHandler.CreateCityGuide)
 			r.Get("/", cityGuideHandler.ListCityGuides)
+			r.Get("/manage", cityGuideHandler.ListManagedCityGuides)
 			r.Put("/{id}/venue-pin", cityGuideHandler.PinCityGuideForVenues)
 			r.Get("/{id}", cityGuideHandler.GetCityGuide)
 			r.Put("/{id}", cityGuideHandler.UpdateCityGuide)
 			r.Delete("/{id}", cityGuideHandler.DeleteCityGuide)
+		})
+		r.Get("/city-guide-categories", cityGuideCategoryHandler.ListPublic)
+		r.Route("/city-guide-categories/manage", func(r chi.Router) {
+			r.Get("/", cityGuideCategoryHandler.List)
+			r.Get("/deleted", cityGuideCategoryHandler.ListDeleted)
+			r.Post("/", cityGuideCategoryHandler.Create)
+			r.Put("/{id}", cityGuideCategoryHandler.Update)
+			r.Put("/{id}/status", cityGuideCategoryHandler.SetStatus)
+			r.Post("/{id}/restore", cityGuideCategoryHandler.Restore)
+			r.Delete("/{id}", cityGuideCategoryHandler.Archive)
 		})
 		r.Route("/media", func(r chi.Router) {
 			r.Get("/policy", masterDataHandler.GetMediaPolicy)

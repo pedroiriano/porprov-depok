@@ -178,7 +178,7 @@ func validateScoreRequest(payload *scoreRequest, correction bool) error {
 	return nil
 }
 
-func (s *server) persistScore(ctx context.Context, payload scoreRequest, actor, requestID, actorIP string, correction bool) (liveScoreEvent, error) {
+func (s *server) persistScore(ctx context.Context, payload scoreRequest, actor, actorUsername, actorDisplayName, requestID, actorIP string, correction bool) (liveScoreEvent, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
 		return liveScoreEvent{}, err
@@ -251,7 +251,7 @@ func (s *server) persistScore(ctx context.Context, payload scoreRequest, actor, 
 	eventJSON, _ := json.Marshal(event)
 	auditPayload := map[string]any{
 		"eventVersion": "1.0", "eventId": eventID, "service_name": "livescore-service", "entity_name": "LiveScore",
-		"entity_id": payload.MatchID, "action": eventType, "actor": actor, "requestId": requestID, "ipAddress": actorIP, "payload": event,
+		"entity_id": payload.MatchID, "action": eventType, "actor": actor, "actor_username": actorUsername, "actor_display_name": actorDisplayName, "requestId": requestID, "ipAddress": actorIP, "payload": event,
 	}
 	auditJSON, _ := json.Marshal(auditPayload)
 	_, err = tx.Exec(ctx, `INSERT INTO outbox_events(event_id, subject, payload) VALUES ($1::uuid, $2, $3::jsonb), (gen_random_uuid(), $4, $5::jsonb)`,
@@ -294,7 +294,7 @@ func (s *server) updateScore(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errScheduleDown.Error(), http.StatusServiceUnavailable)
 		return
 	}
-	event, err := s.persistScore(r.Context(), payload, actor, r.Header.Get("X-Request-ID"), r.Header.Get("X-Actor-IP"), false)
+	event, err := s.persistScore(r.Context(), payload, actor, r.Header.Get("X-Actor-Username"), r.Header.Get("X-Actor-Display-Name"), r.Header.Get("X-Request-ID"), r.Header.Get("X-Actor-IP"), false)
 	if err != nil {
 		if errors.Is(err, errRevisionConflict) {
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -333,7 +333,7 @@ func (s *server) correctScore(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errScheduleDown.Error(), http.StatusServiceUnavailable)
 		return
 	}
-	event, err := s.persistScore(r.Context(), payload, actor, r.Header.Get("X-Request-ID"), r.Header.Get("X-Actor-IP"), true)
+	event, err := s.persistScore(r.Context(), payload, actor, r.Header.Get("X-Actor-Username"), r.Header.Get("X-Actor-Display-Name"), r.Header.Get("X-Request-ID"), r.Header.Get("X-Actor-IP"), true)
 	if err != nil {
 		if strings.Contains(err.Error(), "before the first") || errors.Is(err, errRevisionConflict) {
 			http.Error(w, err.Error(), http.StatusConflict)

@@ -11,21 +11,44 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countOtherActiveSuperAdmins = `-- name: CountOtherActiveSuperAdmins :one
+SELECT COUNT(*) FROM users
+WHERE role = 'super_admin' AND is_active AND deleted_at IS NULL AND id <> $1
+`
+
+func (q *Queries) CountOtherActiveSuperAdmins(ctx context.Context, id pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countOtherActiveSuperAdmins, id)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUsersPage = `-- name: CountUsersPage :one
 SELECT COUNT(*)
 FROM users
-WHERE deleted_at IS NULL
+WHERE (
+    ($1::text = 'archived' AND deleted_at IS NOT NULL)
+    OR ($1::text <> 'archived' AND deleted_at IS NULL
+        AND ($1::text = 'all'
+            OR ($1::text = 'active' AND is_active)
+            OR ($1::text = 'inactive' AND NOT is_active)))
+  )
   AND (
-    $1::text = ''
-    OR username ILIKE '%' || $1::text || '%'
-    OR email ILIKE '%' || $1::text || '%'
-    OR COALESCE(full_name, '') ILIKE '%' || $1::text || '%'
-    OR role ILIKE '%' || $1::text || '%'
+    $2::text = ''
+    OR username ILIKE '%' || $2::text || '%'
+    OR email ILIKE '%' || $2::text || '%'
+    OR COALESCE(full_name, '') ILIKE '%' || $2::text || '%'
+    OR role ILIKE '%' || $2::text || '%'
   )
 `
 
-func (q *Queries) CountUsersPage(ctx context.Context, search string) (int64, error) {
-	row := q.db.QueryRow(ctx, countUsersPage, search)
+type CountUsersPageParams struct {
+	Status string `json:"status"`
+	Search string `json:"search"`
+}
+
+func (q *Queries) CountUsersPage(ctx context.Context, arg CountUsersPageParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersPage, arg.Status, arg.Search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -37,7 +60,7 @@ INSERT INTO users (
 ) VALUES (
   $1, $2, $3, $4, $5
 )
-RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason
+RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason, is_active, status_changed_at, status_changed_by, status_reason
 `
 
 type CreateUserParams struct {
@@ -69,6 +92,10 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.IsActive,
+		&i.StatusChangedAt,
+		&i.StatusChangedBy,
+		&i.StatusReason,
 	)
 	return i, err
 }
@@ -93,7 +120,7 @@ func (q *Queries) DeleteUser(ctx context.Context, arg DeleteUserParams) error {
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM users
+SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason, is_active, status_changed_at, status_changed_by, status_reason FROM users
 WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
@@ -112,12 +139,16 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.IsActive,
+		&i.StatusChangedAt,
+		&i.StatusChangedBy,
+		&i.StatusReason,
 	)
 	return i, err
 }
 
 const getUserByKeycloakID = `-- name: GetUserByKeycloakID :one
-SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM users
+SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason, is_active, status_changed_at, status_changed_by, status_reason FROM users
 WHERE keycloak_id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
@@ -136,12 +167,16 @@ func (q *Queries) GetUserByKeycloakID(ctx context.Context, keycloakID string) (U
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.IsActive,
+		&i.StatusChangedAt,
+		&i.StatusChangedBy,
+		&i.StatusReason,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason FROM users
+SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason, is_active, status_changed_at, status_changed_by, status_reason FROM users
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
 `
@@ -167,6 +202,10 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.DeletedAt,
 			&i.DeletedBy,
 			&i.DeleteReason,
+			&i.IsActive,
+			&i.StatusChangedAt,
+			&i.StatusChangedBy,
+			&i.StatusReason,
 		); err != nil {
 			return nil, err
 		}
@@ -179,33 +218,40 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 const listUsersPage = `-- name: ListUsersPage :many
-SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason
+SELECT id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason, is_active, status_changed_at, status_changed_by, status_reason
 FROM users
-WHERE deleted_at IS NULL
+WHERE (
+    ($1::text = 'archived' AND deleted_at IS NOT NULL)
+    OR ($1::text <> 'archived' AND deleted_at IS NULL
+        AND ($1::text = 'all'
+            OR ($1::text = 'active' AND is_active)
+            OR ($1::text = 'inactive' AND NOT is_active)))
+  )
   AND (
-    $1::text = ''
-    OR username ILIKE '%' || $1::text || '%'
-    OR email ILIKE '%' || $1::text || '%'
-    OR COALESCE(full_name, '') ILIKE '%' || $1::text || '%'
-    OR role ILIKE '%' || $1::text || '%'
+    $2::text = ''
+    OR username ILIKE '%' || $2::text || '%'
+    OR email ILIKE '%' || $2::text || '%'
+    OR COALESCE(full_name, '') ILIKE '%' || $2::text || '%'
+    OR role ILIKE '%' || $2::text || '%'
   )
 ORDER BY
-  CASE WHEN $2::text = 'username' AND $3::text = 'asc' THEN LOWER(username) END ASC,
-  CASE WHEN $2::text = 'username' AND $3::text = 'desc' THEN LOWER(username) END DESC,
-  CASE WHEN $2::text = 'full_name' AND $3::text = 'asc' THEN LOWER(COALESCE(full_name, '')) END ASC,
-  CASE WHEN $2::text = 'full_name' AND $3::text = 'desc' THEN LOWER(COALESCE(full_name, '')) END DESC,
-  CASE WHEN $2::text = 'email' AND $3::text = 'asc' THEN LOWER(email) END ASC,
-  CASE WHEN $2::text = 'email' AND $3::text = 'desc' THEN LOWER(email) END DESC,
-  CASE WHEN $2::text = 'role' AND $3::text = 'asc' THEN LOWER(role) END ASC,
-  CASE WHEN $2::text = 'role' AND $3::text = 'desc' THEN LOWER(role) END DESC,
-  CASE WHEN $2::text = 'created_at' AND $3::text = 'asc' THEN created_at END ASC,
-  CASE WHEN $2::text = 'created_at' AND $3::text = 'desc' THEN created_at END DESC,
+  CASE WHEN $3::text = 'username' AND $4::text = 'asc' THEN LOWER(username) END ASC,
+  CASE WHEN $3::text = 'username' AND $4::text = 'desc' THEN LOWER(username) END DESC,
+  CASE WHEN $3::text = 'full_name' AND $4::text = 'asc' THEN LOWER(COALESCE(full_name, '')) END ASC,
+  CASE WHEN $3::text = 'full_name' AND $4::text = 'desc' THEN LOWER(COALESCE(full_name, '')) END DESC,
+  CASE WHEN $3::text = 'email' AND $4::text = 'asc' THEN LOWER(email) END ASC,
+  CASE WHEN $3::text = 'email' AND $4::text = 'desc' THEN LOWER(email) END DESC,
+  CASE WHEN $3::text = 'role' AND $4::text = 'asc' THEN LOWER(role) END ASC,
+  CASE WHEN $3::text = 'role' AND $4::text = 'desc' THEN LOWER(role) END DESC,
+  CASE WHEN $3::text = 'created_at' AND $4::text = 'asc' THEN created_at END ASC,
+  CASE WHEN $3::text = 'created_at' AND $4::text = 'desc' THEN created_at END DESC,
   id ASC
-LIMIT $5::integer
-OFFSET $4::integer
+LIMIT $6::integer
+OFFSET $5::integer
 `
 
 type ListUsersPageParams struct {
+	Status     string `json:"status"`
 	Search     string `json:"search"`
 	SortBy     string `json:"sort_by"`
 	SortOrder  string `json:"sort_order"`
@@ -215,6 +261,7 @@ type ListUsersPageParams struct {
 
 func (q *Queries) ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([]User, error) {
 	rows, err := q.db.Query(ctx, listUsersPage,
+		arg.Status,
 		arg.Search,
 		arg.SortBy,
 		arg.SortOrder,
@@ -240,6 +287,10 @@ func (q *Queries) ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([
 			&i.DeletedAt,
 			&i.DeletedBy,
 			&i.DeleteReason,
+			&i.IsActive,
+			&i.StatusChangedAt,
+			&i.StatusChangedBy,
+			&i.StatusReason,
 		); err != nil {
 			return nil, err
 		}
@@ -251,6 +302,90 @@ func (q *Queries) ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([
 	return items, nil
 }
 
+const restoreUser = `-- name: RestoreUser :one
+UPDATE users
+SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL,
+    is_active = TRUE, status_changed_at = NOW(),
+    status_changed_by = NULLIF($1::text, ''),
+    status_reason = 'Dipulihkan dari arsip', updated_at = NOW()
+WHERE id = $2 AND deleted_at IS NOT NULL
+RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason, is_active, status_changed_at, status_changed_by, status_reason
+`
+
+type RestoreUserParams struct {
+	Actor string      `json:"actor"`
+	ID    pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) RestoreUser(ctx context.Context, arg RestoreUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, restoreUser, arg.Actor, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.KeycloakID,
+		&i.Username,
+		&i.Email,
+		&i.FullName,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.IsActive,
+		&i.StatusChangedAt,
+		&i.StatusChangedBy,
+		&i.StatusReason,
+	)
+	return i, err
+}
+
+const setUserStatus = `-- name: SetUserStatus :one
+UPDATE users
+SET is_active = $1,
+    status_changed_at = NOW(),
+    status_changed_by = NULLIF($2::text, ''),
+    status_reason = NULLIF($3::text, ''),
+    updated_at = NOW()
+WHERE id = $4 AND deleted_at IS NULL
+RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason, is_active, status_changed_at, status_changed_by, status_reason
+`
+
+type SetUserStatusParams struct {
+	IsActive bool        `json:"is_active"`
+	Actor    string      `json:"actor"`
+	Reason   string      `json:"reason"`
+	ID       pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SetUserStatus(ctx context.Context, arg SetUserStatusParams) (User, error) {
+	row := q.db.QueryRow(ctx, setUserStatus,
+		arg.IsActive,
+		arg.Actor,
+		arg.Reason,
+		arg.ID,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.KeycloakID,
+		&i.Username,
+		&i.Email,
+		&i.FullName,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.IsActive,
+		&i.StatusChangedAt,
+		&i.StatusChangedBy,
+		&i.StatusReason,
+	)
+	return i, err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET 
@@ -260,7 +395,7 @@ SET
   role = COALESCE(NULLIF($4::text, ''), role),
   updated_at = NOW()
 WHERE id = $5 AND deleted_at IS NULL
-RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason
+RETURNING id, keycloak_id, username, email, full_name, role, created_at, updated_at, deleted_at, deleted_by, delete_reason, is_active, status_changed_at, status_changed_by, status_reason
 `
 
 type UpdateUserParams struct {
@@ -292,6 +427,10 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.DeletedAt,
 		&i.DeletedBy,
 		&i.DeleteReason,
+		&i.IsActive,
+		&i.StatusChangedAt,
+		&i.StatusChangedBy,
+		&i.StatusReason,
 	)
 	return i, err
 }

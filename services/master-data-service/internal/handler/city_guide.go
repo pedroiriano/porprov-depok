@@ -47,16 +47,18 @@ type cityGuideListResponse struct {
 }
 
 type cityGuideAuditEvent struct {
-	EventVersion string      `json:"eventVersion"`
-	EventType    string      `json:"eventType"`
-	ServiceName  string      `json:"service_name"`
-	EntityName   string      `json:"entity_name"`
-	EntityID     string      `json:"entity_id"`
-	Action       string      `json:"action"`
-	Actor        string      `json:"actor"`
-	RequestID    string      `json:"requestId"`
-	IPAddress    string      `json:"ipAddress"`
-	Payload      interface{} `json:"payload"`
+	EventVersion     string      `json:"eventVersion"`
+	EventType        string      `json:"eventType"`
+	ServiceName      string      `json:"service_name"`
+	EntityName       string      `json:"entity_name"`
+	EntityID         string      `json:"entity_id"`
+	Action           string      `json:"action"`
+	Actor            string      `json:"actor"`
+	ActorUsername    string      `json:"actor_username,omitempty"`
+	ActorDisplayName string      `json:"actor_display_name,omitempty"`
+	RequestID        string      `json:"requestId"`
+	IPAddress        string      `json:"ipAddress"`
+	Payload          interface{} `json:"payload"`
 }
 
 type cityGuidePinQueries interface {
@@ -68,6 +70,7 @@ type cityGuidePinQueries interface {
 type cityGuideRequest struct {
 	Title          string   `json:"title"`
 	Category       string   `json:"category"`
+	CategoryID     string   `json:"category_id"`
 	Description    string   `json:"description"`
 	Address        string   `json:"address"`
 	ImageURL       string   `json:"image_url"`
@@ -191,16 +194,18 @@ func buildCityGuideAuditEvent(r *http.Request, action, entityID string, payload 
 		actor = "system"
 	}
 	return cityGuideAuditEvent{
-		EventVersion: "1.0",
-		EventType:    "audit.master_data." + action,
-		ServiceName:  "master-data-service",
-		EntityName:   "CityGuide",
-		EntityID:     entityID,
-		Action:       action,
-		Actor:        actor,
-		RequestID:    strings.TrimSpace(r.Header.Get("X-Request-ID")),
-		IPAddress:    strings.TrimSpace(r.Header.Get("X-Actor-IP")),
-		Payload:      payload,
+		EventVersion:     "1.0",
+		EventType:        "audit.master_data." + action,
+		ServiceName:      "master-data-service",
+		EntityName:       "CityGuide",
+		EntityID:         entityID,
+		Action:           action,
+		Actor:            actor,
+		ActorUsername:    strings.TrimSpace(r.Header.Get("X-Actor-Username")),
+		ActorDisplayName: strings.TrimSpace(r.Header.Get("X-Actor-Display-Name")),
+		RequestID:        strings.TrimSpace(r.Header.Get("X-Request-ID")),
+		IPAddress:        strings.TrimSpace(r.Header.Get("X-Actor-IP")),
+		Payload:          payload,
 	}
 }
 
@@ -227,6 +232,7 @@ func replacePinnedCityGuide(ctx context.Context, queries cityGuidePinQueries, id
 func validateCityGuideRequest(req *cityGuideRequest) error {
 	req.Title = strings.TrimSpace(req.Title)
 	req.Category = strings.TrimSpace(req.Category)
+	req.CategoryID = strings.TrimSpace(req.CategoryID)
 	req.Description = strings.TrimSpace(req.Description)
 	req.Address = strings.TrimSpace(req.Address)
 	req.ImageURL = strings.TrimSpace(req.ImageURL)
@@ -243,8 +249,8 @@ func validateCityGuideRequest(req *cityGuideRequest) error {
 	req.OperatingHours = strings.TrimSpace(req.OperatingHours)
 	req.PriceRange = strings.TrimSpace(req.PriceRange)
 	req.FleetTypes = normalizeStringList(req.FleetTypes)
-	if req.Title == "" || req.Category == "" {
-		return errors.New("title dan category wajib diisi")
+	if req.Title == "" || (req.Category == "" && req.CategoryID == "") {
+		return errors.New("judul dan kategori wajib diisi")
 	}
 	if req.Latitude == nil || req.Longitude == nil {
 		return errors.New("latitude dan longitude wajib diisi berpasangan")
@@ -309,6 +315,30 @@ func validateCityGuideRequest(req *cityGuideRequest) error {
 	return nil
 }
 
+func (h *CityGuideHandler) resolveCategory(ctx context.Context, req cityGuideRequest) (db.CityGuideCategory, error) {
+	var category db.CityGuideCategory
+	var err error
+	if req.CategoryID != "" {
+		var id pgtype.UUID
+		if scanErr := id.Scan(req.CategoryID); scanErr != nil {
+			return category, errors.New("kategori Panduan Kota tidak valid")
+		}
+		category, err = h.queries.GetCityGuideCategoryByID(ctx, id)
+	} else {
+		category, err = h.queries.GetCityGuideCategoryByName(ctx, req.Category)
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return category, errors.New("kategori Panduan Kota tidak ditemukan")
+	}
+	if err != nil {
+		return category, err
+	}
+	if !category.IsActive {
+		return category, errors.New("kategori Panduan Kota sedang tidak aktif")
+	}
+	return category, nil
+}
+
 func decodeCityGuideRequest(w http.ResponseWriter, r *http.Request) (cityGuideRequest, bool) {
 	var req cityGuideRequest
 	r.Body = http.MaxBytesReader(w, r.Body, 128<<10)
@@ -331,9 +361,15 @@ func (h *CityGuideHandler) CreateCityGuide(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	category, err := h.resolveCategory(r.Context(), req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
 	cg, err := h.queries.CreateCityGuide(r.Context(), db.CreateCityGuideParams{
 		Title:          req.Title,
-		Category:       req.Category,
+		Category:       category.Name,
+		CategoryID:     category.ID,
 		Description:    nullableText(req.Description),
 		Address:        nullableText(req.Address),
 		ImageUrl:       nullableText(req.ImageURL),
@@ -372,6 +408,14 @@ func (h *CityGuideHandler) CreateCityGuide(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *CityGuideHandler) ListCityGuides(w http.ResponseWriter, r *http.Request) {
+	h.listCityGuides(w, r, false)
+}
+
+func (h *CityGuideHandler) ListManagedCityGuides(w http.ResponseWriter, r *http.Request) {
+	h.listCityGuides(w, r, true)
+}
+
+func (h *CityGuideHandler) listCityGuides(w http.ResponseWriter, r *http.Request, includeInactiveCategories bool) {
 	category, search, pagination, err := parseCityGuideListFilters(r.URL.Query())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -386,15 +430,28 @@ func (h *CityGuideHandler) ListCityGuides(w http.ResponseWriter, r *http.Request
 			PageOffset: (pagination.Page - 1) * pagination.PerPage,
 			PageLimit:  pagination.PerPage,
 		}
-		cgs, listErr := h.queries.ListCityGuidesPaginated(r.Context(), params)
+		var cgs []db.CityGuide
+		var listErr error
+		if includeInactiveCategories {
+			cgs, listErr = h.queries.ListCityGuidesPaginated(r.Context(), params)
+		} else {
+			cgs, listErr = h.queries.ListPublicCityGuidesPaginated(r.Context(), db.ListPublicCityGuidesPaginatedParams(params))
+		}
 		if listErr != nil {
 			http.Error(w, "Gagal membaca City Guide", http.StatusInternalServerError)
 			return
 		}
-		totalItems, countErr := h.queries.CountCityGuides(r.Context(), db.CountCityGuidesParams{
+		countParams := db.CountCityGuidesParams{
 			Category: category,
 			Search:   escapedSearch,
-		})
+		}
+		var totalItems int64
+		var countErr error
+		if includeInactiveCategories {
+			totalItems, countErr = h.queries.CountCityGuides(r.Context(), countParams)
+		} else {
+			totalItems, countErr = h.queries.CountPublicCityGuides(r.Context(), db.CountPublicCityGuidesParams(countParams))
+		}
 		if countErr != nil {
 			http.Error(w, "Gagal menghitung City Guide", http.StatusInternalServerError)
 			return
@@ -423,10 +480,16 @@ func (h *CityGuideHandler) ListCityGuides(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	cgs, err := h.queries.ListCityGuides(r.Context(), db.ListCityGuidesParams{
+	listParams := db.ListCityGuidesParams{
 		Category: category,
 		Search:   escapedSearch,
-	})
+	}
+	var cgs []db.CityGuide
+	if includeInactiveCategories {
+		cgs, err = h.queries.ListCityGuides(r.Context(), listParams)
+	} else {
+		cgs, err = h.queries.ListPublicCityGuides(r.Context(), db.ListPublicCityGuidesParams(listParams))
+	}
 	if err != nil {
 		http.Error(w, "Gagal membaca City Guide", http.StatusInternalServerError)
 		return
@@ -481,7 +544,7 @@ func (h *CityGuideHandler) GetCityGuide(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	cg, err := h.queries.GetCityGuideByID(r.Context(), uuid)
+	cg, err := h.queries.GetPublicCityGuideByID(r.Context(), uuid)
 	if errors.Is(err, pgx.ErrNoRows) {
 		http.Error(w, "City Guide tidak ditemukan", http.StatusNotFound)
 		return
@@ -507,27 +570,33 @@ func (h *CityGuideHandler) UpdateCityGuide(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	category, err := h.resolveCategory(r.Context(), req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
 	cg, err := h.queries.UpdateCityGuide(r.Context(), db.UpdateCityGuideParams{
 		ID:           uuid,
 		Title:        req.Title,
-		Category:     req.Category,
-		Column4:      req.Description,
-		Column5:      req.Address,
-		Column6:      req.ImageURL,
+		Category:     category.Name,
+		CategoryID:   category.ID,
+		Column5:      req.Description,
+		Column6:      req.Address,
+		Column7:      req.ImageURL,
 		Latitude:     pgtype.Float8{Float64: *req.Latitude, Valid: true},
 		Longitude:    pgtype.Float8{Float64: *req.Longitude, Valid: true},
-		Column9:      req.MapRouteURL,
-		Column10:     req.ContactPhone,
-		Column11:     req.WhatsApp,
-		Column12:     req.Email,
-		Column13:     req.WebsiteURL,
-		Column14:     req.InstagramURL,
-		Column15:     req.FacebookURL,
-		Column16:     req.TikTokURL,
+		Column10:     req.MapRouteURL,
+		Column11:     req.ContactPhone,
+		Column12:     req.WhatsApp,
+		Column13:     req.Email,
+		Column14:     req.WebsiteURL,
+		Column15:     req.InstagramURL,
+		Column16:     req.FacebookURL,
+		Column17:     req.TikTokURL,
 		ServiceTypes: req.ServiceTypes,
-		Column18:     req.ServiceArea,
-		Column19:     req.OperatingHours,
-		Column20:     req.PriceRange,
+		Column19:     req.ServiceArea,
+		Column20:     req.OperatingHours,
+		Column21:     req.PriceRange,
 		FleetTypes:   req.FleetTypes,
 		FleetCount:   nullableInt32(req.FleetCount),
 	})

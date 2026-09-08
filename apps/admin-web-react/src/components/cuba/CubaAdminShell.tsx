@@ -14,16 +14,18 @@ import {
   Moon,
   PanelsTopLeft,
   ShieldAlert,
+  ShieldCheck,
   Sun,
   User,
   Users,
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AuthContextProps } from 'react-oidc-context';
 import { useTheme } from '../../hooks/useTheme';
-import { canAccessRole, getRealmRoles } from '../../lib/auth';
+import { useAuthorization } from '../../contexts/authorization';
+import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../../lib/api';
 import { Link, useLocation } from '../../lib/router';
 import './cuba-admin.css';
 
@@ -31,34 +33,50 @@ type NavigationItem = {
   icon: LucideIcon;
   label: string;
   path: string;
-  roles?: string[];
+  permission?: string;
 };
+
+type NotificationItem = { id: string; title: string; message: string; target_path: string; read_at: string | null; created_at: string };
+type NotificationPayload = { data: NotificationItem[]; unread_count: number };
+
+function relativeTime(value: string) {
+  const seconds = Math.round((new Date(value).getTime() - Date.now()) / 1000);
+  const formatter = new Intl.RelativeTimeFormat('id-ID', { numeric: 'auto' });
+  if (Math.abs(seconds) < 60) return formatter.format(seconds, 'second');
+  const minutes = Math.round(seconds / 60);
+  if (Math.abs(minutes) < 60) return formatter.format(minutes, 'minute');
+  const hours = Math.round(minutes / 60);
+  if (Math.abs(hours) < 24) return formatter.format(hours, 'hour');
+  return formatter.format(Math.round(hours / 24), 'day');
+}
 
 const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
   {
     label: 'Ringkasan',
     items: [
-      { icon: LayoutDashboard, label: 'Dasbor', path: '/' },
+      { icon: LayoutDashboard, label: 'Dasbor', path: '/', permission: 'dashboard.view' },
     ],
   },
   {
     label: 'Operasional',
     items: [
-      { icon: Database, label: 'Data Utama', path: '/master-data', roles: ['super_admin'] },
-      { icon: PanelsTopLeft, label: 'Tampilan Utama', path: '/hero', roles: ['super_admin'] },
-      { icon: Activity, label: 'Pusat Skor Langsung', path: '/livescore', roles: ['koresponden'] },
-      { icon: Medal, label: 'Perolehan Medali', path: '/medals', roles: ['koresponden'] },
-      { icon: MapPinned, label: 'Panduan Kota', path: '/city-guide', roles: ['super_admin'] },
-      { icon: Images, label: 'Pustaka Media', path: '/media', roles: ['super_admin'] },
-      { icon: FileCheck, label: 'Verifikasi', path: '/verifikasi', roles: ['verifikator'] },
+      { icon: Database, label: 'Data Utama', path: '/master-data', permission: 'master_data.view' },
+      { icon: PanelsTopLeft, label: 'Tampilan Utama', path: '/hero', permission: 'master_data.manage' },
+      { icon: Activity, label: 'Pusat Skor Langsung', path: '/livescore', permission: 'livescore.view' },
+      { icon: Medal, label: 'Perolehan Medali', path: '/medals', permission: 'medal.view' },
+      { icon: MapPinned, label: 'Panduan Kota', path: '/city-guide', permission: 'city_guide.view' },
+      { icon: MapPinned, label: 'Kategori Panduan Kota', path: '/city-guide-categories', permission: 'city_guide.view' },
+      { icon: Images, label: 'Pustaka Media', path: '/media', permission: 'media.view' },
+      { icon: FileCheck, label: 'Verifikasi', path: '/verifikasi', permission: 'medal.verify' },
     ],
   },
   {
     label: 'Administrasi',
     items: [
-      { icon: ShieldAlert, label: 'Log Audit', path: '/audit-log', roles: ['auditor'] },
-      { icon: HeartPulse, label: 'Kesehatan Integrasi', path: '/integration-health', roles: ['super_admin', 'auditor'] },
-      { icon: Users, label: 'Manajemen Akun', path: '/user-management', roles: ['super_admin'] },
+      { icon: ShieldAlert, label: 'Log Audit', path: '/audit-log', permission: 'audit.view' },
+      { icon: HeartPulse, label: 'Kesehatan Integrasi', path: '/integration-health', permission: 'integration.view' },
+      { icon: Users, label: 'Manajemen Akun', path: '/user-management', permission: 'user.view' },
+      { icon: ShieldCheck, label: 'Peran dan Hak Akses', path: '/role-management', permission: 'role.view' },
       { icon: User, label: 'Profil Akun', path: '/profile' },
     ],
   },
@@ -79,14 +97,22 @@ export function CubaAdminShell({
   const { theme, setTheme } = useTheme();
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 1023px)').matches);
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia('(max-width: 1023px)').matches);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(() => localStorage.getItem('porprov-admin-sidebar-collapsed') === 'true');
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const roles = useMemo(() => getRealmRoles(auth.user), [auth.user]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notificationError, setNotificationError] = useState('');
+  const sidebarRef = useRef<HTMLElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const authorization = useAuthorization();
 
   const visibleGroups = useMemo(() => navigationGroups.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.roles || canAccessRole(roles, item.roles)),
-  })).filter((group) => group.items.length > 0), [roles]);
+    items: group.items.filter((item) => !item.permission || authorization.hasPermission(item.permission)),
+  })).filter((group) => group.items.length > 0), [authorization]);
 
   const currentPage = visibleGroups
     .flatMap((group) => group.items)
@@ -94,6 +120,22 @@ export function CubaAdminShell({
   const accountName = auth.user?.profile.preferred_username
     || auth.user?.profile.name
     || 'Pengguna Admin';
+
+  const loadNotifications = useCallback(async () => {
+    if (!auth.user?.access_token) return;
+    setNotificationLoading(true);
+    try {
+      const response = await apiClient.get<NotificationPayload>('/notifications', authConfig(auth.user.access_token));
+      const payload = unwrapApiData<NotificationPayload>(response.data);
+      setNotifications(payload?.data || []);
+      setUnreadCount(payload?.unread_count || 0);
+      setNotificationError('');
+    } catch (error) {
+      setNotificationError(getApiErrorMessage(error, 'Notifikasi belum dapat dimuat.'));
+    } finally {
+      setNotificationLoading(false);
+    }
+  }, [auth.user?.access_token]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 1023px)');
@@ -105,6 +147,16 @@ export function CubaAdminShell({
     mediaQuery.addEventListener('change', synchronize);
     return () => mediaQuery.removeEventListener('change', synchronize);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('porprov-admin-sidebar-collapsed', String(desktopCollapsed));
+  }, [desktopCollapsed]);
+
+  useEffect(() => {
+    void loadNotifications();
+    const timer = window.setInterval(() => { if (!document.hidden) void loadNotifications(); }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [loadNotifications]);
 
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
@@ -124,6 +176,52 @@ export function CubaAdminShell({
     return () => document.removeEventListener('keydown', closeTransientUi);
   }, [isMobile]);
 
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent | FocusEvent) => {
+      const target = event.target as Node;
+      if (notificationOpen && !notificationRef.current?.contains(target)) setNotificationOpen(false);
+      if (profileOpen && !profileRef.current?.contains(target)) setProfileOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('focusin', closeOutside);
+    return () => { document.removeEventListener('pointerdown', closeOutside); document.removeEventListener('focusin', closeOutside); };
+  }, [notificationOpen, profileOpen]);
+
+  useEffect(() => {
+    if (!isMobile || !sidebarOpen) return undefined;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const focusable = sidebarRef.current?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"])');
+    focusable?.[0]?.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || !focusable?.length) return;
+      const first = focusable[0]; const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', trapFocus);
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', trapFocus); previousFocus?.focus(); };
+  }, [isMobile, sidebarOpen]);
+
+  const markAllNotificationsRead = async () => {
+    if (!auth.user?.access_token || unreadCount === 0) return;
+    try {
+      await apiClient.put('/notifications/read-all', undefined, authConfig(auth.user.access_token));
+      setNotifications((items) => items.map((item) => ({ ...item, read_at: item.read_at || new Date().toISOString() })));
+      setUnreadCount(0);
+    } catch (error) { setNotificationError(getApiErrorMessage(error, 'Notifikasi gagal ditandai.')); }
+  };
+
+  const markNotificationRead = async (item: NotificationItem) => {
+    if (!auth.user?.access_token || item.read_at) return;
+    try {
+      await apiClient.put(`/notifications/${item.id}/read`, undefined, authConfig(auth.user.access_token));
+      setNotifications((items) => items.map((current) => current.id === item.id ? { ...current, read_at: new Date().toISOString() } : current));
+      setUnreadCount((count) => Math.max(0, count - 1));
+    } catch (error) { setNotificationError(getApiErrorMessage(error, 'Notifikasi gagal ditandai.')); }
+  };
+
   return (
     <div className="admin-cuba-shell min-h-dvh bg-[var(--admin-bg)] text-[var(--admin-text)]">
       {isMobile && sidebarOpen && (
@@ -136,8 +234,9 @@ export function CubaAdminShell({
       )}
 
       <aside
+        ref={sidebarRef}
         id="cuba-admin-sidebar"
-        className={`admin-cuba-sidebar fixed inset-y-0 left-0 z-50 flex w-[255px] flex-col overflow-hidden text-white transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`admin-cuba-sidebar fixed inset-y-0 left-0 z-50 flex w-[255px] flex-col overflow-hidden text-white transition-[width,transform] duration-200 motion-reduce:transition-none lg:translate-x-0 ${desktopCollapsed ? 'lg:w-[84px]' : 'lg:w-[255px]'} ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
         aria-label="Navigasi Admin PORPROV"
         aria-hidden={isMobile && !sidebarOpen}
         inert={isMobile && !sidebarOpen ? true : undefined}
@@ -151,7 +250,7 @@ export function CubaAdminShell({
                 className="size-8 object-contain"
               />
             </span>
-            <span>
+            <span className={desktopCollapsed ? 'lg:hidden' : ''}>
               <span className="block text-sm font-black tracking-wide">PORPROV DEPOK</span>
               <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-blue-100">Ruang Kerja Admin</span>
             </span>
@@ -169,7 +268,7 @@ export function CubaAdminShell({
         <nav className="admin-cuba-scrollbar flex-1 overflow-y-auto px-3 py-5">
           {visibleGroups.map((group) => (
             <section key={group.label} className="mb-6" aria-labelledby={`nav-${group.label.toLowerCase()}`}>
-              <h2 id={`nav-${group.label.toLowerCase()}`} className="px-3 pb-2 text-[10px] font-black uppercase tracking-[0.2em] text-blue-200/80">
+              <h2 id={`nav-${group.label.toLowerCase()}`} className={`px-3 pb-2 text-[10px] font-black uppercase tracking-[0.2em] text-blue-200/80 ${desktopCollapsed ? 'lg:sr-only' : ''}`}>
                 {group.label}
               </h2>
               <ul className="space-y-1">
@@ -179,12 +278,13 @@ export function CubaAdminShell({
                     <li key={path}>
                       <Link
                         to={path}
-                        className={`group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-bold transition-colors ${active ? 'bg-white text-blue-700 shadow-lg shadow-blue-950/15' : 'text-blue-50 hover:bg-white/10 hover:text-white'}`}
+                        className={`group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-bold transition-colors ${desktopCollapsed ? 'lg:justify-center' : ''} ${active ? 'bg-white text-blue-700 shadow-lg shadow-blue-950/15' : 'text-blue-50 hover:bg-white/10 hover:text-white'}`}
                         aria-current={active ? 'page' : undefined}
+                        title={desktopCollapsed ? label : undefined}
                       >
                         <Icon className={`size-5 shrink-0 ${active ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'}`} aria-hidden="true" />
-                        <span className="min-w-0 flex-1 truncate">{label}</span>
-                        {active && <ChevronRight className="size-4 text-blue-500" aria-hidden="true" />}
+                        <span className={`min-w-0 flex-1 truncate ${desktopCollapsed ? 'lg:sr-only' : ''}`}>{label}</span>
+                        {active && !desktopCollapsed && <ChevronRight className="size-4 text-blue-500" aria-hidden="true" />}
                       </Link>
                     </li>
                   );
@@ -194,7 +294,7 @@ export function CubaAdminShell({
           ))}
         </nav>
 
-        <div className="border-t border-white/10 p-4">
+        <div className={`border-t border-white/10 p-4 ${desktopCollapsed ? 'lg:hidden' : ''}`}>
           <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-white/10">
             <p className="text-xs font-black text-white">PORPROV XV 2026</p>
             <p className="mt-1 text-xs leading-relaxed text-blue-100">Ruang kerja operator Kota Depok</p>
@@ -202,16 +302,16 @@ export function CubaAdminShell({
         </div>
       </aside>
 
-      <div className="min-h-dvh lg:pl-[255px]">
+      <div className={`min-h-dvh transition-[padding] duration-200 motion-reduce:transition-none ${desktopCollapsed ? 'lg:pl-[84px]' : 'lg:pl-[255px]'}`}>
         <header className="sticky top-0 z-30 border-b border-[var(--admin-border)] bg-[color:var(--admin-surface-translucent)] backdrop-blur-xl">
           <div className="flex min-h-[76px] items-center justify-between gap-3 px-3 sm:px-5 lg:px-7">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                className="admin-cuba-icon-button lg:hidden"
-                onClick={() => setSidebarOpen(true)}
-                aria-label="Buka sidebar"
-                aria-expanded={sidebarOpen}
+                className="admin-cuba-icon-button"
+                onClick={() => isMobile ? setSidebarOpen(true) : setDesktopCollapsed((value) => !value)}
+                aria-label={isMobile ? 'Buka sidebar' : desktopCollapsed ? 'Perluas sidebar' : 'Ringkas sidebar'}
+                aria-expanded={isMobile ? sidebarOpen : !desktopCollapsed}
                 aria-controls="cuba-admin-sidebar"
               >
                 <Menu className="size-5" aria-hidden="true" />
@@ -233,26 +333,27 @@ export function CubaAdminShell({
                 {theme === 'dark' ? <Sun className="size-5 text-yellow-400" aria-hidden="true" /> : <Moon className="size-5" aria-hidden="true" />}
               </button>
 
-              <div className="relative">
+              <div className="relative" ref={notificationRef}>
                 <button
                   type="button"
                   className="admin-cuba-icon-button"
                   onClick={() => { setNotificationOpen((value) => !value); setProfileOpen(false); }}
-                  aria-label="Buka notifikasi"
+                  aria-label={unreadCount > 0 ? `Buka notifikasi, ${unreadCount} belum dibaca` : 'Buka notifikasi'}
                   aria-expanded={notificationOpen}
                   aria-controls="cuba-notifications"
                 >
                   <Bell className="size-5" aria-hidden="true" />
+                  {unreadCount > 0 && <span className="absolute right-1 top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white" aria-hidden="true">{Math.min(unreadCount, 99)}</span>}
                 </button>
                 {notificationOpen && (
-                  <div id="cuba-notifications" className="admin-cuba-popover w-72" role="status">
-                    <p className="font-black text-[var(--admin-heading)]">Notifikasi</p>
-                    <p className="mt-2 text-sm text-[var(--admin-muted)]">Tidak ada notifikasi baru.</p>
+                  <div id="cuba-notifications" className="admin-cuba-popover w-[min(22rem,calc(100vw-1.5rem))]" role="region" aria-label="Daftar notifikasi">
+                    <div className="flex items-center justify-between gap-3"><p className="font-black text-[var(--admin-heading)]">Notifikasi</p><button type="button" onClick={() => void markAllNotificationsRead()} disabled={unreadCount === 0} className="min-h-10 rounded-lg px-2 text-xs font-black text-blue-700 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-200 dark:hover:bg-blue-950/40">Tandai semua dibaca</button></div>
+                    {notificationLoading && notifications.length === 0 ? <p className="mt-3 text-sm text-[var(--admin-muted)]">Memuat notifikasi...</p> : notificationError ? <div className="mt-3"><p className="text-sm font-bold text-red-600 dark:text-red-300">{notificationError}</p><button type="button" onClick={() => void loadNotifications()} className="mt-2 min-h-10 text-xs font-black text-blue-700 dark:text-blue-200">Coba lagi</button></div> : notifications.length === 0 ? <p className="mt-3 text-sm text-[var(--admin-muted)]">Belum ada notifikasi.</p> : <ul className="admin-cuba-scrollbar mt-3 max-h-80 space-y-2 overflow-y-auto">{notifications.map((item) => <li key={item.id} className={`rounded-xl border p-3 ${item.read_at ? 'border-[var(--admin-border)]' : 'border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30'}`}><Link to={item.target_path || '/'} onClick={() => { void markNotificationRead(item); setNotificationOpen(false); }} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"><span className="flex items-start gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-300" aria-hidden="true" /><span className="min-w-0"><strong className="block text-sm text-[var(--admin-heading)]">{item.title}</strong><span className="mt-1 block text-xs leading-5 text-[var(--admin-muted)]">{item.message}</span><time className="mt-1 block text-[11px] font-bold text-blue-700 dark:text-blue-200" dateTime={item.created_at}>{relativeTime(item.created_at)}</time></span></span></Link></li>)}</ul>}
                   </div>
                 )}
               </div>
 
-              <div className="relative">
+              <div className="relative" ref={profileRef}>
                 <button
                   type="button"
                   className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] px-2 text-left shadow-sm hover:border-blue-300 sm:px-3"

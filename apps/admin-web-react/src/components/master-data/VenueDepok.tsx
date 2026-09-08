@@ -15,6 +15,7 @@ import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimiti
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useAuthorization } from '../../contexts/authorization';
 
 type VenueSortKey = 'name' | 'address' | 'capacity';
 
@@ -43,6 +44,10 @@ export default function VenueDepok() {
   const [formError, setFormError] = useState('');
   const [operationMessage, setOperationMessage] = useState('');
   const auth = useAuth();
+  const authorization = useAuthorization();
+  const canCreate = authorization.hasPermission('venue.create');
+  const canUpdate = authorization.hasPermission('venue.update');
+  const canArchive = authorization.hasPermission('venue.archive');
 
   // Multi-select Dropdown State
   const [isCaborDropdownOpen, setIsCaborDropdownOpen] = useState(false);
@@ -265,7 +270,7 @@ export default function VenueDepok() {
         eyebrow="Lokasi pertandingan"
         title="Lokasi Pertandingan Depok"
         description="Kelola nama, kapasitas, kesiapan, cabang olahraga, dan informasi operasional lokasi pertandingan."
-        actions={<button type="button" onClick={() => { resetForm(); setFormError(''); setIsModalOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah lokasi</button>}
+        actions={canCreate ? <button type="button" onClick={() => { resetForm(); setFormError(''); setIsModalOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah lokasi</button> : undefined}
       />
 
       {operationMessage && <AdminAlert tone="success">{operationMessage}</AdminAlert>}
@@ -280,7 +285,7 @@ export default function VenueDepok() {
           <RowsPerPageSelector rowsPerPage={table.rowsPerPage} onChange={table.handleChangeRowsPerPage} />
         </div>
 
-        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="lokasi" />
+        {canArchive && <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="lokasi" />}
 
         <AdminDataTable<Venue, VenueSortKey>
           caption="Daftar lokasi pertandingan PORPROV Kota Depok"
@@ -292,8 +297,8 @@ export default function VenueDepok() {
           sortKey={table.sortKey}
           sortDirection={table.sortDirection}
           onSort={table.handleSort}
-          selectedIds={selectedIds}
-          onSelectedIdsChange={setSelectedIds}
+          selectedIds={canArchive ? selectedIds : undefined}
+          onSelectedIdsChange={canArchive ? setSelectedIds : undefined}
           loading={loading}
           loadingLabel="Memuat lokasi pertandingan..."
           error={listError}
@@ -301,7 +306,7 @@ export default function VenueDepok() {
           emptyTitle={search ? 'Lokasi tidak ditemukan' : 'Belum ada lokasi pertandingan'}
           emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan lokasi sebelum menyusun Jadwal Pertandingan.'}
           minWidthClassName="min-w-[760px]"
-          rowActions={(item) => <><button type="button" onClick={() => editVenue(item)} aria-label={`Edit ${item.name}`} title="Edit lokasi" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button><button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan lokasi" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button></>}
+          rowActions={(item) => <>{canUpdate && <button type="button" onClick={() => editVenue(item)} aria-label={`Ubah ${item.name}`} title="Ubah lokasi" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>}{canArchive && <button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan lokasi" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>}</>}
         />
 
         {!loading && !listError && totalItems > 0 && (
@@ -370,7 +375,7 @@ export default function VenueDepok() {
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">2. Cabang olahraga</legend>
 
           <div className="relative" ref={dropdownRef}>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pilih Cabor yang Dipertandingkan</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pilih cabang olahraga yang dipertandingkan</label>
 
             {/* Selected Badges */}
             <div
@@ -499,7 +504,7 @@ export default function VenueDepok() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <TextInput
-                label="Contact Person"
+                label="Narahubung"
                 value={formData.contact_person}
                 onChange={(e) => setFormData({...formData, contact_person: e.target.value})}
                 placeholder="Nama / No HP"

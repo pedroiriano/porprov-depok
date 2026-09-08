@@ -23,6 +23,7 @@ import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimiti
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useAuthorization } from '../../contexts/authorization';
 
 interface ParticipantDraft {
   participant_type: ParticipantType;
@@ -96,6 +97,10 @@ export default function JadwalPertandingan() {
   const [archiving, setArchiving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const auth = useAuth();
+  const authorization = useAuthorization();
+  const canCreate = authorization.hasPermission('master_data.create');
+  const canUpdate = authorization.hasPermission('master_data.update');
+  const canArchive = authorization.hasPermission('master_data.archive');
 
   const table = useTableControls<SortKeyType>({ sortKey: 'match_date', sortDirection: 'asc', rowsPerPage: 10 });
 
@@ -339,7 +344,7 @@ export default function JadwalPertandingan() {
         eyebrow="Operasional pertandingan"
         title="Jadwal Pertandingan"
         description="Atur waktu, lokasi, serta Peserta A/B yang menjadi sumber resmi skor langsung."
-        actions={<button type="button" onClick={() => { resetForm(); setFormError(''); setIsModalOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah jadwal</button>}
+        actions={canCreate ? <button type="button" onClick={() => { resetForm(); setFormError(''); setIsModalOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah jadwal</button> : undefined}
       />
 
       {operationMessage && <AdminAlert tone="success">{operationMessage}</AdminAlert>}
@@ -368,7 +373,7 @@ export default function JadwalPertandingan() {
           <RowsPerPageSelector value={table.rowsPerPage} onChange={table.setRowsPerPage} />
         </div>
         
-        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="jadwal" />
+        {canArchive && <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="jadwal" />}
 
         <AdminDataTable<MatchSchedule, SortKeyType>
           caption="Daftar jadwal dan peserta pertandingan PORPROV"
@@ -382,6 +387,7 @@ export default function JadwalPertandingan() {
           onSort={table.handleSort}
           selectedIds={selectedIds}
           onSelectedIdsChange={setSelectedIds}
+          selectionEnabled={canArchive}
           loading={loading}
           loadingLabel="Memuat jadwal pertandingan..."
           error={listError}
@@ -389,7 +395,7 @@ export default function JadwalPertandingan() {
           emptyTitle={search ? 'Jadwal pertandingan tidak ditemukan' : 'Belum ada jadwal dengan susunan peserta'}
           emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan jadwal setelah nomor pertandingan, lokasi, dan kontingen tersedia.'}
           minWidthClassName="min-w-[1180px]"
-          rowActions={(item) => <><button type="button" onClick={() => editMatch(item)} aria-label={`Edit jadwal ${getNomorTandingName(item.nomor_tanding_id)}`} title="Edit jadwal dan peserta" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button><button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan jadwal ${getNomorTandingName(item.nomor_tanding_id)}`} title="Arsipkan jadwal" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button></>}
+          rowActions={(item) => <>{canUpdate && <button type="button" onClick={() => editMatch(item)} aria-label={`Ubah jadwal ${getNomorTandingName(item.nomor_tanding_id)}`} title="Ubah jadwal dan peserta" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>}{canArchive && <button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan jadwal ${getNomorTandingName(item.nomor_tanding_id)}`} title="Arsipkan jadwal" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>}</>}
         />
         
         {!loading && !listError && totalItems > 0 && (

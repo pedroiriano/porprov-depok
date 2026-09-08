@@ -10,9 +10,10 @@ import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../lib
 
 interface AuditEvent {
   id: string; event_id: string; event_version: string; event_type: string; service_name: string; entity_name: string;
-  entity_id: string; action: string; actor_id: string; request_id: string; ip_address: string; payload: unknown; payload_hash: string; created_at: string;
+  entity_id: string; action: string; actor_id: string; actor_username: string; actor_display_name: string; actor_kind: string;
+  request_id: string; ip_address: string; payload: unknown; payload_hash: string; created_at: string;
 }
-interface User { id: string; username: string; full_name: string }
+interface UserDirectoryEntry { keycloak_id: string; username: string; full_name: string }
 type AuditSortKey = 'created_at' | 'actor_id' | 'action' | 'service_name' | 'entity_id';
 
 const emptySelection = new Set<string>();
@@ -88,14 +89,15 @@ export default function AuditLog() {
       if (search.trim()) params.set('search', search.trim());
       if (action) params.set('action', action);
       if (service) params.set('service', service);
-      const [eventsRes, usersRes] = await Promise.all([
-        apiClient.get<AuditEvent[]>(`/audit/logs?${params}`, authConfig(token)),
-        apiClient.get<User[]>('/users', authConfig(token)).catch(() => ({ data: [] })),
-      ]);
+      const eventsRes = await apiClient.get<AuditEvent[]>(`/audit/logs?${params}`, authConfig(token));
       const fetchedEvents = unwrapApiData<AuditEvent[]>(eventsRes.data) || [];
-      const fetchedUsers = unwrapApiData<User[]>(usersRes.data) || [];
+      const legacyActorIDs = [...new Set(fetchedEvents.filter((item) => !item.actor_username && !item.actor_display_name && item.actor_id).map((item) => item.actor_id))].slice(0, 100);
+      const directoryResponse = legacyActorIDs.length > 0
+        ? await apiClient.post<UserDirectoryEntry[]>('/user-directory/lookup', { actor_ids: legacyActorIDs }, authConfig(token)).catch(() => ({ data: [] as UserDirectoryEntry[] }))
+        : { data: [] as UserDirectoryEntry[] };
+      const fetchedUsers = unwrapApiData<UserDirectoryEntry[]>(directoryResponse.data) || directoryResponse.data || [];
       setEvents(fetchedEvents);
-      setUsersMap(Object.fromEntries(fetchedUsers.map((user) => [user.id, user.username])));
+      setUsersMap(Object.fromEntries(fetchedUsers.map((user) => [user.keycloak_id, user.full_name || user.username])));
     } catch (cause) {
       setError(getApiErrorMessage(cause, 'Gagal membaca Log Audit.'));
     } finally { setLoading(false); }
@@ -122,9 +124,15 @@ export default function AuditLog() {
     return table.sortDirection === 'asc' ? comparison : -comparison;
   }), [events, table.sortDirection, table.sortKey]);
   const pagination = usePagination(sortedEvents, table.currentPage, table.rowsPerPage);
+  const actorLabel = useCallback((item: AuditEvent) => {
+    if (item.actor_display_name || item.actor_username) return item.actor_display_name || item.actor_username;
+    if (usersMap[item.actor_id]) return usersMap[item.actor_id];
+    if (item.actor_kind === 'process') return `Proses otomatis ${actionLabels[item.action]?.toLocaleLowerCase('id-ID') || 'pencatatan data'}`;
+    return 'Pelaku tidak tercatat';
+  }, [usersMap]);
 
   const exportCSV = () => {
-    const header = ['created_at','event_id','event_version','event_type','actor_id','action','service_name','entity_name','entity_id','request_id','ip_address','payload_hash'];
+    const header = ['created_at','event_id','event_version','event_type','actor_username','actor_display_name','actor_id','action','service_name','entity_name','entity_id','request_id','ip_address','payload_hash'];
     const rows = events.map((item) => header.map((key) => csvCell(item[key as keyof AuditEvent])).join(','));
     const url = URL.createObjectURL(new Blob([[header.join(','), ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' }));
     const anchor = document.createElement('a');
@@ -136,11 +144,11 @@ export default function AuditLog() {
 
   const columns = useMemo<Array<AdminDataTableColumn<AuditEvent, AuditSortKey>>>(() => [
     { key: 'created_at', label: 'Waktu', sortKey: 'created_at', className: 'min-w-40', headerClassName: 'min-w-40', render: (item) => <div><p className="font-black text-slate-950 dark:text-white">{new Date(item.created_at).toLocaleString('id-ID')}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Catatan {item.event_version}</p></div> },
-    { key: 'actor_id', label: 'Pelaku', sortKey: 'actor_id', className: 'min-w-32', headerClassName: 'min-w-32', render: (item) => <span className="break-words text-xs text-slate-700 dark:text-slate-200">{usersMap[item.actor_id] || item.actor_id || 'Sistem lama'}</span> },
+    { key: 'actor_id', label: 'Pelaku', sortKey: 'actor_id', className: 'min-w-32', headerClassName: 'min-w-32', render: (item) => <span className="break-words text-xs text-slate-700 dark:text-slate-200">{actorLabel(item)}</span> },
     { key: 'action', label: 'Aksi', sortKey: 'action', className: 'min-w-36', headerClassName: 'min-w-36', render: (item) => actionBadge(item.action) },
     { key: 'service_name', label: 'Bagian / Data', sortKey: 'service_name', className: 'min-w-56', headerClassName: 'min-w-56', render: (item) => <div><p className="font-black text-slate-950 dark:text-white">{serviceLabels[item.service_name] || 'Layanan pendukung'} / {entityLabel(item.entity_name)}</p><p className="mt-1 break-all text-xs text-slate-500 dark:text-slate-400">{item.entity_id}</p></div> },
     { key: 'entity_id', label: 'Nomor pelacakan', sortKey: 'entity_id', className: 'min-w-52', headerClassName: 'min-w-52', render: (item) => <div className="max-w-56 text-xs text-slate-700 dark:text-slate-200"><p className="truncate" title={item.event_id}>Catatan {item.event_id}</p><p className="mt-1 truncate text-slate-500 dark:text-slate-400" title={item.request_id}>Permintaan {item.request_id || '—'}</p></div> },
-  ], [usersMap]);
+  ], [actorLabel]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -163,7 +171,7 @@ export default function AuditLog() {
       </section>
 
       <Modal isOpen={Boolean(detailEvent)} onClose={() => setDetailEvent(null)} title="Rincian Catatan Audit" description="Rincian ditampilkan untuk pemeriksaan pengguna berwenang dan tidak dapat diubah." maxWidth="3xl">
-        {detailEvent && <div className="space-y-5 p-4 sm:p-6"><dl className="grid gap-3 sm:grid-cols-2">{[['Nomor catatan', detailEvent.event_id], ['Nomor permintaan', detailEvent.request_id || '—'], ['Pelaku', usersMap[detailEvent.actor_id] || detailEvent.actor_id || 'Sistem lama'], ['Bagian', `${serviceLabels[detailEvent.service_name] || 'Layanan pendukung'} / ${entityLabel(detailEvent.entity_name)}`], ['Nomor data', detailEvent.entity_id], ['Sidik data SHA-256', detailEvent.payload_hash || 'Tidak tersedia']].map(([label, value]) => <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/70"><dt className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">{label}</dt><dd className="mt-1 break-all text-sm text-slate-900 dark:text-white">{value}</dd></div>)}</dl><div><h3 className="font-black text-slate-950 dark:text-white">Rincian perubahan</h3><pre className="mt-2 max-h-80 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-emerald-300">{JSON.stringify(safeAuditPayload(detailEvent.payload), null, 2)}</pre></div><div className="flex justify-end border-t border-slate-200 pt-4 dark:border-slate-700"><button type="button" onClick={() => setDetailEvent(null)} className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">Tutup</button></div></div>}
+        {detailEvent && <div className="space-y-5 p-4 sm:p-6"><dl className="grid gap-3 sm:grid-cols-2">{[['Nomor catatan', detailEvent.event_id], ['Nomor permintaan', detailEvent.request_id || '—'], ['Pelaku', actorLabel(detailEvent)], ['Nomor pelaku teknis', detailEvent.actor_id || 'Tidak tersedia'], ['Bagian', `${serviceLabels[detailEvent.service_name] || 'Layanan pendukung'} / ${entityLabel(detailEvent.entity_name)}`], ['Nomor data', detailEvent.entity_id], ['Sidik data SHA-256', detailEvent.payload_hash || 'Tidak tersedia']].map(([label, value]) => <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/70"><dt className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">{label}</dt><dd className="mt-1 break-all text-sm text-slate-900 dark:text-white">{value}</dd></div>)}</dl><div><h3 className="font-black text-slate-950 dark:text-white">Rincian perubahan</h3><pre className="mt-2 max-h-80 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-emerald-300">{JSON.stringify(safeAuditPayload(detailEvent.payload), null, 2)}</pre></div><div className="flex justify-end border-t border-slate-200 pt-4 dark:border-slate-700"><button type="button" onClick={() => setDetailEvent(null)} className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">Tutup</button></div></div>}
       </Modal>
     </div>
   );

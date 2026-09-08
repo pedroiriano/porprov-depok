@@ -5,15 +5,27 @@
 package db
 
 import (
+	"net/netip"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AuditLog struct {
-	ID          pgtype.UUID        `json:"id"`
-	ServiceName string             `json:"service_name"`
-	EntityName  string             `json:"entity_name"`
-	EntityID    string             `json:"entity_id"`
-	Action      string             `json:"action"`
-	Payload     []byte             `json:"payload"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ID               pgtype.UUID        `json:"id"`
+	ServiceName      string             `json:"service_name"`
+	EntityName       string             `json:"entity_name"`
+	EntityID         string             `json:"entity_id"`
+	Action           string             `json:"action"`
+	Payload          []byte             `json:"payload"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	EventID          pgtype.UUID        `json:"event_id"`
+	EventVersion     string             `json:"event_version"`
+	EventType        pgtype.Text        `json:"event_type"`
+	ActorID          pgtype.Text        `json:"actor_id"`
+	RequestID        pgtype.Text        `json:"request_id"`
+	IpAddress        *netip.Addr        `json:"ip_address"`
+	PayloadHash      pgtype.Text        `json:"payload_hash"`
+	ActorUsername    pgtype.Text        `json:"actor_username"`
+	ActorDisplayName pgtype.Text        `json:"actor_display_name"`
+	ActorKind        string             `json:"actor_kind"`
 }

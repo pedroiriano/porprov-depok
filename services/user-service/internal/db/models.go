@@ -8,16 +8,79 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AccessPermission struct {
+	ID          pgtype.UUID        `json:"id"`
+	Code        string             `json:"code"`
+	Domain      string             `json:"domain"`
+	Action      string             `json:"action"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type AccessRole struct {
+	ID                 pgtype.UUID        `json:"id"`
+	Slug               string             `json:"slug"`
+	Name               string             `json:"name"`
+	Description        pgtype.Text        `json:"description"`
+	IsSystem           bool               `json:"is_system"`
+	IsActive           bool               `json:"is_active"`
+	CreatedBy          pgtype.Text        `json:"created_by"`
+	UpdatedBy          pgtype.Text        `json:"updated_by"`
+	DeactivatedAt      pgtype.Timestamptz `json:"deactivated_at"`
+	DeactivatedBy      pgtype.Text        `json:"deactivated_by"`
+	DeactivationReason pgtype.Text        `json:"deactivation_reason"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy          pgtype.Text        `json:"deleted_by"`
+	DeleteReason       pgtype.Text        `json:"delete_reason"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+}
+
+type AccessRolePermission struct {
+	RoleID       pgtype.UUID `json:"role_id"`
+	PermissionID pgtype.UUID `json:"permission_id"`
+}
+
+type FormDraft struct {
+	ID          pgtype.UUID        `json:"id"`
+	ActorID     string             `json:"actor_id"`
+	RouteKey    string             `json:"route_key"`
+	EntityKey   string             `json:"entity_key"`
+	FormVersion string             `json:"form_version"`
+	Payload     []byte             `json:"payload"`
+	Version     int64              `json:"version"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+}
+
 type User struct {
-	ID           pgtype.UUID        `json:"id"`
-	KeycloakID   string             `json:"keycloak_id"`
-	Username     string             `json:"username"`
-	Email        string             `json:"email"`
-	FullName     pgtype.Text        `json:"full_name"`
-	Role         string             `json:"role"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
-	DeletedBy    pgtype.Text        `json:"deleted_by"`
-	DeleteReason pgtype.Text        `json:"delete_reason"`
+	ID              pgtype.UUID        `json:"id"`
+	KeycloakID      string             `json:"keycloak_id"`
+	Username        string             `json:"username"`
+	Email           string             `json:"email"`
+	FullName        pgtype.Text        `json:"full_name"`
+	Role            string             `json:"role"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy       pgtype.Text        `json:"deleted_by"`
+	DeleteReason    pgtype.Text        `json:"delete_reason"`
+	IsActive        bool               `json:"is_active"`
+	StatusChangedAt pgtype.Timestamptz `json:"status_changed_at"`
+	StatusChangedBy pgtype.Text        `json:"status_changed_by"`
+	StatusReason    pgtype.Text        `json:"status_reason"`
+}
+
+type UserNotification struct {
+	ID                  pgtype.UUID        `json:"id"`
+	RecipientKeycloakID string             `json:"recipient_keycloak_id"`
+	NotificationKey     string             `json:"notification_key"`
+	Title               string             `json:"title"`
+	Message             string             `json:"message"`
+	TargetPath          pgtype.Text        `json:"target_path"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+	ReadAt              pgtype.Timestamptz `json:"read_at"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 }

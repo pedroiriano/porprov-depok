@@ -7,6 +7,7 @@ import '@fontsource-variable/nunito/wght-italic.css'
 import './index.css'
 import App from './App.tsx'
 
+import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { ThemeProvider } from './components/ThemeProvider'
 
 const appOrigin = window.location.origin
@@ -45,12 +46,14 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider defaultTheme="light" storageKey="admin-theme">
-      <AuthProvider {...oidcConfig}>
-        <QueryClientProvider client={queryClient}>
-          <App routerBasePath={routerBasePath} />
-        </QueryClientProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <AppErrorBoundary>
+      <ThemeProvider defaultTheme="light" storageKey="admin-theme">
+        <AuthProvider {...oidcConfig}>
+          <QueryClientProvider client={queryClient}>
+            <App routerBasePath={routerBasePath} />
+          </QueryClientProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </AppErrorBoundary>
   </StrictMode>,
 )

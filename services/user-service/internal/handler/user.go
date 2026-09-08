@@ -35,16 +35,18 @@ type identityProvider interface {
 }
 
 type userAuditEvent struct {
-	EventVersion string      `json:"eventVersion"`
-	EventType    string      `json:"eventType"`
-	ServiceName  string      `json:"service_name"`
-	EntityName   string      `json:"entity_name"`
-	EntityID     string      `json:"entity_id"`
-	Action       string      `json:"action"`
-	Actor        string      `json:"actor"`
-	RequestID    string      `json:"requestId"`
-	IPAddress    string      `json:"ipAddress"`
-	Payload      interface{} `json:"payload"`
+	EventVersion     string      `json:"eventVersion"`
+	EventType        string      `json:"eventType"`
+	ServiceName      string      `json:"service_name"`
+	EntityName       string      `json:"entity_name"`
+	EntityID         string      `json:"entity_id"`
+	Action           string      `json:"action"`
+	Actor            string      `json:"actor"`
+	ActorUsername    string      `json:"actor_username,omitempty"`
+	ActorDisplayName string      `json:"actor_display_name,omitempty"`
+	RequestID        string      `json:"requestId"`
+	IPAddress        string      `json:"ipAddress"`
+	Payload          interface{} `json:"payload"`
 }
 
 type userUpdateMutationState struct {
@@ -71,16 +73,18 @@ func buildUserAuditEvent(r *http.Request, action, entityID string, payload inter
 		actor = "system"
 	}
 	return userAuditEvent{
-		EventVersion: "1.0",
-		EventType:    "audit.user." + action,
-		ServiceName:  "user-service",
-		EntityName:   "User",
-		EntityID:     entityID,
-		Action:       action,
-		Actor:        actor,
-		RequestID:    strings.TrimSpace(r.Header.Get("X-Request-ID")),
-		IPAddress:    strings.TrimSpace(r.Header.Get("X-Actor-IP")),
-		Payload:      payload,
+		EventVersion:     "1.0",
+		EventType:        "audit.user." + action,
+		ServiceName:      "user-service",
+		EntityName:       "User",
+		EntityID:         entityID,
+		Action:           action,
+		Actor:            actor,
+		ActorUsername:    strings.TrimSpace(r.Header.Get("X-Actor-Username")),
+		ActorDisplayName: strings.TrimSpace(r.Header.Get("X-Actor-Display-Name")),
+		RequestID:        strings.TrimSpace(r.Header.Get("X-Request-ID")),
+		IPAddress:        strings.TrimSpace(r.Header.Get("X-Actor-IP")),
+		Payload:          payload,
 	}
 }
 
@@ -285,7 +289,7 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	total, err := h.queries.CountUsersPage(r.Context(), params.Search)
+	total, err := h.queries.CountUsersPage(r.Context(), db.CountUsersPageParams{Status: params.Status, Search: params.Search})
 	if err != nil {
 		log.Printf("Failed to count users: %v", err)
 		http.Error(w, "Failed to fetch users", http.StatusInternalServerError)
@@ -297,6 +301,7 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	users, err := h.queries.ListUsersPage(r.Context(), db.ListUsersPageParams{
+		Status:     params.Status,
 		Search:     params.Search,
 		SortBy:     params.SortBy,
 		SortOrder:  params.SortOrder,
@@ -482,6 +487,26 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
+	if existingUser.KeycloakID == actorIDFromRequest(r) {
+		http.Error(w, "Akun yang sedang digunakan tidak dapat diarsipkan", http.StatusConflict)
+		return
+	}
+	if existingUser.Role == "super_admin" {
+		count, countErr := h.queries.CountOtherActiveSuperAdmins(r.Context(), uuid)
+		if countErr != nil || count == 0 {
+			http.Error(w, "Pengelola Utama terakhir tidak dapat diarsipkan", http.StatusConflict)
+			return
+		}
+	}
+	var archiveRequest struct {
+		Reason string `json:"reason"`
+	}
+	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&archiveRequest)
+	archiveRequest.Reason = strings.TrimSpace(archiveRequest.Reason)
+	if len([]rune(archiveRequest.Reason)) < 3 {
+		http.Error(w, "Alasan pengarsipan wajib diisi", http.StatusUnprocessableEntity)
+		return
+	}
 
 	// 1. Soft Delete (Disable) in Keycloak
 	token, err := h.getAdminToken(r.Context())
@@ -518,7 +543,7 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	arg := db.DeleteUserParams{
 		ID:           uuid,
 		DeletedBy:    actor,
-		DeleteReason: "Deleted by Super Admin via Admin Web",
+		DeleteReason: archiveRequest.Reason,
 	}
 
 	if err := h.queries.DeleteUser(r.Context(), arg); err != nil {

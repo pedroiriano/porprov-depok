@@ -161,6 +161,23 @@ job canonical Compose, lalu pastikan tabel `form_drafts` dan
 September 2026 dan prosedur rollback berada di
 `docs/uiux/ADMIN_ENTERPRISE_COMPLETION_V11.md`.
 
+### Migrasi lokal Tahap 12
+
+Target versi adalah Master Data v15, User v5, dan Audit v3. Sebelum migrasi,
+buat dump custom ketiga database, hitung SHA-256, dan validasi melalui
+`pg_restore --list`. Uji rangkaian naik/turun/naik pada database sementara,
+kemudian jalankan job migrasi Compose canonical. Pastikan tabel kategori,
+peran/permission, notifikasi, dan kolom snapshot audit tersedia serta semua
+versi `dirty=false`.
+
+Bukti backup awal lokal berada di `.tmp/tahap12-runtime-backup-20260908T152404`;
+path ini tidak boleh dimasukkan Git atau dihapus sebagai bagian cleanup build.
+Kontrak dan rollback lengkap berada di
+`docs/uiux/ADMIN_ENTERPRISE_FEATURES_V12.md`. Jika Admin gagal merender setelah
+rebuild, periksa console/network, pastikan asset bundle baru dilayani Nginx,
+dan gunakan panel pemulihan layar untuk memuat ulang; jangan menyembunyikan
+exception dengan fallback kosong.
+
 Dockerfile service Go memakai `Dockerfile.dockerignore` per service agar cache,
 binary lokal, dan artefak sementara tidak masuk build context. Jangan menghapus
 file tersebut ketika menambah service baru.

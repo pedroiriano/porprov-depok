@@ -2,6 +2,8 @@
 
 > **Baseline Tahap 11:** source Admin menyediakan draf formulir server dengan fallback IndexedDB, konflik `409`, riwayat yang dapat membandingkan dua catatan, Kesehatan Integrasi read-only, dan turunan media thumbnail/list/detail. Antarmuka manusia mengikuti `docs/uiux/ADMIN_LANGUAGE_STYLE_GUIDE.md`; istilah internal tidak boleh menjadi copy UI. Migrasi lokal v3 User dan v14 Master Data belum boleh disebut aktif sebelum backup/checksum dan runtime gate lulus.
 
+> **Kontrak Tahap 12:** kategori Panduan Kota dinamis; status akun tidak sama dengan arsip; peran dan hak akses bersifat granular serta ditegakkan ulang oleh API; aktor audit mengutamakan username; notifikasi selalu berscope penerima; grafik memakai pembungkus ApexCharts; unggah seret-dan-lepas tidak menggantikan validasi server; render failure wajib menampilkan pemulihan, bukan layar putih. Ikuti ADR-0019 dan `docs/uiux/ADMIN_ENTERPRISE_FEATURES_V12.md`.
+
 > **WAJIB DIBACA PERTAMA.** Agent AI/Codex wajib membaca keenam dokumen tata kelola root—`README.md`, `AI.md`, `AGENTS.md`, `RULES.md`, `FEATURES.md`, dan `DOCUMENTATION.md`—sebelum menganalisis, menulis, atau mengubah kode. Untuk seluruh pekerjaan VPS, `DEPLOYMENT_VPS.md` juga wajib dibaca lengkap.
 
 ## Konteks Aplikasi Aktif

@@ -10,7 +10,7 @@ import (
 	"github.com/porprov-xv/porprov-depok/services/user-service/internal/handler"
 )
 
-func SetupRouter(userHandler *handler.UserHandler, draftHandler *handler.DraftHandler) *chi.Mux {
+func SetupRouter(userHandler *handler.UserHandler, draftHandler *handler.DraftHandler, enterpriseHandler *handler.EnterpriseHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
@@ -37,9 +37,28 @@ func SetupRouter(userHandler *handler.UserHandler, draftHandler *handler.DraftHa
 		r.Get("/{id}", userHandler.GetUser)
 		r.Put("/{id}", userHandler.UpdateUser)
 		r.Delete("/{id}", userHandler.DeleteUser)
+		r.Put("/{id}/status", enterpriseHandler.SetUserStatus)
+		r.Post("/{id}/restore", enterpriseHandler.RestoreUser)
 	})
 
 	r.Get("/api/v1/roles", userHandler.GetRoles)
+	r.Route("/api/v1/access-roles", func(r chi.Router) {
+		r.Get("/", enterpriseHandler.ListRoles)
+		r.Get("/permissions", enterpriseHandler.ListPermissions)
+		r.Post("/", enterpriseHandler.CreateRole)
+		r.Put("/{id}", enterpriseHandler.UpdateRole)
+		r.Put("/{id}/status", enterpriseHandler.SetRoleStatus)
+		r.Post("/{id}/restore", enterpriseHandler.RestoreRole)
+		r.Delete("/{id}", enterpriseHandler.ArchiveRole)
+	})
+	r.Get("/api/v1/authorization/session", enterpriseHandler.Session)
+	r.Get("/api/v1/authorization/check", enterpriseHandler.CheckPermission)
+	r.Post("/api/v1/user-directory/lookup", enterpriseHandler.LookupUserDirectory)
+	r.Route("/api/v1/notifications", func(r chi.Router) {
+		r.Get("/", enterpriseHandler.ListNotifications)
+		r.Put("/read-all", enterpriseHandler.MarkAllNotificationsRead)
+		r.Put("/{id}/read", enterpriseHandler.MarkNotificationRead)
+	})
 
 	r.Route("/api/v1/drafts", func(r chi.Router) {
 		r.Get("/", draftHandler.Get)

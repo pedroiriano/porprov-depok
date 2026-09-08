@@ -21,7 +21,7 @@ func TestParseUserListParams(t *testing.T) {
 		{
 			name:  "accepts canonical paging search and sort",
 			query: url.Values{"page": {"2"}, "limit": {"25"}, "q": {" Depok "}, "sort": {"username"}, "order": {"ASC"}},
-			want:  userListParams{Page: 2, Limit: 25, Search: "Depok", SortBy: "username", SortOrder: "asc"},
+			want:  userListParams{Page: 2, Limit: 25, Search: "Depok", SortBy: "username", SortOrder: "asc", Status: "all"},
 		},
 		{
 			name:      "rejects unsupported limit",

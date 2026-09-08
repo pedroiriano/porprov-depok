@@ -19,17 +19,19 @@ import (
 )
 
 type AuditEvent struct {
-	EventID      string          `json:"eventId"`
-	EventVersion string          `json:"eventVersion"`
-	EventType    string          `json:"eventType"`
-	ServiceName  string          `json:"service_name"`
-	EntityName   string          `json:"entity_name"`
-	EntityID     string          `json:"entity_id"`
-	Action       string          `json:"action"`
-	Actor        string          `json:"actor"`
-	RequestID    string          `json:"requestId"`
-	IPAddress    string          `json:"ipAddress"`
-	Payload      json.RawMessage `json:"payload"`
+	EventID          string          `json:"eventId"`
+	EventVersion     string          `json:"eventVersion"`
+	EventType        string          `json:"eventType"`
+	ServiceName      string          `json:"service_name"`
+	EntityName       string          `json:"entity_name"`
+	EntityID         string          `json:"entity_id"`
+	Action           string          `json:"action"`
+	Actor            string          `json:"actor"`
+	ActorUsername    string          `json:"actor_username"`
+	ActorDisplayName string          `json:"actor_display_name"`
+	RequestID        string          `json:"requestId"`
+	IPAddress        string          `json:"ipAddress"`
+	Payload          json.RawMessage `json:"payload"`
 }
 
 type Subscriber struct {
@@ -55,6 +57,8 @@ func normalizeAuditEvent(data []byte) (AuditEvent, error) {
 	event.EntityID = strings.TrimSpace(event.EntityID)
 	event.Action = strings.ToUpper(strings.TrimSpace(event.Action))
 	event.Actor = strings.TrimSpace(event.Actor)
+	event.ActorUsername = strings.TrimSpace(event.ActorUsername)
+	event.ActorDisplayName = strings.TrimSpace(event.ActorDisplayName)
 	event.RequestID = strings.TrimSpace(event.RequestID)
 	if event.ServiceName == "" || event.EntityName == "" || event.Action == "" {
 		return event, errors.New("service_name, entity_name, and action are required")
@@ -95,6 +99,7 @@ func (s *Subscriber) Start() error {
 			EventID: event.EventID, EventVersion: event.EventVersion, EventType: event.EventType,
 			ServiceName: event.ServiceName, EntityName: event.EntityName, EntityID: event.EntityID,
 			Action: event.Action, ActorID: event.Actor, RequestID: event.RequestID, IPAddress: event.IPAddress,
+			ActorUsername: event.ActorUsername, ActorDisplayName: event.ActorDisplayName,
 			Payload: event.Payload, PayloadHash: hex.EncodeToString(hash[:]),
 		})
 		if err != nil {

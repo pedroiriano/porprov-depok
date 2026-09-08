@@ -11,13 +11,16 @@ import (
 )
 
 type Querier interface {
-	CountUsersPage(ctx context.Context, search string) (int64, error)
+	CountOtherActiveSuperAdmins(ctx context.Context, id pgtype.UUID) (int64, error)
+	CountUsersPage(ctx context.Context, arg CountUsersPageParams) (int64, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteUser(ctx context.Context, arg DeleteUserParams) error
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByKeycloakID(ctx context.Context, keycloakID string) (User, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([]User, error)
+	RestoreUser(ctx context.Context, arg RestoreUserParams) (User, error)
+	SetUserStatus(ctx context.Context, arg SetUserStatusParams) (User, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }
 

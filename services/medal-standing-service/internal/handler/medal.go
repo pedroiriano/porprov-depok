@@ -179,7 +179,7 @@ func (h *MedalHandler) CreateSubmission(w http.ResponseWriter, r *http.Request) 
 	}
 	_, err = tx.Exec(r.Context(), `INSERT INTO medal_submission_history(submission_id,from_status,to_status,actor_id,reason,request_id) VALUES($1::uuid,NULL,'PENDING',$2,'Submission created',$3)`, item.ID, actor, r.Header.Get("X-Request-ID"))
 	if err == nil {
-		err = insertAuditOutbox(r.Context(), tx, "MEDAL_SUBMISSION_CREATED", item.ID, actor, r.Header.Get("X-Request-ID"), r.Header.Get("X-Actor-IP"), item)
+		err = insertAuditOutbox(r.Context(), tx, "MEDAL_SUBMISSION_CREATED", item.ID, actor, r.Header.Get("X-Actor-Username"), r.Header.Get("X-Actor-Display-Name"), r.Header.Get("X-Request-ID"), r.Header.Get("X-Actor-IP"), item)
 	}
 	if err != nil || tx.Commit(r.Context()) != nil {
 		http.Error(w, "failed to commit medal submission", http.StatusInternalServerError)
@@ -283,7 +283,7 @@ func (h *MedalHandler) transition(w http.ResponseWriter, r *http.Request, target
 	}
 	payload := map[string]any{"submissionId": chi.URLParam(r, "submissionID"), "kontingen_id": kontingenID, "gold": gold, "silver": silver, "bronze": bronze, "fromStatus": fromStatus, "status": target, "reason": request.Reason}
 	if err == nil {
-		err = insertAuditOutbox(r.Context(), tx, "MEDAL_SUBMISSION_"+target, chi.URLParam(r, "submissionID"), actor, r.Header.Get("X-Request-ID"), r.Header.Get("X-Actor-IP"), payload)
+		err = insertAuditOutbox(r.Context(), tx, "MEDAL_SUBMISSION_"+target, chi.URLParam(r, "submissionID"), actor, r.Header.Get("X-Actor-Username"), r.Header.Get("X-Actor-Display-Name"), r.Header.Get("X-Request-ID"), r.Header.Get("X-Actor-IP"), payload)
 	}
 	if err == nil && target == "OFFICIAL" {
 		err = insertRealtimeOutbox(r.Context(), tx, actor, r.Header.Get("X-Request-ID"), payload)
@@ -305,8 +305,8 @@ func (h *MedalHandler) PublishSubmission(w http.ResponseWriter, r *http.Request)
 	h.transition(w, r, "OFFICIAL")
 }
 
-func insertAuditOutbox(ctx context.Context, tx pgx.Tx, action, entityID, actor, requestID, actorIP string, payload any) error {
-	event := map[string]any{"eventVersion": "1.0", "eventId": "", "eventType": action, "service_name": "medal-standing-service", "entity_name": "MedalSubmission", "entity_id": entityID, "action": action, "actor": actor, "requestId": requestID, "ipAddress": actorIP, "payload": payload, "timestamp": time.Now().UTC().Format(time.RFC3339Nano)}
+func insertAuditOutbox(ctx context.Context, tx pgx.Tx, action, entityID, actor, actorUsername, actorDisplayName, requestID, actorIP string, payload any) error {
+	event := map[string]any{"eventVersion": "1.0", "eventId": "", "eventType": action, "service_name": "medal-standing-service", "entity_name": "MedalSubmission", "entity_id": entityID, "action": action, "actor": actor, "actor_username": actorUsername, "actor_display_name": actorDisplayName, "requestId": requestID, "ipAddress": actorIP, "payload": payload, "timestamp": time.Now().UTC().Format(time.RFC3339Nano)}
 	eventID := ""
 	if err := tx.QueryRow(ctx, `SELECT gen_random_uuid()::text`).Scan(&eventID); err != nil {
 		return err

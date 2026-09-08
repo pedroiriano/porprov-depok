@@ -10,6 +10,16 @@ Dokumen ini mengikat semua agent AI/Codex saat membuat, mengubah, menguji, atau 
 - Pustaka Media mempertahankan berkas asli dan menghasilkan relasi turunan thumbnail/list/detail ber-checksum. Deduplicasi berdasarkan checksum hanya boleh memakai media aktif.
 - Kesehatan Integrasi bersifat read-only, terbatas untuk `super_admin`/`auditor`, dan dilarang menampilkan alamat internal atau kredensial.
 
+## Kontrak Web Admin Enterprise Tahap 12
+
+- Status akun `aktif/tidak aktif` wajib terpisah dari soft delete; akun tidak aktif tetap tersedia pada Manajemen Akun dan dapat diaktifkan kembali tanpa restore.
+- Permission harus granular, default-deny, dan diperiksa kembali di API. Menyembunyikan tombol bukan kontrol keamanan. Peran sistem, akun sendiri, serta Pengelola Utama aktif terakhir wajib dilindungi.
+- Kategori Panduan Kota adalah entitas dinamis dengan nama unik tanpa membedakan kapital, slug stabil, urutan, status, soft delete, restore, dan audit. Publik hanya boleh membaca kategori aktif.
+- Aktor Log Audit mengutamakan username/nama tampilan dari snapshot immutable. Nilai `system` hanya sah untuk proses sistem yang dapat dijelaskan; ID teknis bukan label utama.
+- Notifikasi wajib berscope penerima dari token, idempoten, dapat dibaca satu/semua, dan tidak boleh bocor lintas akun.
+- Grafik Admin memakai wrapper ApexCharts canonical secara lazy; unggah gambar menyediakan zona jatuhkan aksesibel tanpa mengurangi validasi server maksimal 3 MiB.
+- Sidebar dan popover wajib mendukung klik luar, Escape, keyboard, fokus, overlay mobile, serta reduced motion. Kegagalan render harus menampilkan recovery UI Bahasa Indonesia, bukan layar putih.
+
 ## 0. Konteks Produk dan Sumber Kebenaran
 
 - Produk aktif adalah repository `porprov-depok` untuk Portal PORPROV XV Jawa Barat 2026 Kota Depok.

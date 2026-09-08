@@ -14,6 +14,7 @@ import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimiti
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useAuthorization } from '../../contexts/authorization';
 
 type SortKeyType = 'name' | 'region_type';
 
@@ -21,6 +22,10 @@ export default function Kontingen() {
   const [kontingens, setKontingens] = useState<KontingenRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const auth = useAuth();
+  const authorization = useAuthorization();
+  const canCreate = authorization.hasPermission('master_data.create');
+  const canUpdate = authorization.hasPermission('master_data.update');
+  const canArchive = authorization.hasPermission('master_data.archive');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMediaSelectorOpen, setIsMediaSelectorOpen] = useState(false);
@@ -196,7 +201,7 @@ export default function Kontingen() {
         eyebrow="Peserta PORPROV"
         title="Data Kontingen"
         description="Kelola referensi kota dan kabupaten yang menjadi afiliasi peserta pertandingan."
-        actions={<button type="button" onClick={openNewForm} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah kontingen</button>}
+        actions={canCreate ? <button type="button" onClick={openNewForm} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah kontingen</button> : undefined}
       />
 
       {operationMessage && <AdminAlert tone="success">{operationMessage}</AdminAlert>}
@@ -222,7 +227,7 @@ export default function Kontingen() {
           />
         </div>
 
-        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="kontingen" />
+        {canArchive && <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="kontingen" />}
 
         <AdminDataTable<KontingenRecord, SortKeyType>
           caption="Daftar kontingen PORPROV"
@@ -236,13 +241,14 @@ export default function Kontingen() {
           onSort={table.handleSort}
           selectedIds={selectedIds}
           onSelectedIdsChange={setSelectedIds}
+          selectionEnabled={canArchive}
           loading={loading}
           loadingLabel="Memuat kontingen..."
           error={listError}
           onRetry={fetchKontingens}
           emptyTitle={search ? 'Kontingen tidak ditemukan' : 'Belum ada kontingen'}
           emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan kontingen sebelum menyusun peserta pertandingan.'}
-          rowActions={(item) => <><button type="button" onClick={() => editKontingen(item)} aria-label={`Edit ${item.name}`} title="Edit kontingen" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button><button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan kontingen" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button></>}
+          rowActions={(item) => <>{canUpdate && <button type="button" onClick={() => editKontingen(item)} aria-label={`Ubah ${item.name}`} title="Ubah kontingen" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>}{canArchive && <button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan kontingen" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>}</>}
         />
         
         {/* Footer Pagination */}

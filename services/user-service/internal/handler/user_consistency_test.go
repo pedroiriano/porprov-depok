@@ -17,16 +17,29 @@ import (
 )
 
 type userStoreStub struct {
-	user          db.User
-	deleteErr     error
-	updateErr     error
-	deleteArg     db.DeleteUserParams
-	updateCalls   []db.UpdateUserParams
-	updateErrors  []error
-	updatedResult db.User
+	user                   db.User
+	deleteErr              error
+	updateErr              error
+	deleteArg              db.DeleteUserParams
+	updateCalls            []db.UpdateUserParams
+	updateErrors           []error
+	updatedResult          db.User
+	otherActiveSuperAdmins *int64
+	countSuperAdminErr     error
 }
 
-func (s *userStoreStub) CountUsersPage(context.Context, string) (int64, error) { return 0, nil }
+func (s *userStoreStub) CountUsersPage(context.Context, db.CountUsersPageParams) (int64, error) {
+	return 0, nil
+}
+func (s *userStoreStub) CountOtherActiveSuperAdmins(context.Context, pgtype.UUID) (int64, error) {
+	if s.countSuperAdminErr != nil {
+		return 0, s.countSuperAdminErr
+	}
+	if s.otherActiveSuperAdmins != nil {
+		return *s.otherActiveSuperAdmins, nil
+	}
+	return 1, nil
+}
 func (s *userStoreStub) CreateUser(context.Context, db.CreateUserParams) (db.User, error) {
 	return db.User{}, nil
 }
@@ -43,6 +56,12 @@ func (s *userStoreStub) GetUserByKeycloakID(context.Context, string) (db.User, e
 func (s *userStoreStub) ListUsers(context.Context) ([]db.User, error) { return nil, nil }
 func (s *userStoreStub) ListUsersPage(context.Context, db.ListUsersPageParams) ([]db.User, error) {
 	return nil, nil
+}
+func (s *userStoreStub) RestoreUser(context.Context, db.RestoreUserParams) (db.User, error) {
+	return s.user, nil
+}
+func (s *userStoreStub) SetUserStatus(context.Context, db.SetUserStatusParams) (db.User, error) {
+	return s.user, nil
 }
 func (s *userStoreStub) UpdateUser(_ context.Context, arg db.UpdateUserParams) (db.User, error) {
 	s.updateCalls = append(s.updateCalls, arg)
@@ -150,7 +169,7 @@ func TestDeleteUserReEnablesKeycloakWhenDatabaseSoftDeleteFails(t *testing.T) {
 	}
 	identity := &identityProviderStub{}
 	handler := &UserHandler{queries: store, cfg: &config.AppConfig{KeycloakRealm: "porprov"}, kc: identity}
-	request := requestWithUserID(http.MethodDelete, "", id)
+	request := requestWithUserID(http.MethodDelete, `{"reason":"Pengujian arsip"}`, id)
 	request.Header.Set("X-Actor-ID", "super-admin-id")
 	response := httptest.NewRecorder()
 
@@ -178,10 +197,56 @@ func TestDeleteUserPreservesPreviouslyDisabledKeycloakStateOnDatabaseFailure(t *
 	handler := &UserHandler{queries: store, cfg: &config.AppConfig{KeycloakRealm: "porprov"}, kc: identity}
 	response := httptest.NewRecorder()
 
-	handler.DeleteUser(response, requestWithUserID(http.MethodDelete, "", id))
+	handler.DeleteUser(response, requestWithUserID(http.MethodDelete, `{"reason":"Pengujian arsip"}`, id))
 
 	if len(identity.updatedUsers) != 2 || identity.updatedUsers[1].Enabled == nil || *identity.updatedUsers[1].Enabled {
 		t.Fatalf("previous disabled state was not restored: %#v", identity.updatedUsers)
+	}
+}
+
+func TestDeleteUserRejectsCurrentAccount(t *testing.T) {
+	const id = "c9ba7575-956d-47c7-a502-78e55507ce97"
+	store := &userStoreStub{user: db.User{KeycloakID: "current-actor", Username: "operator"}}
+	identity := &identityProviderStub{}
+	handler := &UserHandler{queries: store, cfg: &config.AppConfig{KeycloakRealm: "porprov"}, kc: identity}
+	request := requestWithUserID(http.MethodDelete, `{"reason":"Pengujian arsip"}`, id)
+	request.Header.Set("X-Actor-ID", "current-actor")
+	response := httptest.NewRecorder()
+
+	handler.DeleteUser(response, request)
+
+	if response.Code != http.StatusConflict || len(identity.updatedUsers) != 0 {
+		t.Fatalf("status/identity updates = %d/%d, want 409/0", response.Code, len(identity.updatedUsers))
+	}
+}
+
+func TestDeleteAndDeactivateRejectLastActiveSuperAdmin(t *testing.T) {
+	const id = "c9ba7575-956d-47c7-a502-78e55507ce97"
+	zero := int64(0)
+	store := &userStoreStub{
+		user:                   db.User{KeycloakID: "last-admin", Username: "admin", Role: "super_admin", IsActive: true},
+		otherActiveSuperAdmins: &zero,
+	}
+	identity := &identityProviderStub{}
+	userHandler := &UserHandler{queries: store, cfg: &config.AppConfig{KeycloakRealm: "porprov"}, kc: identity}
+
+	archiveResponse := httptest.NewRecorder()
+	archiveRequest := requestWithUserID(http.MethodDelete, `{"reason":"Pengujian arsip"}`, id)
+	archiveRequest.Header.Set("X-Actor-ID", "different-admin")
+	userHandler.DeleteUser(archiveResponse, archiveRequest)
+	if archiveResponse.Code != http.StatusConflict {
+		t.Fatalf("DeleteUser() status = %d, want 409", archiveResponse.Code)
+	}
+
+	statusResponse := httptest.NewRecorder()
+	statusRequest := requestWithUserID(http.MethodPut, `{"is_active":false,"reason":"Pengujian status"}`, id)
+	statusRequest.Header.Set("X-Actor-ID", "different-admin")
+	(&EnterpriseHandler{users: userHandler}).SetUserStatus(statusResponse, statusRequest)
+	if statusResponse.Code != http.StatusConflict {
+		t.Fatalf("SetUserStatus() status = %d, want 409", statusResponse.Code)
+	}
+	if len(identity.updatedUsers) != 0 {
+		t.Fatalf("identity provider was mutated %d times", len(identity.updatedUsers))
 	}
 }
 

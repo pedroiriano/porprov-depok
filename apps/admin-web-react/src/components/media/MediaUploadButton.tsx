@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Loader2, RotateCcw, Upload, X } from 'lucide-react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { Image, Loader2, RotateCcw, Upload, X } from 'lucide-react';
 import Modal from '../Modal';
 import {
   compressMediaWithConsent,
@@ -23,6 +23,8 @@ export default function MediaUploadButton({ busy, compact = false, onUpload, onE
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadController, setUploadController] = useState<AbortController | null>(null);
   const [retryFile, setRetryFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [preview, setPreview] = useState<{ name: string; size: number; url: string } | null>(null);
   const isBusy = busy || preparing;
 
   const uploadPrepared = async (file: File, message?: string) => {
@@ -50,6 +52,10 @@ export default function MediaUploadButton({ busy, compact = false, onUpload, onE
 
   const handleFile = async (file?: File) => {
     if (!file) return;
+    setPreview((current) => {
+      if (current) URL.revokeObjectURL(current.url);
+      return { name: file.name, size: file.size, url: URL.createObjectURL(file) };
+    });
     setPreparing(true);
     try {
       const prepared = await prepareMediaUpload(file);
@@ -66,6 +72,19 @@ export default function MediaUploadButton({ busy, compact = false, onUpload, onE
     } finally {
       setPreparing(false);
     }
+  };
+
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview.url); }, [preview]);
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragActive(false);
+    if (isBusy) return;
+    if (event.dataTransfer.files.length !== 1) {
+      onError('Pilih tepat satu gambar untuk setiap proses unggah.');
+      return;
+    }
+    void handleFile(event.dataTransfer.files[0]);
   };
 
   const confirmLossy = async () => {
@@ -95,15 +114,34 @@ export default function MediaUploadButton({ busy, compact = false, onUpload, onE
           void handleFile(file);
         }}
       />
-      <button
-        type="button"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={isBusy}
-        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 ${compact ? 'px-4' : 'px-5'}`}
+      <div
+        className={`flex min-w-56 flex-col gap-3 rounded-2xl border-2 border-dashed p-3 transition-colors motion-reduce:transition-none ${dragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40' : 'border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`}
+        onDragEnter={(event) => { event.preventDefault(); if (!isBusy) setDragActive(true); }}
+        onDragOver={(event) => { event.preventDefault(); if (!isBusy) event.dataTransfer.dropEffect = 'copy'; }}
+        onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragActive(false); }}
+        onDrop={handleDrop}
+        aria-label="Area seret dan lepas satu gambar"
       >
-        {isBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
-        {isBusy ? 'Memproses...' : compact ? 'Unggah Baru' : 'Unggah Gambar'}
-      </button>
+        {preview && (
+          <div className="flex items-center gap-3 rounded-xl bg-white p-2 shadow-sm dark:bg-slate-800">
+            <img src={preview.url} alt="Pratinjau gambar yang dipilih" className="size-12 rounded-lg object-cover" />
+            <div className="min-w-0"><p className="truncate text-xs font-black text-slate-900 dark:text-white">{preview.name}</p><p className="text-xs text-slate-500 dark:text-slate-300">{(preview.size / 1024 / 1024).toLocaleString('id-ID', { maximumFractionDigits: 2 })} MiB</p></div>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="grid size-10 place-items-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-200"><Image className="size-5" aria-hidden="true" /></span>
+          <span className="min-w-28 flex-1 text-xs font-bold text-slate-600 dark:text-slate-300">Seret satu gambar ke sini atau pilih dari perangkat.</span>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isBusy}
+            className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 ${compact ? 'px-4' : 'px-5'}`}
+          >
+            {isBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
+            {isBusy ? 'Memproses...' : compact ? 'Pilih gambar' : 'Pilih Gambar'}
+          </button>
+        </div>
+      </div>
 
       {uploadProgress !== null && (
         <div className="min-w-48" role="status" aria-live="polite">

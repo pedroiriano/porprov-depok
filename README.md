@@ -2,6 +2,8 @@
 
 > Tahap 11 aktif pada runtime lokal sejak 8 September 2026 setelah backup ber-checksum: draf formulir lintas perangkat, perbandingan riwayat perubahan, turunan gambar Pustaka Media, Kesehatan Integrasi ber-RBAC, pagination Admin, dan penegakan bahasa antarmuka. Migrasi lokal `user_service_db` v3 dan `master_data_db` v14 telah lulus; production belum diubah.
 
+> Tahap 12 menambahkan kategori Panduan Kota dinamis, status akun terpisah dari arsip, Peran dan Hak Akses granular, identitas aktor audit yang ramah pengguna, notifikasi per penerima, ApexCharts, unggah seret-dan-lepas, sidebar responsif, dan pelindung kegagalan render. Migrasi target lokal adalah Master Data v15, User v5, serta Audit v3; production tetap tidak berubah.
+
 Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker untuk penyelenggaraan PORPROV XV Jawa Barat 2026 di Kota Depok. Repository ini juga memuat enam dokumen tata kelola root dan `DEPLOYMENT_VPS.md` sebagai pedoman operasional aman bagi pengembang dan Agent AI.
 
 ## Kondisi Aplikasi Saat Ini
@@ -31,6 +33,8 @@ Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker un
 | `docs/adr/ADR-0015-split-ui-authority-techwind-public-cuba-admin.md` | Keputusan Techwind Public, Cuba Admin, gate lisensi, migrasi bertahap, dan rollback |
 | `docs/uiux/ADMIN_CUBA_VISUAL_CONTRACT.md` | Mapping dan acceptance criteria implementasi Admin Cuba |
 | `docs/uiux/ADMIN_ENTERPRISE_COMPLETION_V11.md` | Matriks penerimaan, backup, checksum, runtime, rollback, dan gate Tahap 11 |
+| `docs/uiux/ADMIN_ENTERPRISE_FEATURES_V12.md` | Kontrak penerimaan, ancaman, backup, migrasi, dan rollback fitur Admin Tahap 12 |
+| `docs/adr/ADR-0019-admin-dynamic-taxonomy-rbac-notifications.md` | Keputusan kategori dinamis, status akun, permission granular, audit, dan notifikasi |
 | `docs/uiux/ADMIN_LANGUAGE_STYLE_GUIDE.md` | Kamus istilah, pola mikrocopy, whitelist, dan penjaga bahasa Admin |
 | `docs/licenses/CUBA_ADMIN_TEMPLATE_PROVENANCE.md` | Hash artefak provenance Cuba, batas clean-room, dan prosedur bukti lisensi privat |
 | `docs/runbook/LOCAL_DEVELOPMENT.md` | Runbook menjalankan Docker, seluruh service Go yang tersedia, Public Web, dan Admin Web |
