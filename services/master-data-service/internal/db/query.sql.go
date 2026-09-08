@@ -11,6 +11,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const archiveCityGuideCategory = `-- name: ArchiveCityGuideCategory :one
+UPDATE city_guide_categories AS category
+SET deleted_at = NOW(), deleted_by = NULLIF($2::text, ''), delete_reason = NULLIF($3::text, ''), updated_by = NULLIF($2::text, ''), updated_at = NOW()
+WHERE category.id = $1 AND category.deleted_at IS NULL
+  AND NOT EXISTS (SELECT 1 FROM city_guides guide WHERE guide.category_id = category.id AND guide.deleted_at IS NULL)
+RETURNING category.id, category.name, category.slug, category.description, category.is_active, category.created_by, category.updated_by, category.deactivated_at, category.deactivated_by, category.deactivation_reason, category.deleted_at, category.deleted_by, category.delete_reason, category.created_at, category.updated_at
+`
+
+type ArchiveCityGuideCategoryParams struct {
+	ID      pgtype.UUID `json:"id"`
+	Column2 string      `json:"column_2"`
+	Column3 string      `json:"column_3"`
+}
+
+func (q *Queries) ArchiveCityGuideCategory(ctx context.Context, arg ArchiveCityGuideCategoryParams) (CityGuideCategory, error) {
+	row := q.db.QueryRow(ctx, archiveCityGuideCategory, arg.ID, arg.Column2, arg.Column3)
+	var i CityGuideCategory
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.DeactivatedAt,
+		&i.DeactivatedBy,
+		&i.DeactivationReason,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const clearPinnedCityGuideForVenues = `-- name: ClearPinnedCityGuideForVenues :exec
 UPDATE city_guides
 SET is_pinned_venue_recommendation = FALSE,
@@ -22,6 +59,25 @@ WHERE is_pinned_venue_recommendation = TRUE
 func (q *Queries) ClearPinnedCityGuideForVenues(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, clearPinnedCityGuideForVenues)
 	return err
+}
+
+const countCityGuideCategories = `-- name: CountCityGuideCategories :one
+SELECT COUNT(*) FROM city_guide_categories
+WHERE deleted_at IS NULL
+  AND ($1::text = '' OR ($1::text = 'active' AND is_active) OR ($1::text = 'inactive' AND NOT is_active))
+  AND ($2::text = '' OR name ILIKE '%' || $2::text || '%' ESCAPE '\\' OR slug ILIKE '%' || $2::text || '%' ESCAPE '\\')
+`
+
+type CountCityGuideCategoriesParams struct {
+	Status string `json:"status"`
+	Search string `json:"search"`
+}
+
+func (q *Queries) CountCityGuideCategories(ctx context.Context, arg CountCityGuideCategoriesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countCityGuideCategories, arg.Status, arg.Search)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const countCityGuides = `-- name: CountCityGuides :one
@@ -60,6 +116,37 @@ WHERE deleted_at IS NULL
 
 func (q *Queries) CountMedia(ctx context.Context, search string) (int64, error) {
 	row := q.db.QueryRow(ctx, countMedia, search)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPublicCityGuides = `-- name: CountPublicCityGuides :one
+SELECT COUNT(*) FROM city_guides guide
+JOIN city_guide_categories category_ref ON category_ref.id = guide.category_id
+WHERE guide.deleted_at IS NULL
+  AND category_ref.deleted_at IS NULL
+  AND category_ref.is_active
+  AND guide.category = COALESCE(NULLIF($1::text, ''), guide.category)
+  AND (
+    NULLIF($2::text, '') IS NULL
+    OR guide.title ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.description, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.address, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR guide.category ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.contact_phone, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.whatsapp, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.email, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+  )
+`
+
+type CountPublicCityGuidesParams struct {
+	Category string `json:"category"`
+	Search   string `json:"search"`
+}
+
+func (q *Queries) CountPublicCityGuides(ctx context.Context, arg CountPublicCityGuidesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPublicCityGuides, arg.Category, arg.Search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -116,21 +203,22 @@ func (q *Queries) CreateCabor(ctx context.Context, arg CreateCaborParams) (Cabor
 
 const createCityGuide = `-- name: CreateCityGuide :one
 INSERT INTO city_guides (
-  title, category, description, address, image_url, latitude, longitude, map_route_url,
+  title, category, category_id, description, address, image_url, latitude, longitude, map_route_url,
   contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url,
   service_types, service_area, operating_hours, price_range, fleet_types, fleet_count
 )
 VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8,
-  $9, $10, $11, $12, $13, $14, $15,
-  $16, $17, $18, $19, $20, $21
+  $1, $2, $3, $4, $5, $6, $7, $8, $9,
+  $10, $11, $12, $13, $14, $15, $16,
+  $17, $18, $19, $20, $21, $22
 )
-RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation, category_id
 `
 
 type CreateCityGuideParams struct {
 	Title          string        `json:"title"`
 	Category       string        `json:"category"`
+	CategoryID     pgtype.UUID   `json:"category_id"`
 	Description    pgtype.Text   `json:"description"`
 	Address        pgtype.Text   `json:"address"`
 	ImageUrl       pgtype.Text   `json:"image_url"`
@@ -156,6 +244,7 @@ func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams
 	row := q.db.QueryRow(ctx, createCityGuide,
 		arg.Title,
 		arg.Category,
+		arg.CategoryID,
 		arg.Description,
 		arg.Address,
 		arg.ImageUrl,
@@ -206,6 +295,48 @@ func (q *Queries) CreateCityGuide(ctx context.Context, arg CreateCityGuideParams
 		&i.FleetTypes,
 		&i.FleetCount,
 		&i.IsPinnedVenueRecommendation,
+		&i.CategoryID,
+	)
+	return i, err
+}
+
+const createCityGuideCategory = `-- name: CreateCityGuideCategory :one
+INSERT INTO city_guide_categories(name, slug, description, created_by, updated_by)
+VALUES ($1, $2, NULLIF($3::text, ''), NULLIF($4::text, ''), NULLIF($4::text, ''))
+RETURNING id, name, slug, description, is_active, created_by, updated_by, deactivated_at, deactivated_by, deactivation_reason, deleted_at, deleted_by, delete_reason, created_at, updated_at
+`
+
+type CreateCityGuideCategoryParams struct {
+	Name    string `json:"name"`
+	Slug    string `json:"slug"`
+	Column3 string `json:"column_3"`
+	Column4 string `json:"column_4"`
+}
+
+func (q *Queries) CreateCityGuideCategory(ctx context.Context, arg CreateCityGuideCategoryParams) (CityGuideCategory, error) {
+	row := q.db.QueryRow(ctx, createCityGuideCategory,
+		arg.Name,
+		arg.Slug,
+		arg.Column3,
+		arg.Column4,
+	)
+	var i CityGuideCategory
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.DeactivatedAt,
+		&i.DeactivatedBy,
+		&i.DeactivationReason,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -462,7 +593,7 @@ func (q *Queries) GetCaborByIdentifier(ctx context.Context, identifier string) (
 }
 
 const getCityGuideByID = `-- name: GetCityGuideByID :one
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation, category_id FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGuide, error) {
@@ -497,6 +628,61 @@ func (q *Queries) GetCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGui
 		&i.FleetTypes,
 		&i.FleetCount,
 		&i.IsPinnedVenueRecommendation,
+		&i.CategoryID,
+	)
+	return i, err
+}
+
+const getCityGuideCategoryByID = `-- name: GetCityGuideCategoryByID :one
+SELECT id, name, slug, description, is_active, created_by, updated_by, deactivated_at, deactivated_by, deactivation_reason, deleted_at, deleted_by, delete_reason, created_at, updated_at FROM city_guide_categories WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+`
+
+func (q *Queries) GetCityGuideCategoryByID(ctx context.Context, id pgtype.UUID) (CityGuideCategory, error) {
+	row := q.db.QueryRow(ctx, getCityGuideCategoryByID, id)
+	var i CityGuideCategory
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.DeactivatedAt,
+		&i.DeactivatedBy,
+		&i.DeactivationReason,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCityGuideCategoryByName = `-- name: GetCityGuideCategoryByName :one
+SELECT id, name, slug, description, is_active, created_by, updated_by, deactivated_at, deactivated_by, deactivation_reason, deleted_at, deleted_by, delete_reason, created_at, updated_at FROM city_guide_categories WHERE LOWER(name) = LOWER($1) AND deleted_at IS NULL LIMIT 1
+`
+
+func (q *Queries) GetCityGuideCategoryByName(ctx context.Context, lower string) (CityGuideCategory, error) {
+	row := q.db.QueryRow(ctx, getCityGuideCategoryByName, lower)
+	var i CityGuideCategory
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.DeactivatedAt,
+		&i.DeactivatedBy,
+		&i.DeactivationReason,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -662,7 +848,7 @@ func (q *Queries) GetNomorTandingByID(ctx context.Context, id pgtype.UUID) (Nomo
 }
 
 const getPinnedCityGuideForVenues = `-- name: GetPinnedCityGuideForVenues :one
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation FROM city_guides
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation, category_id FROM city_guides
 WHERE is_pinned_venue_recommendation = TRUE
   AND deleted_at IS NULL
 LIMIT 1
@@ -700,6 +886,54 @@ func (q *Queries) GetPinnedCityGuideForVenues(ctx context.Context) (CityGuide, e
 		&i.FleetTypes,
 		&i.FleetCount,
 		&i.IsPinnedVenueRecommendation,
+		&i.CategoryID,
+	)
+	return i, err
+}
+
+const getPublicCityGuideByID = `-- name: GetPublicCityGuideByID :one
+SELECT guide.id, guide.title, guide.category, guide.description, guide.address, guide.image_url, guide.created_at, guide.updated_at, guide.deleted_at, guide.deleted_by, guide.delete_reason, guide.latitude, guide.longitude, guide.map_route_url, guide.contact_phone, guide.whatsapp, guide.email, guide.website_url, guide.instagram_url, guide.facebook_url, guide.tiktok_url, guide.service_types, guide.service_area, guide.operating_hours, guide.price_range, guide.fleet_types, guide.fleet_count, guide.is_pinned_venue_recommendation, guide.category_id FROM city_guides guide
+JOIN city_guide_categories category_ref ON category_ref.id = guide.category_id
+WHERE guide.id = $1
+  AND guide.deleted_at IS NULL
+  AND category_ref.deleted_at IS NULL
+  AND category_ref.is_active
+LIMIT 1
+`
+
+func (q *Queries) GetPublicCityGuideByID(ctx context.Context, id pgtype.UUID) (CityGuide, error) {
+	row := q.db.QueryRow(ctx, getPublicCityGuideByID, id)
+	var i CityGuide
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Category,
+		&i.Description,
+		&i.Address,
+		&i.ImageUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.Latitude,
+		&i.Longitude,
+		&i.MapRouteUrl,
+		&i.ContactPhone,
+		&i.Whatsapp,
+		&i.Email,
+		&i.WebsiteUrl,
+		&i.InstagramUrl,
+		&i.FacebookUrl,
+		&i.TiktokUrl,
+		&i.ServiceTypes,
+		&i.ServiceArea,
+		&i.OperatingHours,
+		&i.PriceRange,
+		&i.FleetTypes,
+		&i.FleetCount,
+		&i.IsPinnedVenueRecommendation,
+		&i.CategoryID,
 	)
 	return i, err
 }
@@ -746,8 +980,95 @@ func (q *Queries) ListCabors(ctx context.Context) ([]Cabor, error) {
 	return items, nil
 }
 
+const listCityGuideCategories = `-- name: ListCityGuideCategories :many
+SELECT category.id, category.name, category.slug, category.description, category.is_active, category.created_by, category.updated_by, category.deactivated_at, category.deactivated_by, category.deactivation_reason, category.deleted_at, category.deleted_by, category.delete_reason, category.created_at, category.updated_at,
+       (SELECT COUNT(*) FROM city_guides guide WHERE guide.category_id = category.id AND guide.deleted_at IS NULL)::bigint AS usage_count
+FROM city_guide_categories category
+WHERE category.deleted_at IS NULL
+  AND ($1::text = '' OR ($1::text = 'active' AND category.is_active) OR ($1::text = 'inactive' AND NOT category.is_active))
+  AND ($2::text = '' OR category.name ILIKE '%' || $2::text || '%' ESCAPE '\\' OR category.slug ILIKE '%' || $2::text || '%' ESCAPE '\\')
+ORDER BY
+  CASE WHEN $3::text = 'name' AND $4::text = 'desc' THEN LOWER(category.name) END DESC,
+  CASE WHEN $3::text = 'created_at' AND $4::text = 'asc' THEN category.created_at END ASC,
+  CASE WHEN $3::text = 'created_at' AND $4::text = 'desc' THEN category.created_at END DESC,
+  LOWER(category.name) ASC, category.id ASC
+LIMIT $6::integer OFFSET $5::integer
+`
+
+type ListCityGuideCategoriesParams struct {
+	Status     string `json:"status"`
+	Search     string `json:"search"`
+	SortKey    string `json:"sort_key"`
+	SortOrder  string `json:"sort_order"`
+	PageOffset int32  `json:"page_offset"`
+	PageLimit  int32  `json:"page_limit"`
+}
+
+type ListCityGuideCategoriesRow struct {
+	ID                 pgtype.UUID        `json:"id"`
+	Name               string             `json:"name"`
+	Slug               string             `json:"slug"`
+	Description        pgtype.Text        `json:"description"`
+	IsActive           bool               `json:"is_active"`
+	CreatedBy          pgtype.Text        `json:"created_by"`
+	UpdatedBy          pgtype.Text        `json:"updated_by"`
+	DeactivatedAt      pgtype.Timestamptz `json:"deactivated_at"`
+	DeactivatedBy      pgtype.Text        `json:"deactivated_by"`
+	DeactivationReason pgtype.Text        `json:"deactivation_reason"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy          pgtype.Text        `json:"deleted_by"`
+	DeleteReason       pgtype.Text        `json:"delete_reason"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	UsageCount         int64              `json:"usage_count"`
+}
+
+func (q *Queries) ListCityGuideCategories(ctx context.Context, arg ListCityGuideCategoriesParams) ([]ListCityGuideCategoriesRow, error) {
+	rows, err := q.db.Query(ctx, listCityGuideCategories,
+		arg.Status,
+		arg.Search,
+		arg.SortKey,
+		arg.SortOrder,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCityGuideCategoriesRow
+	for rows.Next() {
+		var i ListCityGuideCategoriesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.IsActive,
+			&i.CreatedBy,
+			&i.UpdatedBy,
+			&i.DeactivatedAt,
+			&i.DeactivatedBy,
+			&i.DeactivationReason,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UsageCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCityGuides = `-- name: ListCityGuides :many
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation FROM city_guides
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation, category_id FROM city_guides
 WHERE deleted_at IS NULL
   AND category = COALESCE(NULLIF($1::text, ''), category)
   AND (
@@ -803,6 +1124,7 @@ func (q *Queries) ListCityGuides(ctx context.Context, arg ListCityGuidesParams) 
 			&i.FleetTypes,
 			&i.FleetCount,
 			&i.IsPinnedVenueRecommendation,
+			&i.CategoryID,
 		); err != nil {
 			return nil, err
 		}
@@ -815,7 +1137,7 @@ func (q *Queries) ListCityGuides(ctx context.Context, arg ListCityGuidesParams) 
 }
 
 const listCityGuidesPaginated = `-- name: ListCityGuidesPaginated :many
-SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation FROM city_guides
+SELECT id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation, category_id FROM city_guides
 WHERE deleted_at IS NULL
   AND category = COALESCE(NULLIF($1::text, ''), category)
   AND (
@@ -883,6 +1205,69 @@ func (q *Queries) ListCityGuidesPaginated(ctx context.Context, arg ListCityGuide
 			&i.FleetTypes,
 			&i.FleetCount,
 			&i.IsPinnedVenueRecommendation,
+			&i.CategoryID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDeletedCityGuideCategories = `-- name: ListDeletedCityGuideCategories :many
+SELECT category.id, category.name, category.slug, category.description, category.is_active, category.created_by, category.updated_by, category.deactivated_at, category.deactivated_by, category.deactivation_reason, category.deleted_at, category.deleted_by, category.delete_reason, category.created_at, category.updated_at,
+       (SELECT COUNT(*) FROM city_guides guide WHERE guide.category_id = category.id AND guide.deleted_at IS NULL)::bigint AS usage_count
+FROM city_guide_categories category WHERE category.deleted_at IS NOT NULL ORDER BY category.deleted_at DESC
+`
+
+type ListDeletedCityGuideCategoriesRow struct {
+	ID                 pgtype.UUID        `json:"id"`
+	Name               string             `json:"name"`
+	Slug               string             `json:"slug"`
+	Description        pgtype.Text        `json:"description"`
+	IsActive           bool               `json:"is_active"`
+	CreatedBy          pgtype.Text        `json:"created_by"`
+	UpdatedBy          pgtype.Text        `json:"updated_by"`
+	DeactivatedAt      pgtype.Timestamptz `json:"deactivated_at"`
+	DeactivatedBy      pgtype.Text        `json:"deactivated_by"`
+	DeactivationReason pgtype.Text        `json:"deactivation_reason"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy          pgtype.Text        `json:"deleted_by"`
+	DeleteReason       pgtype.Text        `json:"delete_reason"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	UsageCount         int64              `json:"usage_count"`
+}
+
+func (q *Queries) ListDeletedCityGuideCategories(ctx context.Context) ([]ListDeletedCityGuideCategoriesRow, error) {
+	rows, err := q.db.Query(ctx, listDeletedCityGuideCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDeletedCityGuideCategoriesRow
+	for rows.Next() {
+		var i ListDeletedCityGuideCategoriesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.IsActive,
+			&i.CreatedBy,
+			&i.UpdatedBy,
+			&i.DeactivatedAt,
+			&i.DeactivatedBy,
+			&i.DeactivationReason,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UsageCount,
 		); err != nil {
 			return nil, err
 		}
@@ -1068,13 +1453,234 @@ func (q *Queries) ListNomorTandings(ctx context.Context) ([]NomorTanding, error)
 	return items, nil
 }
 
+const listPublicCityGuideCategories = `-- name: ListPublicCityGuideCategories :many
+SELECT category.id, category.name, category.slug, category.description, category.is_active, category.created_by, category.updated_by, category.deactivated_at, category.deactivated_by, category.deactivation_reason, category.deleted_at, category.deleted_by, category.delete_reason, category.created_at, category.updated_at,
+       (SELECT COUNT(*) FROM city_guides guide WHERE guide.category_id = category.id AND guide.deleted_at IS NULL)::bigint AS usage_count
+FROM city_guide_categories category
+WHERE category.deleted_at IS NULL AND category.is_active
+  AND EXISTS (SELECT 1 FROM city_guides guide WHERE guide.category_id = category.id AND guide.deleted_at IS NULL)
+ORDER BY LOWER(category.name), category.id
+`
+
+type ListPublicCityGuideCategoriesRow struct {
+	ID                 pgtype.UUID        `json:"id"`
+	Name               string             `json:"name"`
+	Slug               string             `json:"slug"`
+	Description        pgtype.Text        `json:"description"`
+	IsActive           bool               `json:"is_active"`
+	CreatedBy          pgtype.Text        `json:"created_by"`
+	UpdatedBy          pgtype.Text        `json:"updated_by"`
+	DeactivatedAt      pgtype.Timestamptz `json:"deactivated_at"`
+	DeactivatedBy      pgtype.Text        `json:"deactivated_by"`
+	DeactivationReason pgtype.Text        `json:"deactivation_reason"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy          pgtype.Text        `json:"deleted_by"`
+	DeleteReason       pgtype.Text        `json:"delete_reason"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	UsageCount         int64              `json:"usage_count"`
+}
+
+func (q *Queries) ListPublicCityGuideCategories(ctx context.Context) ([]ListPublicCityGuideCategoriesRow, error) {
+	rows, err := q.db.Query(ctx, listPublicCityGuideCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublicCityGuideCategoriesRow
+	for rows.Next() {
+		var i ListPublicCityGuideCategoriesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.IsActive,
+			&i.CreatedBy,
+			&i.UpdatedBy,
+			&i.DeactivatedAt,
+			&i.DeactivatedBy,
+			&i.DeactivationReason,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UsageCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublicCityGuides = `-- name: ListPublicCityGuides :many
+SELECT guide.id, guide.title, guide.category, guide.description, guide.address, guide.image_url, guide.created_at, guide.updated_at, guide.deleted_at, guide.deleted_by, guide.delete_reason, guide.latitude, guide.longitude, guide.map_route_url, guide.contact_phone, guide.whatsapp, guide.email, guide.website_url, guide.instagram_url, guide.facebook_url, guide.tiktok_url, guide.service_types, guide.service_area, guide.operating_hours, guide.price_range, guide.fleet_types, guide.fleet_count, guide.is_pinned_venue_recommendation, guide.category_id FROM city_guides guide
+JOIN city_guide_categories category_ref ON category_ref.id = guide.category_id
+WHERE guide.deleted_at IS NULL
+  AND category_ref.deleted_at IS NULL
+  AND category_ref.is_active
+  AND guide.category = COALESCE(NULLIF($1::text, ''), guide.category)
+  AND (
+    NULLIF($2::text, '') IS NULL
+    OR guide.title ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.description, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.address, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR guide.category ILIKE '%' || $2::text || '%' ESCAPE '\'
+  )
+ORDER BY guide.is_pinned_venue_recommendation DESC, guide.title ASC
+`
+
+type ListPublicCityGuidesParams struct {
+	Category string `json:"category"`
+	Search   string `json:"search"`
+}
+
+func (q *Queries) ListPublicCityGuides(ctx context.Context, arg ListPublicCityGuidesParams) ([]CityGuide, error) {
+	rows, err := q.db.Query(ctx, listPublicCityGuides, arg.Category, arg.Search)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CityGuide
+	for rows.Next() {
+		var i CityGuide
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Category,
+			&i.Description,
+			&i.Address,
+			&i.ImageUrl,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
+			&i.Latitude,
+			&i.Longitude,
+			&i.MapRouteUrl,
+			&i.ContactPhone,
+			&i.Whatsapp,
+			&i.Email,
+			&i.WebsiteUrl,
+			&i.InstagramUrl,
+			&i.FacebookUrl,
+			&i.TiktokUrl,
+			&i.ServiceTypes,
+			&i.ServiceArea,
+			&i.OperatingHours,
+			&i.PriceRange,
+			&i.FleetTypes,
+			&i.FleetCount,
+			&i.IsPinnedVenueRecommendation,
+			&i.CategoryID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublicCityGuidesPaginated = `-- name: ListPublicCityGuidesPaginated :many
+SELECT guide.id, guide.title, guide.category, guide.description, guide.address, guide.image_url, guide.created_at, guide.updated_at, guide.deleted_at, guide.deleted_by, guide.delete_reason, guide.latitude, guide.longitude, guide.map_route_url, guide.contact_phone, guide.whatsapp, guide.email, guide.website_url, guide.instagram_url, guide.facebook_url, guide.tiktok_url, guide.service_types, guide.service_area, guide.operating_hours, guide.price_range, guide.fleet_types, guide.fleet_count, guide.is_pinned_venue_recommendation, guide.category_id FROM city_guides guide
+JOIN city_guide_categories category_ref ON category_ref.id = guide.category_id
+WHERE guide.deleted_at IS NULL
+  AND category_ref.deleted_at IS NULL
+  AND category_ref.is_active
+  AND guide.category = COALESCE(NULLIF($1::text, ''), guide.category)
+  AND (
+    NULLIF($2::text, '') IS NULL
+    OR guide.title ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.description, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.address, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR guide.category ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.contact_phone, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.whatsapp, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+    OR COALESCE(guide.email, '') ILIKE '%' || $2::text || '%' ESCAPE '\'
+  )
+ORDER BY guide.is_pinned_venue_recommendation DESC, guide.title ASC, guide.id ASC
+LIMIT $4::integer
+OFFSET $3::integer
+`
+
+type ListPublicCityGuidesPaginatedParams struct {
+	Category   string `json:"category"`
+	Search     string `json:"search"`
+	PageOffset int32  `json:"page_offset"`
+	PageLimit  int32  `json:"page_limit"`
+}
+
+func (q *Queries) ListPublicCityGuidesPaginated(ctx context.Context, arg ListPublicCityGuidesPaginatedParams) ([]CityGuide, error) {
+	rows, err := q.db.Query(ctx, listPublicCityGuidesPaginated,
+		arg.Category,
+		arg.Search,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CityGuide
+	for rows.Next() {
+		var i CityGuide
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Category,
+			&i.Description,
+			&i.Address,
+			&i.ImageUrl,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.DeleteReason,
+			&i.Latitude,
+			&i.Longitude,
+			&i.MapRouteUrl,
+			&i.ContactPhone,
+			&i.Whatsapp,
+			&i.Email,
+			&i.WebsiteUrl,
+			&i.InstagramUrl,
+			&i.FacebookUrl,
+			&i.TiktokUrl,
+			&i.ServiceTypes,
+			&i.ServiceArea,
+			&i.OperatingHours,
+			&i.PriceRange,
+			&i.FleetTypes,
+			&i.FleetCount,
+			&i.IsPinnedVenueRecommendation,
+			&i.CategoryID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const pinCityGuideForVenues = `-- name: PinCityGuideForVenues :one
 UPDATE city_guides
 SET is_pinned_venue_recommendation = TRUE,
     updated_at = NOW()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation, category_id
 `
 
 func (q *Queries) PinCityGuideForVenues(ctx context.Context, id pgtype.UUID) (CityGuide, error) {
@@ -1109,6 +1715,86 @@ func (q *Queries) PinCityGuideForVenues(ctx context.Context, id pgtype.UUID) (Ci
 		&i.FleetTypes,
 		&i.FleetCount,
 		&i.IsPinnedVenueRecommendation,
+		&i.CategoryID,
+	)
+	return i, err
+}
+
+const restoreCityGuideCategory = `-- name: RestoreCityGuideCategory :one
+UPDATE city_guide_categories
+SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL, updated_by = NULLIF($2::text, ''), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NOT NULL RETURNING id, name, slug, description, is_active, created_by, updated_by, deactivated_at, deactivated_by, deactivation_reason, deleted_at, deleted_by, delete_reason, created_at, updated_at
+`
+
+type RestoreCityGuideCategoryParams struct {
+	ID      pgtype.UUID `json:"id"`
+	Column2 string      `json:"column_2"`
+}
+
+func (q *Queries) RestoreCityGuideCategory(ctx context.Context, arg RestoreCityGuideCategoryParams) (CityGuideCategory, error) {
+	row := q.db.QueryRow(ctx, restoreCityGuideCategory, arg.ID, arg.Column2)
+	var i CityGuideCategory
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.DeactivatedAt,
+		&i.DeactivatedBy,
+		&i.DeactivationReason,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const setCityGuideCategoryStatus = `-- name: SetCityGuideCategoryStatus :one
+UPDATE city_guide_categories
+SET is_active = $2,
+    deactivated_at = CASE WHEN $2 THEN NULL ELSE NOW() END,
+    deactivated_by = CASE WHEN $2 THEN NULL ELSE NULLIF($3::text, '') END,
+    deactivation_reason = CASE WHEN $2 THEN NULL ELSE NULLIF($4::text, '') END,
+    updated_by = NULLIF($3::text, ''), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL RETURNING id, name, slug, description, is_active, created_by, updated_by, deactivated_at, deactivated_by, deactivation_reason, deleted_at, deleted_by, delete_reason, created_at, updated_at
+`
+
+type SetCityGuideCategoryStatusParams struct {
+	ID       pgtype.UUID `json:"id"`
+	IsActive bool        `json:"is_active"`
+	Column3  string      `json:"column_3"`
+	Column4  string      `json:"column_4"`
+}
+
+func (q *Queries) SetCityGuideCategoryStatus(ctx context.Context, arg SetCityGuideCategoryStatusParams) (CityGuideCategory, error) {
+	row := q.db.QueryRow(ctx, setCityGuideCategoryStatus,
+		arg.ID,
+		arg.IsActive,
+		arg.Column3,
+		arg.Column4,
+	)
+	var i CityGuideCategory
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.DeactivatedAt,
+		&i.DeactivatedBy,
+		&i.DeactivationReason,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -1179,40 +1865,41 @@ UPDATE city_guides
 SET
   title = $2,
   category = $3,
-  description = NULLIF($4::text, ''),
-  address = NULLIF($5::text, ''),
-  image_url = NULLIF($6::text, ''),
-  latitude = $7,
-  longitude = $8,
-  map_route_url = NULLIF($9::text, ''),
-  contact_phone = NULLIF($10::text, ''),
-  whatsapp = NULLIF($11::text, ''),
-  email = NULLIF($12::text, ''),
-  website_url = NULLIF($13::text, ''),
-  instagram_url = NULLIF($14::text, ''),
-  facebook_url = NULLIF($15::text, ''),
-  tiktok_url = NULLIF($16::text, ''),
-  service_types = $17,
-  service_area = NULLIF($18::text, ''),
-  operating_hours = NULLIF($19::text, ''),
-  price_range = NULLIF($20::text, ''),
-  fleet_types = $21,
-  fleet_count = $22,
+  category_id = $4,
+  description = NULLIF($5::text, ''),
+  address = NULLIF($6::text, ''),
+  image_url = NULLIF($7::text, ''),
+  latitude = $8,
+  longitude = $9,
+  map_route_url = NULLIF($10::text, ''),
+  contact_phone = NULLIF($11::text, ''),
+  whatsapp = NULLIF($12::text, ''),
+  email = NULLIF($13::text, ''),
+  website_url = NULLIF($14::text, ''),
+  instagram_url = NULLIF($15::text, ''),
+  facebook_url = NULLIF($16::text, ''),
+  tiktok_url = NULLIF($17::text, ''),
+  service_types = $18,
+  service_area = NULLIF($19::text, ''),
+  operating_hours = NULLIF($20::text, ''),
+  price_range = NULLIF($21::text, ''),
+  fleet_types = $22,
+  fleet_count = $23,
   updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation
+RETURNING id, title, category, description, address, image_url, created_at, updated_at, deleted_at, deleted_by, delete_reason, latitude, longitude, map_route_url, contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url, service_types, service_area, operating_hours, price_range, fleet_types, fleet_count, is_pinned_venue_recommendation, category_id
 `
 
 type UpdateCityGuideParams struct {
 	ID           pgtype.UUID   `json:"id"`
 	Title        string        `json:"title"`
 	Category     string        `json:"category"`
-	Column4      string        `json:"column_4"`
+	CategoryID   pgtype.UUID   `json:"category_id"`
 	Column5      string        `json:"column_5"`
 	Column6      string        `json:"column_6"`
+	Column7      string        `json:"column_7"`
 	Latitude     pgtype.Float8 `json:"latitude"`
 	Longitude    pgtype.Float8 `json:"longitude"`
-	Column9      string        `json:"column_9"`
 	Column10     string        `json:"column_10"`
 	Column11     string        `json:"column_11"`
 	Column12     string        `json:"column_12"`
@@ -1220,10 +1907,11 @@ type UpdateCityGuideParams struct {
 	Column14     string        `json:"column_14"`
 	Column15     string        `json:"column_15"`
 	Column16     string        `json:"column_16"`
+	Column17     string        `json:"column_17"`
 	ServiceTypes []string      `json:"service_types"`
-	Column18     string        `json:"column_18"`
 	Column19     string        `json:"column_19"`
 	Column20     string        `json:"column_20"`
+	Column21     string        `json:"column_21"`
 	FleetTypes   []string      `json:"fleet_types"`
 	FleetCount   pgtype.Int4   `json:"fleet_count"`
 }
@@ -1233,12 +1921,12 @@ func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams
 		arg.ID,
 		arg.Title,
 		arg.Category,
-		arg.Column4,
+		arg.CategoryID,
 		arg.Column5,
 		arg.Column6,
+		arg.Column7,
 		arg.Latitude,
 		arg.Longitude,
-		arg.Column9,
 		arg.Column10,
 		arg.Column11,
 		arg.Column12,
@@ -1246,10 +1934,11 @@ func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams
 		arg.Column14,
 		arg.Column15,
 		arg.Column16,
+		arg.Column17,
 		arg.ServiceTypes,
-		arg.Column18,
 		arg.Column19,
 		arg.Column20,
+		arg.Column21,
 		arg.FleetTypes,
 		arg.FleetCount,
 	)
@@ -1283,6 +1972,48 @@ func (q *Queries) UpdateCityGuide(ctx context.Context, arg UpdateCityGuideParams
 		&i.FleetTypes,
 		&i.FleetCount,
 		&i.IsPinnedVenueRecommendation,
+		&i.CategoryID,
+	)
+	return i, err
+}
+
+const updateCityGuideCategory = `-- name: UpdateCityGuideCategory :one
+UPDATE city_guide_categories
+SET name = $2, description = NULLIF($3::text, ''), updated_by = NULLIF($4::text, ''), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL RETURNING id, name, slug, description, is_active, created_by, updated_by, deactivated_at, deactivated_by, deactivation_reason, deleted_at, deleted_by, delete_reason, created_at, updated_at
+`
+
+type UpdateCityGuideCategoryParams struct {
+	ID      pgtype.UUID `json:"id"`
+	Name    string      `json:"name"`
+	Column3 string      `json:"column_3"`
+	Column4 string      `json:"column_4"`
+}
+
+func (q *Queries) UpdateCityGuideCategory(ctx context.Context, arg UpdateCityGuideCategoryParams) (CityGuideCategory, error) {
+	row := q.db.QueryRow(ctx, updateCityGuideCategory,
+		arg.ID,
+		arg.Name,
+		arg.Column3,
+		arg.Column4,
+	)
+	var i CityGuideCategory
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.DeactivatedAt,
+		&i.DeactivatedBy,
+		&i.DeactivationReason,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.DeleteReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

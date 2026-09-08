@@ -720,3 +720,23 @@ fitur telah diaktifkan pada runtime lokal setelah backup dump PostgreSQL
 ber-checksum, migrasi User v3 dan Master Data v14, serta rebuild layanan
 terdampak. Bukti penerimaan dan rollback berada di
 `docs/uiux/ADMIN_ENTERPRISE_COMPLETION_V11.md`; production tetap tidak berubah.
+
+## 21. Web Admin Enterprise Tahap 12
+
+Tahap 12 memindahkan kategori Panduan Kota dari daftar statis menjadi entitas
+Master Data v15. Projection publik hanya mengembalikan lokasi dengan kategori
+aktif, sedangkan endpoint pengelolaan Admin tetap dapat menampilkan kategori
+tidak aktif agar dapat diperbaiki atau diaktifkan kembali.
+
+User Service v4 menyediakan status akun terpisah dari arsip, katalog peran dan
+hak akses, sinkronisasi Keycloak, notifikasi per penerima, serta direktori aktor
+internal. User v5 memisahkan permission Venue agar `admin_venue` tidak mendapat
+mutasi semua Data Utama. Audit v3 menyimpan snapshot username/nama tampilan.
+API Gateway menerapkan permission per metode dan rute; UI hanya menjadi lapisan
+presentasi tambahan, bukan batas keamanan.
+
+Admin memakai wrapper ApexCharts yang dimuat malas, Dropzone gambar aksesibel,
+popover notifikasi yang menutup lewat klik luar/Escape, sidebar desktop/mobile,
+dan error boundary berbahasa Indonesia. OpenAPI v12, ADR-0019, matriks penerimaan,
+backup/checksum, ancaman, serta rollback berada di
+`docs/uiux/ADMIN_ENTERPRISE_FEATURES_V12.md`. Production tidak berubah.

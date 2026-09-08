@@ -14,6 +14,7 @@ import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimiti
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useAuthorization } from '../../contexts/authorization';
 
 type SortKeyType = 'name' | 'kategori' | 'total_medali' | 'technical_delegate' | 'status';
 
@@ -44,6 +45,10 @@ export default function CabangOlahraga() {
   const [formError, setFormError] = useState('');
   const [operationMessage, setOperationMessage] = useState('');
   const auth = useAuth();
+  const authorization = useAuthorization();
+  const canCreate = authorization.hasPermission('master_data.create');
+  const canUpdate = authorization.hasPermission('master_data.update');
+  const canArchive = authorization.hasPermission('master_data.archive');
 
   const table = useTableControls<SortKeyType>({ sortKey: 'name', sortDirection: 'asc', rowsPerPage: 10 });
 
@@ -211,7 +216,7 @@ export default function CabangOlahraga() {
         eyebrow="Referensi pertandingan"
         title="Cabang Olahraga"
         description="Kelola identitas, klasifikasi, delegasi teknis, dan status cabang olahraga PORPROV."
-        actions={<button type="button" onClick={() => { resetForm(); setFormError(''); setIsModalOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah cabor</button>}
+        actions={canCreate ? <button type="button" onClick={() => { resetForm(); setFormError(''); setIsModalOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah cabor</button> : undefined}
       />
 
       {operationMessage && <AdminAlert tone="success">{operationMessage}</AdminAlert>}
@@ -226,7 +231,7 @@ export default function CabangOlahraga() {
           <RowsPerPageSelector value={table.rowsPerPage} onChange={table.handleRowsPerPageChange} />
         </div>
 
-        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="cabor" />
+        {canArchive && <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="cabor" />}
 
         <AdminDataTable<Cabor, SortKeyType>
           caption="Daftar cabang olahraga PORPROV"
@@ -240,13 +245,14 @@ export default function CabangOlahraga() {
           onSort={table.handleSort}
           selectedIds={selectedIds}
           onSelectedIdsChange={setSelectedIds}
+          selectionEnabled={canArchive}
           loading={loading}
           loadingLabel="Memuat cabang olahraga..."
           error={listError}
           onRetry={fetchCabors}
           emptyTitle={search ? 'Cabang olahraga tidak ditemukan' : 'Belum ada cabang olahraga'}
           emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan cabang olahraga pertama sebagai dasar nomor pertandingan.'}
-          rowActions={(item) => <><button type="button" onClick={() => editCabor(item)} aria-label={`Edit ${item.name}`} title="Edit cabor" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button><button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan cabor" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button></>}
+          rowActions={(item) => <>{canUpdate && <button type="button" onClick={() => editCabor(item)} aria-label={`Ubah ${item.name}`} title="Ubah cabor" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>}{canArchive && <button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan cabor" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>}</>}
         />
 
         {!loading && !listError && totalItems > 0 && (

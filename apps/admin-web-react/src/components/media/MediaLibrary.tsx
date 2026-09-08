@@ -16,12 +16,16 @@ import {
 import { formatMediaSize } from '../../lib/mediaFormat';
 import type { MediaAsset } from '../../types/master-data';
 import MediaUploadButton from './MediaUploadButton';
+import { useAuthorization } from '../../contexts/authorization';
 
 type MediaSort = 'newest' | 'oldest' | 'name';
 interface MediaListResponse { data: MediaAsset[]; page: number; per_page: number; total_items: number; total_pages: number; library_items: number; library_bytes: number; total_formats: number }
 
 export default function MediaLibrary() {
   const auth = useAuth();
+  const authorization = useAuthorization();
+  const canUpload = authorization.hasPermission('media.create');
+  const canArchive = authorization.hasPermission('media.archive');
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState('');
   const [notice, setNotice] = useState('');
@@ -126,14 +130,14 @@ export default function MediaLibrary() {
         eyebrow="Aset Konten PORPROV"
         title="Pustaka Media"
         description="Kelola gambar aktif untuk tampilan utama, cabang olahraga, lokasi pertandingan, dan Panduan Kota dari satu galeri terkontrol."
-        actions={(
+        actions={canUpload ? (
           <MediaUploadButton
             busy={isMutating}
             onUpload={(file, options) => uploadMutation.mutateAsync({ file, options })}
             onError={setActionError}
             onNotice={setNotice}
           />
-        )}
+        ) : undefined}
       />
 
       <h1 id="media-library-title" className="sr-only">Pustaka Media</h1>
@@ -188,7 +192,7 @@ export default function MediaLibrary() {
           ) : mediaQuery.isError ? (
             <AdminErrorState message={getApiErrorMessage(mediaQuery.error, 'Gagal memuat Pustaka Media.')} onRetry={() => void mediaQuery.refetch()} />
           ) : media.length > 0 ? (
-            <AdminMediaGrid items={media} onCopy={(item) => void copyToClipboard(item)} onArchive={setArchiveTarget} busy={deleteMutation.isPending} />
+            <AdminMediaGrid items={media} onCopy={(item) => void copyToClipboard(item)} onArchive={canArchive ? setArchiveTarget : undefined} busy={deleteMutation.isPending} />
           ) : (
             <AdminEmptyState icon={ImageIcon} title={debouncedSearch ? 'Media tidak ditemukan' : 'Belum ada media'} description={debouncedSearch ? 'Coba kata kunci pencarian yang berbeda.' : 'Unggah gambar pertama untuk mulai membangun galeri.'} />
           )}

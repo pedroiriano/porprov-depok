@@ -35,3 +35,13 @@ func TestNormalizeAuditEventRejectsMissingMetadata(t *testing.T) {
 		t.Fatal("expected missing audit metadata to be rejected")
 	}
 }
+
+func TestNormalizeAuditEventPreservesActorSnapshot(t *testing.T) {
+	event, err := normalizeAuditEvent([]byte(`{"service_name":"user-service","entity_name":"User","entity_id":"u1","action":"UPDATE","actor":"keycloak-id","actor_username":"pedro","actor_display_name":"Pedro Iriano","payload":{}}`))
+	if err != nil {
+		t.Fatalf("normalizeAuditEvent() error = %v", err)
+	}
+	if event.Actor != "keycloak-id" || event.ActorUsername != "pedro" || event.ActorDisplayName != "Pedro Iriano" {
+		t.Fatalf("actor snapshot was not preserved: %#v", event)
+	}
+}

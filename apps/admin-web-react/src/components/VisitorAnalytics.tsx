@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, Clock3, Eye, RefreshCw, Users } from 'lucide-react';
 import { apiClient, authConfig, unwrapApiData } from '../lib/api';
+import { AdminChart } from './cuba/AdminChart';
 
 type Metric = { x?: string; t?: string; y?: number };
 type Summary = { pageviews?: number; visitors?: number; visits?: number; bounces?: number; totaltime?: number };
@@ -19,6 +20,12 @@ const number = (value: unknown) => typeof value === 'number' && Number.isFinite(
 const list = (value: unknown): Metric[] => Array.isArray(value) ? value.filter((item): item is Metric => Boolean(item) && typeof item === 'object') : [];
 const deviceLabels: Record<string, string> = { mobile: 'Ponsel', laptop: 'Laptop', desktop: 'Komputer', tablet: 'Tablet' };
 const browserLabels: Record<string, string> = { chrome: 'Google Chrome', 'edge-chromium': 'Microsoft Edge', ios: 'iOS', crios: 'Chrome untuk iOS', safari: 'Safari', 'ios-webview': 'Tampilan web iOS' };
+const chartDateFormatter = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' });
+
+function formatChartLabel(value: string, fallback: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? (value || fallback) : chartDateFormatter.format(date);
+}
 
 function MiniStat({ title, value, icon: Icon }: { title: string; value: string; icon: typeof Eye }) {
   return (
@@ -73,9 +80,10 @@ export default function VisitorAnalytics({ token }: { token: string }) {
     if (Array.isArray(data?.pageviews)) return list(data?.pageviews);
     return list(data?.pageviews?.pageviews);
   }, [data]);
-  const chartValues = series.map((point) => number(point.y));
-  const chartMax = Math.max(1, ...chartValues);
-  const points = chartValues.map((value, index) => `${series.length <= 1 ? 0 : (index / (series.length - 1)) * 100},${48 - (value / chartMax) * 44}`).join(' ');
+  const chartPoints = series.map((point, index) => ({
+    label: formatChartLabel(point.x || point.t || '', `Periode ${index + 1}`),
+    value: number(point.y),
+  }));
   const stats = data?.stats || {};
   const bounceRate = number(stats.visits) ? Math.round((number(stats.bounces) / number(stats.visits)) * 100) : 0;
   const averageSeconds = number(stats.visits) ? Math.round(number(stats.totaltime) / number(stats.visits)) : 0;
@@ -95,7 +103,7 @@ export default function VisitorAnalytics({ token }: { token: string }) {
       {loading ? <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4" aria-label="Memuat statistik pengunjung">{[0,1,2,3].map((item) => <div key={item} className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />)}</div> : error ? <div className="p-8 text-center"><p className="text-sm font-semibold text-red-600 dark:text-red-300">{error}</p><button type="button" onClick={load} className="mt-4 min-h-11 rounded-xl bg-blue-600 px-5 font-bold text-white hover:bg-blue-700">Coba lagi</button></div> : (
         <div className="space-y-6 p-5">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><MiniStat title="Aktif sekarang" value={number(data?.active?.visitors).toLocaleString('id-ID')} icon={Activity} /><MiniStat title="Tayangan halaman" value={number(stats.pageviews).toLocaleString('id-ID')} icon={Eye} /><MiniStat title="Pengunjung unik" value={number(stats.visitors).toLocaleString('id-ID')} icon={Users} /><MiniStat title="Rata-rata waktu" value={`${Math.floor(averageSeconds / 60)} menit ${averageSeconds % 60} detik`} icon={Clock3} /></div>
-          <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-700"><div className="flex items-center justify-between"><h3 className="font-black">Tren kunjungan</h3><span className="text-xs font-bold text-slate-500">Rasio pentalan {bounceRate}%</span></div>{series.length > 1 ? <svg viewBox="0 0 100 52" className="mt-4 h-44 w-full" role="img" aria-label="Grafik tayangan halaman"><polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" className="text-blue-500" /><line x1="0" y1="49" x2="100" y2="49" className="text-slate-200 dark:text-slate-700" stroke="currentColor" strokeWidth="1" /></svg> : <p className="py-12 text-center text-sm text-slate-500">Data tren akan muncul setelah kunjungan mulai tercatat.</p>}</div>
+          <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-700"><div className="flex items-center justify-between"><h3 className="font-black">Tren kunjungan</h3><span className="text-xs font-bold text-slate-500">Rasio pentalan {bounceRate}%</span></div>{series.length > 1 ? <AdminChart title="Tren kunjungan" points={chartPoints} /> : <p className="py-12 text-center text-sm text-slate-500">Data tren akan muncul setelah kunjungan mulai tercatat.</p>}</div>
           <div className="grid gap-8 rounded-2xl border border-slate-200 p-5 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-4"><Ranking title="Halaman populer" rows={list(data?.top_pages)} empty="Belum ada halaman tercatat." /><Ranking title="Sumber kunjungan" rows={list(data?.referrers)} empty="Belum ada sumber kunjungan tercatat." /><Ranking title="Perangkat" rows={list(data?.devices)} empty="Belum ada perangkat tercatat." formatLabel={(value) => deviceLabels[value.toLowerCase()] || value} /><Ranking title="Peramban" rows={list(data?.browsers)} empty="Belum ada peramban tercatat." formatLabel={(value) => browserLabels[value.toLowerCase()] || value} /></div>
         </div>
       )}

@@ -41,10 +41,11 @@ func main() {
 	// INFO: Initialize Handlers
 	masterDataHandler := handler.NewMasterDataHandler(queries, cfg.ScheduleURL)
 	cityGuideHandler := handler.NewCityGuideHandler(queries, conn)
+	cityGuideCategoryHandler := handler.NewCityGuideCategoryHandler(queries)
 	heroHandler := handler.NewHeroHandler(queries)
 
 	// INFO: Setup Chi Router
-	r := router.SetupRouter(masterDataHandler, cityGuideHandler, heroHandler)
+	r := router.SetupRouter(masterDataHandler, cityGuideHandler, cityGuideCategoryHandler, heroHandler)
 
 	// INFO: Start HTTP Server
 	serverAddr := fmt.Sprintf(":%s", cfg.Port)

@@ -59,7 +59,26 @@ type CityGuide struct {
 	// Jumlah seluruh unit armada aktif yang ditawarkan penyedia transportasi.
 	FleetCount pgtype.Int4 `json:"fleet_count"`
 	// Exactly one active City Guide may be prioritized on every public Venue detail page.
-	IsPinnedVenueRecommendation bool `json:"is_pinned_venue_recommendation"`
+	IsPinnedVenueRecommendation bool        `json:"is_pinned_venue_recommendation"`
+	CategoryID                  pgtype.UUID `json:"category_id"`
+}
+
+type CityGuideCategory struct {
+	ID                 pgtype.UUID        `json:"id"`
+	Name               string             `json:"name"`
+	Slug               string             `json:"slug"`
+	Description        pgtype.Text        `json:"description"`
+	IsActive           bool               `json:"is_active"`
+	CreatedBy          pgtype.Text        `json:"created_by"`
+	UpdatedBy          pgtype.Text        `json:"updated_by"`
+	DeactivatedAt      pgtype.Timestamptz `json:"deactivated_at"`
+	DeactivatedBy      pgtype.Text        `json:"deactivated_by"`
+	DeactivationReason pgtype.Text        `json:"deactivation_reason"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy          pgtype.Text        `json:"deleted_by"`
+	DeleteReason       pgtype.Text        `json:"delete_reason"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Hero struct {
@@ -105,6 +124,18 @@ type MediaAsset struct {
 	Width          pgtype.Int4        `json:"width"`
 	Height         pgtype.Int4        `json:"height"`
 	UploadedBy     pgtype.Text        `json:"uploaded_by"`
+}
+
+type MediaDerivative struct {
+	ID             pgtype.UUID        `json:"id"`
+	MediaID        pgtype.UUID        `json:"media_id"`
+	Variant        string             `json:"variant"`
+	FileUrl        string             `json:"file_url"`
+	Width          int32              `json:"width"`
+	Height         int32              `json:"height"`
+	FileSize       int32              `json:"file_size"`
+	ChecksumSha256 string             `json:"checksum_sha256"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type NomorTanding struct {

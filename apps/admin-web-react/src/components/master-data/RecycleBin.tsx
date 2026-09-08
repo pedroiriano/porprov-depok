@@ -9,6 +9,7 @@ import { useTableControls, usePagination } from '../../hooks/useTableControls';
 import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
+import { useAuthorization } from '../../contexts/authorization';
 
 const entityLabels: Record<DeletedRecord['entity_type'], string> = {
   cabor: 'Cabang Olahraga',
@@ -31,6 +32,8 @@ function restorePath(record: DeletedRecord) {
 
 export default function RecycleBin() {
   const auth = useAuth();
+  const authorization = useAuthorization();
+  const canRestore = authorization.hasPermission('master_data.restore');
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [feedback, setFeedback] = useState<{ tone: 'danger' | 'success'; message: string } | null>(null);
@@ -204,7 +207,7 @@ export default function RecycleBin() {
           />
         </div>
 
-        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onAction={() => void restoreSelected()} deleting={restoring} itemLabel="data" actionLabel="Pulihkan terpilih" loadingLabel="Memulihkan..." actionTone="primary" actionIcon={<RotateCcw className="size-4" aria-hidden="true" />} />
+        {canRestore && <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onAction={() => void restoreSelected()} deleting={restoring} itemLabel="data" actionLabel="Pulihkan terpilih" loadingLabel="Memulihkan..." actionTone="primary" actionIcon={<RotateCcw className="size-4" aria-hidden="true" />} />}
 
         <AdminDataTable<DeletedRecord, RecycleBinSortKey>
           caption="Daftar data yang diarsipkan"
@@ -218,6 +221,7 @@ export default function RecycleBin() {
           onSort={table.handleSort}
           selectedIds={selectedIds}
           onSelectedIdsChange={setSelectedIds}
+          selectionEnabled={canRestore}
           loading={deletedQuery.isLoading}
           loadingLabel="Memuat Arsip Terhapus..."
           error={deletedQuery.isError ? getApiErrorMessage(deletedQuery.error, 'Gagal memuat Arsip Terhapus.') : ''}
@@ -225,7 +229,7 @@ export default function RecycleBin() {
           emptyTitle={search ? 'Data arsip tidak ditemukan' : 'Arsip Terhapus masih kosong'}
           emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Data yang diarsipkan akan tampil di sini dan tetap dapat dipulihkan.'}
           minWidthClassName="min-w-[920px]"
-          rowActions={(record) => <button type="button" onClick={() => requestRestore(record)} disabled={restoreMutation.isPending || restoring} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-200 px-3 py-2 text-sm font-black text-blue-700 transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/40" aria-label={`Pulihkan ${record.display_name}`}>{restoreMutation.isPending && restoreMutation.variables && recordKey(restoreMutation.variables) === recordKey(record) ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <RotateCcw className="size-4" aria-hidden="true" />}Pulihkan</button>}
+          rowActions={(record) => canRestore ? <button type="button" onClick={() => requestRestore(record)} disabled={restoreMutation.isPending || restoring} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-200 px-3 py-2 text-sm font-black text-blue-700 transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/40" aria-label={`Pulihkan ${record.display_name}`}>{restoreMutation.isPending && restoreMutation.variables && recordKey(restoreMutation.variables) === recordKey(record) ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <RotateCcw className="size-4" aria-hidden="true" />}Pulihkan</button> : null}
         />
 
         {!deletedQuery.isLoading && !deletedQuery.isError && totalItems > 0 && <TablePagination currentPage={table.currentPage} totalPages={totalPages} totalItems={totalItems} startItem={startItem} endItem={endItem} onPageChange={table.setCurrentPage} itemLabel="data diarsipkan" />}

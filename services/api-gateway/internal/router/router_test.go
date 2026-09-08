@@ -51,7 +51,7 @@ func signedTestToken(t *testing.T, privateKey *rsa.PrivateKey, issuer, role stri
 	t.Helper()
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"iss": issuer,
-		"sub": "operator-id",
+		"sub": "operator-" + role,
 		"azp": "porprov-admin-web",
 		"exp": time.Now().Add(time.Hour).Unix(),
 		"realm_access": map[string]interface{}{
@@ -141,11 +141,16 @@ func TestSetupProxyForwardsTrustedActorAndRejectsSpoofedActor(t *testing.T) {
 	}
 }
 
-func TestVenuePinRouteRequiresSuperAdmin(t *testing.T) {
+func TestVenuePinRouteRequiresPermission(t *testing.T) {
 	jwtMiddleware, privateKey, issuer := testJWTMiddleware(t)
-	upstreamCalls := 0
+	businessCalls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		upstreamCalls++
+		if r.URL.Path == "/api/v1/authorization/check" {
+			allowed := r.Header.Get("X-Actor-ID") == "operator-super_admin"
+			_ = json.NewEncoder(w).Encode(map[string]bool{"active": true, "allowed": allowed})
+			return
+		}
+		businessCalls++
 		if r.URL.Path != "/city-guides/c9ba7575-956d-47c7-a502-78e55507ce97/venue-pin" {
 			t.Fatalf("unexpected upstream path %q", r.URL.Path)
 		}
@@ -169,24 +174,29 @@ func TestVenuePinRouteRequiresSuperAdmin(t *testing.T) {
 	denied.Header.Set("Authorization", "Bearer "+signedTestToken(t, privateKey, issuer, "auditor"))
 	deniedResponse := httptest.NewRecorder()
 	router.ServeHTTP(deniedResponse, denied)
-	if deniedResponse.Code != http.StatusForbidden || upstreamCalls != 0 {
-		t.Fatalf("auditor status/upstream calls = %d/%d, want 403/0", deniedResponse.Code, upstreamCalls)
+	if deniedResponse.Code != http.StatusForbidden || businessCalls != 0 {
+		t.Fatalf("auditor status/business calls = %d/%d, want 403/0", deniedResponse.Code, businessCalls)
 	}
 
 	allowed := httptest.NewRequest(http.MethodPut, path, nil)
 	allowed.Header.Set("Authorization", "Bearer "+signedTestToken(t, privateKey, issuer, "super_admin"))
 	allowedResponse := httptest.NewRecorder()
 	router.ServeHTTP(allowedResponse, allowed)
-	if allowedResponse.Code != http.StatusNoContent || upstreamCalls != 1 {
-		t.Fatalf("super_admin status/upstream calls = %d/%d, want 204/1", allowedResponse.Code, upstreamCalls)
+	if allowedResponse.Code != http.StatusNoContent || businessCalls != 1 {
+		t.Fatalf("permitted status/business calls = %d/%d, want 204/1", allowedResponse.Code, businessCalls)
 	}
 }
 
-func TestContentMutationRoutesRequireSuperAdmin(t *testing.T) {
+func TestContentMutationRoutesRequirePermission(t *testing.T) {
 	jwtMiddleware, privateKey, issuer := testJWTMiddleware(t)
-	upstreamCalls := 0
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		upstreamCalls++
+	businessCalls := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/authorization/check" {
+			allowed := r.Header.Get("X-Actor-ID") == "operator-super_admin"
+			_ = json.NewEncoder(w).Encode(map[string]bool{"active": true, "allowed": allowed})
+			return
+		}
+		businessCalls++
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer upstream.Close()
@@ -224,16 +234,53 @@ func TestContentMutationRoutesRequireSuperAdmin(t *testing.T) {
 			}
 		})
 	}
-	if upstreamCalls != 0 {
-		t.Fatalf("denied routes reached upstream %d times, want 0", upstreamCalls)
+	if businessCalls != 0 {
+		t.Fatalf("denied routes reached business upstream %d times, want 0", businessCalls)
 	}
 
 	allowed := httptest.NewRequest(http.MethodPost, "/api/v1/master-data/cabors", nil)
 	allowed.Header.Set("Authorization", "Bearer "+signedTestToken(t, privateKey, issuer, "super_admin"))
 	allowedResponse := httptest.NewRecorder()
 	router.ServeHTTP(allowedResponse, allowed)
-	if allowedResponse.Code != http.StatusNoContent || upstreamCalls != 1 {
-		t.Fatalf("super_admin status/upstream calls = %d/%d, want 204/1", allowedResponse.Code, upstreamCalls)
+	if allowedResponse.Code != http.StatusNoContent || businessCalls != 1 {
+		t.Fatalf("permitted status/business calls = %d/%d, want 204/1", allowedResponse.Code, businessCalls)
+	}
+}
+
+func TestEnterpriseRoutesRequestGranularPermission(t *testing.T) {
+	jwtMiddleware, privateKey, issuer := testJWTMiddleware(t)
+	desiredPermission := ""
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/authorization/check" {
+			permission := r.URL.Query().Get("permission")
+			_ = json.NewEncoder(w).Encode(map[string]bool{"active": true, "allowed": permission == desiredPermission})
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer upstream.Close()
+	cfg := &config.AppConfig{MasterDataURL: upstream.URL, UserURL: upstream.URL, ScheduleURL: upstream.URL, VenueURL: upstream.URL, AuditURL: upstream.URL, LivescoreURL: upstream.URL, MedalsURL: upstream.URL, RealtimeURL: upstream.URL}
+	router := SetupRouter(jwtMiddleware, cfg)
+	cases := []struct{ method, path, permission string }{
+		{http.MethodPost, "/api/v1/master-data/city-guide-categories/manage", "city_guide.create"},
+		{http.MethodPut, "/api/v1/master-data/city-guide-categories/manage/category-id", "city_guide.update"},
+		{http.MethodDelete, "/api/v1/master-data/city-guide-categories/manage/category-id", "city_guide.archive"},
+		{http.MethodPost, "/api/v1/master-data/city-guide-categories/manage/category-id/restore", "city_guide.restore"},
+		{http.MethodPost, "/api/v1/master-data/media/upload", "media.create"},
+		{http.MethodDelete, "/api/v1/master-data/media/media-id", "media.archive"},
+		{http.MethodPost, "/api/v1/venues/venue-id/restore", "venue.restore"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.permission, func(t *testing.T) {
+			desiredPermission = testCase.permission
+			request := httptest.NewRequest(testCase.method, testCase.path, nil)
+			request.Header.Set("Authorization", "Bearer "+signedTestToken(t, privateKey, issuer, "super_admin"))
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			if response.Code != http.StatusNoContent {
+				t.Fatalf("status = %d, want 204 for %s", response.Code, testCase.permission)
+			}
+		})
 	}
 }
 

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PORPROV Admin Enterprise API",
-    "version": "11.0.0",
-    "description": "Kontrak awal endpoint lintas perangkat, kesehatan integrasi, dan media Admin."
+    "version": "12.0.0",
+    "description": "Kontrak Admin Enterprise untuk otorisasi, akun, peran, notifikasi, taksonomi Panduan Kota, audit, media, dan tabel operasional."
   },
   "servers": [{ "url": "/api/v1" }],
   "security": [{ "bearerAuth": [] }],
@@ -54,6 +54,92 @@
       "get": {
         "summary": "Membaca Pustaka Media beserta turunan gambar",
         "responses": { "200": { "description": "Daftar media" }, "403": { "description": "Peran tidak diizinkan" } }
+      }
+    },
+    "/authorization/session": {
+      "get": {
+        "summary": "Membaca profil, peran, dan hak akses sesi aktif",
+        "responses": { "200": { "description": "Konteks otorisasi" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/users": {
+      "get": {
+        "summary": "Membaca akun secara berhalaman berdasarkan status",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["active", "inactive", "archived", "all"] } }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "403": { "description": "Hak akses tidak mencukupi" } }
+      }
+    },
+    "/users/{id}/status": {
+      "put": {
+        "summary": "Mengaktifkan atau menonaktifkan akun tanpa mengarsipkannya",
+        "parameters": [{ "$ref": "#/components/parameters/Id" }],
+        "responses": { "200": { "description": "Status akun diperbarui" }, "409": { "description": "Perubahan melanggar perlindungan akun" } }
+      }
+    },
+    "/users/{id}/restore": {
+      "post": {
+        "summary": "Memulihkan akun yang diarsipkan",
+        "parameters": [{ "$ref": "#/components/parameters/Id" }],
+        "responses": { "200": { "description": "Akun dipulihkan" }, "403": { "description": "Hak akses tidak mencukupi" } }
+      }
+    },
+    "/access-roles": {
+      "get": {
+        "summary": "Membaca peran secara berhalaman",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" } }
+      },
+      "post": { "summary": "Membuat peran khusus", "responses": { "201": { "description": "Peran dibuat" } } }
+    },
+    "/access-roles/permissions": {
+      "get": { "summary": "Membaca katalog hak akses", "responses": { "200": { "description": "Daftar hak akses" } } }
+    },
+    "/notifications": {
+      "get": {
+        "summary": "Membaca notifikasi milik penerima aktif",
+        "responses": { "200": { "description": "Daftar notifikasi terbaru milik penerima" } }
+      }
+    },
+    "/notifications/{id}/read": {
+      "put": {
+        "summary": "Menandai satu notifikasi milik penerima sebagai telah dibaca",
+        "parameters": [{ "$ref": "#/components/parameters/Id" }],
+        "responses": { "204": { "description": "Notifikasi ditandai telah dibaca" }, "404": { "description": "Notifikasi tidak ditemukan untuk penerima" } }
+      }
+    },
+    "/notifications/read-all": {
+      "put": { "summary": "Menandai seluruh notifikasi penerima sebagai telah dibaca", "responses": { "204": { "description": "Seluruh notifikasi ditandai telah dibaca" } } }
+    },
+    "/master-data/city-guide-categories": {
+      "get": { "summary": "Membaca kategori Panduan Kota aktif", "responses": { "200": { "description": "Daftar kategori aktif" } } }
+    },
+    "/master-data/city-guide-categories/manage": {
+      "get": {
+        "summary": "Membaca seluruh kategori Panduan Kota untuk pengelolaan",
+        "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" }, { "$ref": "#/components/parameters/Query" }],
+        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" } }
+      },
+      "post": { "summary": "Membuat kategori Panduan Kota", "responses": { "201": { "description": "Kategori dibuat" } } }
+    },
+    "/master-data/city-guides/manage": {
+      "get": {
+        "summary": "Membaca Panduan Kota untuk pengelolaan termasuk kategori tidak aktif",
+        "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" }, { "$ref": "#/components/parameters/Query" }],
+        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" } }
+      }
+    },
+    "/user-directory/lookup": {
+      "post": {
+        "summary": "Mencari identitas aktor audit secara terbatas",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["actor_ids"], "properties": { "actor_ids": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "type": "string", "maxLength": 255 } } } } } } },
+        "responses": { "200": { "description": "Peta identitas aktor" }, "403": { "description": "Hanya layanan tepercaya" } }
       }
     },
     "/master-data/cabors": {
@@ -121,7 +207,8 @@
       "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
       "PerPage": { "name": "per_page", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 10 } },
       "Query": { "name": "q", "in": "query", "schema": { "type": "string", "maxLength": 80 } },
-      "Direction": { "name": "direction", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" } }
+      "Direction": { "name": "direction", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" } },
+      "Id": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
     },
     "responses": {
       "Unauthorized": { "description": "Autentikasi diperlukan" },

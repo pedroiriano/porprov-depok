@@ -23,6 +23,8 @@ import { useAuth } from 'react-oidc-context';
 import { useTheme } from './hooks/useTheme';
 import { canAccessRole, getRealmRoles } from './lib/auth';
 import { CubaAdminShell } from './components/cuba/CubaAdminShell';
+import { AuthorizationProvider } from './contexts/AuthorizationContext';
+import { useAuthorization } from './contexts/authorization';
 
 const adminAssetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
 
@@ -39,6 +41,8 @@ const UserManagement = lazy(() => import('./pages/UserManagement'));
 const MediaLibrary = lazy(() => import('./components/media/MediaLibrary'));
 const HeroManagement = lazy(() => import('./pages/HeroManagement'));
 const IntegrationHealth = lazy(() => import('./pages/IntegrationHealth'));
+const RoleManagement = lazy(() => import('./pages/RoleManagement'));
+const CityGuideCategories = lazy(() => import('./pages/CityGuideCategories'));
 
 // Sidebar Item Component
 const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: LucideIcon, label: string, path: string, isActive: boolean }) => (
@@ -264,6 +268,7 @@ export default function App({ routerBasePath }: { routerBasePath?: string }) {
 
   return (
     <Router basename={routerBasePath}>
+      <AuthorizationProvider>
       {cubaFoundationEnabled ? (
         <CubaAdminShell auth={auth}>
           <Suspense fallback={<div className="flex min-h-64 items-center justify-center" role="status"><span className="size-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-slate-700 dark:border-t-blue-400" aria-hidden="true" /><span className="sr-only">Memuat halaman Admin</span></div>}>
@@ -277,6 +282,7 @@ export default function App({ routerBasePath }: { routerBasePath?: string }) {
         </Suspense>
       </AdminLayout>
       )}
+      </AuthorizationProvider>
     </Router>
   );
 }
@@ -284,28 +290,29 @@ export default function App({ routerBasePath }: { routerBasePath?: string }) {
 function AdminRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<DashboardOverview />} />
-      <Route path="/master-data" element={<AdminRouteGuard allowedRoles={['super_admin']}><MasterData /></AdminRouteGuard>} />
-      <Route path="/hero" element={<AdminRouteGuard allowedRoles={['super_admin']}><HeroManagement /></AdminRouteGuard>} />
-      <Route path="/livescore" element={<AdminRouteGuard allowedRoles={['koresponden']}><LiveScoreCenter /></AdminRouteGuard>} />
-      <Route path="/audit-log" element={<AdminRouteGuard allowedRoles={['auditor']}><AuditLog /></AdminRouteGuard>} />
+      <Route path="/" element={<AdminRouteGuard permission="dashboard.view"><DashboardOverview /></AdminRouteGuard>} />
+      <Route path="/master-data" element={<AdminRouteGuard permission="master_data.view"><MasterData /></AdminRouteGuard>} />
+      <Route path="/hero" element={<AdminRouteGuard permission="master_data.manage"><HeroManagement /></AdminRouteGuard>} />
+      <Route path="/livescore" element={<AdminRouteGuard permission="livescore.view"><LiveScoreCenter /></AdminRouteGuard>} />
+      <Route path="/audit-log" element={<AdminRouteGuard permission="audit.view"><AuditLog /></AdminRouteGuard>} />
       <Route path="/profile" element={<Profile />} />
-      <Route path="/medals" element={<AdminRouteGuard allowedRoles={['koresponden']}><Medals /></AdminRouteGuard>} />
-      <Route path="/city-guide" element={<AdminRouteGuard allowedRoles={['super_admin']}><CityGuide /></AdminRouteGuard>} />
-      <Route path="/media" element={<AdminRouteGuard allowedRoles={['super_admin']}><MediaLibrary /></AdminRouteGuard>} />
-      <Route path="/verifikasi" element={<AdminRouteGuard allowedRoles={['verifikator']}><Medals /></AdminRouteGuard>} />
-      <Route path="/user-management" element={<AdminRouteGuard allowedRoles={['super_admin']}><UserManagement /></AdminRouteGuard>} />
-      <Route path="/integration-health" element={<AdminRouteGuard allowedRoles={['super_admin', 'auditor']}><IntegrationHealth /></AdminRouteGuard>} />
+      <Route path="/medals" element={<AdminRouteGuard permission="medal.view"><Medals /></AdminRouteGuard>} />
+      <Route path="/city-guide" element={<AdminRouteGuard permission="city_guide.view"><CityGuide /></AdminRouteGuard>} />
+      <Route path="/city-guide-categories" element={<AdminRouteGuard permission="city_guide.view"><CityGuideCategories /></AdminRouteGuard>} />
+      <Route path="/media" element={<AdminRouteGuard permission="media.view"><MediaLibrary /></AdminRouteGuard>} />
+      <Route path="/verifikasi" element={<AdminRouteGuard permission="medal.verify"><Medals /></AdminRouteGuard>} />
+      <Route path="/user-management" element={<AdminRouteGuard permission="user.view"><UserManagement /></AdminRouteGuard>} />
+      <Route path="/role-management" element={<AdminRouteGuard permission="role.view"><RoleManagement /></AdminRouteGuard>} />
+      <Route path="/integration-health" element={<AdminRouteGuard permission="integration.view"><IntegrationHealth /></AdminRouteGuard>} />
       <Route path="*" element={<section className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"><h1 className="text-2xl font-black">Halaman tidak ditemukan</h1><p className="mt-2 text-slate-600 dark:text-slate-400">Kembali ke dasbor untuk melanjutkan pekerjaan.</p><Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-md bg-indigo-600 px-5 font-bold text-white hover:bg-indigo-700">Kembali ke Dasbor</Link></section>} />
     </Routes>
   );
 }
 
-function AdminRouteGuard({ allowedRoles, children }: { allowedRoles: string[]; children: React.ReactNode }) {
-  const auth = useAuth();
-  const roles = getRealmRoles(auth.user);
-
-  if (canAccessRole(roles, allowedRoles)) return children;
+function AdminRouteGuard({ permission, children }: { permission: string; children: React.ReactNode }) {
+  const authorization = useAuthorization();
+  if (authorization.loading) return <div className="flex min-h-64 items-center justify-center" role="status">Memeriksa hak akses...</div>;
+  if (authorization.hasPermission(permission)) return children;
 
   // SECURITY: Guard presentasi mencegah akses route langsung. API Gateway tetap
   // menjadi otoritas final dan menerapkan matrix role yang sama pada mutasi.
@@ -315,7 +322,7 @@ function AdminRouteGuard({ allowedRoles, children }: { allowedRoles: string[]; c
         <ShieldAlert className="size-7" aria-hidden="true" />
       </span>
       <h1 className="mt-4 text-2xl font-black text-slate-950 dark:text-white">Akses dibatasi</h1>
-      <p className="mt-2 max-w-lg text-sm text-slate-600 dark:text-slate-300">Akun Anda tidak memiliki peran yang diperlukan untuk membuka halaman ini.</p>
+      <p className="mt-2 max-w-lg text-sm text-slate-600 dark:text-slate-300">Akun Anda tidak memiliki hak akses yang diperlukan untuk membuka halaman ini.</p>
       <Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950">Kembali ke Dasbor</Link>
     </section>
   );

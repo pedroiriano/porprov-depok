@@ -3,6 +3,7 @@ import { Activity, CircleGauge, History, Loader2, Radio, RefreshCw, Send, Trophy
 import { useAuth } from 'react-oidc-context';
 import { AdminAlert, AdminEmptyState, AdminLoadingState, AdminPageHeader } from '../components/cuba/AdminPrimitives';
 import { API_BASE_URL, apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../lib/api';
+import { useAuthorization } from '../contexts/authorization';
 
 interface ScheduleParticipant { participant_type: 'individual' | 'team' | 'contingent'; kontingen_name: string; athlete_name: string; team_name: string; slot: number; display_name: string }
 interface ScheduleMatch { id: string; cabor_name: string; nomor_tanding_name: string; venue_name: string; round: string; status: string; participants?: ScheduleParticipant[] }
@@ -30,6 +31,8 @@ function StatCard({ icon, label, value, tone = 'blue' }: { icon: ReactNode; labe
 
 export default function LiveScoreCenter() {
   const auth = useAuth();
+  const authorization = useAuthorization();
+  const canManage = authorization.hasPermission('livescore.manage');
   const token = auth.user?.access_token;
   const [matches, setMatches] = useState<ScheduleMatch[]>([]);
   const [scores, setScores] = useState<Record<string, ScoreRecord>>({});
@@ -141,7 +144,7 @@ export default function LiveScoreCenter() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!token || !matchId) return;
+    if (!token || !matchId || !canManage) return;
     if (!participantsReady) {
       setFeedback({ type: 'error', message: 'Susunan Peserta A/B belum lengkap. Lengkapi melalui Data Utama → Jadwal Pertandingan sebelum memasukkan skor.' });
       return;
@@ -179,6 +182,8 @@ export default function LiveScoreCenter() {
       {loading ? <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"><AdminLoadingState label="Memuat skor langsung..." /></div> : matches.length === 0 ? <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"><AdminEmptyState icon={Trophy} title="Belum ada pertandingan" description="Susun pertandingan dan Peserta A/B pada Jadwal Pertandingan sebelum membuka input skor." action={<a href={`${import.meta.env.BASE_URL}master-data?tab=jadwal`} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900">Buka Jadwal Pertandingan</a>} /></div> : (
         <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.5fr)]">
           <form onSubmit={submit} className="h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900">
+            {!canManage && <div className="mb-4"><AdminAlert tone="warning">Akun Anda hanya dapat melihat skor. Hubungi Pengelola Utama jika tugas Anda memerlukan izin mengubah skor.</AdminAlert></div>}
+            <fieldset disabled={!canManage} className="contents">
             <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-200"><Send className="size-5" aria-hidden="true" /></span><div><h2 className="font-black text-slate-950 dark:text-white">Masukkan skor resmi</h2><p className="text-xs text-slate-500 dark:text-slate-300">Setiap penyimpanan menghasilkan catatan perubahan baru.</p></div></div>
             <div className="mt-4"><AdminAlert tone="warning"><strong>Alur resmi:</strong> halaman ini hanya mencatat skor, status, dan koreksi. Peserta tidak dapat diubah dari sini.</AdminAlert></div>
             <label htmlFor="livescore-match" className="mt-5 block text-sm font-bold text-slate-700 dark:text-slate-200">Pertandingan</label>
@@ -194,6 +199,7 @@ export default function LiveScoreCenter() {
             <label className="mt-5 flex min-h-11 items-center gap-3 rounded-xl border border-slate-200 px-3 text-slate-700 dark:border-slate-700 dark:text-slate-200"><input type="checkbox" checked={correction} onChange={(event) => setCorrection(event.target.checked)} className="size-4 rounded accent-blue-600 focus:ring-2 focus:ring-blue-500" /><span className="text-sm font-bold">Ini adalah koreksi skor</span></label>
             {correction && <label htmlFor="correction-reason" className="mt-4 block text-sm font-bold text-slate-700 dark:text-slate-200">Alasan koreksi<textarea id="correction-reason" required minLength={5} value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" placeholder="Jelaskan sumber dan alasan koreksi" /></label>}
             <button type="submit" disabled={submitting || !matchId || !participantsReady} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-slate-900">{submitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}{correction ? 'Simpan koreksi' : 'Simpan pembaruan skor'}</button>
+            </fieldset>
           </form>
 
           <div className="space-y-6">

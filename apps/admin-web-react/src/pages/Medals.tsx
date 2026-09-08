@@ -8,7 +8,7 @@ import { AdminAlert, AdminPageHeader } from '../components/cuba/AdminPrimitives'
 import { AdminDataTable, type AdminDataTableColumn } from '../components/cuba/AdminDataTable';
 import { AdminWorkspaceTabs } from '../components/cuba/AdminWorkspaceTabs';
 import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../lib/api';
-import { getRealmRoles } from '../lib/auth';
+import { useAuthorization } from '../contexts/authorization';
 // INFO: Import table controls
 import { useTableControls, usePagination } from '../hooks/useTableControls';
 import { TablePagination, RowsPerPageSelector } from '../components/common/TableControls';
@@ -31,13 +31,13 @@ const submissionStatusLabels: Record<Submission['status'], string> = {
 
 export default function Medals() {
   const auth = useAuth();
+  const authorization = useAuthorization();
   const location = useLocation();
   const verificationRoute = location.pathname.endsWith('/verifikasi');
   const token = auth.user?.access_token;
-  const roles = getRealmRoles(auth.user);
-  const canSubmit = roles.includes('super_admin') || roles.includes('koresponden');
-  const canVerify = roles.includes('super_admin') || roles.includes('verifikator');
-  const canPublish = roles.includes('super_admin');
+  const canSubmit = authorization.hasPermission('medal.create');
+  const canVerify = authorization.hasPermission('medal.verify');
+  const canPublish = authorization.hasPermission('medal.publish');
   const [standings, setStandings] = useState<Standing[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [kontingens, setKontingens] = useState<Kontingen[]>([]);

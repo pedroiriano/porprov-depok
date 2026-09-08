@@ -35,6 +35,17 @@ func ActorIDFromContext(ctx context.Context) string {
 	return strings.TrimSpace(subject)
 }
 
+// ActorIdentityFromContext mengambil snapshot nama hanya dari JWT tervalidasi.
+func ActorIdentityFromContext(ctx context.Context) (string, string) {
+	claims, ok := ctx.Value(UserContextKey).(jwt.MapClaims)
+	if !ok {
+		return "", ""
+	}
+	username, _ := claims["preferred_username"].(string)
+	displayName, _ := claims["name"].(string)
+	return strings.TrimSpace(username), strings.TrimSpace(displayName)
+}
+
 // RolesFromContext membaca realm roles hanya dari JWT yang sudah tervalidasi.
 func RolesFromContext(ctx context.Context) []string {
 	claims, ok := ctx.Value(UserContextKey).(jwt.MapClaims)

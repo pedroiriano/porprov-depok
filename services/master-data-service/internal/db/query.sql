@@ -81,14 +81,14 @@ RETURNING *;
 
 -- name: CreateCityGuide :one
 INSERT INTO city_guides (
-  title, category, description, address, image_url, latitude, longitude, map_route_url,
+  title, category, category_id, description, address, image_url, latitude, longitude, map_route_url,
   contact_phone, whatsapp, email, website_url, instagram_url, facebook_url, tiktok_url,
   service_types, service_area, operating_hours, price_range, fleet_types, fleet_count
 )
 VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8,
-  $9, $10, $11, $12, $13, $14, $15,
-  $16, $17, $18, $19, $20, $21
+  $1, $2, $3, $4, $5, $6, $7, $8, $9,
+  $10, $11, $12, $13, $14, $15, $16,
+  $17, $18, $19, $20, $21, $22
 )
 RETURNING *;
 
@@ -104,6 +104,22 @@ WHERE deleted_at IS NULL
     OR category ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
   )
 ORDER BY is_pinned_venue_recommendation DESC, title ASC;
+
+-- name: ListPublicCityGuides :many
+SELECT guide.* FROM city_guides guide
+JOIN city_guide_categories category_ref ON category_ref.id = guide.category_id
+WHERE guide.deleted_at IS NULL
+  AND category_ref.deleted_at IS NULL
+  AND category_ref.is_active
+  AND guide.category = COALESCE(NULLIF(sqlc.arg(category)::text, ''), guide.category)
+  AND (
+    NULLIF(sqlc.arg(search)::text, '') IS NULL
+    OR guide.title ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.description, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.address, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR guide.category ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+  )
+ORDER BY guide.is_pinned_venue_recommendation DESC, guide.title ASC;
 
 -- name: ListCityGuidesPaginated :many
 SELECT * FROM city_guides
@@ -123,6 +139,27 @@ ORDER BY is_pinned_venue_recommendation DESC, title ASC, id ASC
 LIMIT sqlc.arg(page_limit)::integer
 OFFSET sqlc.arg(page_offset)::integer;
 
+-- name: ListPublicCityGuidesPaginated :many
+SELECT guide.* FROM city_guides guide
+JOIN city_guide_categories category_ref ON category_ref.id = guide.category_id
+WHERE guide.deleted_at IS NULL
+  AND category_ref.deleted_at IS NULL
+  AND category_ref.is_active
+  AND guide.category = COALESCE(NULLIF(sqlc.arg(category)::text, ''), guide.category)
+  AND (
+    NULLIF(sqlc.arg(search)::text, '') IS NULL
+    OR guide.title ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.description, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.address, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR guide.category ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.contact_phone, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.whatsapp, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.email, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+  )
+ORDER BY guide.is_pinned_venue_recommendation DESC, guide.title ASC, guide.id ASC
+LIMIT sqlc.arg(page_limit)::integer
+OFFSET sqlc.arg(page_offset)::integer;
+
 -- name: CountCityGuides :one
 SELECT COUNT(*) FROM city_guides
 WHERE deleted_at IS NULL
@@ -138,8 +175,35 @@ WHERE deleted_at IS NULL
     OR COALESCE(email, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
   );
 
+-- name: CountPublicCityGuides :one
+SELECT COUNT(*) FROM city_guides guide
+JOIN city_guide_categories category_ref ON category_ref.id = guide.category_id
+WHERE guide.deleted_at IS NULL
+  AND category_ref.deleted_at IS NULL
+  AND category_ref.is_active
+  AND guide.category = COALESCE(NULLIF(sqlc.arg(category)::text, ''), guide.category)
+  AND (
+    NULLIF(sqlc.arg(search)::text, '') IS NULL
+    OR guide.title ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.description, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.address, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR guide.category ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.contact_phone, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.whatsapp, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+    OR COALESCE(guide.email, '') ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+  );
+
 -- name: GetCityGuideByID :one
 SELECT * FROM city_guides WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
+
+-- name: GetPublicCityGuideByID :one
+SELECT guide.* FROM city_guides guide
+JOIN city_guide_categories category_ref ON category_ref.id = guide.category_id
+WHERE guide.id = $1
+  AND guide.deleted_at IS NULL
+  AND category_ref.deleted_at IS NULL
+  AND category_ref.is_active
+LIMIT 1;
 
 -- name: GetPinnedCityGuideForVenues :one
 SELECT * FROM city_guides
@@ -167,28 +231,99 @@ UPDATE city_guides
 SET
   title = $2,
   category = $3,
-  description = NULLIF($4::text, ''),
-  address = NULLIF($5::text, ''),
-  image_url = NULLIF($6::text, ''),
-  latitude = $7,
-  longitude = $8,
-  map_route_url = NULLIF($9::text, ''),
-  contact_phone = NULLIF($10::text, ''),
-  whatsapp = NULLIF($11::text, ''),
-  email = NULLIF($12::text, ''),
-  website_url = NULLIF($13::text, ''),
-  instagram_url = NULLIF($14::text, ''),
-  facebook_url = NULLIF($15::text, ''),
-  tiktok_url = NULLIF($16::text, ''),
-  service_types = $17,
-  service_area = NULLIF($18::text, ''),
-  operating_hours = NULLIF($19::text, ''),
-  price_range = NULLIF($20::text, ''),
-  fleet_types = $21,
-  fleet_count = $22,
+  category_id = $4,
+  description = NULLIF($5::text, ''),
+  address = NULLIF($6::text, ''),
+  image_url = NULLIF($7::text, ''),
+  latitude = $8,
+  longitude = $9,
+  map_route_url = NULLIF($10::text, ''),
+  contact_phone = NULLIF($11::text, ''),
+  whatsapp = NULLIF($12::text, ''),
+  email = NULLIF($13::text, ''),
+  website_url = NULLIF($14::text, ''),
+  instagram_url = NULLIF($15::text, ''),
+  facebook_url = NULLIF($16::text, ''),
+  tiktok_url = NULLIF($17::text, ''),
+  service_types = $18,
+  service_area = NULLIF($19::text, ''),
+  operating_hours = NULLIF($20::text, ''),
+  price_range = NULLIF($21::text, ''),
+  fleet_types = $22,
+  fleet_count = $23,
   updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
+
+-- name: GetCityGuideCategoryByID :one
+SELECT * FROM city_guide_categories WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
+
+-- name: GetCityGuideCategoryByName :one
+SELECT * FROM city_guide_categories WHERE LOWER(name) = LOWER($1) AND deleted_at IS NULL LIMIT 1;
+
+-- name: CreateCityGuideCategory :one
+INSERT INTO city_guide_categories(name, slug, description, created_by, updated_by)
+VALUES ($1, $2, NULLIF($3::text, ''), NULLIF($4::text, ''), NULLIF($4::text, ''))
+RETURNING *;
+
+-- name: CountCityGuideCategories :one
+SELECT COUNT(*) FROM city_guide_categories
+WHERE deleted_at IS NULL
+  AND (sqlc.arg(status)::text = '' OR (sqlc.arg(status)::text = 'active' AND is_active) OR (sqlc.arg(status)::text = 'inactive' AND NOT is_active))
+  AND (sqlc.arg(search)::text = '' OR name ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\\' OR slug ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\\');
+
+-- name: ListCityGuideCategories :many
+SELECT category.*,
+       (SELECT COUNT(*) FROM city_guides guide WHERE guide.category_id = category.id AND guide.deleted_at IS NULL)::bigint AS usage_count
+FROM city_guide_categories category
+WHERE category.deleted_at IS NULL
+  AND (sqlc.arg(status)::text = '' OR (sqlc.arg(status)::text = 'active' AND category.is_active) OR (sqlc.arg(status)::text = 'inactive' AND NOT category.is_active))
+  AND (sqlc.arg(search)::text = '' OR category.name ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\\' OR category.slug ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\\')
+ORDER BY
+  CASE WHEN sqlc.arg(sort_key)::text = 'name' AND sqlc.arg(sort_order)::text = 'desc' THEN LOWER(category.name) END DESC,
+  CASE WHEN sqlc.arg(sort_key)::text = 'created_at' AND sqlc.arg(sort_order)::text = 'asc' THEN category.created_at END ASC,
+  CASE WHEN sqlc.arg(sort_key)::text = 'created_at' AND sqlc.arg(sort_order)::text = 'desc' THEN category.created_at END DESC,
+  LOWER(category.name) ASC, category.id ASC
+LIMIT sqlc.arg(page_limit)::integer OFFSET sqlc.arg(page_offset)::integer;
+
+-- name: ListPublicCityGuideCategories :many
+SELECT category.*,
+       (SELECT COUNT(*) FROM city_guides guide WHERE guide.category_id = category.id AND guide.deleted_at IS NULL)::bigint AS usage_count
+FROM city_guide_categories category
+WHERE category.deleted_at IS NULL AND category.is_active
+  AND EXISTS (SELECT 1 FROM city_guides guide WHERE guide.category_id = category.id AND guide.deleted_at IS NULL)
+ORDER BY LOWER(category.name), category.id;
+
+-- name: UpdateCityGuideCategory :one
+UPDATE city_guide_categories
+SET name = $2, description = NULLIF($3::text, ''), updated_by = NULLIF($4::text, ''), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL RETURNING *;
+
+-- name: SetCityGuideCategoryStatus :one
+UPDATE city_guide_categories
+SET is_active = $2,
+    deactivated_at = CASE WHEN $2 THEN NULL ELSE NOW() END,
+    deactivated_by = CASE WHEN $2 THEN NULL ELSE NULLIF($3::text, '') END,
+    deactivation_reason = CASE WHEN $2 THEN NULL ELSE NULLIF($4::text, '') END,
+    updated_by = NULLIF($3::text, ''), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL RETURNING *;
+
+-- name: ArchiveCityGuideCategory :one
+UPDATE city_guide_categories AS category
+SET deleted_at = NOW(), deleted_by = NULLIF($2::text, ''), delete_reason = NULLIF($3::text, ''), updated_by = NULLIF($2::text, ''), updated_at = NOW()
+WHERE category.id = $1 AND category.deleted_at IS NULL
+  AND NOT EXISTS (SELECT 1 FROM city_guides guide WHERE guide.category_id = category.id AND guide.deleted_at IS NULL)
+RETURNING category.*;
+
+-- name: RestoreCityGuideCategory :one
+UPDATE city_guide_categories
+SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL, updated_by = NULLIF($2::text, ''), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NOT NULL RETURNING *;
+
+-- name: ListDeletedCityGuideCategories :many
+SELECT category.*,
+       (SELECT COUNT(*) FROM city_guides guide WHERE guide.category_id = category.id AND guide.deleted_at IS NULL)::bigint AS usage_count
+FROM city_guide_categories category WHERE category.deleted_at IS NOT NULL ORDER BY category.deleted_at DESC;
 
 -- name: CreateMedia :one
 INSERT INTO media_assets (

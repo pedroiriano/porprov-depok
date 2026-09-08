@@ -14,11 +14,13 @@ import { AdminAlert, AdminPageHeader, BulkActionBar } from '../components/cuba/A
 import { AdminDataTable, type AdminDataTableColumn } from '../components/cuba/AdminDataTable';
 import RevisionHistory from '../components/common/RevisionHistory';
 import { applyRevisionFields } from '../lib/revision';
+import { useAuthorization } from '../contexts/authorization';
 
 interface CityGuideRecord {
   id: string;
   title: string;
   category: string;
+  category_id: string;
   description: string | null;
   address: string | null;
   image_url: string | null;
@@ -54,6 +56,7 @@ interface CityGuideFormState {
   id: string;
   title: string;
   category: string;
+  category_id: string;
   description: string;
   address: string;
   image_url: string;
@@ -78,7 +81,8 @@ interface CityGuideFormState {
 const createEmptyForm = (): CityGuideFormState => ({
   id: '',
   title: '',
-  category: 'Coffee Shop',
+  category: '',
+  category_id: '',
   description: '',
   address: '',
   image_url: '',
@@ -100,18 +104,8 @@ const createEmptyForm = (): CityGuideFormState => ({
   fleet_count: '',
 });
 
-const categories = [
-  'Coffee Shop',
-  'Catering',
-  'Info Travel',
-  'Wisata Kuliner',
-  'Tempat Menginap',
-  'Wisata Buatan',
-  'Wisata Situ',
-  'Pusat Perbelanjaan',
-  'Rumah Sakit',
-  'Lainnya',
-];
+type CityGuideCategory = { id: string; name: string; slug: string; is_active: boolean; usage_count: number };
+type CategoryPage = { data: CityGuideCategory[] };
 
 type CityGuideSortKey = 'title' | 'category' | 'address' | 'map_route_url';
 
@@ -174,7 +168,12 @@ export default function CityGuide() {
   const [pinningID, setPinningID] = useState('');
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [categories, setCategories] = useState<CityGuideCategory[]>([]);
   const auth = useAuth();
+  const authorization = useAuthorization();
+  const canCreate = authorization.hasPermission('city_guide.create');
+  const canUpdate = authorization.hasPermission('city_guide.update');
+  const canArchive = authorization.hasPermission('city_guide.archive');
   const canManageVenuePin = canAccessRole(getRealmRoles(auth.user), ['super_admin']);
 
   // INFO: State pencarian dan kategori filter
@@ -188,6 +187,13 @@ export default function CityGuide() {
   const { currentPage, resetPage, rowsPerPage, setCurrentPage } = table;
 
   const getAuthConfig = useCallback(() => authConfig(auth.user?.access_token), [auth.user?.access_token]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await apiClient.get<CategoryPage>('/master-data/city-guide-categories/manage?limit=100&status=active', getAuthConfig());
+      setCategories(response.data.data || []);
+    } catch { setCategories([]); }
+  }, [getAuthConfig]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350);
@@ -204,7 +210,7 @@ export default function CityGuide() {
       });
       if (debouncedSearch) params.set('q', debouncedSearch);
       if (categoryFilter) params.set('category', categoryFilter);
-      const response = await apiClient.get<CityGuideListResponse>(`/master-data/city-guides?${params.toString()}`, getAuthConfig());
+      const response = await apiClient.get<CityGuideListResponse>(`/master-data/city-guides/manage?${params.toString()}`, getAuthConfig());
       if (requestID !== requestRef.current) return;
       setGuides(response.data.data || []);
       setPinnedGuide(response.data.pinned || null);
@@ -223,7 +229,8 @@ export default function CityGuide() {
 
   useEffect(() => {
     void fetchGuides();
-  }, [fetchGuides]);
+    void fetchCategories();
+  }, [fetchCategories, fetchGuides]);
 
   // CHANGE: Reset ke halaman 1 saat filter/search/rowsPerPage berubah
   useEffect(() => {
@@ -265,7 +272,8 @@ export default function CityGuide() {
   const resetForm = () => setFormData(createEmptyForm());
 
   const openCreateForm = () => {
-    resetForm();
+    const firstCategory = categories[0];
+    setFormData({ ...createEmptyForm(), category: firstCategory?.name || '', category_id: firstCategory?.id || '' });
     setErrorMessage('');
     setIsModalOpen(true);
   };
@@ -275,6 +283,7 @@ export default function CityGuide() {
       id: item.id,
       title: item.title,
       category: item.category,
+      category_id: item.category_id,
       description: item.description || '',
       address: item.address || '',
       image_url: item.image_url || '',
@@ -346,6 +355,7 @@ export default function CityGuide() {
       const payload = {
         title: formData.title.trim(),
         category: formData.category,
+        category_id: formData.category_id,
         description: formData.description.trim(),
         address: formData.address.trim(),
         image_url: formData.image_url,
@@ -458,8 +468,8 @@ export default function CityGuide() {
 
   const cityGuideActions = (item: CityGuideRecord) => <>
     {canManageVenuePin && <button type="button" onClick={() => void handlePinForVenues(item)} disabled={item.is_pinned_venue_recommendation || pinningID !== ''} aria-label={item.is_pinned_venue_recommendation ? `${item.title} sedang dipin untuk seluruh lokasi pertandingan` : `Pin ${item.title} untuk seluruh lokasi pertandingan`} title={item.is_pinned_venue_recommendation ? 'Rekomendasi utama aktif' : 'Jadikan rekomendasi utama seluruh lokasi pertandingan'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200">{pinningID === item.id ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Pin className="size-4" aria-hidden="true" />}</button>}
-    <button type="button" onClick={() => openEditForm(item)} aria-label={`Edit ${item.title}`} title="Edit Panduan Kota" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>
-    <button type="button" onClick={() => void handleArchive([item.id])} disabled={item.is_pinned_venue_recommendation || archiving} aria-label={item.is_pinned_venue_recommendation ? `${item.title} harus diganti pinnya sebelum diarsipkan` : `Arsipkan ${item.title}`} title={item.is_pinned_venue_recommendation ? 'Ganti rekomendasi utama sebelum mengarsipkan' : 'Arsipkan Panduan Kota'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>
+    {canUpdate && <button type="button" onClick={() => openEditForm(item)} aria-label={`Ubah ${item.title}`} title="Ubah Panduan Kota" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>}
+    {canArchive && <button type="button" onClick={() => void handleArchive([item.id])} disabled={item.is_pinned_venue_recommendation || archiving} aria-label={item.is_pinned_venue_recommendation ? `${item.title} harus diganti pinnya sebelum diarsipkan` : `Arsipkan ${item.title}`} title={item.is_pinned_venue_recommendation ? 'Ganti rekomendasi utama sebelum mengarsipkan' : 'Arsipkan Panduan Kota'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>}
   </>;
 
   const useCurrentLocation = () => {
@@ -493,17 +503,13 @@ export default function CityGuide() {
     : coordinatePreviewReady
       ? encodeURI(googleMapsURL(formData.latitude, formData.longitude, formData.title.trim() || 'Panduan Kota Depok'))
       : '';
-  const categoryOptions = formData.category && !categories.includes(formData.category)
-    ? [formData.category, ...categories]
-    : categories;
-
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
         eyebrow="Informasi Kota Depok"
         title="Panduan Kota"
         description="Kelola panduan kota, kontak resmi, URL rute Google Maps, dan koordinat cadangan yang terverifikasi."
-        actions={<button type="button" onClick={openCreateForm} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm transition-colors hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah panduan</button>}
+        actions={canCreate ? <button type="button" onClick={openCreateForm} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm transition-colors hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah panduan</button> : undefined}
       />
 
       {operationMessage && !isModalOpen && <AdminAlert tone="success">{operationMessage}</AdminAlert>}
@@ -556,8 +562,8 @@ export default function CityGuide() {
                 className="min-h-11 appearance-none rounded-xl border border-slate-300 bg-white py-2 pl-3 pr-9 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Semua Kategori</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{cat}</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{category.name}</option>
                 ))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -596,7 +602,7 @@ export default function CityGuide() {
           </div>
         )}
 
-        <BulkActionBar
+        {canArchive && <BulkActionBar
           selectedCount={selectedIds.size}
           onClear={() => setSelectedIds(new Set())}
           onDelete={() => void handleArchive([...selectedIds])}
@@ -604,7 +610,7 @@ export default function CityGuide() {
           itemLabel="panduan"
           actionLabel="Arsipkan terpilih"
           loadingLabel="Mengarsipkan..."
-        />
+        />}
 
         <AdminDataTable<CityGuideRecord, CityGuideSortKey>
           caption="Daftar Panduan Kota Depok"
@@ -618,6 +624,7 @@ export default function CityGuide() {
           onSort={table.handleSort}
           selectedIds={selectedIds}
           onSelectedIdsChange={setSelectedIds}
+          selectionEnabled={canArchive}
           isRowSelectable={(item) => !item.is_pinned_venue_recommendation}
           loading={loading}
           loadingLabel="Memuat Panduan Kota..."
@@ -651,7 +658,7 @@ export default function CityGuide() {
           <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Identitas usaha atau lokasi</legend>
         <div className="grid gap-4 md:grid-cols-2">
           <TextInput label={formData.category === 'Catering' || formData.category === 'Info Travel' ? 'Nama Usaha' : 'Judul'} required maxLength={255} value={formData.title} onChange={(event) => setFormData((current) => ({ ...current, title: event.target.value }))} />
-          <SelectInput label="Kategori" required value={formData.category} onChange={(event) => setFormData((current) => ({ ...current, category: event.target.value }))} options={categoryOptions.map((category) => ({ value: category, label: category }))} />
+          <SelectInput label="Kategori" required value={formData.category_id} onChange={(event) => { const selected = categories.find((category) => category.id === event.target.value); setFormData((current) => ({ ...current, category_id: event.target.value, category: selected?.name || '' })); }} options={categories.map((category) => ({ value: category.id, label: category.name }))} />
         </div>
           <div className="mt-4 grid gap-4">
             <TextArea label="Deskripsi" rows={3} value={formData.description} onChange={(event) => setFormData((current) => ({ ...current, description: event.target.value }))} placeholder="Ringkasan usaha, layanan utama, keunggulan, atau informasi pengunjung" />

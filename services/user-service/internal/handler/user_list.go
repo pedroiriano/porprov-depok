@@ -23,6 +23,7 @@ type userListParams struct {
 	Search     string
 	SortBy     string
 	SortOrder  string
+	Status     string
 	LegacyMode bool
 }
 
@@ -33,10 +34,11 @@ func parseUserListParams(values url.Values) (userListParams, string) {
 		Search:     strings.TrimSpace(values.Get("q")),
 		SortBy:     strings.TrimSpace(values.Get("sort")),
 		SortOrder:  strings.ToLower(strings.TrimSpace(values.Get("order"))),
+		Status:     strings.ToLower(strings.TrimSpace(values.Get("status"))),
 		LegacyMode: true,
 	}
 
-	for _, key := range []string{"page", "limit", "q", "sort", "order"} {
+	for _, key := range []string{"page", "limit", "q", "sort", "order", "status"} {
 		if values.Has(key) {
 			params.LegacyMode = false
 			break
@@ -77,6 +79,12 @@ func parseUserListParams(values url.Values) (userListParams, string) {
 	}
 	if params.SortOrder != "asc" && params.SortOrder != "desc" {
 		return params, "Sort order must be asc or desc"
+	}
+	if params.Status == "" {
+		params.Status = "all"
+	}
+	if params.Status != "all" && params.Status != "active" && params.Status != "inactive" && params.Status != "archived" {
+		return params, "Status must be all, active, inactive, or archived"
 	}
 
 	return params, ""

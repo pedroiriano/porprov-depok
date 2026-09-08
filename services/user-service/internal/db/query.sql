@@ -22,7 +22,13 @@ ORDER BY created_at DESC;
 -- name: CountUsersPage :one
 SELECT COUNT(*)
 FROM users
-WHERE deleted_at IS NULL
+WHERE (
+    (sqlc.arg('status')::text = 'archived' AND deleted_at IS NOT NULL)
+    OR (sqlc.arg('status')::text <> 'archived' AND deleted_at IS NULL
+        AND (sqlc.arg('status')::text = 'all'
+            OR (sqlc.arg('status')::text = 'active' AND is_active)
+            OR (sqlc.arg('status')::text = 'inactive' AND NOT is_active)))
+  )
   AND (
     sqlc.arg('search')::text = ''
     OR username ILIKE '%' || sqlc.arg('search')::text || '%'
@@ -34,7 +40,13 @@ WHERE deleted_at IS NULL
 -- name: ListUsersPage :many
 SELECT *
 FROM users
-WHERE deleted_at IS NULL
+WHERE (
+    (sqlc.arg('status')::text = 'archived' AND deleted_at IS NOT NULL)
+    OR (sqlc.arg('status')::text <> 'archived' AND deleted_at IS NULL
+        AND (sqlc.arg('status')::text = 'all'
+            OR (sqlc.arg('status')::text = 'active' AND is_active)
+            OR (sqlc.arg('status')::text = 'inactive' AND NOT is_active)))
+  )
   AND (
     sqlc.arg('search')::text = ''
     OR username ILIKE '%' || sqlc.arg('search')::text || '%'
@@ -74,3 +86,26 @@ SET deleted_at = NOW(),
     deleted_by = sqlc.arg('deleted_by')::varchar,
     delete_reason = COALESCE(NULLIF(sqlc.arg('delete_reason')::text, ''), delete_reason)
 WHERE id = sqlc.arg('id');
+
+-- name: SetUserStatus :one
+UPDATE users
+SET is_active = sqlc.arg('is_active'),
+    status_changed_at = NOW(),
+    status_changed_by = NULLIF(sqlc.arg('actor')::text, ''),
+    status_reason = NULLIF(sqlc.arg('reason')::text, ''),
+    updated_at = NOW()
+WHERE id = sqlc.arg('id') AND deleted_at IS NULL
+RETURNING *;
+
+-- name: RestoreUser :one
+UPDATE users
+SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL,
+    is_active = TRUE, status_changed_at = NOW(),
+    status_changed_by = NULLIF(sqlc.arg('actor')::text, ''),
+    status_reason = 'Dipulihkan dari arsip', updated_at = NOW()
+WHERE id = sqlc.arg('id') AND deleted_at IS NOT NULL
+RETURNING *;
+
+-- name: CountOtherActiveSuperAdmins :one
+SELECT COUNT(*) FROM users
+WHERE role = 'super_admin' AND is_active AND deleted_at IS NULL AND id <> sqlc.arg('id');
