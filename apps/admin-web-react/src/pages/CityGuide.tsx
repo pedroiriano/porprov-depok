@@ -489,9 +489,9 @@ export default function CityGuide() {
   const coordinatePreviewReady = formData.latitude !== '' && formData.longitude !== '';
   const configuredMapURL = formData.map_route_url.trim();
   const formMapPreviewURL = configuredMapURL && isValidGoogleMapsURL(configuredMapURL)
-    ? configuredMapURL
+    ? encodeURI(configuredMapURL)
     : coordinatePreviewReady
-      ? googleMapsURL(formData.latitude, formData.longitude, formData.title.trim() || 'Panduan Kota Depok')
+      ? encodeURI(googleMapsURL(formData.latitude, formData.longitude, formData.title.trim() || 'Panduan Kota Depok'))
       : '';
   const categoryOptions = formData.category && !categories.includes(formData.category)
     ? [formData.category, ...categories]
