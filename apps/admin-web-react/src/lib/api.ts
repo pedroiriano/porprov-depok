@@ -10,6 +10,16 @@ export const apiClient = axios.create({
   },
 });
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: unknown) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      window.dispatchEvent(new CustomEvent('porprov:session-expired'));
+    }
+    return Promise.reject(error);
+  },
+);
+
 export const authConfig = (accessToken?: string) => ({
   headers: accessToken
     ? { Authorization: `Bearer ${accessToken}` }
@@ -18,6 +28,14 @@ export const authConfig = (accessToken?: string) => ({
 
 interface ApiEnvelope<T> {
   data: T;
+}
+
+export interface PaginatedApiResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
 }
 
 export function unwrapApiData<T>(payload: T | ApiEnvelope<T>): T {
@@ -63,26 +81,42 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
 
   const axiosError = error as AxiosError<
     | string
-    | { message?: string; error?: string; errors?: Record<string, string[] | string> }
+    | { message?: string; error?: string | { message?: string }; errors?: Record<string, string[] | string>; meta?: { request_id?: string } }
   >;
   const payload = axiosError.response?.data;
 
-  if (typeof payload === 'string' && payload.trim()) return payload.trim();
+  const safeMessage = (value: unknown): string => {
+    if (typeof value !== 'string') return '';
+    const message = value.trim();
+    if (!message || message.length > 240 || /[\r\n]/.test(message)) return '';
+    if (/(sql|database|postgres|redis|nats|jwt|token|stack|panic|exception|migration|service|gateway|invalid|required|unavailable|could not|forbidden|unauthorized|insufficient|missing)/i.test(message)) return '';
+    return message;
+  };
+
+  const status = axiosError.response?.status;
+  if (status === 401) return 'Sesi Anda telah berakhir. Silakan masuk kembali untuk melanjutkan.';
+  if (status === 403) return 'Akun Anda tidak memiliki izin untuk melakukan tindakan ini.';
+  if (status === 409) return 'Data telah berubah di perangkat atau sesi lain. Muat ulang data, bandingkan perubahan, lalu coba kembali.';
+  if (status === 429) return 'Permintaan terlalu sering. Tunggu sebentar, lalu coba kembali.';
+
+  if (typeof payload === 'string' && safeMessage(payload)) return safeMessage(payload);
   if (payload && typeof payload === 'object') {
-    if (payload.message) return payload.message;
-    if (payload.error) return payload.error;
+    if (safeMessage(payload.message)) return safeMessage(payload.message);
+    if (safeMessage(payload.error)) return safeMessage(payload.error);
+    if (typeof payload.error === 'object' && safeMessage(payload.error?.message)) return safeMessage(payload.error.message);
     if (payload.errors) {
       const firstError = Object.values(payload.errors).flat()[0];
-      if (firstError) return firstError;
+      if (safeMessage(firstError)) return safeMessage(firstError);
     }
   }
 
   if (axiosError.code === 'ECONNABORTED') {
-    return 'Permintaan melewati batas waktu. Periksa apakah service sedang berjalan.';
+    return 'Permintaan melewati batas waktu. Coba kembali beberapa saat lagi.';
   }
   if (!axiosError.response) {
-    return 'Tidak dapat terhubung ke API. Periksa API Gateway dan service terkait.';
+    return 'Layanan belum dapat dihubungi. Periksa koneksi lalu coba kembali.';
   }
 
-  return `${fallback} (HTTP ${axiosError.response.status})`;
+  const requestID = payload && typeof payload === 'object' && 'meta' in payload ? payload.meta?.request_id : '';
+  return requestID && requestID !== 'unknown' ? `${fallback} Nomor pelacakan: ${requestID}.` : fallback;
 }

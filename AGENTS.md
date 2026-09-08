@@ -2,6 +2,8 @@
 
 Dokumen ini mengatur perilaku agent AI/Codex di VS Code saat mengembangkan Portal PORPROV XV Jawa Barat 2026.
 
+> **Kontrak Tahap 11:** Web Admin memakai copy Bahasa Indonesia natural berdasarkan `docs/uiux/ADMIN_LANGUAGE_STYLE_GUIDE.md`; draf server berscope pengguna/rute/entitas/versi dengan fallback perangkat dan konflik `409`; riwayat dapat membandingkan dua catatan dan memulihkan sebagai perubahan baru; Pustaka Media mempertahankan original serta turunan thumbnail/list/detail; Kesehatan Integrasi hanya read-only untuk `super_admin`/`auditor`. Status source tidak boleh disamakan dengan status migrasi/runtime.
+
 > **Konteks aktif per 6 Agustus 2026:** repository `porprov-depok` adalah aplikasi PORPROV XV Jawa Barat 2026 untuk Kota Depok. Runtime full-stack canonical memakai Docker Compose dan mencakup Public/Admin Web, API Gateway, seluruh core service, data/event infrastructure, Nginx, dan observability. Navigasi utama Public adalah Beranda, Cabor, Venue, Jadwal, Klasemen, dan Jelajah; Jelajah menuju `/city-guide`. Public Web memakai CSP nonce per request tanpa `script-src unsafe-inline`; Nginx edge memiliki HSTS, HTTPS canonical, header redirect/error, dan pengurangan fingerprint. Metadata `robots.txt`/`sitemap.xml` tersedia. Soft delete/Recycling domain inti tetap aktif; MFA, outbox domain lama, RBAC menyeluruh, scale-out, dan production hardening lain dilanjutkan bertahap.
 
 > **Kontrak peserta aktif:** Master Data memiliki referensi Kontingen; Schedule memiliki susunan Peserta A/B dengan satu jenis yang sama—Individu, Tim, atau Kontingen; LiveScore hanya memiliki revisi skor/status untuk match tersebut. Form peserta berada pada Jadwal Pertandingan dan penggantian susunan lama selalu soft delete.

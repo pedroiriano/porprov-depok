@@ -1,0 +1,12 @@
+**
+!packages/
+!packages/messaging/
+!packages/messaging/**
+!services/
+!services/venue-service/
+!services/venue-service/**
+**/.tmp
+**/*.exe
+**/tmp_build
+**/*.zip
+**/uploads

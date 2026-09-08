@@ -53,10 +53,14 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({ file, options }: { file: File; options: { signal: AbortSignal; onProgress: (percentage: number) => void } }) => {
       const formData = new FormData();
       formData.append('file', file);
-      await apiClient.post('/master-data/media/upload', formData, authConfig(auth.user?.access_token));
+      await apiClient.post('/master-data/media/upload', formData, {
+        ...authConfig(auth.user?.access_token),
+        signal: options.signal,
+        onUploadProgress: (event) => options.onProgress(event.total ? Math.min(99, Math.round((event.loaded / event.total) * 100)) : 0),
+      });
     },
     onSuccess: async () => {
       setUploadError('');
@@ -85,7 +89,7 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
       isOpen={isOpen}
       onClose={onClose}
       title="Pilih Media"
-      description="Gunakan gambar aktif dari Media Library atau unggah gambar baru."
+      description="Gunakan gambar aktif dari Pustaka Media atau unggah gambar baru."
       maxWidth="4xl"
       closeDisabled={uploadMutation.isPending}
     >
@@ -104,17 +108,17 @@ export default function MediaSelectorModal({ isOpen, onClose, onSelect }: MediaS
           </label>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <RowsPerPageSelector value={rowsPerPage} onChange={setRowsPerPage} />
-            <MediaUploadButton compact busy={uploadMutation.isPending} onUpload={(file) => uploadMutation.mutateAsync(file)} onError={setUploadError} />
+            <MediaUploadButton compact busy={uploadMutation.isPending} onUpload={(file, options) => uploadMutation.mutateAsync({ file, options })} onError={setUploadError} />
           </div>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-300">JPG, PNG, atau WebP · sumber maksimal 20 MiB · hasil maksimal 3 MiB · kompresi lossy hanya setelah persetujuan.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-300">JPG, PNG, atau WebP · sumber maksimal 20 MiB · hasil maksimal 3 MiB · penurunan kualitas hanya setelah persetujuan.</p>
         {uploadError && <AdminAlert>{uploadError}</AdminAlert>}
 
         {mediaQuery.isLoading ? (
-          <AdminLoadingState label="Memuat Media Library..." />
+          <AdminLoadingState label="Memuat Pustaka Media..." />
         ) : mediaQuery.isError ? (
-          <AdminAlert>{getApiErrorMessage(mediaQuery.error, 'Gagal memuat Media Library.')}</AdminAlert>
+          <AdminAlert>{getApiErrorMessage(mediaQuery.error, 'Gagal memuat Pustaka Media.')}</AdminAlert>
         ) : media.length > 0 ? (
           <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
             <div className="p-3 sm:p-4">

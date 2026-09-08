@@ -524,7 +524,13 @@ func main() {
 			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"status": "livescore-service is healthy"})
+		var pendingItems, retryCount int64
+		var oldestPendingSeconds float64
+		if err := pool.QueryRow(r.Context(), `SELECT COUNT(*),COALESCE(SUM(attempts),0),COALESCE(EXTRACT(EPOCH FROM NOW()-MIN(created_at)),0) FROM outbox_events WHERE published_at IS NULL`).Scan(&pendingItems, &retryCount, &oldestPendingSeconds); err != nil {
+			http.Error(w, "operational queue unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"status": "healthy", "pending_items": pendingItems, "retry_count": retryCount, "oldest_pending_seconds": oldestPendingSeconds})
 	}
 	r.Get("/health", healthHandler)
 	r.Head("/health", healthHandler)

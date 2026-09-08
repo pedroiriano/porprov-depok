@@ -255,6 +255,15 @@ func (h *MatchHandler) ListEnrichedMatches(w http.ResponseWriter, r *http.Reques
 			Participants:     matchParticipants,
 		})
 	}
+	page, err := parseMatchPageRequest(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if page != nil {
+		writeMatchPage(w, result, page)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)

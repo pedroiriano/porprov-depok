@@ -9,6 +9,14 @@ export interface MediaAsset {
   height: number | null;
   uploaded_by: string | null;
   created_at: string;
+  derivatives?: Array<{
+    variant: 'thumbnail' | 'list' | 'detail';
+    file_url: string;
+    width: number;
+    height: number;
+    file_size: number;
+    checksum_sha256: string;
+  }>;
 }
 
 export interface HeroContent {

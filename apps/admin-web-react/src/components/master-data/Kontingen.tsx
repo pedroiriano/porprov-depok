@@ -4,15 +4,16 @@ import { useAuth } from 'react-oidc-context';
 import MediaSelectorModal from '../media/MediaSelectorModal';
 import ModalForm from '../common/ModalForm';
 import { TextInput, SelectInput, MediaInput } from '../common/FormInputs';
-import { apiClient, authConfig, getApiErrorMessage, normalizeStoredMediaUrl, resolveMediaUrl, unwrapApiData } from '../../lib/api';
+import { apiClient, authConfig, getApiErrorMessage, normalizeStoredMediaUrl, resolveMediaUrl, type PaginatedApiResponse } from '../../lib/api';
 import type { Kontingen as KontingenRecord } from '../../types/master-data';
 import { requestSoftDeleteReason } from '../../lib/soft-delete';
 import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
-import { useTableControls, usePagination } from '../../hooks/useTableControls';
+import { useTableControls } from '../../hooks/useTableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 type SortKeyType = 'name' | 'region_type';
 
@@ -33,6 +34,8 @@ export default function Kontingen() {
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDebouncedValue(search);
+  const [totalItems, setTotalItems] = useState(0);
   const [listError, setListError] = useState('');
   const [formError, setFormError] = useState('');
   const [operationMessage, setOperationMessage] = useState('');
@@ -52,22 +55,30 @@ export default function Kontingen() {
     };
   }, [isModalOpen, isMediaSelectorOpen]);
 
-  const fetchKontingens = useCallback(async () => {
+  const fetchKontingens = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const res = await apiClient.get<KontingenRecord[] | { data: KontingenRecord[] }>('/master-data/kontingens', authConfig(auth.user?.access_token));
-      setKontingens(unwrapApiData(res.data) || []);
+      const res = await apiClient.get<PaginatedApiResponse<KontingenRecord>>('/master-data/kontingens', {
+        ...authConfig(auth.user?.access_token),
+        signal,
+        params: { page: table.currentPage, per_page: table.rowsPerPage, q: deferredSearch.trim(), sort: table.sortKey || 'name', direction: table.sortDirection },
+      });
+      setKontingens(res.data.data || []);
+      setTotalItems(res.data.total || 0);
       setListError('');
     } catch (error) {
+      if (signal?.aborted) return;
       console.error('Failed to fetch kontingens:', error);
       setListError(getApiErrorMessage(error, 'Gagal memuat data kontingen.'));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [auth.user?.access_token]);
+  }, [auth.user?.access_token, deferredSearch, table.currentPage, table.rowsPerPage, table.sortDirection, table.sortKey]);
 
   useEffect(() => {
-    void fetchKontingens();
+    const controller = new AbortController();
+    void fetchKontingens(controller.signal);
+    return () => controller.abort();
   }, [fetchKontingens]);
 
   const handleCreateOrUpdate = async (e: React.FormEvent) => {
@@ -107,12 +118,16 @@ export default function Kontingen() {
       setArchiving(true);
       setListError('');
       setOperationMessage('');
-      for (const id of ids) {
-        await apiClient.delete(`/master-data/kontingens/${id}`, { ...authConfig(auth.user?.access_token), data: { reason } });
-      }
-      setSelectedIds(new Set());
+      const results = await Promise.allSettled(ids.map((id) => apiClient.delete(`/master-data/kontingens/${id}`, { ...authConfig(auth.user?.access_token), data: { reason } })));
+      const failedIds = ids.filter((_, index) => results[index].status === 'rejected');
+      const succeeded = ids.length - failedIds.length;
+      setSelectedIds(new Set(failedIds));
       await fetchKontingens();
-      setOperationMessage(`${ids.length} kontingen berhasil diarsipkan.`);
+      if (failedIds.length > 0) {
+        setListError(`${succeeded} kontingen berhasil diarsipkan, tetapi ${failedIds.length} lainnya gagal. Data yang gagal tetap dipilih agar dapat dicoba lagi.`);
+      } else {
+        setOperationMessage(`${succeeded} kontingen berhasil diarsipkan dan dapat dipulihkan dari Arsip Terhapus.`);
+      }
     } catch (error) {
       console.error('Failed to delete kontingen:', error);
       setListError(getApiErrorMessage(error, 'Gagal mengarsipkan data kontingen.'));
@@ -149,39 +164,14 @@ export default function Kontingen() {
     setIsMediaSelectorOpen(false);
   };
 
-  // INFO: Filters data based on search input
-  const filteredKontingens = useMemo(() => {
-    return kontingens.filter((item) =>
-      `${item.name} ${item.region_type}`.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [kontingens, search]);
-
-  // INFO: Reset page to 1 when search changes
+  // INFO: Pencarian baru selalu dimulai dari halaman pertama.
   useEffect(() => {
     table.resetPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
-
-  // INFO: Sorts the filtered data
-  const sortedKontingens = useMemo(() => {
-    if (!table.sortKey) return filteredKontingens;
-    return [...filteredKontingens].sort((a, b) => {
-      const aVal = a[table.sortKey as keyof KontingenRecord];
-      const bVal = b[table.sortKey as keyof KontingenRecord];
-      if (aVal === bVal) return 0;
-      const aString = String(aVal || '').toLowerCase();
-      const bString = String(bVal || '').toLowerCase();
-      if (table.sortDirection === 'asc') return aString > bString ? 1 : -1;
-      return aString < bString ? 1 : -1;
-    });
-  }, [filteredKontingens, table.sortKey, table.sortDirection]);
-
-  // INFO: Pagination hook
-  const { paginatedData, totalItems, totalPages, startItem, endItem } = usePagination(
-    sortedKontingens,
-    table.currentPage,
-    table.rowsPerPage
-  );
+  const totalPages = Math.max(1, Math.ceil(totalItems / table.rowsPerPage));
+  const startItem = totalItems === 0 ? 0 : (table.currentPage - 1) * table.rowsPerPage + 1;
+  const endItem = Math.min(table.currentPage * table.rowsPerPage, totalItems);
 
   const columns = useMemo<Array<AdminDataTableColumn<KontingenRecord, SortKeyType>>>(() => [
     {
@@ -236,7 +226,7 @@ export default function Kontingen() {
 
         <AdminDataTable<KontingenRecord, SortKeyType>
           caption="Daftar kontingen PORPROV"
-          rows={paginatedData}
+          rows={kontingens}
           columns={columns}
           getRowId={(item) => item.id}
           getRowLabel={(item) => item.name}
@@ -307,7 +297,7 @@ export default function Kontingen() {
           value={formData.logo_url} 
           onClear={() => setFormData({...formData, logo_url: ''})} 
           onSelect={() => setIsMediaSelectorOpen(true)} 
-          placeholderText="Pilih Logo dari Media Library" 
+          placeholderText="Pilih logo dari Pustaka Media"
         />
         </fieldset>
       </ModalForm>

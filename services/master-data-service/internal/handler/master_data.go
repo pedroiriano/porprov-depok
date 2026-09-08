@@ -29,8 +29,8 @@ func NewMasterDataHandler(queries *db.Queries, scheduleURL string) *MasterDataHa
 
 // publishAudit is a helper to publish audit logs
 func publishAudit(r *http.Request, entityName, action, entityID string, payload interface{}) {
-	actorID := r.Header.Get("X-User-Id")
-	requestID := r.Header.Get("X-Request-Id")
+	actorID := r.Header.Get("X-Actor-ID")
+	requestID := r.Header.Get("X-Request-ID")
 	event := map[string]interface{}{
 		"service_name": "master-data-service",
 		"entity_name":  entityName,
@@ -100,6 +100,15 @@ func (h *MasterDataHandler) ListCabors(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	page, err := parseListPageRequest(r, map[string]bool{"name": true, "kategori": true, "total_medali": true, "technical_delegate": true, "status": true}, "name")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if page != nil {
+		writeListPage(w, paginateCabors(cabors, page), page)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cabors)
 }
@@ -275,6 +284,15 @@ func (h *MasterDataHandler) ListKontingens(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	page, err := parseListPageRequest(r, map[string]bool{"name": true, "region_type": true}, "name")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if page != nil {
+		writeListPage(w, paginateKontingens(kontingens, page), page)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(kontingens)
 }
@@ -401,6 +419,15 @@ func (h *MasterDataHandler) ListNomorTandings(w http.ResponseWriter, r *http.Req
 	}
 	if items == nil {
 		items = []db.NomorTanding{}
+	}
+	page, err := parseListPageRequest(r, map[string]bool{"name": true, "gender_category": true, "match_type": true}, "name")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if page != nil {
+		writeListPage(w, paginateNomorTandings(items, page), page)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(items)

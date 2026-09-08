@@ -38,6 +38,7 @@ const CityGuide = lazy(() => import('./pages/CityGuide'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const MediaLibrary = lazy(() => import('./components/media/MediaLibrary'));
 const HeroManagement = lazy(() => import('./pages/HeroManagement'));
+const IntegrationHealth = lazy(() => import('./pages/IntegrationHealth'));
 
 // Sidebar Item Component
 const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: LucideIcon, label: string, path: string, isActive: boolean }) => (
@@ -111,17 +112,17 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
       >
         <div className="sidebar-content">
           <div className="sidebar-brand">
-            <Link to="/" aria-label="Dashboard PORPROV" className="inline-flex min-h-11 items-center"><img src={adminAssetUrl('assets/images/logo-porprov-dan-tulisan.png')} height="24" className="h-8 object-contain brightness-0 invert" alt="PORPROV XV Jawa Barat 2026" /></Link>
+            <Link to="/" aria-label="Dasbor PORPROV" className="inline-flex min-h-11 items-center"><img src={adminAssetUrl('assets/images/logo-porprov-dan-tulisan.png')} height="24" className="h-8 object-contain brightness-0 invert" alt="PORPROV XV Jawa Barat 2026" /></Link>
           </div>
           
           <ul className="sidebar-menu border-t border-white/10" style={{ height: 'calc(100% - 70px)' }}>
-            <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" isActive={location.pathname === '/'} />
-            {canManageContent && <SidebarItem icon={Database} label="Master Data" path="/master-data" isActive={location.pathname.startsWith('/master-data')} />}
-            {canManageContent && <SidebarItem icon={PanelsTopLeft} label="Hero Utama" path="/hero" isActive={location.pathname.startsWith('/hero')} />}
-            {canOperateScores && <SidebarItem icon={Activity} label="LiveScore Center" path="/livescore" isActive={location.pathname.startsWith('/livescore')} />}
+            <SidebarItem icon={LayoutDashboard} label="Dasbor" path="/" isActive={location.pathname === '/'} />
+            {canManageContent && <SidebarItem icon={Database} label="Data Utama" path="/master-data" isActive={location.pathname.startsWith('/master-data')} />}
+            {canManageContent && <SidebarItem icon={PanelsTopLeft} label="Tampilan Utama" path="/hero" isActive={location.pathname.startsWith('/hero')} />}
+            {canOperateScores && <SidebarItem icon={Activity} label="Pusat Skor Langsung" path="/livescore" isActive={location.pathname.startsWith('/livescore')} />}
             {canSubmitMedals && <SidebarItem icon={Medal} label="Perolehan Medali" path="/medals" isActive={location.pathname.startsWith('/medals')} />}
-            {canManageContent && <SidebarItem icon={MapPinned} label="City Guide" path="/city-guide" isActive={location.pathname.startsWith('/city-guide')} />}
-            {canManageContent && <SidebarItem icon={Images} label="Media Library" path="/media" isActive={location.pathname.startsWith('/media')} />}
+            {canManageContent && <SidebarItem icon={MapPinned} label="Panduan Kota" path="/city-guide" isActive={location.pathname.startsWith('/city-guide')} />}
+            {canManageContent && <SidebarItem icon={Images} label="Pustaka Media" path="/media" isActive={location.pathname.startsWith('/media')} />}
             {canVerifyMedals && (
               <>
                 <SidebarItem icon={FileCheck} label="Verifikasi" path="/verifikasi" isActive={location.pathname.startsWith('/verifikasi')} />
@@ -129,7 +130,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
             )}
             {canAudit && (
               <>
-                <SidebarItem icon={ShieldAlert} label="Audit Log" path="/audit-log" isActive={location.pathname.startsWith('/audit-log')} />
+                <SidebarItem icon={ShieldAlert} label="Log Audit" path="/audit-log" isActive={location.pathname.startsWith('/audit-log')} />
               </>
             )}
             {canAccessRole(roles, ['super_admin']) && (
@@ -225,13 +226,22 @@ export default function App({ routerBasePath }: { routerBasePath?: string }) {
   // CHANGE: Flag build-time menjaga rollback instan ke shell Techwind. Cuba
   // foundation aktif hanya pada environment yang menyetelnya secara eksplisit.
   const cubaFoundationEnabled = import.meta.env.VITE_ADMIN_CUBA_PHASE_1 === 'true';
+
+  useEffect(() => {
+    const recoverSession = () => {
+      if (!auth.isAuthenticated || auth.activeNavigator) return;
+      void auth.signinSilent().catch(() => auth.removeUser());
+    };
+    window.addEventListener('porprov:session-expired', recoverSession);
+    return () => window.removeEventListener('porprov:session-expired', recoverSession);
+  }, [auth]);
   
   if (auth.isLoading) {
     return <div className="flex min-h-dvh w-full items-center justify-center bg-slate-50 px-4 font-semibold text-indigo-600 dark:bg-slate-900 dark:text-indigo-300" role="status">Memuat autentikasi...</div>;
   }
 
   if (auth.error) {
-    return <div className="flex min-h-dvh w-full items-center justify-center bg-slate-50 px-4 text-center text-red-700 dark:bg-slate-900 dark:text-red-300" role="alert">Autentikasi gagal: {auth.error.message}</div>;
+    return <div className="flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-center text-red-700 dark:bg-slate-900 dark:text-red-300" role="alert"><p>Sesi tidak dapat dipulihkan. Silakan masuk kembali untuk melanjutkan.</p><button type="button" onClick={() => void auth.signinRedirect()} className="min-h-11 rounded-xl bg-blue-600 px-5 font-black text-white hover:bg-blue-700">Masuk kembali</button></div>;
   }
 
   if (!auth.isAuthenticated) {
@@ -285,7 +295,8 @@ function AdminRoutes() {
       <Route path="/media" element={<AdminRouteGuard allowedRoles={['super_admin']}><MediaLibrary /></AdminRouteGuard>} />
       <Route path="/verifikasi" element={<AdminRouteGuard allowedRoles={['verifikator']}><Medals /></AdminRouteGuard>} />
       <Route path="/user-management" element={<AdminRouteGuard allowedRoles={['super_admin']}><UserManagement /></AdminRouteGuard>} />
-      <Route path="*" element={<section className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"><h1 className="text-2xl font-black">Halaman tidak ditemukan</h1><p className="mt-2 text-slate-600 dark:text-slate-400">Kembali ke dashboard untuk melanjutkan pekerjaan.</p><Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-md bg-indigo-600 px-5 font-bold text-white hover:bg-indigo-700">Kembali ke Dashboard</Link></section>} />
+      <Route path="/integration-health" element={<AdminRouteGuard allowedRoles={['super_admin', 'auditor']}><IntegrationHealth /></AdminRouteGuard>} />
+      <Route path="*" element={<section className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"><h1 className="text-2xl font-black">Halaman tidak ditemukan</h1><p className="mt-2 text-slate-600 dark:text-slate-400">Kembali ke dasbor untuk melanjutkan pekerjaan.</p><Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-md bg-indigo-600 px-5 font-bold text-white hover:bg-indigo-700">Kembali ke Dasbor</Link></section>} />
     </Routes>
   );
 }
@@ -304,8 +315,8 @@ function AdminRouteGuard({ allowedRoles, children }: { allowedRoles: string[]; c
         <ShieldAlert className="size-7" aria-hidden="true" />
       </span>
       <h1 className="mt-4 text-2xl font-black text-slate-950 dark:text-white">Akses dibatasi</h1>
-      <p className="mt-2 max-w-lg text-sm text-slate-600 dark:text-slate-300">Akun Anda tidak memiliki peran yang diperlukan untuk membuka workspace ini.</p>
-      <Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950">Kembali ke Dashboard</Link>
+      <p className="mt-2 max-w-lg text-sm text-slate-600 dark:text-slate-300">Akun Anda tidak memiliki peran yang diperlukan untuk membuka halaman ini.</p>
+      <Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950">Kembali ke Dasbor</Link>
     </section>
   );
 }

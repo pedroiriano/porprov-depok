@@ -9,9 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	_ "image/jpeg"
-	_ "image/png"
+	"image/color"
+	"image/jpeg"
+	"image/png"
 	"io"
+	"math"
 	"mime"
 	"net/http"
 	"net/url"
@@ -21,6 +23,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/porprov-xv/porprov-depok/services/master-data-service/internal/db"
 )
@@ -66,14 +69,139 @@ type mediaListFilters struct {
 }
 
 type mediaListResponse struct {
-	Data         []db.MediaAsset `json:"data"`
-	Page         int32           `json:"page"`
-	PerPage      int32           `json:"per_page"`
-	TotalItems   int64           `json:"total_items"`
-	TotalPages   int32           `json:"total_pages"`
-	LibraryItems int64           `json:"library_items"`
-	LibraryBytes int64           `json:"library_bytes"`
-	TotalFormats int64           `json:"total_formats"`
+	Data         []mediaView `json:"data"`
+	Page         int32       `json:"page"`
+	PerPage      int32       `json:"per_page"`
+	TotalItems   int64       `json:"total_items"`
+	TotalPages   int32       `json:"total_pages"`
+	LibraryItems int64       `json:"library_items"`
+	LibraryBytes int64       `json:"library_bytes"`
+	TotalFormats int64       `json:"total_formats"`
+}
+
+type mediaView struct {
+	db.MediaAsset
+	Derivatives []db.MediaDerivative `json:"derivatives"`
+}
+
+type generatedDerivative struct {
+	metadata db.MediaDerivative
+	path     string
+}
+
+var derivativeWidths = []struct {
+	variant string
+	width   int
+}{
+	{variant: "thumbnail", width: 320},
+	{variant: "list", width: 720},
+	{variant: "detail", width: 1440},
+}
+
+func resizeBilinear(source image.Image, width int) image.Image {
+	bounds := source.Bounds()
+	if width >= bounds.Dx() {
+		return source
+	}
+	height := bounds.Dy() * width / bounds.Dx()
+	if height < 1 {
+		height = 1
+	}
+	target := image.NewRGBA64(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		sourceY := (float64(y)+0.5)*float64(bounds.Dy())/float64(height) - 0.5
+		y0 := int(math.Floor(sourceY))
+		weightY := sourceY - float64(y0)
+		if y0 < 0 {
+			y0, weightY = 0, 0
+		}
+		y1 := min(y0+1, bounds.Dy()-1)
+		for x := 0; x < width; x++ {
+			sourceX := (float64(x)+0.5)*float64(bounds.Dx())/float64(width) - 0.5
+			x0 := int(math.Floor(sourceX))
+			weightX := sourceX - float64(x0)
+			if x0 < 0 {
+				x0, weightX = 0, 0
+			}
+			x1 := min(x0+1, bounds.Dx()-1)
+			r00, g00, b00, a00 := source.At(bounds.Min.X+x0, bounds.Min.Y+y0).RGBA()
+			r10, g10, b10, a10 := source.At(bounds.Min.X+x1, bounds.Min.Y+y0).RGBA()
+			r01, g01, b01, a01 := source.At(bounds.Min.X+x0, bounds.Min.Y+y1).RGBA()
+			r11, g11, b11, a11 := source.At(bounds.Min.X+x1, bounds.Min.Y+y1).RGBA()
+			interpolate := func(topLeft, topRight, bottomLeft, bottomRight uint32) uint16 {
+				top := float64(topLeft)*(1-weightX) + float64(topRight)*weightX
+				bottom := float64(bottomLeft)*(1-weightX) + float64(bottomRight)*weightX
+				return uint16(math.Round(top*(1-weightY) + bottom*weightY))
+			}
+			target.SetRGBA64(x, y, color.RGBA64{
+				R: interpolate(r00, r10, r01, r11), G: interpolate(g00, g10, g01, g11),
+				B: interpolate(b00, b10, b01, b11), A: interpolate(a00, a10, a01, a11),
+			})
+		}
+	}
+	return target
+}
+
+func generateMediaDerivatives(data []byte, mimeType, extension, uploadDir, baseName string) ([]generatedDerivative, error) {
+	var decoded image.Image
+	if mimeType != "image/webp" {
+		var err error
+		decoded, _, err = image.Decode(bytes.NewReader(data))
+		if err != nil {
+			return nil, err
+		}
+	}
+	items := make([]generatedDerivative, 0, len(derivativeWidths))
+	cleanup := func() {
+		for _, item := range items {
+			_ = os.Remove(item.path)
+		}
+	}
+	for _, spec := range derivativeWidths {
+		var encoded bytes.Buffer
+		width, height := 0, 0
+		if mimeType == "image/webp" {
+			encoded.Write(data)
+			width, height, _ = webPDimensions(data)
+		} else {
+			variant := resizeBilinear(decoded, spec.width)
+			width, height = variant.Bounds().Dx(), variant.Bounds().Dy()
+			if mimeType == "image/png" {
+				if err := png.Encode(&encoded, variant); err != nil {
+					cleanup()
+					return nil, err
+				}
+			} else if err := jpeg.Encode(&encoded, variant, &jpeg.Options{Quality: 88}); err != nil {
+				cleanup()
+				return nil, err
+			}
+		}
+		name := strings.TrimSuffix(baseName, extension) + "-" + spec.variant + extension
+		path := filepath.Join(uploadDir, name)
+		if err := os.WriteFile(path, encoded.Bytes(), 0o640); err != nil {
+			cleanup()
+			return nil, err
+		}
+		checksum := sha256.Sum256(encoded.Bytes())
+		items = append(items, generatedDerivative{path: path, metadata: db.MediaDerivative{Variant: spec.variant, FileURL: "/uploads/" + name, Width: int32(width), Height: int32(height), FileSize: int32(encoded.Len()), ChecksumSHA256: fmt.Sprintf("%x", checksum)}})
+	}
+	return items, nil
+}
+
+func (h *MasterDataHandler) mediaView(r *http.Request, item db.MediaAsset) mediaView {
+	derivatives, err := h.queries.ListMediaDerivatives(r.Context(), item.ID)
+	if err != nil {
+		derivatives = []db.MediaDerivative{}
+	}
+	return mediaView{MediaAsset: item, Derivatives: derivatives}
+}
+
+func (h *MasterDataHandler) mediaViews(r *http.Request, items []db.MediaAsset) []mediaView {
+	views := make([]mediaView, 0, len(items))
+	for _, item := range items {
+		views = append(views, h.mediaView(r, item))
+	}
+	return views
 }
 
 func currentMediaPolicy() mediaPolicy {
@@ -248,6 +376,16 @@ func (h *MasterDataHandler) UploadMedia(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, validationErr.Error(), http.StatusUnprocessableEntity)
 		return
 	}
+	checksum := fmt.Sprintf("%x", sha256.Sum256(data))
+	if existing, lookupErr := h.queries.FindActiveMediaByChecksum(r.Context(), checksum); lookupErr == nil {
+		publishAudit(r, "Media", "REUSE", checksum[:12], map[string]any{"media_id": existing.ID, "checksum_sha256": checksum})
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(h.mediaView(r, existing))
+		return
+	} else if !errors.Is(lookupErr, pgx.ErrNoRows) {
+		http.Error(w, "Gagal memeriksa duplikasi media", http.StatusInternalServerError)
+		return
+	}
 
 	filename, err := randomMediaName(extension)
 	if err != nil {
@@ -273,21 +411,44 @@ func (h *MasterDataHandler) UploadMedia(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Gagal menyimpan file", http.StatusInternalServerError)
 		return
 	}
+	derivatives, derivativeErr := generateMediaDerivatives(data, mimeType, extension, uploadDir, filename)
+	if derivativeErr != nil {
+		_ = os.Remove(filePath)
+		for _, item := range derivatives {
+			_ = os.Remove(item.path)
+		}
+		http.Error(w, "Gagal menyiapkan ukuran gambar", http.StatusInternalServerError)
+		return
+	}
 
 	media, err := h.queries.CreateMedia(r.Context(), db.CreateMediaParams{
 		FileName:       safeOriginalMediaName(header.Filename, extension),
 		FileUrl:        "/uploads/" + filename,
 		MimeType:       pgtype.Text{String: mimeType, Valid: true},
 		FileSize:       pgtype.Int4{Int32: int32(len(data)), Valid: true},
-		ChecksumSha256: pgtype.Text{String: fmt.Sprintf("%x", sha256.Sum256(data)), Valid: true},
+		ChecksumSha256: pgtype.Text{String: checksum, Valid: true},
 		Width:          pgtype.Int4{Int32: int32(width), Valid: true},
 		Height:         pgtype.Int4{Int32: int32(height), Valid: true},
 		UploadedBy:     pgtype.Text{String: actor, Valid: true},
 	})
 	if err != nil {
 		_ = os.Remove(filePath)
+		for _, item := range derivatives {
+			_ = os.Remove(item.path)
+		}
 		http.Error(w, "Gagal menyimpan metadata media", http.StatusInternalServerError)
 		return
+	}
+	for _, item := range derivatives {
+		if err := h.queries.CreateMediaDerivative(r.Context(), media.ID, item.metadata); err != nil {
+			_ = h.queries.DeleteNewMedia(r.Context(), media.ID)
+			_ = os.Remove(filePath)
+			for _, generated := range derivatives {
+				_ = os.Remove(generated.path)
+			}
+			http.Error(w, "Gagal menyimpan ukuran gambar", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	var id string
@@ -298,7 +459,7 @@ func (h *MasterDataHandler) UploadMedia(w http.ResponseWriter, r *http.Request) 
 	publishAudit(r, "Media", "UPLOAD", id, media)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(media)
+	json.NewEncoder(w).Encode(h.mediaView(r, media))
 }
 
 func (h *MasterDataHandler) ListMedia(w http.ResponseWriter, r *http.Request) {
@@ -335,7 +496,7 @@ func (h *MasterDataHandler) ListMedia(w http.ResponseWriter, r *http.Request) {
 			totalPages = int32((totalItems + int64(filters.PerPage) - 1) / int64(filters.PerPage))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(mediaListResponse{Data: media, Page: filters.Page, PerPage: filters.PerPage, TotalItems: totalItems, TotalPages: totalPages, LibraryItems: stats.TotalItems, LibraryBytes: stats.TotalBytes, TotalFormats: stats.TotalFormats})
+		_ = json.NewEncoder(w).Encode(mediaListResponse{Data: h.mediaViews(r, media), Page: filters.Page, PerPage: filters.PerPage, TotalItems: totalItems, TotalPages: totalPages, LibraryItems: stats.TotalItems, LibraryBytes: stats.TotalBytes, TotalFormats: stats.TotalFormats})
 		return
 	}
 
@@ -348,7 +509,7 @@ func (h *MasterDataHandler) ListMedia(w http.ResponseWriter, r *http.Request) {
 		media = []db.MediaAsset{}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(media)
+	json.NewEncoder(w).Encode(h.mediaViews(r, media))
 }
 
 func (h *MasterDataHandler) DeleteMedia(w http.ResponseWriter, r *http.Request) {

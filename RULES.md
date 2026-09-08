@@ -2,6 +2,14 @@
 
 Dokumen ini mengikat semua agent AI/Codex saat membuat, mengubah, menguji, atau mendokumentasikan aplikasi Portal PORPROV XV Jawa Barat 2026.
 
+## Kontrak Web Admin Enterprise Tahap 11
+
+- Copy antarmuka wajib memakai Bahasa Indonesia natural sesuai `docs/uiux/ADMIN_LANGUAGE_STYLE_GUIDE.md`; istilah teknis internal hanya boleh muncul pada rincian terotorisasi yang memang memerlukannya.
+- Draf server dibatasi per pengguna, rute, entitas, dan versi formulir; payload sensitif atau file mentah dilarang, retensi maksimal tujuh hari, fallback perangkat tetap tersedia, dan konflik wajib menghasilkan `409` tanpa menimpa otomatis.
+- Riwayat perubahan tidak boleh dimutasi; pemulihan mengisi formulir dan selalu disimpan sebagai perubahan baru. Perbandingan harus menyaring field sensitif.
+- Pustaka Media mempertahankan berkas asli dan menghasilkan relasi turunan thumbnail/list/detail ber-checksum. Deduplicasi berdasarkan checksum hanya boleh memakai media aktif.
+- Kesehatan Integrasi bersifat read-only, terbatas untuk `super_admin`/`auditor`, dan dilarang menampilkan alamat internal atau kredensial.
+
 ## 0. Konteks Produk dan Sumber Kebenaran
 
 - Produk aktif adalah repository `porprov-depok` untuk Portal PORPROV XV Jawa Barat 2026 Kota Depok.

@@ -215,7 +215,7 @@ export default function CityGuide() {
       }
       setErrorMessage('');
     } catch (error) {
-      if (requestID === requestRef.current) setErrorMessage(getApiErrorMessage(error, 'Gagal memuat data City Guide.'));
+      if (requestID === requestRef.current) setErrorMessage(getApiErrorMessage(error, 'Gagal memuat data Panduan Kota.'));
     } finally {
       if (requestID === requestRef.current) setLoading(false);
     }
@@ -302,17 +302,17 @@ export default function CityGuide() {
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!formData.latitude.trim() || !formData.longitude.trim()) {
-      setErrorMessage('Latitude dan longitude wajib diisi berpasangan.');
+      setErrorMessage('Lintang dan bujur wajib diisi berpasangan.');
       return;
     }
     const latitude = Number(formData.latitude);
     const longitude = Number(formData.longitude);
     if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
-      setErrorMessage('Latitude harus berupa angka antara -90 sampai 90.');
+      setErrorMessage('Lintang harus berupa angka antara -90 sampai 90.');
       return;
     }
     if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-      setErrorMessage('Longitude harus berupa angka antara -180 sampai 180.');
+      setErrorMessage('Bujur harus berupa angka antara -180 sampai 180.');
       return;
     }
     if (formData.map_route_url.trim().length > 2048 || !isValidGoogleMapsURL(formData.map_route_url)) {
@@ -375,14 +375,14 @@ export default function CityGuide() {
       resetForm();
       await fetchGuides();
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, 'Gagal menyimpan data City Guide.'));
+      setErrorMessage(getApiErrorMessage(error, 'Gagal menyimpan data Panduan Kota.'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleArchive = async (ids: string[]) => {
-    const reason = requestSoftDeleteReason(ids.length > 1 ? `${ids.length} City Guide ini` : 'City Guide ini');
+    const reason = requestSoftDeleteReason(ids.length > 1 ? `${ids.length} Panduan Kota ini` : 'Panduan Kota ini');
     if (reason === null) return;
     try {
       setArchiving(true);
@@ -393,9 +393,9 @@ export default function CityGuide() {
       }
       setSelectedIds(new Set());
       await fetchGuides();
-      setOperationMessage(`${ids.length} City Guide berhasil diarsipkan.`);
+      setOperationMessage(`${ids.length} Panduan Kota berhasil diarsipkan.`);
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, 'Gagal mengarsipkan data City Guide.'));
+      setErrorMessage(getApiErrorMessage(error, 'Gagal mengarsipkan data Panduan Kota.'));
     } finally {
       setArchiving(false);
     }
@@ -403,17 +403,17 @@ export default function CityGuide() {
 
   const handlePinForVenues = async (item: CityGuideRecord) => {
     if (item.is_pinned_venue_recommendation) return;
-    const confirmed = window.confirm(`Jadikan ${item.title} sebagai satu rekomendasi utama yang selalu muncul pada seluruh halaman Venue?`);
+    const confirmed = window.confirm(`Jadikan ${item.title} sebagai satu rekomendasi utama yang selalu muncul pada seluruh halaman lokasi pertandingan?`);
     if (!confirmed) return;
     try {
       setPinningID(item.id);
       setErrorMessage('');
       setOperationMessage('');
       await apiClient.put(`/master-data/city-guides/${item.id}/venue-pin`, undefined, getAuthConfig());
-      setOperationMessage(`${item.title} berhasil dipin sebagai rekomendasi utama seluruh Venue.`);
+      setOperationMessage(`${item.title} berhasil dipin sebagai rekomendasi utama seluruh lokasi pertandingan.`);
       await fetchGuides();
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, 'Gagal mengganti rekomendasi utama Venue.'));
+      setErrorMessage(getApiErrorMessage(error, 'Gagal mengganti rekomendasi utama lokasi pertandingan. Coba lagi setelah memuat ulang data.'));
     } finally {
       setPinningID('');
     }
@@ -457,9 +457,9 @@ export default function CityGuide() {
   ];
 
   const cityGuideActions = (item: CityGuideRecord) => <>
-    {canManageVenuePin && <button type="button" onClick={() => void handlePinForVenues(item)} disabled={item.is_pinned_venue_recommendation || pinningID !== ''} aria-label={item.is_pinned_venue_recommendation ? `${item.title} sedang dipin untuk seluruh Venue` : `Pin ${item.title} untuk seluruh Venue`} title={item.is_pinned_venue_recommendation ? 'Rekomendasi utama aktif' : 'Jadikan rekomendasi utama seluruh Venue'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200">{pinningID === item.id ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Pin className="size-4" aria-hidden="true" />}</button>}
-    <button type="button" onClick={() => openEditForm(item)} aria-label={`Edit ${item.title}`} title="Edit City Guide" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>
-    <button type="button" onClick={() => void handleArchive([item.id])} disabled={item.is_pinned_venue_recommendation || archiving} aria-label={item.is_pinned_venue_recommendation ? `${item.title} harus diganti pinnya sebelum diarsipkan` : `Arsipkan ${item.title}`} title={item.is_pinned_venue_recommendation ? 'Ganti rekomendasi utama sebelum mengarsipkan' : 'Arsipkan City Guide'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>
+    {canManageVenuePin && <button type="button" onClick={() => void handlePinForVenues(item)} disabled={item.is_pinned_venue_recommendation || pinningID !== ''} aria-label={item.is_pinned_venue_recommendation ? `${item.title} sedang dipin untuk seluruh lokasi pertandingan` : `Pin ${item.title} untuk seluruh lokasi pertandingan`} title={item.is_pinned_venue_recommendation ? 'Rekomendasi utama aktif' : 'Jadikan rekomendasi utama seluruh lokasi pertandingan'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200">{pinningID === item.id ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Pin className="size-4" aria-hidden="true" />}</button>}
+    <button type="button" onClick={() => openEditForm(item)} aria-label={`Edit ${item.title}`} title="Edit Panduan Kota" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>
+    <button type="button" onClick={() => void handleArchive([item.id])} disabled={item.is_pinned_venue_recommendation || archiving} aria-label={item.is_pinned_venue_recommendation ? `${item.title} harus diganti pinnya sebelum diarsipkan` : `Arsipkan ${item.title}`} title={item.is_pinned_venue_recommendation ? 'Ganti rekomendasi utama sebelum mengarsipkan' : 'Arsipkan Panduan Kota'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>
   </>;
 
   const useCurrentLocation = () => {
@@ -489,9 +489,9 @@ export default function CityGuide() {
   const coordinatePreviewReady = formData.latitude !== '' && formData.longitude !== '';
   const configuredMapURL = formData.map_route_url.trim();
   const formMapPreviewURL = configuredMapURL && isValidGoogleMapsURL(configuredMapURL)
-    ? configuredMapURL
+    ? encodeURI(configuredMapURL)
     : coordinatePreviewReady
-      ? googleMapsURL(formData.latitude, formData.longitude, formData.title.trim() || 'City Guide Kota Depok')
+      ? encodeURI(googleMapsURL(formData.latitude, formData.longitude, formData.title.trim() || 'Panduan Kota Depok'))
       : '';
   const categoryOptions = formData.category && !categories.includes(formData.category)
     ? [formData.category, ...categories]
@@ -501,8 +501,8 @@ export default function CityGuide() {
     <div className="flex flex-col gap-6">
       <AdminPageHeader
         eyebrow="Informasi Kota Depok"
-        title="City Guide"
-        description="Kelola panduan kota, kontak resmi, URL rute Google Maps, dan koordinat fallback yang terverifikasi."
+        title="Panduan Kota"
+        description="Kelola panduan kota, kontak resmi, URL rute Google Maps, dan koordinat cadangan yang terverifikasi."
         actions={<button type="button" onClick={openCreateForm} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm transition-colors hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah panduan</button>}
       />
 
@@ -512,8 +512,8 @@ export default function CityGuide() {
         <section className={`flex items-start gap-3 rounded-2xl border p-4 ${pinnedGuide ? 'border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950/35 dark:text-blue-100' : 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100'}`} aria-labelledby="venue-pin-title">
           <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-blue-600 shadow-sm dark:bg-slate-900 dark:text-blue-300"><Pin className="size-5" aria-hidden="true" /></span>
           <div>
-            <h3 id="venue-pin-title" className="text-sm font-black">Rekomendasi utama seluruh Venue</h3>
-            <p className="mt-1 text-sm">{pinnedGuide ? <><strong>{pinnedGuide.title}</strong> selalu diprioritaskan pada setiap halaman detail Venue.</> : <>Belum ada rekomendasi utama. Pilih ikon pin pada salah satu City Guide.</>}</p>
+            <h3 id="venue-pin-title" className="text-sm font-black">Rekomendasi utama seluruh lokasi pertandingan</h3>
+            <p className="mt-1 text-sm">{pinnedGuide ? <><strong>{pinnedGuide.title}</strong> selalu diprioritaskan pada setiap halaman detail lokasi pertandingan.</> : <>Belum ada rekomendasi utama. Pilih ikon pin pada salah satu Panduan Kota.</>}</p>
           </div>
         </section>
       )}
@@ -524,14 +524,14 @@ export default function CityGuide() {
           <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
             {/* Search input */}
             <label className="relative flex-1 sm:max-w-xs">
-              <span className="sr-only">Cari City Guide</span>
+              <span className="sr-only">Cari Panduan Kota</span>
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Cari judul, alamat, deskripsi..."
-                aria-label="Cari City Guide"
+                aria-label="Cari Panduan Kota"
                 className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
               />
               {searchQuery && (
@@ -548,11 +548,11 @@ export default function CityGuide() {
 
             {/* Filter kategori */}
             <label className="relative">
-              <span className="sr-only">Filter kategori City Guide</span>
+              <span className="sr-only">Filter kategori Panduan Kota</span>
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                aria-label="Filter kategori City Guide"
+                aria-label="Filter kategori Panduan Kota"
                 className="min-h-11 appearance-none rounded-xl border border-slate-300 bg-white py-2 pl-3 pr-9 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Semua Kategori</option>
@@ -607,7 +607,7 @@ export default function CityGuide() {
         />
 
         <AdminDataTable<CityGuideRecord, CityGuideSortKey>
-          caption="Daftar City Guide Kota Depok"
+          caption="Daftar Panduan Kota Depok"
           rows={sortedGuides}
           columns={columns}
           getRowId={(item) => item.id}
@@ -620,10 +620,10 @@ export default function CityGuide() {
           onSelectedIdsChange={setSelectedIds}
           isRowSelectable={(item) => !item.is_pinned_venue_recommendation}
           loading={loading}
-          loadingLabel="Memuat City Guide..."
+          loadingLabel="Memuat Panduan Kota..."
           error={!isModalOpen ? errorMessage : ''}
           onRetry={() => void fetchGuides()}
-          emptyTitle={debouncedSearch || categoryFilter ? 'Tidak ada panduan yang sesuai' : 'Belum ada data City Guide'}
+          emptyTitle={debouncedSearch || categoryFilter ? 'Tidak ada panduan yang sesuai' : 'Belum ada data Panduan Kota'}
           emptyDescription={debouncedSearch || categoryFilter ? 'Ubah kata kunci atau kategori untuk memperluas hasil.' : 'Tambahkan panduan pertama untuk mulai melengkapi informasi Kota Depok.'}
           rowActions={cityGuideActions}
           minWidthClassName="min-w-[1120px]"
@@ -644,9 +644,9 @@ export default function CityGuide() {
         )}
       </div>
 
-      <ModalForm isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); setErrorMessage(''); }} title={formData.id ? 'Edit City Guide' : 'Tambah City Guide'} onSubmit={handleSave} submitting={submitting} submitText={formData.id ? 'Simpan Perubahan' : 'Simpan Data'} size="large" draft={{ entityId: formData.id || 'new-city-guide', version: 'city-guide-v1', value: formData, onRestore: setFormData }}>
+      <ModalForm isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); setErrorMessage(''); }} title={formData.id ? 'Edit Panduan Kota' : 'Tambah Panduan Kota'} onSubmit={handleSave} submitting={submitting} submitText={formData.id ? 'Simpan Perubahan' : 'Simpan Data'} size="large" draft={{ entityId: formData.id || 'new-city-guide', version: 'city-guide-v1', value: formData, onRestore: setFormData }}>
         {errorMessage && <AdminAlert>{errorMessage}</AdminAlert>}
-        <RevisionHistory entityName="CityGuide" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
+        <RevisionHistory entityName="CityGuide" displayName="Panduan Kota" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
         <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Identitas usaha atau lokasi</legend>
         <div className="grid gap-4 md:grid-cols-2">
@@ -662,7 +662,7 @@ export default function CityGuide() {
         {(formData.category === 'Catering' || formData.category === 'Info Travel') && (
           <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
             <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Kontak resmi</legend>
-            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Isi minimal satu kontak yang dapat digunakan pengunjung. Field Screenshot tidak digunakan; gambar dipilih dari Media Library.</p>
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Isi minimal satu kontak yang dapat digunakan pengunjung. Gambar dipilih dari Pustaka Media.</p>
             <div className="grid gap-4 md:grid-cols-2">
               <TextInput label="Nomor Telepon" inputMode="tel" maxLength={32} value={formData.contact_phone} onChange={(event) => setFormData((current) => ({ ...current, contact_phone: event.target.value }))} placeholder="Contoh: 021 1234567" />
               <TextInput label="Nomor WhatsApp" inputMode="tel" maxLength={32} value={formData.whatsapp} onChange={(event) => setFormData((current) => ({ ...current, whatsapp: event.target.value }))} placeholder="Contoh: +62 812 3456 7890" />
@@ -709,14 +709,14 @@ export default function CityGuide() {
         <div className="mt-4">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><p className="text-sm text-slate-500 dark:text-slate-400">Gunakan koordinat desimal agar lokasi dapat dibuka tepat di aplikasi peta.</p><button type="button" onClick={useCurrentLocation} disabled={locating} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-300 px-3 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-50 disabled:opacity-60 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"><LocateFixed className={`h-4 w-4 ${locating ? 'animate-pulse' : ''}`} />{locating ? 'Mengambil lokasi...' : 'Gunakan Lokasi Saat Ini'}</button></div>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <TextInput label="Latitude" type="number" inputMode="decimal" step="any" min={-90} max={90} required value={formData.latitude} onChange={(event) => setFormData((current) => ({ ...current, latitude: event.target.value }))} placeholder="Contoh: -6.402484" />
-            <TextInput label="Longitude" type="number" inputMode="decimal" step="any" min={-180} max={180} required value={formData.longitude} onChange={(event) => setFormData((current) => ({ ...current, longitude: event.target.value }))} placeholder="Contoh: 106.742061" />
+            <TextInput label="Lintang" type="number" inputMode="decimal" step="any" min={-90} max={90} required value={formData.latitude} onChange={(event) => setFormData((current) => ({ ...current, latitude: event.target.value }))} placeholder="Contoh: -6.402484" />
+            <TextInput label="Bujur" type="number" inputMode="decimal" step="any" min={-180} max={180} required value={formData.longitude} onChange={(event) => setFormData((current) => ({ ...current, longitude: event.target.value }))} placeholder="Contoh: 106.742061" />
           </div>
           {formMapPreviewURL && <a href={formMapPreviewURL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-50 px-4 text-sm font-bold text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-950/50 dark:text-blue-200 dark:hover:bg-blue-950"><MapPinned className="h-4 w-4" />{configuredMapURL ? 'Pratinjau URL Google Maps' : 'Pratinjau rute dari koordinat'}<ExternalLink className="h-3.5 w-3.5" /></a>}
         </div>
         </fieldset>
 
-        <MediaInput label="Gambar City Guide dari Media Library" value={formData.image_url} onClear={() => setFormData((current) => ({ ...current, image_url: '' }))} onSelect={() => setIsMediaSelectorOpen(true)} />
+        <MediaInput label="Gambar Panduan Kota dari Pustaka Media" value={formData.image_url} onClear={() => setFormData((current) => ({ ...current, image_url: '' }))} onSelect={() => setIsMediaSelectorOpen(true)} />
       </ModalForm>
 
       <MediaSelectorModal isOpen={isMediaSelectorOpen} onClose={() => setIsMediaSelectorOpen(false)} onSelect={(url) => { setFormData((current) => ({ ...current, image_url: url })); setIsMediaSelectorOpen(false); }} />

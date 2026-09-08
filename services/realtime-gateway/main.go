@@ -232,6 +232,15 @@ func streamHandler(rdb *redis.Client, ctx context.Context, scope, internalToken 
 	}
 }
 
+// INFO: Endpoint ini hanya menyatakan HTTP process siap menerima request.
+// Dependency NATS dan Redis tetap fail-fast pada startup serta dipantau terpisah.
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
 func main() {
 	// Redis setup
 	redisURL := os.Getenv("REDIS_URL")
@@ -340,6 +349,8 @@ func main() {
 		AllowedMethods: []string{"GET", "OPTIONS"},
 		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "Cache-Control"},
 	}))
+	r.Get("/health", healthHandler)
+	r.Head("/health", healthHandler)
 
 	internalStreamToken, err := streamTokenFromEnvironment()
 	if err != nil {

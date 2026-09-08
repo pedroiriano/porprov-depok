@@ -1,0 +1,9 @@
+**
+!services/
+!services/livescore-service/
+!services/livescore-service/**
+**/.tmp
+**/*.exe
+**/tmp_build
+**/*.zip
+**/uploads

@@ -685,13 +685,13 @@ smoke HTTPS untuk menghindari cache resolusi DNS Docker lama pada edge.
   dirty-form guard, dan mobile full-screen bila diperlukan.
 - Upload gambar memakai validasi server menyeluruh, lossless-first, hasil akhir
   maksimal 3 MiB, dan persetujuan eksplisit sebelum fallback lossy.
-- Draft lokal v5.6 memakai IndexedDB per OIDC subject, route, entity, dan versi
-  form dengan retensi maksimal 7 hari, restore/discard, status autosave,
-  visibility/unload guard, dan konfirmasi dirty-close. Password, token, serta
-  credential lain tidak pernah disimpan. Target lanjutan server draft lintas
-  perangkat dengan conflict `409` belum diterapkan. Revision history generik
-  membaca audit immutable dan memuat payload lama ke form; penyimpanan tetap
-  membuat revisi baru, bukan menimpa histori.
+- Draf formulir memakai server per OIDC subject, route, entity, dan versi form
+  dengan retensi maksimal 7 hari serta versi optimistis; IndexedDB tetap menjadi
+  fallback ketika jaringan terputus. Konflik lintas perangkat memberi pilihan
+  memakai draf lokal, memakai draf server, membandingkan, atau batal. Password,
+  token, credential, dan file mentah tidak pernah disimpan. Riwayat perubahan
+  membaca audit immutable, membandingkan dua revisi, dan memuat payload lama ke
+  form; penyimpanan selalu membuat revisi baru.
 - Security memakai least privilege, object-level authorization, threat model
   untuk fitur berisiko, sanitasi/validation, audit aman, dan dependency pinned.
 - Target Public p75 adalah LCP ≤2,5 detik, INP ≤200 ms, CLS ≤0,1. Reliability
@@ -701,3 +701,22 @@ smoke HTTPS untuk menghindari cache resolusi DNS Docker lama pada edge.
   history, redirect, serta thin/duplicate/filter-page policy.
 - Praktik Teman Belajar yang belum tersedia dicatat sebagai Planned/In Progress
   di `FEATURES.md`; governance tidak boleh mengubah target menjadi klaim Done.
+
+## 20. Web Admin Enterprise Tahap 11
+
+Source Tahap 11 menambahkan `form_drafts` pada migrasi User v3, relasi
+`media_derivatives` pada migrasi Master Data v14, endpoint read-only
+`GET /api/v1/integrations/health`, draf lintas perangkat melalui
+`/api/v1/drafts`, perbandingan dua riwayat, dan penjaga bahasa Admin melalui
+`npm run check:language`. Draf menolak nama field sensitif dan file mentah,
+dibatasi oleh subject token, serta memakai versi optimistis untuk konflik
+`409`. Turunan media berjenis `thumbnail`, `list`, dan `detail`; original tetap
+menjadi sumber kebenaran dan deduplicasi hanya memakai checksum media aktif.
+
+Teks UI mengikuti `docs/uiux/ADMIN_LANGUAGE_STYLE_GUIDE.md`. Layar Kesehatan
+Integrasi hanya menampilkan nama yang ramah pengguna, kesiapan, dan waktu
+tanggapan; alamat internal dan credential tidak dikirim ke browser. Seluruh
+fitur telah diaktifkan pada runtime lokal setelah backup dump PostgreSQL
+ber-checksum, migrasi User v3 dan Master Data v14, serta rebuild layanan
+terdampak. Bukti penerimaan dan rollback berada di
+`docs/uiux/ADMIN_ENTERPRISE_COMPLETION_V11.md`; production tetap tidak berubah.

@@ -13,9 +13,9 @@ const masterTabs = [
   { id: 'cabor', label: 'Cabang Olahraga', icon: <Network className="size-4" aria-hidden="true" /> },
   { id: 'nomor-tanding', label: 'Nomor Pertandingan', icon: <Medal className="size-4" aria-hidden="true" /> },
   { id: 'kontingen', label: 'Data Kontingen', icon: <UsersRound className="size-4" aria-hidden="true" /> },
-  { id: 'venue', label: 'Venue', icon: <MapPinned className="size-4" aria-hidden="true" /> },
+  { id: 'venue', label: 'Lokasi Pertandingan', icon: <MapPinned className="size-4" aria-hidden="true" /> },
   { id: 'jadwal', label: 'Jadwal Pertandingan', icon: <CalendarDays className="size-4" aria-hidden="true" /> },
-  { id: 'recycle-bin', label: 'Recycle Bin', icon: <ArchiveRestore className="size-4" aria-hidden="true" /> },
+  { id: 'recycle-bin', label: 'Arsip Terhapus', icon: <ArchiveRestore className="size-4" aria-hidden="true" /> },
 ] as const;
 
 type MasterTabId = (typeof masterTabs)[number]['id'];
@@ -36,10 +36,10 @@ export default function MasterData() {
     <div className="flex flex-col gap-6">
       <AdminPageHeader
         eyebrow="Sumber Data PORPROV"
-        title="Master Data"
-        description="Kelola cabang olahraga, nomor pertandingan, kontingen, venue, jadwal, dan arsip sesuai urutan kerja operator."
+        title="Data Utama"
+        description="Kelola cabang olahraga, nomor pertandingan, kontingen, lokasi, jadwal, dan arsip sesuai urutan kerja operator."
       />
-      <AdminWorkspaceTabs activeTab={activeTab} ariaLabel="Kategori Master Data" onChange={changeTab} tabs={[...masterTabs]} />
+      <AdminWorkspaceTabs activeTab={activeTab} ariaLabel="Kategori Data Utama" onChange={changeTab} tabs={[...masterTabs]} />
 
       <div id={`panel-${activeTab}`} role="tabpanel" aria-labelledby={`tab-${activeTab}`} tabIndex={0}>
         {activeTab === 'cabor' && <CabangOlahraga />}

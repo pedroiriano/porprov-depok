@@ -48,3 +48,34 @@ func TestAllowedClientRejectsDifferentAuthorizedParty(t *testing.T) {
 		t.Fatal("expected unconfigured client to be rejected")
 	}
 }
+
+func TestRoleCapabilityMatrix(t *testing.T) {
+	tests := []struct {
+		name       string
+		role       string
+		allowed    []string
+		wantStatus int
+	}{
+		{name: "super admin manages master data", role: "super_admin", allowed: []string{"super_admin"}, wantStatus: http.StatusNoContent},
+		{name: "koresponden updates scores", role: "koresponden", allowed: []string{"super_admin", "koresponden"}, wantStatus: http.StatusNoContent},
+		{name: "verifikator verifies medals", role: "verifikator", allowed: []string{"super_admin", "verifikator"}, wantStatus: http.StatusNoContent},
+		{name: "auditor reads audit", role: "auditor", allowed: []string{"super_admin", "auditor"}, wantStatus: http.StatusNoContent},
+		{name: "auditor cannot mutate master data", role: "auditor", allowed: []string{"super_admin"}, wantStatus: http.StatusForbidden},
+		{name: "verifikator cannot update scores", role: "verifikator", allowed: []string{"super_admin", "koresponden"}, wantStatus: http.StatusForbidden},
+		{name: "unknown role has no privileged access", role: "tamu", allowed: []string{"super_admin", "koresponden", "verifikator", "auditor"}, wantStatus: http.StatusForbidden},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			guard := (&JWTMiddleware{}).RequireAnyRole(test.allowed...)
+			handler := guard(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+			request := httptest.NewRequest(http.MethodPost, "/protected", nil)
+			claims := jwt.MapClaims{"realm_access": map[string]interface{}{"roles": []interface{}{test.role}}}
+			request = request.WithContext(context.WithValue(request.Context(), UserContextKey, claims))
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != test.wantStatus {
+				t.Fatalf("status = %d, want %d", response.Code, test.wantStatus)
+			}
+		})
+	}
+}

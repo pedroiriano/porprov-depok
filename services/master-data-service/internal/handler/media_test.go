@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/png"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 )
@@ -78,5 +79,33 @@ func TestSafeOriginalMediaNameRemovesPathAndControls(t *testing.T) {
 	name := safeOriginalMediaName("../folder/hero\x00.png", ".png")
 	if name != "hero.png" {
 		t.Fatalf("safeOriginalMediaName() = %q, want hero.png", name)
+	}
+}
+
+func TestGenerateMediaDerivativesPreservesOriginalAndCreatesVariants(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	data := pngBytes(t, 1600, 900)
+	items, err := generateMediaDerivatives(data, "image/png", ".png", directory, "original.png")
+	if err != nil {
+		t.Fatalf("generateMediaDerivatives() error = %v", err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("derivatives = %d, want 3", len(items))
+	}
+	expectedWidths := map[string]int32{"thumbnail": 320, "list": 720, "detail": 1440}
+	for _, item := range items {
+		if item.metadata.ChecksumSHA256 == "" || item.metadata.FileSize <= 0 || item.metadata.Width <= 0 || item.metadata.Height <= 0 {
+			t.Fatalf("incomplete derivative metadata: %#v", item.metadata)
+		}
+		if _, err := os.Stat(item.path); err != nil {
+			t.Fatalf("derivative file missing: %v", err)
+		}
+		if item.metadata.Width != expectedWidths[item.metadata.Variant] {
+			t.Fatalf("variant %s width = %d, want %d", item.metadata.Variant, item.metadata.Width, expectedWidths[item.metadata.Variant])
+		}
+	}
+	if _, err := os.Stat(directory + string(os.PathSeparator) + "original.png"); !os.IsNotExist(err) {
+		t.Fatal("generator must not overwrite or create the original file")
 	}
 }

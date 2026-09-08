@@ -378,6 +378,11 @@ services:
         condition: service_started
     networks:
       - porprov_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8085/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   api-gateway:
     build:
@@ -405,6 +410,9 @@ services:
       UMAMI_USERNAME: ${UMAMI_USERNAME:-admin}
       UMAMI_PASSWORD: ${UMAMI_PASSWORD:-replace-with-a-long-random-umami-password}
       UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-e013f972-fc45-440c-a872-575545e6e65f}
+      NATS_MONITOR_URL: http://nats:8222/healthz
+      REDIS_ADDRESS: redis:6379
+      POSTGRES_ADDRESS: postgres:5432
     ports:
       - "127.0.0.1:${API_GATEWAY_HOST_PORT:-8000}:8000"
     depends_on:
@@ -423,7 +431,7 @@ services:
       audit-service:
         condition: service_healthy
       realtime-gateway:
-        condition: service_started
+        condition: service_healthy
       umami-bootstrap:
         condition: service_completed_successfully
     networks:

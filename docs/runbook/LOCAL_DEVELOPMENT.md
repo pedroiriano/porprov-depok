@@ -148,6 +148,23 @@ curl.exe -f http://localhost:19090/-/ready
 curl.exe -f http://localhost:13000/api/health
 ```
 
+Endpoint Admin `/api/v1/integrations/health` memerlukan token dengan peran
+`super_admin` atau `auditor`. Jangan menyalin token ke dokumentasi atau log.
+
+### Migrasi lokal Tahap 11
+
+Migrasi User v3 dan Master Data v14 bersifat additive. Sebelum menjalankannya,
+buat dump format custom untuk `user_service_db` serta `master_data_db`, catat
+SHA-256, dan validasi setiap dump dengan `pg_restore --list`. Jalankan migration
+job canonical Compose, lalu pastikan tabel `form_drafts` dan
+`media_derivatives` tersedia tanpa mengubah data operasional. Bukti eksekusi 8
+September 2026 dan prosedur rollback berada di
+`docs/uiux/ADMIN_ENTERPRISE_COMPLETION_V11.md`.
+
+Dockerfile service Go memakai `Dockerfile.dockerignore` per service agar cache,
+binary lokal, dan artefak sementara tidak masuk build context. Jangan menghapus
+file tersebut ketika menambah service baru.
+
 ## 8. Debug Satu Komponen
 
 Namespace `28xxx` tetap tersedia hanya untuk debugging terisolasi:

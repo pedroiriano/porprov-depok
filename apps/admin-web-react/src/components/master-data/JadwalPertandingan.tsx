@@ -5,8 +5,8 @@ import SearchableSelect from '../common/SearchableSelect';
 import type { SelectOption } from '../common/SearchableSelect';
 import ModalForm from '../common/ModalForm';
 import { SelectInput, TextInput } from '../common/FormInputs';
-import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../../lib/api';
-import { useTableControls, usePagination } from '../../hooks/useTableControls';
+import { apiClient, authConfig, getApiErrorMessage, type PaginatedApiResponse, unwrapApiData } from '../../lib/api';
+import { useTableControls } from '../../hooks/useTableControls';
 import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import type {
   Cabor,
@@ -22,6 +22,7 @@ import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTabl
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 interface ParticipantDraft {
   participant_type: ParticipantType;
@@ -65,6 +66,14 @@ const participantTypeLabels: Record<ParticipantType, string> = {
   contingent: 'Kontingen',
 };
 
+const matchStatusLabels: Record<string, string> = {
+  scheduled: 'Terjadwal',
+  ongoing: 'Berlangsung',
+  delayed: 'Ditunda',
+  finished: 'Selesai',
+  cancelled: 'Dibatalkan',
+};
+
 type SortKeyType = 'match_date' | 'nomor_tanding' | 'venue' | 'round' | 'status';
 
 export default function JadwalPertandingan() {
@@ -78,6 +87,8 @@ export default function JadwalPertandingan() {
   const [formData, setFormData] = useState<ScheduleFormState>(createEmptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDebouncedValue(search);
+  const [totalItems, setTotalItems] = useState(0);
   const [listError, setListError] = useState('');
   const [referenceError, setReferenceError] = useState('');
   const [formError, setFormError] = useState('');
@@ -86,20 +97,28 @@ export default function JadwalPertandingan() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const auth = useAuth();
 
+  const table = useTableControls<SortKeyType>({ sortKey: 'match_date', sortDirection: 'asc', rowsPerPage: 10 });
+
   const getAuthConfig = useCallback(() => authConfig(auth.user?.access_token), [auth.user?.access_token]);
 
-  const fetchMatches = useCallback(async () => {
+  const fetchMatches = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const response = await apiClient.get<MatchSchedule[] | { data: MatchSchedule[] }>('/schedule/matches/enriched', getAuthConfig());
-      setMatches(unwrapApiData(response.data) || []);
+      const response = await apiClient.get<PaginatedApiResponse<MatchSchedule>>('/schedule/matches/enriched', {
+        ...getAuthConfig(),
+        signal,
+        params: { page: table.currentPage, per_page: table.rowsPerPage, q: deferredSearch.trim(), sort: table.sortKey || 'match_date', direction: table.sortDirection },
+      });
+      setMatches(response.data.data || []);
+      setTotalItems(response.data.total || 0);
       setListError('');
     } catch (error) {
+      if (signal?.aborted) return;
       setListError(getApiErrorMessage(error, 'Gagal memuat jadwal pertandingan.'));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [getAuthConfig]);
+  }, [deferredSearch, getAuthConfig, table.currentPage, table.rowsPerPage, table.sortDirection, table.sortKey]);
 
   const fetchReferences = useCallback(async () => {
     try {
@@ -120,8 +139,10 @@ export default function JadwalPertandingan() {
   }, [getAuthConfig]);
 
   useEffect(() => {
-    void fetchMatches();
+    const controller = new AbortController();
+    void fetchMatches(controller.signal);
     void fetchReferences();
+    return () => controller.abort();
   }, [fetchMatches, fetchReferences]);
 
   const resetForm = () => setFormData(createEmptyForm());
@@ -144,7 +165,7 @@ export default function JadwalPertandingan() {
   const participantSummary = (match: MatchSchedule) => {
     const participants = [...(match.participants || [])].sort((a, b) => a.slot - b.slot);
     return participants.length === 2
-      ? participants.map(participantDisplayName).join(' vs ')
+      ? participants.map(participantDisplayName).join(' melawan ')
       : 'Susunan peserta belum lengkap';
   };
 
@@ -164,45 +185,14 @@ export default function JadwalPertandingan() {
     subLabel: kontingen.region_type,
   }));
 
-  // INFO: Setup pagination & sorting
-  const table = useTableControls<SortKeyType>({ sortKey: 'match_date', sortDirection: 'asc', rowsPerPage: 10 });
-
   useEffect(() => {
     table.resetPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
-  const filteredMatches = matches.filter((item) =>
-    `${getNomorTandingName(item.nomor_tanding_id)} ${getVenueName(item.venue_id)} ${participantSummary(item)} ${item.round} ${item.status}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
-
-  const sortedMatches = [...filteredMatches].sort((a, b) => {
-    const dir = table.sortDirection === 'asc' ? 1 : -1;
-    switch (table.sortKey) {
-      case 'match_date':
-        return (new Date(a.match_date).getTime() - new Date(b.match_date).getTime()) * dir;
-      case 'nomor_tanding':
-        return getNomorTandingName(a.nomor_tanding_id).localeCompare(getNomorTandingName(b.nomor_tanding_id)) * dir;
-      case 'venue':
-        return getVenueName(a.venue_id).localeCompare(getVenueName(b.venue_id)) * dir;
-      case 'round':
-        return (a.round || '').localeCompare(b.round || '') * dir;
-      case 'status':
-        return (a.status || '').localeCompare(b.status || '') * dir;
-      default:
-        return 0;
-    }
-  });
-
-  const {
-    paginatedData,
-    totalItems,
-    totalPages,
-    startItem,
-    endItem,
-  } = usePagination(sortedMatches, table.currentPage, table.rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(totalItems / table.rowsPerPage));
+  const startItem = totalItems === 0 ? 0 : (table.currentPage - 1) * table.rowsPerPage + 1;
+  const endItem = Math.min(table.currentPage * table.rowsPerPage, totalItems);
 
   const updateParticipant = (index: number, changes: Partial<ParticipantDraft>) => {
     setFormData((current) => ({
@@ -215,7 +205,7 @@ export default function JadwalPertandingan() {
 
   const validateForm = () => {
     if (!formData.nomor_tanding_id || !formData.venue_id || !formData.match_date) {
-      return 'Cabor/nomor tanding, venue, dan waktu pertandingan wajib diisi.';
+      return 'Cabang olahraga/nomor pertandingan, lokasi, dan waktu pertandingan wajib diisi.';
     }
     for (const [index, participant] of formData.participants.entries()) {
       const side = index === 0 ? 'A' : 'B';
@@ -279,12 +269,16 @@ export default function JadwalPertandingan() {
       setArchiving(true);
       setListError('');
       setOperationMessage('');
-      for (const id of ids) {
-        await apiClient.delete(`/schedule/matches/${id}`, { ...getAuthConfig(), data: { reason } });
-      }
-      setSelectedIds(new Set());
+      const results = await Promise.allSettled(ids.map((id) => apiClient.delete(`/schedule/matches/${id}`, { ...getAuthConfig(), data: { reason } })));
+      const failedIds = ids.filter((_, index) => results[index].status === 'rejected');
+      const succeeded = ids.length - failedIds.length;
+      setSelectedIds(new Set(failedIds));
       await fetchMatches();
-      setOperationMessage(`${ids.length} jadwal pertandingan berhasil diarsipkan.`);
+      if (failedIds.length > 0) {
+        setListError(`${succeeded} jadwal berhasil diarsipkan, tetapi ${failedIds.length} lainnya gagal. Data yang gagal tetap dipilih agar dapat dicoba lagi.`);
+      } else {
+        setOperationMessage(`${succeeded} jadwal pertandingan berhasil diarsipkan dan dapat dipulihkan dari Arsip Terhapus.`);
+      }
     } catch (error) {
       setListError(getApiErrorMessage(error, 'Gagal mengarsipkan data jadwal.'));
     } finally {
@@ -329,13 +323,13 @@ export default function JadwalPertandingan() {
     },
     { key: 'nomor', label: 'Cabor / Nomor', sortKey: 'nomor_tanding', className: 'min-w-56', render: (item) => <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{getNomorTandingName(item.nomor_tanding_id)}</span> },
     { key: 'participants', label: 'Peserta', className: 'min-w-64', render: (item) => <span className={`text-sm font-black ${(item.participants?.length || 0) === 2 ? 'text-slate-950 dark:text-white' : 'text-amber-700 dark:text-amber-300'}`}>{participantSummary(item)}</span> },
-    { key: 'venue', label: 'Venue', sortKey: 'venue', className: 'min-w-48', render: (item) => <span className="text-sm text-slate-600 dark:text-slate-300">{getVenueName(item.venue_id)}</span> },
+    { key: 'venue', label: 'Lokasi', sortKey: 'venue', className: 'min-w-48', render: (item) => <span className="text-sm text-slate-600 dark:text-slate-300">{getVenueName(item.venue_id)}</span> },
     { key: 'round', label: 'Babak', sortKey: 'round', render: (item) => <span className="text-sm font-bold capitalize text-slate-700 dark:text-slate-200">{item.round?.replaceAll('_', ' ')}</span> },
     {
       key: 'status',
       label: 'Status',
       sortKey: 'status',
-      render: (item) => <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${item.status === 'finished' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : item.status === 'ongoing' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200' : item.status === 'delayed' ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>{item.status}</span>,
+      render: (item) => <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${item.status === 'finished' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : item.status === 'ongoing' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200' : item.status === 'delayed' ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>{matchStatusLabels[item.status] || item.status}</span>,
     },
   ];
 
@@ -344,7 +338,7 @@ export default function JadwalPertandingan() {
       <AdminPageHeader
         eyebrow="Operasional pertandingan"
         title="Jadwal Pertandingan"
-        description="Atur waktu, venue, dan Peserta A/B yang menjadi sumber resmi LiveScore."
+        description="Atur waktu, lokasi, serta Peserta A/B yang menjadi sumber resmi skor langsung."
         actions={<button type="button" onClick={() => { resetForm(); setFormError(''); setIsModalOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah jadwal</button>}
       />
 
@@ -353,7 +347,7 @@ export default function JadwalPertandingan() {
 
       <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
         <p className="flex items-center gap-2 font-black"><Users className="size-5" aria-hidden="true" />Alur input peserta</p>
-        <p className="mt-1 text-blue-800 dark:text-blue-200">Pilih jenis Individu, Tim, atau Kontingen di jadwal ini. LiveScore Center otomatis membaca Peserta A/B dan hanya digunakan untuk input skor, status, serta koreksi.</p>
+        <p className="mt-1 text-blue-800 dark:text-blue-200">Pilih jenis Individu, Tim, atau Kontingen di jadwal ini. Pusat Skor Langsung otomatis membaca Peserta A/B dan hanya digunakan untuk memasukkan skor, status, serta koreksi.</p>
       </div>
 
       {/* CHANGE: Standardized table wrapper */}
@@ -378,7 +372,7 @@ export default function JadwalPertandingan() {
 
         <AdminDataTable<MatchSchedule, SortKeyType>
           caption="Daftar jadwal dan peserta pertandingan PORPROV"
-          rows={paginatedData}
+          rows={matches}
           columns={columns}
           getRowId={(item) => item.id}
           getRowLabel={(item) => `${getNomorTandingName(item.nomor_tanding_id)} ${participantSummary(item)}`}
@@ -393,7 +387,7 @@ export default function JadwalPertandingan() {
           error={listError}
           onRetry={fetchMatches}
           emptyTitle={search ? 'Jadwal pertandingan tidak ditemukan' : 'Belum ada jadwal dengan susunan peserta'}
-          emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan jadwal setelah nomor, venue, dan kontingen tersedia.'}
+          emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan jadwal setelah nomor pertandingan, lokasi, dan kontingen tersedia.'}
           minWidthClassName="min-w-[1180px]"
           rowActions={(item) => <><button type="button" onClick={() => editMatch(item)} aria-label={`Edit jadwal ${getNomorTandingName(item.nomor_tanding_id)}`} title="Edit jadwal dan peserta" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button><button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan jadwal ${getNomorTandingName(item.nomor_tanding_id)}`} title="Arsipkan jadwal" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button></>}
         />
@@ -413,12 +407,12 @@ export default function JadwalPertandingan() {
       <ModalForm isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); setFormError(''); }} title={formData.id ? 'Edit Jadwal & Peserta' : 'Tambah Jadwal & Peserta'} onSubmit={handleSave} submitting={submitting} submitText={formData.id ? 'Simpan perubahan' : 'Simpan jadwal'} size="large" draft={{ entityId: formData.id || 'new-jadwal', version: 'jadwal-v1', value: formData, onRestore: setFormData }}>
         {formError && <AdminAlert>{formError}</AdminAlert>}
         {referenceError && <AdminAlert tone="warning">{referenceError}</AdminAlert>}
-        <RevisionHistory entityName="Match" entityId={formData.id} onRestore={(payload) => { const historical = payload.match; if (historical && typeof historical === 'object' && !Array.isArray(historical)) setFormData((current) => applyRevisionFields(current, historical as Record<string, unknown>)); }} />
+        <RevisionHistory entityName="Match" displayName="Jadwal pertandingan" entityId={formData.id} onRestore={(payload) => { const historical = payload.match; if (historical && typeof historical === 'object' && !Array.isArray(historical)) setFormData((current) => applyRevisionFields(current, historical as Record<string, unknown>)); }} />
         <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">Konteks pertandingan</legend>
         <div className="grid gap-4 md:grid-cols-2">
           <div><p className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Cabor / Nomor Tanding <span className="text-red-500" aria-hidden="true">*</span></p><SearchableSelect options={nomorTandingOptions} value={formData.nomor_tanding_id} onChange={(value) => setFormData((current) => ({ ...current, nomor_tanding_id: value }))} placeholder="Pilih Cabor / Nomor Tanding..." ariaLabel="Cabor atau Nomor Tanding" /></div>
-          <div><p className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Lokasi (Venue) <span className="text-red-500" aria-hidden="true">*</span></p><SearchableSelect options={venueOptions} value={formData.venue_id} onChange={(value) => setFormData((current) => ({ ...current, venue_id: value }))} placeholder="Pilih Venue..." ariaLabel="Lokasi Venue" /></div>
+          <div><p className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Lokasi pertandingan <span className="text-red-500" aria-hidden="true">*</span></p><SearchableSelect options={venueOptions} value={formData.venue_id} onChange={(value) => setFormData((current) => ({ ...current, venue_id: value }))} placeholder="Pilih lokasi pertandingan..." ariaLabel="Lokasi pertandingan" /></div>
         </div>
         </fieldset>
 
@@ -433,7 +427,7 @@ export default function JadwalPertandingan() {
                 <div><p className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Kontingen / Afiliasi <span className="text-red-500" aria-hidden="true">*</span></p><SearchableSelect options={kontingenOptions} value={participant.kontingen_id} onChange={(value) => updateParticipant(index, { kontingen_id: value })} placeholder="Pilih Kontingen..." ariaLabel={`Kontingen atau afiliasi Peserta ${index === 0 ? 'A' : 'B'}`} /></div>
                 {participant.participant_type === 'individual' && <TextInput label="Nama Atlet" required maxLength={100} value={participant.athlete_name} onChange={(event) => updateParticipant(index, { athlete_name: event.target.value })} placeholder="Nama lengkap atlet" />}
                 {participant.participant_type === 'team' && <TextInput label="Nama Tim" required maxLength={150} value={participant.team_name} onChange={(event) => updateParticipant(index, { team_name: event.target.value })} placeholder="Contoh: Kota Depok Putri" />}
-                <div className="rounded-xl bg-white px-3 py-2 text-sm dark:bg-slate-900"><span className="text-slate-500">Tampil di LiveScore:</span> <strong className="text-slate-900 dark:text-white">{participantDisplayName(participant)}</strong></div>
+                <div className="rounded-xl bg-white px-3 py-2 text-sm dark:bg-slate-900"><span className="text-slate-500">Tampil pada skor langsung:</span> <strong className="text-slate-900 dark:text-white">{participantDisplayName(participant)}</strong></div>
               </div>
             </section>
           ))}</div>

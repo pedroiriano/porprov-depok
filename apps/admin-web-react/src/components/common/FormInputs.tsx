@@ -106,7 +106,7 @@ interface MediaInputProps extends BaseInputProps {
   helpText?: string;
 }
 
-export const MediaInput = ({ label, required, value, onClear, onSelect, placeholderText = "Pilih dari Media Library", previewVariant = "square", helpText }: MediaInputProps) => (
+export const MediaInput = ({ label, required, value, onClear, onSelect, placeholderText = "Pilih dari Pustaka Media", previewVariant = "square", helpText }: MediaInputProps) => (
   <div>
     <p className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
       {label} {required && <span className="text-red-500" aria-hidden="true">*</span>}

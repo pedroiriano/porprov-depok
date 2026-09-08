@@ -17,6 +17,8 @@ type AnalyticsPayload = {
 
 const number = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0;
 const list = (value: unknown): Metric[] => Array.isArray(value) ? value.filter((item): item is Metric => Boolean(item) && typeof item === 'object') : [];
+const deviceLabels: Record<string, string> = { mobile: 'Ponsel', laptop: 'Laptop', desktop: 'Komputer', tablet: 'Tablet' };
+const browserLabels: Record<string, string> = { chrome: 'Google Chrome', 'edge-chromium': 'Microsoft Edge', ios: 'iOS', crios: 'Chrome untuk iOS', safari: 'Safari', 'ios-webview': 'Tampilan web iOS' };
 
 function MiniStat({ title, value, icon: Icon }: { title: string; value: string; icon: typeof Eye }) {
   return (
@@ -27,7 +29,7 @@ function MiniStat({ title, value, icon: Icon }: { title: string; value: string; 
   );
 }
 
-function Ranking({ title, rows, empty }: { title: string; rows: Metric[]; empty: string }) {
+function Ranking({ title, rows, empty, formatLabel = (value) => value }: { title: string; rows: Metric[]; empty: string; formatLabel?: (value: string) => string }) {
   const maximum = Math.max(1, ...rows.map((row) => number(row.y)));
   return (
     <section aria-labelledby={`analytics-${title.toLowerCase().replace(/\s+/g, '-')}`}>
@@ -36,7 +38,7 @@ function Ranking({ title, rows, empty }: { title: string; rows: Metric[]; empty:
         <ol className="mt-4 space-y-3">
           {rows.slice(0, 6).map((row, index) => (
             <li key={`${row.x || 'unknown'}-${index}`}>
-              <div className="flex items-center justify-between gap-4 text-sm"><span className="truncate font-semibold text-slate-700 dark:text-slate-200">{row.x || 'Langsung/tidak diketahui'}</span><span className="shrink-0 font-black">{number(row.y).toLocaleString('id-ID')}</span></div>
+              <div className="flex items-center justify-between gap-4 text-sm"><span className="truncate font-semibold text-slate-700 dark:text-slate-200">{row.x ? formatLabel(row.x) : 'Langsung/tidak diketahui'}</span><span className="shrink-0 font-black">{number(row.y).toLocaleString('id-ID')}</span></div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.max(4, (number(row.y) / maximum) * 100)}%` }} /></div>
             </li>
           ))}
@@ -59,7 +61,7 @@ export default function VisitorAnalytics({ token }: { token: string }) {
       const response = await apiClient.get(`/analytics/overview?days=${days}`, authConfig(token));
       setData(unwrapApiData<AnalyticsPayload>(response.data));
     } catch {
-      setError('Statistik pengunjung belum dapat dimuat. Pastikan layanan analytics aktif lalu coba lagi.');
+      setError('Statistik pengunjung belum dapat dimuat. Pastikan layanan statistik aktif lalu coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -81,7 +83,7 @@ export default function VisitorAnalytics({ token }: { token: string }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="visitor-analytics-title">
       <div className="flex flex-col gap-4 border-b border-slate-200 p-5 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
-        <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">Umami self-hosted</p><h2 id="visitor-analytics-title" className="mt-1 text-xl font-black text-slate-950 dark:text-white">Statistik Pengunjung</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Analytics Public Web tanpa mengirim data ke layanan eksternal.</p></div>
+        <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">Statistik mandiri</p><h2 id="visitor-analytics-title" className="mt-1 text-xl font-black text-slate-950 dark:text-white">Statistik Pengunjung</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Analitik Web Publik tanpa mengirim data ke layanan eksternal.</p></div>
         <div className="flex items-center gap-2">
           <label htmlFor="analytics-range" className="sr-only">Rentang statistik</label>
           <select id="analytics-range" value={days} onChange={(event) => setDays(Number(event.target.value))} className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold dark:border-slate-700 dark:bg-slate-900">
@@ -92,9 +94,9 @@ export default function VisitorAnalytics({ token }: { token: string }) {
       </div>
       {loading ? <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4" aria-label="Memuat statistik pengunjung">{[0,1,2,3].map((item) => <div key={item} className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />)}</div> : error ? <div className="p-8 text-center"><p className="text-sm font-semibold text-red-600 dark:text-red-300">{error}</p><button type="button" onClick={load} className="mt-4 min-h-11 rounded-xl bg-blue-600 px-5 font-bold text-white hover:bg-blue-700">Coba lagi</button></div> : (
         <div className="space-y-6 p-5">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><MiniStat title="Aktif sekarang" value={number(data?.active?.visitors).toLocaleString('id-ID')} icon={Activity} /><MiniStat title="Page views" value={number(stats.pageviews).toLocaleString('id-ID')} icon={Eye} /><MiniStat title="Pengunjung unik" value={number(stats.visitors).toLocaleString('id-ID')} icon={Users} /><MiniStat title="Rata-rata waktu" value={`${Math.floor(averageSeconds / 60)}m ${averageSeconds % 60}d`} icon={Clock3} /></div>
-          <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-700"><div className="flex items-center justify-between"><h3 className="font-black">Tren kunjungan</h3><span className="text-xs font-bold text-slate-500">Bounce rate {bounceRate}%</span></div>{series.length > 1 ? <svg viewBox="0 0 100 52" className="mt-4 h-44 w-full" role="img" aria-label="Grafik page views"><polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" className="text-blue-500" /><line x1="0" y1="49" x2="100" y2="49" className="text-slate-200 dark:text-slate-700" stroke="currentColor" strokeWidth="1" /></svg> : <p className="py-12 text-center text-sm text-slate-500">Data tren akan muncul setelah kunjungan mulai tercatat.</p>}</div>
-          <div className="grid gap-8 rounded-2xl border border-slate-200 p-5 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-4"><Ranking title="Halaman populer" rows={list(data?.top_pages)} empty="Belum ada halaman tercatat." /><Ranking title="Sumber kunjungan" rows={list(data?.referrers)} empty="Belum ada referrer tercatat." /><Ranking title="Perangkat" rows={list(data?.devices)} empty="Belum ada perangkat tercatat." /><Ranking title="Browser" rows={list(data?.browsers)} empty="Belum ada browser tercatat." /></div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><MiniStat title="Aktif sekarang" value={number(data?.active?.visitors).toLocaleString('id-ID')} icon={Activity} /><MiniStat title="Tayangan halaman" value={number(stats.pageviews).toLocaleString('id-ID')} icon={Eye} /><MiniStat title="Pengunjung unik" value={number(stats.visitors).toLocaleString('id-ID')} icon={Users} /><MiniStat title="Rata-rata waktu" value={`${Math.floor(averageSeconds / 60)} menit ${averageSeconds % 60} detik`} icon={Clock3} /></div>
+          <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-700"><div className="flex items-center justify-between"><h3 className="font-black">Tren kunjungan</h3><span className="text-xs font-bold text-slate-500">Rasio pentalan {bounceRate}%</span></div>{series.length > 1 ? <svg viewBox="0 0 100 52" className="mt-4 h-44 w-full" role="img" aria-label="Grafik tayangan halaman"><polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" className="text-blue-500" /><line x1="0" y1="49" x2="100" y2="49" className="text-slate-200 dark:text-slate-700" stroke="currentColor" strokeWidth="1" /></svg> : <p className="py-12 text-center text-sm text-slate-500">Data tren akan muncul setelah kunjungan mulai tercatat.</p>}</div>
+          <div className="grid gap-8 rounded-2xl border border-slate-200 p-5 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-4"><Ranking title="Halaman populer" rows={list(data?.top_pages)} empty="Belum ada halaman tercatat." /><Ranking title="Sumber kunjungan" rows={list(data?.referrers)} empty="Belum ada sumber kunjungan tercatat." /><Ranking title="Perangkat" rows={list(data?.devices)} empty="Belum ada perangkat tercatat." formatLabel={(value) => deviceLabels[value.toLowerCase()] || value} /><Ranking title="Peramban" rows={list(data?.browsers)} empty="Belum ada peramban tercatat." formatLabel={(value) => browserLabels[value.toLowerCase()] || value} /></div>
         </div>
       )}
     </section>

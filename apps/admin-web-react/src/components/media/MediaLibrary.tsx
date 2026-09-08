@@ -29,7 +29,7 @@ export default function MediaLibrary() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortBy, setSortBy] = useState<MediaSort>('newest');
   const [archiveTarget, setArchiveTarget] = useState<MediaAsset | null>(null);
-  const [archiveReason, setArchiveReason] = useState('Diarsipkan melalui Media Library');
+  const [archiveReason, setArchiveReason] = useState('Diarsipkan melalui Pustaka Media');
   const {
     currentPage,
     rowsPerPage,
@@ -55,10 +55,14 @@ export default function MediaLibrary() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({ file, options }: { file: File; options: { signal: AbortSignal; onProgress: (percentage: number) => void } }) => {
       const formData = new FormData();
       formData.append('file', file);
-      await apiClient.post('/master-data/media/upload', formData, authConfig(auth.user?.access_token));
+      await apiClient.post('/master-data/media/upload', formData, {
+        ...authConfig(auth.user?.access_token),
+        signal: options.signal,
+        onUploadProgress: (event) => options.onProgress(event.total ? Math.min(99, Math.round((event.loaded / event.total) * 100)) : 0),
+      });
     },
     onSuccess: async () => {
       setActionError('');
@@ -78,7 +82,7 @@ export default function MediaLibrary() {
     },
     onSuccess: async (item) => {
       setActionError('');
-      setNotice(`${item.file_name} dipindahkan ke Recycle Bin.`);
+      setNotice(`${item.file_name} dipindahkan ke Arsip Terhapus.`);
       setArchiveTarget(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['media-assets'] }),
@@ -94,7 +98,7 @@ export default function MediaLibrary() {
       setActionError('');
       setNotice(`URL ${item.file_name} berhasil disalin.`);
     } catch {
-      setActionError('Browser tidak mengizinkan akses clipboard.');
+      setActionError('Peramban tidak mengizinkan akses papan klip.');
     }
   };
 
@@ -120,19 +124,19 @@ export default function MediaLibrary() {
     <section aria-labelledby="media-library-title">
       <AdminPageHeader
         eyebrow="Aset Konten PORPROV"
-        title="Media Library"
-        description="Kelola gambar aktif untuk Hero, cabang olahraga, venue, dan City Guide dari satu galeri terkontrol."
+        title="Pustaka Media"
+        description="Kelola gambar aktif untuk tampilan utama, cabang olahraga, lokasi pertandingan, dan Panduan Kota dari satu galeri terkontrol."
         actions={(
           <MediaUploadButton
             busy={isMutating}
-            onUpload={(file) => uploadMutation.mutateAsync(file)}
+            onUpload={(file, options) => uploadMutation.mutateAsync({ file, options })}
             onError={setActionError}
             onNotice={setNotice}
           />
         )}
       />
 
-      <h1 id="media-library-title" className="sr-only">Media Library</h1>
+      <h1 id="media-library-title" className="sr-only">Pustaka Media</h1>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -178,11 +182,11 @@ export default function MediaLibrary() {
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="mb-4 text-xs text-slate-500 dark:text-slate-300">JPG, PNG, atau WebP · sumber maksimal 20 MiB · hasil otomatis maksimal 3 MiB · fallback lossy selalu meminta persetujuan · pengarsipan tidak menghapus file fisik.</p>
+          <p className="mb-4 text-xs text-slate-500 dark:text-slate-300">JPG, PNG, atau WebP · sumber maksimal 20 MiB · hasil otomatis maksimal 3 MiB · penurunan kualitas selalu meminta persetujuan · pengarsipan tidak menghapus file fisik.</p>
           {mediaQuery.isLoading ? (
-            <AdminLoadingState label="Memuat Media Library..." />
+            <AdminLoadingState label="Memuat Pustaka Media..." />
           ) : mediaQuery.isError ? (
-            <AdminErrorState message={getApiErrorMessage(mediaQuery.error, 'Gagal memuat Media Library.')} onRetry={() => void mediaQuery.refetch()} />
+            <AdminErrorState message={getApiErrorMessage(mediaQuery.error, 'Gagal memuat Pustaka Media.')} onRetry={() => void mediaQuery.refetch()} />
           ) : media.length > 0 ? (
             <AdminMediaGrid items={media} onCopy={(item) => void copyToClipboard(item)} onArchive={setArchiveTarget} busy={deleteMutation.isPending} />
           ) : (
@@ -203,13 +207,13 @@ export default function MediaLibrary() {
         )}
       </div>
 
-      <Modal isOpen={archiveTarget !== null} onClose={() => !deleteMutation.isPending && setArchiveTarget(null)} title="Arsipkan media" description="Media tetap tersimpan dan dapat dipulihkan dari Recycle Bin." closeDisabled={deleteMutation.isPending}>
+      <Modal isOpen={archiveTarget !== null} onClose={() => !deleteMutation.isPending && setArchiveTarget(null)} title="Arsipkan media" description="Media tetap tersimpan dan dapat dipulihkan dari Arsip Terhapus." closeDisabled={deleteMutation.isPending}>
         <form
           className="space-y-4 p-4 sm:p-6"
           onSubmit={(event) => {
             event.preventDefault();
             if (!archiveTarget) return;
-            deleteMutation.mutate({ item: archiveTarget, reason: archiveReason.trim() || 'Diarsipkan melalui Media Library' });
+            deleteMutation.mutate({ item: archiveTarget, reason: archiveReason.trim() || 'Diarsipkan melalui Pustaka Media' });
           }}
         >
           <p className="text-sm text-slate-600 dark:text-slate-300">Anda akan mengarsipkan <strong className="text-slate-900 dark:text-white">{archiveTarget?.file_name}</strong>.</p>

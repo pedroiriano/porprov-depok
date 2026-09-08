@@ -4,16 +4,17 @@ import { useAuth } from 'react-oidc-context';
 import MediaSelectorModal from '../media/MediaSelectorModal';
 import ModalForm from '../common/ModalForm';
 import { TextInput, SelectInput, MediaInput, TextArea } from '../common/FormInputs';
-import { apiClient, authConfig, getApiErrorMessage, normalizeStoredMediaUrl, unwrapApiData } from '../../lib/api';
+import { apiClient, authConfig, getApiErrorMessage, normalizeStoredMediaUrl, type PaginatedApiResponse, unwrapApiData } from '../../lib/api';
 import type { Cabor, Venue } from '../../types/master-data';
 import { requestSoftDeleteReason } from '../../lib/soft-delete';
 // INFO: Import table controls
-import { useTableControls, usePagination } from '../../hooks/useTableControls';
+import { useTableControls } from '../../hooks/useTableControls';
 import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 type VenueSortKey = 'name' | 'address' | 'capacity';
 
@@ -36,6 +37,8 @@ export default function VenueDepok() {
   const [archiving, setArchiving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
+  const deferredSearch = useDebouncedValue(search);
+  const [totalItems, setTotalItems] = useState(0);
   const [listError, setListError] = useState('');
   const [formError, setFormError] = useState('');
   const [operationMessage, setOperationMessage] = useState('');
@@ -77,19 +80,25 @@ export default function VenueDepok() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchVenues = useCallback(async () => {
+  const fetchVenues = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const res = await apiClient.get<Venue[] | { data: Venue[] }>('/venues', authConfig(auth.user?.access_token));
-      setVenues(unwrapApiData(res.data) || []);
+      const res = await apiClient.get<PaginatedApiResponse<Venue>>('/venues', {
+        ...authConfig(auth.user?.access_token),
+        signal,
+        params: { page: table.currentPage, per_page: table.rowsPerPage, q: deferredSearch.trim(), sort: table.sortKey || 'name', direction: table.sortDirection },
+      });
+      setVenues(res.data.data || []);
+      setTotalItems(res.data.total || 0);
       setListError('');
     } catch (error) {
+      if (signal?.aborted) return;
       console.error('Failed to fetch venues:', error);
-      setListError(getApiErrorMessage(error, 'Gagal memuat data venue.'));
+      setListError(getApiErrorMessage(error, 'Gagal memuat data lokasi pertandingan. Coba lagi setelah memastikan layanan tersedia.'));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [auth.user?.access_token]);
+  }, [auth.user?.access_token, deferredSearch, table.currentPage, table.rowsPerPage, table.sortDirection, table.sortKey]);
 
   const fetchCabors = useCallback(async () => {
     try {
@@ -102,8 +111,10 @@ export default function VenueDepok() {
   }, [auth.user?.access_token]);
 
   useEffect(() => {
-    void fetchVenues();
+    const controller = new AbortController();
+    void fetchVenues(controller.signal);
     void fetchCabors();
+    return () => controller.abort();
   }, [fetchCabors, fetchVenues]);
 
   const toggleCaborSelection = (id: string) => {
@@ -149,31 +160,35 @@ export default function VenueDepok() {
       setIsModalOpen(false);
       resetForm();
       await fetchVenues();
-      setOperationMessage(formData.id ? 'Venue berhasil diperbarui.' : 'Venue berhasil ditambahkan.');
+      setOperationMessage(formData.id ? 'Lokasi pertandingan berhasil diperbarui.' : 'Lokasi pertandingan berhasil ditambahkan.');
     } catch (error) {
       console.error('Failed to create venue:', error);
-      setFormError(getApiErrorMessage(error, 'Gagal menyimpan data venue.'));
+      setFormError(getApiErrorMessage(error, 'Gagal menyimpan lokasi pertandingan. Periksa isian lalu coba lagi.'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleArchive = async (ids: string[]) => {
-    const reason = requestSoftDeleteReason(ids.length > 1 ? `${ids.length} venue ini` : 'Venue ini');
+    const reason = requestSoftDeleteReason(ids.length > 1 ? `${ids.length} lokasi pertandingan ini` : 'Lokasi pertandingan ini');
     if (reason === null) return;
     try {
       setArchiving(true);
       setListError('');
       setOperationMessage('');
-      for (const id of ids) {
-        await apiClient.delete(`/venues/${id}`, { ...authConfig(auth.user?.access_token), data: { reason } });
-      }
-      setSelectedIds(new Set());
+      const results = await Promise.allSettled(ids.map((id) => apiClient.delete(`/venues/${id}`, { ...authConfig(auth.user?.access_token), data: { reason } })));
+      const failedIds = ids.filter((_, index) => results[index].status === 'rejected');
+      const succeeded = ids.length - failedIds.length;
+      setSelectedIds(new Set(failedIds));
       await fetchVenues();
-      setOperationMessage(`${ids.length} venue berhasil diarsipkan.`);
+      if (failedIds.length > 0) {
+        setListError(`${succeeded} lokasi berhasil diarsipkan, tetapi ${failedIds.length} lainnya gagal. Data yang gagal tetap dipilih agar dapat dicoba lagi.`);
+      } else {
+        setOperationMessage(`${succeeded} lokasi berhasil diarsipkan dan dapat dipulihkan dari Arsip Terhapus.`);
+      }
     } catch (error) {
       console.error('Failed to delete venue:', error);
-      setListError(getApiErrorMessage(error, 'Gagal mengarsipkan data venue.'));
+      setListError(getApiErrorMessage(error, 'Gagal mengarsipkan lokasi pertandingan. Muat ulang data lalu coba lagi.'));
     } finally {
       setArchiving(false);
     }
@@ -193,39 +208,14 @@ export default function VenueDepok() {
 
   const filteredCabors = cabors.filter(c => c.name.toLowerCase().includes(caborSearch.toLowerCase()));
   
-  // PERFORMANCE: Use useMemo for sorting and filtering
-  const filteredVenues = useMemo(() => {
-    return venues.filter((item) =>
-      `${item.name} ${item.address ?? ''}`.toLowerCase().includes(search.toLowerCase()),
-    );
-  }, [venues, search]);
-
-  const sortedVenues = useMemo(() => {
-    return [...filteredVenues].sort((a, b) => {
-      let valA = a[table.sortKey as keyof Venue] ?? '';
-      let valB = b[table.sortKey as keyof Venue] ?? '';
-      
-      if (typeof valA === 'string' && typeof valB === 'string') {
-        return table.sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      }
-      if (typeof valA === 'number' && typeof valB === 'number') {
-        return table.sortDirection === 'asc' ? valA - valB : valB - valA;
-      }
-      return 0;
-    });
-  }, [filteredVenues, table.sortKey, table.sortDirection]);
-
-  // INFO: Use usePagination hook
-  const { paginatedData, totalItems, totalPages, startItem, endItem } = usePagination(
-    sortedVenues,
-    table.currentPage,
-    table.rowsPerPage
-  );
+  const totalPages = Math.max(1, Math.ceil(totalItems / table.rowsPerPage));
+  const startItem = totalItems === 0 ? 0 : (table.currentPage - 1) * table.rowsPerPage + 1;
+  const endItem = Math.min(table.currentPage * table.rowsPerPage, totalItems);
 
   const columns = useMemo<Array<AdminDataTableColumn<Venue, VenueSortKey>>>(() => [
     {
       key: 'name',
-      label: 'Nama Venue',
+      label: 'Nama lokasi',
       sortKey: 'name',
       render: (item) => <span className="font-black text-slate-950 dark:text-white">{item.name}</span>,
     },
@@ -273,9 +263,9 @@ export default function VenueDepok() {
     <div className="flex flex-col gap-6">
       <AdminPageHeader
         eyebrow="Lokasi pertandingan"
-        title="Venue Depok"
-        description="Kelola lokasi, kapasitas, kesiapan, cabang olahraga, dan informasi operasional Venue."
-        actions={<button type="button" onClick={() => { resetForm(); setFormError(''); setIsModalOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah venue</button>}
+        title="Lokasi Pertandingan Depok"
+        description="Kelola nama, kapasitas, kesiapan, cabang olahraga, dan informasi operasional lokasi pertandingan."
+        actions={<button type="button" onClick={() => { resetForm(); setFormError(''); setIsModalOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-700"><Plus className="size-4" aria-hidden="true" />Tambah lokasi</button>}
       />
 
       {operationMessage && <AdminAlert tone="success">{operationMessage}</AdminAlert>}
@@ -283,35 +273,35 @@ export default function VenueDepok() {
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 md:flex-row md:items-center md:justify-between dark:border-slate-700">
           <label className="relative block w-full md:max-w-sm">
-            <span className="sr-only">Cari venue</span>
+            <span className="sr-only">Cari lokasi pertandingan</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input type="search" maxLength={80} placeholder="Cari nama atau alamat venue" value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
+            <input type="search" maxLength={80} placeholder="Cari nama atau alamat lokasi" value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
           </label>
           <RowsPerPageSelector rowsPerPage={table.rowsPerPage} onChange={table.handleChangeRowsPerPage} />
         </div>
 
-        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="venue" />
+        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} onDelete={() => void handleArchive([...selectedIds])} deleting={archiving} itemLabel="lokasi" />
 
         <AdminDataTable<Venue, VenueSortKey>
-          caption="Daftar Venue PORPROV Kota Depok"
-          rows={paginatedData}
+          caption="Daftar lokasi pertandingan PORPROV Kota Depok"
+          rows={venues}
           columns={columns}
           getRowId={(item) => item.id}
           getRowLabel={(item) => item.name}
-          selectionLabel="venue"
+          selectionLabel="lokasi"
           sortKey={table.sortKey}
           sortDirection={table.sortDirection}
           onSort={table.handleSort}
           selectedIds={selectedIds}
           onSelectedIdsChange={setSelectedIds}
           loading={loading}
-          loadingLabel="Memuat venue..."
+          loadingLabel="Memuat lokasi pertandingan..."
           error={listError}
           onRetry={fetchVenues}
-          emptyTitle={search ? 'Venue tidak ditemukan' : 'Belum ada venue'}
-          emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan Venue sebelum menyusun Jadwal Pertandingan.'}
+          emptyTitle={search ? 'Lokasi tidak ditemukan' : 'Belum ada lokasi pertandingan'}
+          emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan lokasi sebelum menyusun Jadwal Pertandingan.'}
           minWidthClassName="min-w-[760px]"
-          rowActions={(item) => <><button type="button" onClick={() => editVenue(item)} aria-label={`Edit ${item.name}`} title="Edit venue" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button><button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan venue" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button></>}
+          rowActions={(item) => <><button type="button" onClick={() => editVenue(item)} aria-label={`Edit ${item.name}`} title="Edit lokasi" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button><button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan lokasi" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button></>}
         />
 
         {!loading && !listError && totalItems > 0 && (
@@ -322,7 +312,7 @@ export default function VenueDepok() {
             startItem={startItem}
             endItem={endItem}
             onPageChange={table.handleChangePage}
-            itemLabel="venue"
+            itemLabel="lokasi"
           />
         )}
       </div>
@@ -330,21 +320,21 @@ export default function VenueDepok() {
       <ModalForm
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); resetForm(); setFormError(''); }}
-        title={formData.id ? 'Edit Venue Pertandingan' : 'Tambah Venue Pertandingan'}
+        title={formData.id ? 'Ubah Lokasi Pertandingan' : 'Tambah Lokasi Pertandingan'}
         onSubmit={handleSave}
         submitting={submitting}
-        submitText={formData.id ? 'Simpan perubahan' : 'Simpan venue'}
+        submitText={formData.id ? 'Simpan perubahan' : 'Simpan lokasi'}
         size="large"
         draft={{ entityId: formData.id || 'new-venue', version: 'venue-v1', value: formData, onRestore: setFormData }}
       >
         {formError && <AdminAlert>{formError}</AdminAlert>}
-        <RevisionHistory entityName="Venue" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
+        <RevisionHistory entityName="Lokasi pertandingan" entityId={formData.id} onRestore={(payload) => setFormData((current) => applyRevisionFields(current, payload))} />
         <fieldset className="space-y-4 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">1. Informasi dasar</legend>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <TextInput
-                label="Nama Venue"
+                label="Nama lokasi"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -458,7 +448,7 @@ export default function VenueDepok() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <TextInput
-                label="Latitude (Koordinat Peta)"
+                label="Lintang (Koordinat Peta)"
                 type="number"
                 step="any"
                 min={-90}
@@ -471,7 +461,7 @@ export default function VenueDepok() {
             </div>
             <div>
               <TextInput
-                label="Longitude (Koordinat Peta)"
+                label="Bujur (Koordinat Peta)"
                 type="number"
                 step="any"
                 min={-180}
@@ -499,11 +489,11 @@ export default function VenueDepok() {
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">4. Media dan informasi operasional</legend>
           <div>
             <MediaInput
-              label="Gambar/Foto Venue"
+              label="Gambar lokasi"
               value={formData.image_url}
               onClear={() => setFormData({...formData, image_url: ''})}
               onSelect={() => setIsMediaSelectorOpen(true)}
-              placeholderText="Pilih Foto dari Media Library"
+              placeholderText="Pilih foto dari Pustaka Media"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
