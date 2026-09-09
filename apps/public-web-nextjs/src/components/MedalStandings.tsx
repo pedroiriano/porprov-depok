@@ -2,9 +2,10 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Loader2, Medal, Radio, RefreshCw, Trophy } from "lucide-react";
+import { AlertTriangle, Loader2, Medal, Radio, RefreshCw } from "lucide-react";
 import { publicApiUrl, readPgNumber, readResourceId, unwrapCollection } from "@/lib/public-api";
 import { normalizeKontingen, type RawKontingen } from "@/lib/public-models";
+import { PublicPageHero } from "@/components/PublicPageHero";
 
 interface RawMedalStanding {
   id?: unknown;
@@ -80,17 +81,12 @@ export function MedalStandings() {
   }, [loadStandings]);
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-32 sm:px-6 md:py-40 lg:px-8">
-      <header className="mb-10 flex flex-col items-center text-center gap-5">
-        <div>
-          <div className="flex flex-col items-center justify-center gap-4">
-            <span className="flex size-14 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-950/50 dark:text-amber-300"><Trophy className="size-6" aria-hidden="true" /></span>
-            <div><p className="text-sm font-black uppercase tracking-[0.2em] text-primary-500">Prestasi Kontingen</p><h1 className="mt-1 text-4xl font-black tracking-tight md:text-5xl">Klasemen Medali</h1></div>
-          </div>
-          <p className="mt-4 mx-auto max-w-2xl text-lg text-slate-600 dark:text-slate-300">Urutan resmi berdasarkan emas, perak, lalu perunggu.</p>
-        </div>
+    <main className="bg-slate-50 dark:bg-slate-950">
+      <PublicPageHero eyebrow="Prestasi Kontingen" title="Klasemen Medali" description="Urutan resmi berdasarkan perolehan emas, perak, lalu perunggu." icon="ri-medal-line" breadcrumbs={[{ label: "Klasemen" }]}>
         <div className="flex flex-wrap items-center justify-center gap-3 mt-2"><span className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-black ${connected ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-300"}`} role="status"><Radio className={`size-4 ${connected ? "animate-pulse" : ""}`} aria-hidden="true" />{connected ? "Realtime terhubung" : "Polling aktif"}</span><button type="button" onClick={() => void loadStandings()} disabled={loading} className="inline-flex min-h-11 items-center rounded-xl bg-primary-500 px-4 font-black text-white hover:bg-primary-600 disabled:opacity-60"><RefreshCw className={`me-2 size-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />Perbarui</button></div>
-      </header>
+      </PublicPageHero>
+
+      <div className="container py-14 md:py-20">
 
       {error && <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="alert"><AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden="true" /><div><h2 className="font-black">Pembaruan klasemen tertunda</h2><p className="mt-1 text-sm">{error}</p></div></div>}
       {loading && standings.length === 0 ? <div className="flex min-h-64 items-center justify-center" role="status"><Loader2 className="size-8 animate-spin text-primary-500" aria-hidden="true" /><span className="sr-only">Memuat klasemen</span></div> : standings.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-16 text-center dark:border-slate-700"><Medal className="mx-auto size-12 text-amber-500" aria-hidden="true" /><h2 className="mt-5 text-xl font-black">Klasemen belum tersedia</h2><p className="mt-2 text-slate-500">Data tampil setelah medali pertama disahkan panitia.</p></div> : <>
@@ -98,6 +94,7 @@ export function MedalStandings() {
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900"><div className="overflow-x-auto"><table className="w-full min-w-[720px] border-collapse text-left"><caption className="sr-only">Klasemen perolehan medali kontingen PORPROV XV Jawa Barat 2026</caption><thead><tr className="border-b border-slate-200 bg-slate-100 text-sm uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-950/40"><th className="p-5 text-center" scope="col">Peringkat</th><th className="p-5" scope="col">Kontingen</th><th className="p-5 text-center" scope="col">Emas</th><th className="p-5 text-center" scope="col">Perak</th><th className="p-5 text-center" scope="col">Perunggu</th><th className="p-5 text-center" scope="col">Total</th></tr></thead><tbody className="divide-y divide-slate-200 dark:divide-slate-800">{standings.map((item, index) => <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50"><td className="p-5 text-center font-black">{index + 1}</td><th scope="row" className="p-5"><div className="flex items-center gap-3"><span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 font-black dark:border-slate-700">{item.logoUrl ? <img src={item.logoUrl} alt="" className="size-full object-contain p-1" /> : item.name.charAt(0)}</span><span className="font-black">{item.name}</span></div></th><td className="p-5 text-center text-xl font-black">{item.gold}</td><td className="p-5 text-center text-lg font-bold">{item.silver}</td><td className="p-5 text-center text-lg font-bold">{item.bronze}</td><td className="bg-slate-50 p-5 text-center text-2xl font-black text-primary-600 dark:bg-slate-950/30 dark:text-primary-300">{item.total}</td></tr>)}</tbody></table></div></div>
       </>}
       <p className="mt-5 text-right text-xs text-slate-500" aria-live="polite">{lastUpdated ? `Pembaruan terakhir ${lastUpdated.toLocaleString("id-ID")}` : "Menunggu pembaruan"} · fallback 30 detik</p>
+      </div>
     </main>
   );
 }

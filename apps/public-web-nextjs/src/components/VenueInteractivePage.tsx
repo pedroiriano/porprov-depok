@@ -13,6 +13,7 @@ import {
   unwrapCollection,
 } from "@/lib/public-api";
 import { publicVenuePath } from "@/lib/public-models";
+import { PublicPageHero } from "@/components/PublicPageHero";
 
 // Dynamically import the VenueMap to avoid SSR issues with Leaflet
 const VenueMap = dynamic(() => import("./VenueMap"), {
@@ -87,7 +88,9 @@ export function VenueInteractivePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [readinessFilter, setReadinessFilter] = useState("");
   const [activeVenue, setActiveVenue] = useState<{latitude: number, longitude: number} | null>(null);
+  const [locationNotice, setLocationNotice] = useState("");
 
   const fetchVenues = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -143,11 +146,14 @@ export function VenueInteractivePage() {
   }, [fetchVenues]);
 
   const filteredVenues = useMemo(() => {
-    return venues.filter((v) => 
-      v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.address.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [venues, searchQuery]);
+    const query = searchQuery.trim().toLocaleLowerCase("id");
+    return venues.filter((venue) => {
+      const queryMatches = !query || `${venue.name} ${venue.address} ${venue.facilities}`.toLocaleLowerCase("id").includes(query);
+      return queryMatches && (!readinessFilter || venue.readinessStatus === readinessFilter);
+    });
+  }, [venues, readinessFilter, searchQuery]);
+
+  const readinessOptions = useMemo(() => Array.from(new Set(venues.map((venue) => venue.readinessStatus))).sort((a, b) => a.localeCompare(b, "id")), [venues]);
 
   const mappableVenues = useMemo(() => venues.flatMap((venue) => {
     if (venue.latitude === null || venue.longitude === null) return [];
@@ -163,22 +169,16 @@ export function VenueInteractivePage() {
   const handleVenueClick = (venue: VenueViewModel) => {
     if (venue.latitude !== null && venue.longitude !== null) {
       setActiveVenue({ latitude: venue.latitude, longitude: venue.longitude });
+      setLocationNotice(`Peta diarahkan ke ${venue.name}.`);
     } else {
-      alert("Venue ini belum memiliki data koordinat lokasi yang valid.");
+      setLocationNotice(`${venue.name} belum memiliki koordinat lokasi yang valid.`);
     }
   };
 
   return (
-    <section className="relative bg-slate-50 dark:bg-slate-950 pb-20 pt-32 md:pb-24 md:pt-40">
-      <div className="container relative max-w-[1400px]">
-        
-        {/* Header Section */}
-        <div className="mb-10 text-slate-900 dark:text-white">
-          <h1 className="text-4xl font-black tracking-tight uppercase mb-2">Venue & Peta</h1>
-          <p className="text-slate-600 dark:text-slate-400 max-w-2xl">
-            Temukan lokasi dari venue resmi PORPROV XV. Jelajahi peta interaktif untuk melihat sebaran lokasi pertandingan.
-          </p>
-        </div>
+    <main className="relative bg-slate-50 dark:bg-slate-950">
+      <PublicPageHero eyebrow="Arena Pertandingan" title="Venue dan Peta" description="Temukan venue resmi PORPROV XV, periksa kesiapan arena, lalu jelajahi lokasinya melalui peta interaktif." icon="ri-map-pin-2-line" breadcrumbs={[{ label: "Venue" }]} />
+      <div className="container relative max-w-[1400px] py-14 md:py-20">
 
         <div className="grid grid-cols-1 gap-6 lg:h-[700px] lg:grid-cols-12">
           
@@ -186,17 +186,24 @@ export function VenueInteractivePage() {
           <div className="flex h-[440px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:h-[520px] lg:col-span-4 lg:h-full dark:border-slate-800 dark:bg-slate-900">
             
             {/* Search Input */}
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="relative">
+            <div className="grid gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
+              <label className="relative" htmlFor="venue-search">
+                <span className="sr-only">Cari venue atau lokasi</span>
                 <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input
-                  type="text"
-                  placeholder="Cari venue atau lokasi..."
+                  id="venue-search"
+                  type="search"
+                  placeholder="Cari venue atau lokasi…"
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-              </div>
+              </label>
+              <label htmlFor="venue-readiness" className="sr-only">Filter kesiapan venue</label>
+              <select id="venue-readiness" value={readinessFilter} onChange={(event) => setReadinessFilter(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                <option value="">Semua status kesiapan</option>
+                {readinessOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
             </div>
 
             {/* Scrollable List */}
@@ -211,7 +218,7 @@ export function VenueInteractivePage() {
                 </div>
               ) : filteredVenues.length === 0 ? (
                 <div className="p-8 text-center text-sm text-slate-500">
-                  Venue tidak ditemukan.
+                  Venue tidak ditemukan. Ubah pencarian atau status kesiapan.
                 </div>
               ) : (
                 filteredVenues.map((venue) => (
@@ -255,7 +262,8 @@ export function VenueInteractivePage() {
           </div>
 
         </div>
+        <p className="sr-only" aria-live="polite">{locationNotice}</p>
       </div>
-    </section>
+    </main>
   );
 }

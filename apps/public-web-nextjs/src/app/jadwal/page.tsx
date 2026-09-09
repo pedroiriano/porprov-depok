@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Calendar, Loader2, RefreshCw, Search } from "lucide-react";
 import { ScheduleMatchCard } from "@/components/ScheduleMatchCard";
+import { PublicPageHero } from "@/components/PublicPageHero";
 import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
 import { normalizeEnrichedMatch, type EnrichedMatch, type RawEnrichedMatch } from "@/lib/public-models";
 
@@ -70,11 +71,12 @@ export default function JadwalPage() {
   const resetFilters = () => { setSearch(""); setDate(""); setCabor(""); setVenue(""); setStatus(""); };
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-32 sm:px-6 md:py-40 lg:px-8">
-      <header className="flex flex-col items-center text-center gap-5 mb-8">
-        <div className="max-w-3xl mx-auto"><p className="text-sm font-black uppercase tracking-[0.2em] text-primary-500">Agenda Resmi</p><h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Jadwal Pertandingan</h1><p className="mt-4 mx-auto max-w-2xl text-lg text-slate-600 dark:text-slate-300">Telusuri jadwal berdasarkan tanggal, cabor, venue, dan status pertandingan.</p></div>
-        <div className="flex flex-wrap justify-center items-center gap-3 mt-2"><span className="text-sm text-slate-500" role="status" aria-live="polite">{lastUpdated ? `Diperbarui ${lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}` : "Menunggu data"}</span><button type="button" onClick={() => void loadMatches()} disabled={loading} className="inline-flex min-h-11 items-center rounded-xl bg-primary-500 px-4 font-black text-white hover:bg-primary-600 disabled:opacity-60"><RefreshCw className={`me-2 size-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />Perbarui</button></div>
-      </header>
+    <main className="bg-slate-50 dark:bg-slate-950">
+      <PublicPageHero eyebrow="Agenda Resmi" title="Jadwal Pertandingan" description="Telusuri jadwal berdasarkan tanggal, cabang olahraga, venue, dan status pertandingan." icon="ri-calendar-event-line" breadcrumbs={[{ label: "Jadwal" }]}>
+        <div className="flex flex-wrap justify-center items-center gap-3 mt-2"><span className="text-sm text-slate-200" role="status" aria-live="polite">{lastUpdated ? `Diperbarui ${lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}` : "Menunggu data"}</span><button type="button" onClick={() => void loadMatches()} disabled={loading} className="inline-flex min-h-11 items-center rounded-xl bg-primary-500 px-4 font-black text-white hover:bg-primary-600 disabled:opacity-60"><RefreshCw className={`me-2 size-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />Perbarui</button></div>
+      </PublicPageHero>
+
+      <div className="container py-14 md:py-20">
 
       <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-labelledby="filter-title">
         <div className="flex items-center justify-between gap-3"><h2 id="filter-title" className="font-black">Filter jadwal</h2><button type="button" onClick={resetFilters} className="min-h-11 px-3 text-sm font-bold text-primary-600 hover:text-primary-700">Reset filter</button></div>
@@ -89,6 +91,7 @@ export default function JadwalPage() {
 
       {error && <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="alert"><AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden="true" /><div><h2 className="font-black">Pembaruan jadwal tertunda</h2><p className="mt-1 text-sm">{error}</p></div></div>}
       {loading && matches.length === 0 ? <div className="flex min-h-64 items-center justify-center" role="status"><Loader2 className="size-8 animate-spin text-primary-500" aria-hidden="true" /><span className="sr-only">Memuat jadwal</span></div> : groupedMatches.length === 0 ? <div className="mt-8 rounded-2xl border border-dashed border-slate-300 p-14 text-center dark:border-slate-700"><Calendar className="mx-auto size-12 text-slate-300" aria-hidden="true" /><h2 className="mt-4 text-xl font-black">{matches.length ? "Tidak ada jadwal yang cocok" : "Jadwal belum dipublikasikan"}</h2><p className="mt-2 text-slate-500">{matches.length ? "Coba ubah atau reset filter Anda." : "Jadwal akan tampil setelah disahkan panitia."}</p></div> : <div className="mt-10 space-y-10">{groupedMatches.map(([caborName, items]) => <section key={caborName} aria-labelledby={`schedule-${items[0].caborId}`}><div className="flex items-center justify-between gap-4"><h2 id={`schedule-${items[0].caborId}`} className="text-2xl font-black">{caborName}</h2><span className="text-sm font-bold text-slate-500">{items.length} pertandingan</span></div><div className="mt-5 grid gap-5 lg:grid-cols-2">{items.map((match) => <ScheduleMatchCard key={match.id} match={match} compact />)}</div></section>)}</div>}
+      </div>
     </main>
   );
 }

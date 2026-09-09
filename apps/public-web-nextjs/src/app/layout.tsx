@@ -7,6 +7,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { BackToTop } from "@/components/BackToTop";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
@@ -65,6 +66,19 @@ export default async function RootLayout({
 }>) {
   const nonce = (await headers()).get("x-nonce") || undefined;
   const umamiWebsiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+  const websiteStructuredData = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Portal PORPROV XV Jawa Barat 2026",
+    url: siteUrl,
+    inLanguage: "id-ID",
+    publisher: {
+      "@type": "GovernmentOrganization",
+      name: "Pemerintah Kota Depok",
+      url: "https://www.depok.go.id",
+    },
+  }).replace(/</g, "\\u003c");
 
   return (
     <html lang="id" className="antialiased h-full" suppressHydrationWarning dir="ltr">
@@ -75,6 +89,12 @@ export default async function RootLayout({
         <link href="/assets/css/tailwind.css?v=20260810-selfhosted-fonts" rel="stylesheet" />
       </head>
       <body className="min-h-full flex flex-col bg-background-base dark:bg-slate-950 text-text-primary dark:text-slate-100 transition-colors duration-300">
+        <script
+          nonce={nonce}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: websiteStructuredData }}
+        />
+        <a href="#main-content" className="fixed start-4 top-3 z-[1100] -translate-y-24 rounded-lg bg-slate-950 px-4 py-3 font-black text-white shadow-xl transition focus:translate-y-0">Lewati ke konten utama</a>
         {umamiWebsiteId && (
           <Script
             nonce={nonce}
@@ -91,11 +111,12 @@ export default async function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <Navbar />
 
-          <main className="flex-1 flex flex-col relative w-full h-full">
+          <div id="main-content" tabIndex={-1} className="flex-1 flex flex-col relative w-full h-full outline-none">
             {children}
-          </main>
+          </div>
           
           <Footer />
+          <BackToTop />
         </ThemeProvider>
       </body>
     </html>
