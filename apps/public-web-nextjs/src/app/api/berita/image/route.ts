@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAllowedNewsAssetUrl } from "@/lib/depok-news";
+import { trustedNewsAssetUrl } from "@/lib/depok-news";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/avif", "image/gif", "image/jpeg", "image/png", "image/webp"]);
@@ -8,12 +8,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const sourceUrl = request.nextUrl.searchParams.get("url") || "";
-  if (!isAllowedNewsAssetUrl(sourceUrl)) {
+  const trustedSourceUrl = trustedNewsAssetUrl(sourceUrl);
+  if (!trustedSourceUrl) {
     return NextResponse.json({ message: "Sumber gambar tidak diizinkan." }, { status: 400 });
   }
 
   try {
-    const response = await fetch(sourceUrl, {
+    const response = await fetch(trustedSourceUrl, {
       cache: "no-store",
       redirect: "error",
       headers: { Accept: "image/avif,image/webp,image/png,image/jpeg,image/gif" },

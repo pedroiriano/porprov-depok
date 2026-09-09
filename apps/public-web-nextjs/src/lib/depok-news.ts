@@ -43,13 +43,20 @@ function readText(record: UnknownRecord, keys: string[]): string {
 }
 
 function decodeBasicEntities(value: string): string {
-  return value
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">");
+  const entities: Record<string, string> = {
+    "#39": "'",
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    lt: "<",
+    nbsp: " ",
+    quot: '"',
+  };
+  // SECURITY: Satu replacement pass mencegah entity hasil decode diproses ulang.
+  return value.replace(/&(nbsp|amp|quot|#39|apos|lt|gt);/gi, (entity) => {
+    const key = entity.slice(1, -1).toLowerCase();
+    return entities[key] ?? entity;
+  });
 }
 
 export function newsPlainText(value: string): string {
@@ -170,6 +177,26 @@ export function isAllowedNewsAssetUrl(value: string): boolean {
       && allowedNewsAssetHosts().has(parsed.hostname.toLowerCase());
   } catch {
     return false;
+  }
+}
+
+export function trustedNewsAssetUrl(value: string): URL | null {
+  if (!isAllowedNewsAssetUrl(value)) return null;
+  try {
+    const candidate = new URL(value);
+    const trustedHost = [...allowedNewsAssetHosts()].find(
+      (host) => host === candidate.hostname.toLowerCase(),
+    );
+    if (!trustedHost) return null;
+
+    // SECURITY: Otoritas URL selalu direkonstruksi dari allowlist konfigurasi;
+    // input request hanya mengisi path dan query setelah host dipercaya.
+    const trustedUrl = new URL(`https://${trustedHost}/`);
+    trustedUrl.pathname = candidate.pathname;
+    trustedUrl.search = candidate.search;
+    return trustedUrl;
+  } catch {
+    return null;
   }
 }
 
