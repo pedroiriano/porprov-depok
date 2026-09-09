@@ -7,6 +7,7 @@ const primaryLinks = [
   { href: "/venue", label: "Venue Pertandingan" },
   { href: "/jadwal", label: "Jadwal Tanding" },
   { href: "/medali", label: "Klasemen Medali" },
+  { href: "/city-guide", label: "Jelajah Kota Depok" },
 ];
 
 const informationLinks = [
@@ -15,6 +16,7 @@ const informationLinks = [
   { href: "/#maskot", label: "Maskot Toca & Toci" },
   { href: "/#informasi", label: "Pusat Informasi" },
   { href: "/livescore", label: "LiveScore Center" },
+  { href: "/berita", label: "Berita Kota Depok" },
 ];
 
 export function Footer() {

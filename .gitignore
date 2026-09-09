@@ -48,3 +48,6 @@ infra/docker/nginx/tls/
 /Laporan_*.pdf
 /Pemetaan_Akses_Role_Porprov.docx
 /Porprov Depok.jpeg
+# SECURITY: collection lokal memuat API key Portal Berita Depok dan tidak
+# boleh pernah masuk staging atau repository.
+/berita-depok-2024-postman-collection.json

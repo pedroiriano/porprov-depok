@@ -4,6 +4,8 @@ import { MascotSection } from "@/components/MascotSection";
 import { PorprovIntroduction } from "@/components/PorprovIntroduction";
 import { VenueShowcase } from "@/components/VenueShowcase";
 import { CityGuideSection } from "@/components/CityGuideSection";
+import { NewsSection } from "@/components/NewsSection";
+import { HomeCompetitionPulse } from "@/components/HomeCompetitionPulse";
 import { publicApiUrl } from "@/lib/public-api";
 import {
   defaultHeroContent,
@@ -64,7 +66,7 @@ async function loadActiveHero(): Promise<HeroContentModel> {
 export default async function Home() {
   const hero = await loadActiveHero();
   return (
-    <>
+    <main>
       <HeroSection hero={hero} />
       <PorprovIntroduction />
       <MascotSection />
@@ -97,9 +99,13 @@ export default async function Home() {
         </div>
       </section>
 
+      <HomeCompetitionPulse />
+
       <VenueShowcase />
 
+      <NewsSection />
+
       <CityGuideSection />
-    </>
+    </main>
   );
 }

@@ -42,6 +42,15 @@ export function Navbar() {
   const toggleMenu = () => setIsOpen((current) => !current);
   const closeMenu = () => setIsOpen(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [isOpen]);
+
   const isHomePage = pathname === '/';
   const isCurrent = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
 
@@ -101,6 +110,7 @@ export function Navbar() {
             <li className={isCurrent('/jadwal') ? 'active' : ''}><Link href="/jadwal" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/jadwal') ? 'page' : undefined}>Jadwal</Link></li>
             <li className={isCurrent('/medali') ? 'active' : ''}><Link href="/medali" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/medali') ? 'page' : undefined}>Klasemen</Link></li>
             <li className={isCurrent('/city-guide') ? 'active' : ''}><Link href="/city-guide" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/city-guide') ? 'page' : undefined}>Jelajah</Link></li>
+            <li className={isCurrent('/berita') ? 'active' : ''}><Link href="/berita" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/berita') ? 'page' : undefined}>Berita</Link></li>
           </ul>
         </div>
       </div>

@@ -1,34 +1,40 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
+import { publicApiUrl, readPgText, unwrapCollection } from "@/lib/public-api";
 import { normalizeCityGuide, type RawCityGuide } from "@/lib/public-models";
+import { PublicPageHero } from "@/components/PublicPageHero";
 
 export const dynamic = "force-dynamic";
 
-const CATEGORY_IDS = new Set([
-  "semua",
-  "coffee-shop",
-  "wisata-kuliner",
-  "catering",
-  "info-travel",
-  "tempat-menginap",
-  "wisata-buatan",
-  "wisata-situ",
-  "pusat-perbelanjaan",
-  "rumah-sakit",
-  "lainnya",
-]);
-
 const MAX_SEARCH_LENGTH = 80;
+
+interface RawCityGuideCategory {
+  id?: unknown;
+  name?: string;
+  slug?: string;
+  description?: Parameters<typeof readPgText>[0];
+}
+
+interface CityGuideCategoryView {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+}
 
 function readSingleQueryValue(value: string | string[] | undefined) {
   return typeof value === "string" ? value : undefined;
 }
 
+function categorySlug(value: string): string {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 export const metadata: Metadata = {
-  title: "City Guide | PORPROV XV Jawa Barat 2026",
+  title: "Panduan Kota Depok",
   description: "Jelajahi keindahan, kuliner, dan akomodasi terbaik di Kota Depok selama perhelatan PORPROV XV Jawa Barat 2026.",
+  alternates: { canonical: "/city-guide" },
 };
 
 async function getCityGuides(searchQuery: string) {
@@ -41,6 +47,24 @@ async function getCityGuides(searchQuery: string) {
   return { guides: rawGuides.map(normalizeCityGuide), hasError: false };
 }
 
+async function getCityGuideCategories(): Promise<{ categories: CityGuideCategoryView[]; hasError: boolean }> {
+  try {
+    const response = await fetch(publicApiUrl("/master-data/city-guide-categories"), { cache: "no-store" });
+    if (!response.ok) return { categories: [], hasError: true };
+    const categories = unwrapCollection<RawCityGuideCategory>(await response.json())
+      .map((item) => {
+        const label = item.name?.trim() || "";
+        const slug = item.slug?.trim().toLowerCase() || "";
+        if (!label || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return null;
+        return { id: slug, label, description: readPgText(item.description), icon: getCategoryIcon(slug) };
+      })
+      .filter((item): item is CityGuideCategoryView => item !== null);
+    return { categories, hasError: false };
+  } catch {
+    return { categories: [], hasError: true };
+  }
+}
+
 function createCityGuideUrl(category: string, searchQuery: string, page?: number) {
   const params = new URLSearchParams();
   if (category !== "semua") params.set("category", category);
@@ -51,16 +75,16 @@ function createCityGuideUrl(category: string, searchQuery: string, page?: number
 }
 
 const getCategoryIcon = (category: string) => {
-  const cat = category.trim().toLowerCase();
-  if (cat === "coffee shop") return "ri-cup-line text-amber-500 bg-amber-500/20";
-  if (cat === "wisata kuliner") return "ri-restaurant-2-line text-orange-500 bg-orange-500/20";
+  const cat = category.trim().toLowerCase().replace(/\s+/g, "-");
+  if (cat === "coffee-shop") return "ri-cup-line text-amber-500 bg-amber-500/20";
+  if (cat === "wisata-kuliner") return "ri-restaurant-2-line text-orange-500 bg-orange-500/20";
   if (cat === "catering") return "ri-bowl-line text-amber-500 bg-amber-500/20";
-  if (cat === "info travel") return "ri-bus-2-line text-blue-500 bg-blue-500/20";
-  if (cat === "tempat menginap") return "ri-hotel-bed-line text-indigo-500 bg-indigo-500/20";
-  if (cat === "wisata buatan") return "ri-building-4-line text-sky-500 bg-sky-500/20";
-  if (cat === "wisata situ") return "ri-water-flash-line text-cyan-500 bg-cyan-500/20";
-  if (cat === "pusat perbelanjaan") return "ri-shopping-bag-3-line text-pink-500 bg-pink-500/20";
-  if (cat === "rumah sakit") return "ri-hospital-line text-red-500 bg-red-500/20";
+  if (cat === "info-travel") return "ri-bus-2-line text-blue-500 bg-blue-500/20";
+  if (cat === "tempat-menginap") return "ri-hotel-bed-line text-indigo-500 bg-indigo-500/20";
+  if (cat === "wisata-buatan") return "ri-building-4-line text-sky-500 bg-sky-500/20";
+  if (cat === "wisata-situ") return "ri-water-flash-line text-cyan-500 bg-cyan-500/20";
+  if (cat === "pusat-perbelanjaan") return "ri-shopping-bag-3-line text-pink-500 bg-pink-500/20";
+  if (cat === "rumah-sakit") return "ri-hospital-line text-red-500 bg-red-500/20";
   return "ri-map-pin-2-line text-emerald-500 bg-emerald-500/20";
 };
 
@@ -71,30 +95,24 @@ export default async function CityGuidePage({
 }) {
   const resolvedParams = await searchParams;
   const requestedCategory = readSingleQueryValue(resolvedParams.category)?.trim().toLowerCase() || "semua";
-  const activeCategory = CATEGORY_IDS.has(requestedCategory) ? requestedCategory : "semua";
   const requestedSearch = readSingleQueryValue(resolvedParams.q)?.trim() || "";
   const hasInvalidSearch = Array.from(requestedSearch).length > MAX_SEARCH_LENGTH;
   const searchQuery = hasInvalidSearch ? "" : requestedSearch;
-  const { guides: allGuides, hasError } = hasInvalidSearch
-    ? { guides: [], hasError: false }
-    : await getCityGuides(searchQuery);
-
-  const categories = [
-    { id: "semua", label: "Semua", icon: "ri-apps-2-line" },
-    { id: "coffee-shop", label: "Coffee Shop", icon: "ri-cup-line" },
-    { id: "wisata-kuliner", label: "Wisata Kuliner", icon: "ri-restaurant-2-line" },
-    { id: "catering", label: "Catering", icon: "ri-bowl-line" },
-    { id: "info-travel", label: "Travel & Transportasi", icon: "ri-bus-2-line" },
-    { id: "tempat-menginap", label: "Tempat Menginap", icon: "ri-hotel-bed-line" },
-    { id: "wisata-buatan", label: "Wisata Buatan", icon: "ri-building-4-line" },
-    { id: "wisata-situ", label: "Wisata Situ", icon: "ri-water-flash-line" },
-    { id: "pusat-perbelanjaan", label: "Pusat Perbelanjaan", icon: "ri-shopping-bag-3-line" },
-    { id: "rumah-sakit", label: "Rumah Sakit", icon: "ri-hospital-line" },
-    { id: "lainnya", label: "Lainnya", icon: "ri-map-pin-2-line" },
-  ];
+  const [guideResult, categoryResult] = await Promise.all([
+    hasInvalidSearch ? Promise.resolve({ guides: [], hasError: false }) : getCityGuides(searchQuery),
+    getCityGuideCategories(),
+  ]);
+  const allGuides = guideResult.guides;
+  const hasError = guideResult.hasError;
+  const dynamicCategories = categoryResult.categories.length > 0
+    ? categoryResult.categories
+    : Array.from(new Set(allGuides.map((guide) => guide.category.trim()).filter(Boolean))).map((label) => ({ id: categorySlug(label), label, description: "", icon: getCategoryIcon(label) }));
+  const categories: CityGuideCategoryView[] = [{ id: "semua", label: "Semua", description: "Seluruh rekomendasi Kota Depok", icon: "ri-apps-2-line" }, ...dynamicCategories];
+  const availableCategoryIds = new Set(categories.map((item) => item.id));
+  const activeCategory = availableCategoryIds.has(requestedCategory) ? requestedCategory : "semua";
   const filteredGuides = activeCategory === "semua" 
     ? allGuides 
-    : allGuides.filter(g => g.category.trim().toLowerCase().replace(/\s+/g, '-') === activeCategory);
+    : allGuides.filter(g => categorySlug(g.category) === activeCategory);
 
   const ITEMS_PER_PAGE = 12;
   const requestedPage = readSingleQueryValue(resolvedParams.page);
@@ -123,36 +141,17 @@ export default async function CityGuidePage({
   ).sort((left, right) => left - right);
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 pt-24 md:pt-32">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-16">
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          <div className="absolute left-1/2 top-0 -translate-x-1/2 size-[600px] rounded-full bg-sky-600/10 blur-[120px]" />
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px]" />
-        </div>
-        
-        <div className="container relative z-10 text-center">
-          <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-sky-400">
-            <i className="ri-compass-3-line text-base"></i>
-            Depok City Guide
-          </div>
-          <h1 className="text-4xl font-black leading-tight tracking-tight text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
-            Jelajahi Kota <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-indigo-500 dark:from-sky-400 dark:to-indigo-400">Tuan Rumah.</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">
-            Temukan keindahan budaya, kuliner legendaris, tempat wisata memukau, hingga kenyamanan akomodasi terbaik di Kota Depok selama gelaran PORPROV XV 2026.
-          </p>
-        </div>
-      </section>
+    <main className="min-h-screen bg-slate-50 pb-24 dark:bg-slate-950">
+      <PublicPageHero eyebrow="Panduan Kota Depok" title="Jelajahi Kota Tuan Rumah" description="Temukan budaya, kuliner, tempat wisata, layanan perjalanan, fasilitas kesehatan, dan akomodasi pilihan selama PORPROV XV 2026." icon="ri-compass-3-line" breadcrumbs={[{ label: "Jelajah" }]} />
 
       {/* Search */}
-      <section className="container mb-8" aria-labelledby="city-guide-search-title">
+      <section className="container mb-8 mt-14" aria-labelledby="city-guide-search-title">
         <div className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-          <h2 id="city-guide-search-title" className="sr-only">Cari City Guide</h2>
+          <h2 id="city-guide-search-title" className="sr-only">Cari Panduan Kota</h2>
           <form action="/city-guide" method="get" className="flex flex-col gap-3 sm:flex-row">
             {activeCategory !== "semua" && <input type="hidden" name="category" value={activeCategory} />}
             <label className="relative flex-1" htmlFor="city-guide-search">
-              <span className="sr-only">Cari City Guide</span>
+              <span className="sr-only">Cari Panduan Kota</span>
               <i className="ri-search-line pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg text-slate-400" aria-hidden="true"></i>
               <input
                 id="city-guide-search"
@@ -191,7 +190,7 @@ export default async function CityGuidePage({
                     : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                <i className={cat.icon}></i>
+                <i className={cat.icon.split(" ")[0]} aria-hidden="true"></i>
                 {cat.label}
               </Link>
             );
@@ -201,6 +200,9 @@ export default async function CityGuidePage({
 
       {/* Grid Content */}
       <div className="container">
+        {categoryResult.hasError && dynamicCategories.length === 0 && (
+          <p className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" role="status">Kategori dinamis sedang tidak tersedia; daftar lokasi tetap ditampilkan.</p>
+        )}
         {hasInvalidSearch ? (
           <div role="alert" className="rounded-3xl border border-amber-200 bg-amber-50 px-6 py-16 text-center dark:border-amber-900/60 dark:bg-amber-950/30">
             <i className="ri-search-eye-line text-4xl text-amber-500" aria-hidden="true"></i>
@@ -210,7 +212,7 @@ export default async function CityGuidePage({
         ) : hasError ? (
           <div role="alert" className="rounded-3xl border border-red-200 bg-red-50 px-6 py-16 text-center dark:border-red-900/60 dark:bg-red-950/30">
             <i className="ri-error-warning-line text-4xl text-red-500" aria-hidden="true"></i>
-            <h2 className="mt-4 text-2xl font-black text-slate-900 dark:text-white">City Guide Belum Dapat Dimuat</h2>
+            <h2 className="mt-4 text-2xl font-black text-slate-900 dark:text-white">Panduan Kota Belum Dapat Dimuat</h2>
             <p className="mx-auto mt-2 max-w-xl text-slate-600 dark:text-slate-400">Layanan panduan kota sedang tidak tersedia. Silakan muat ulang halaman beberapa saat lagi.</p>
           </div>
         ) : filteredGuides.length > 0 ? (
@@ -297,14 +299,14 @@ export default async function CityGuidePage({
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <nav className="mt-12 flex items-center justify-start gap-2 overflow-x-auto px-1 pb-2 sm:justify-center" aria-label="Navigasi halaman City Guide">
+              <nav className="mt-12 flex items-center justify-start gap-2 overflow-x-auto px-1 pb-2 sm:justify-center" aria-label="Navigasi halaman Panduan Kota">
                 <Link
                   href={createPageUrl(validPage - 1)}
                   className={`flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white ${
                     validPage <= 1 ? "pointer-events-none opacity-50" : ""
                   }`}
                   aria-disabled={validPage <= 1}
-                  aria-label="Halaman City Guide sebelumnya"
+                  aria-label="Halaman Panduan Kota sebelumnya"
                 >
                   <i className="ri-arrow-left-s-line text-lg"></i>
                 </Link>
@@ -323,7 +325,7 @@ export default async function CityGuidePage({
                           ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-[0_0_15px_rgba(56,189,248,0.3)]"
                           : "border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                       }`}
-                      aria-label={`Halaman City Guide ${pageNum}`}
+                      aria-label={`Halaman Panduan Kota ${pageNum}`}
                       aria-current={isActive ? "page" : undefined}
                     >
                       {pageNum}
@@ -338,7 +340,7 @@ export default async function CityGuidePage({
                     validPage >= totalPages ? "pointer-events-none opacity-50" : ""
                   }`}
                   aria-disabled={validPage >= totalPages}
-                  aria-label="Halaman City Guide berikutnya"
+                  aria-label="Halaman Panduan Kota berikutnya"
                 >
                   <i className="ri-arrow-right-s-line text-lg"></i>
                 </Link>

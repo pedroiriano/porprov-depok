@@ -470,6 +470,10 @@ services:
     restart: always
     environment:
       API_INTERNAL_URL: http://api-gateway:8000/api/v1
+      BERITA_DEPOK_BASE_URL: ${BERITA_DEPOK_BASE_URL:-}
+      BERITA_DEPOK_API_KEY: ${BERITA_DEPOK_API_KEY:-}
+      BERITA_DEPOK_IMAGE_HOSTS: ${BERITA_DEPOK_IMAGE_HOSTS:-}
+      BERITA_DEPOK_DETAIL_PATH_TEMPLATE: ${BERITA_DEPOK_DETAIL_PATH_TEMPLATE:-}
     ports:
       - "127.0.0.1:${PUBLIC_WEB_HOST_PORT:-3000}:3000"
     depends_on:
