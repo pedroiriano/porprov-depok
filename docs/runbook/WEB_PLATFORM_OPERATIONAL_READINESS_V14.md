@@ -2,7 +2,7 @@
 
 ## Ruang lingkup dan batas
 
-Audit dilakukan pada 10 September 2026 dari branch lokal `codex/web-platform-readiness-v14` yang berbasis tepat pada `origin/main` commit `7c373207042da10fad93b89da7be97b06dbb64f3`. Pemeriksaan hanya memakai runtime dan database Docker lokal. Tidak ada akses VPS, deploy, migrasi, perubahan data produksi, mutasi data UAT, commit, push, PR, atau merge.
+Audit dilakukan pada 10 September 2026 dari branch `codex/web-platform-readiness-v14` yang berbasis tepat pada `origin/main` commit `7c373207042da10fad93b89da7be97b06dbb64f3`. Pemeriksaan hanya memakai runtime dan database Docker lokal. Git delivery dilakukan melalui PR #31 setelah seluruh gate lokal lulus; tidak ada akses VPS, deploy, migrasi, perubahan data produksi, atau mutasi data UAT.
 
 Tiga dokumen referensi DOCX yang diwajibkan `AGENTS.md` tidak tersedia di `docs/reference/`: analisis desain, ASCII wireframe, dan perencanaan arsitektur Web & Mobile. Implementasi tidak mengarang isinya dan memakai governance Markdown serta kontrak UI yang tersedia.
 
@@ -57,8 +57,8 @@ Angka tersebut hanya agregat verifikasi dan tidak memuat data pribadi atau crede
 | Container | PASS — Trivy terhadap 11 root filesystem image final, 0 HIGH/CRITICAL fixable. Scan awal menemukan image Public/Admin lama; keduanya telah dibangun ulang dan lulus scan ulang. |
 | Nginx dan header | PASS — `nginx -t` serta 15 target HTTP/HTTPS mencakup CSP tunggal/lengkap, HSTS HTTPS tunggal, tanpa HSTS HTTP, `no-store`, COOP/COEP/CORP, dan penghilangan versi. |
 | Visual/browser | PASS — 66 kombinasi Public dan 90 kombinasi Admin pada 390/768/1440 px, light/dark; interaksi sidebar/notifikasi dan console error/warning juga lulus. |
-| CodeQL | `BLOCKED_TOOL_UNAVAILABLE` — CLI CodeQL tidak tersedia lokal dan dilarang membuat commit/PR pada tahap ini. |
-| Dependency review | `BLOCKED_GIT_CONTEXT` — action membutuhkan diff pull request, sedangkan Git delivery belum diizinkan. |
+| CodeQL | PASS — analisis GitHub CodeQL pada PR #31 lulus tanpa temuan yang memblokir. |
+| Dependency review | PASS — dependency review PR #31 lulus tanpa dependency baru yang melanggar kebijakan. |
 | ZAP pasif | PASS — baseline HTTPS lokal memeriksa 529 URL dengan `0 FAIL`, `61 PASS`, dan enam kategori peringatan tertriase. Wildcard CORS tracker ditemukan pada putaran pertama, dihapus, lalu aturan Cross-Domain Misconfiguration lulus pada putaran final. Peringatan tersisa adalah kebijakan cache eksplisit, komentar HTML non-sensitif, parameter pagination/kategori tervalidasi dan di-escape React, aset dinamis same-origin tanpa SRI, serta deteksi aplikasi modern. |
 
-UAT mutasi, data LiveScore/Medali aktif, dan notifikasi berisi data tetap residual yang memerlukan fixture terisolasi atau persetujuan perubahan data lokal beserta rollback. Rollback source dapat membangun ulang dari commit `7c373207`; rollback runtime tidak memerlukan penghapusan volume. Tahap 14 siap memasuki Git delivery, tetapi belum final sampai CodeQL dan dependency review lulus pada pull request.
+UAT mutasi, data LiveScore/Medali aktif, dan notifikasi berisi data tetap residual yang memerlukan fixture terisolasi atau persetujuan perubahan data lokal beserta rollback. Rollback source dapat membangun ulang dari commit `7c373207`; rollback runtime tidak memerlukan penghapusan volume. Seluruh gate final Tahap 14 telah lulus pada source final dan PR #31 siap digabung secara aman.

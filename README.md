@@ -4,7 +4,7 @@
 
 > Tahap 12 menambahkan kategori Panduan Kota dinamis, status akun terpisah dari arsip, Peran dan Hak Akses granular, identitas aktor audit yang ramah pengguna, notifikasi per penerima, ApexCharts, unggah seret-dan-lepas, sidebar responsif, dan pelindung kegagalan render. Migrasi target lokal adalah Master Data v15, User v5, serta Audit v3; production tetap tidak berubah.
 
-> Tahap 14 menutup kesiapan operasional Web secara lokal: kontrak OpenAPI v14 mencakup alur Public/Admin utama, service domain memakai timeout serta graceful shutdown, CORS langsung dibatasi ke origin pengembangan kanonis, dan wildcard CORS tracker Umami ditutup di edge. Bukti audit, matriks fitur, batas UAT tanpa mutasi data, dan gate final dicatat di `docs/runbook/WEB_PLATFORM_OPERATIONAL_READINESS_V14.md`; production tetap tidak berubah.
+> Tahap 14 menutup kesiapan operasional Web secara lokal: kontrak OpenAPI v14 mencakup alur Public/Admin utama, service domain memakai timeout serta graceful shutdown, CORS langsung dibatasi ke origin pengembangan kanonis, dan wildcard CORS tracker Umami ditutup di edge. ZAP, CodeQL, dependency review, serta seluruh required check lulus melalui PR #31. Bukti audit, matriks fitur, dan batas UAT tanpa mutasi data dicatat di `docs/runbook/WEB_PLATFORM_OPERATIONAL_READINESS_V14.md`; production tetap tidak berubah.
 
 Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker untuk penyelenggaraan PORPROV XV Jawa Barat 2026 di Kota Depok. Repository ini juga memuat enam dokumen tata kelola root dan `DEPLOYMENT_VPS.md` sebagai pedoman operasional aman bagi pengembang dan Agent AI.
 

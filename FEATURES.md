@@ -23,7 +23,7 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | README root | `[x] Done` | v5.0 | `README.md` | Orientasi aplikasi, split UI authority, quality gate, soft delete, dan sinkronisasi pedoman |
 | AI/Codex docs | `[x] Done` | v5.0 | enam Markdown root + governance/ADR | Workflow, delivery gate, split UI authority, UI contracts, NFR, dan status implementasi diselaraskan |
 | Engineering/UIUX quality standard | `[x] Done` | v5.0 | `docs/governance/ENGINEERING_UIUX_QUALITY_STANDARD.md` | Standar normatif turunan RULES; tidak mengubah status fitur runtime |
-| Kesiapan operasional Web lokal | `[~] In Progress` | v14 | `docs/runbook/WEB_PLATFORM_OPERATIONAL_READINESS_V14.md`, OpenAPI, service domain, Nginx | Baseline, integrasi read-only, hardening timeout/graceful shutdown/CORS/image runtime/header redirect, serta UAT visual Public/Admin lulus. ZAP final memeriksa 529 URL dengan 0 FAIL setelah wildcard CORS tracker ditutup; UAT mutasi data lokal sengaja tidak dilakukan, sedangkan CodeQL dan dependency review menunggu Git delivery. |
+| Kesiapan operasional Web lokal | `[x] Done` | v14 | `docs/runbook/WEB_PLATFORM_OPERATIONAL_READINESS_V14.md`, OpenAPI, service domain, Nginx, PR #31 | Baseline, integrasi read-only, hardening timeout/graceful shutdown/CORS/image runtime/header redirect, UAT visual Public/Admin, ZAP 529 URL dengan 0 FAIL, CodeQL, dependency review, dan seluruh required check lulus. UAT mutasi data lokal sengaja tidak dilakukan dan tetap dicatat sebagai residual non-blocking. |
 | Reference docs | `[x] Done` | v0.1 | `docs/reference/`, `design/PORPROV_ENTERPRISE_BLUEPRINT.md` | Unified Enterprise Blueprint Document telah dibuat berdasarkan BRD/PRD/SRS/SDD dan arsitektur aktif |
 
 ## 2. Design System & UI/UX
