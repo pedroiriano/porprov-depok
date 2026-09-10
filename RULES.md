@@ -374,6 +374,7 @@ Aturan mutlak:
 - File `.env` aktual tidak boleh dilacak Git. Template tunggal berada di `infra/docker/.env.example` dan secret staging/production berasal dari secret manager.
 - Named volume `master_data_uploads` adalah sumber storage runtime Media Library. Migrasi file wajib non-destruktif dan file tidak boleh dipurge tanpa kebijakan retensi.
 - Bootstrap realm, client, role, dan user development Keycloak harus idempotent serta selesai sebelum Gateway/Admin menerima traffic.
+- Sinkronisasi Peran kustom Keycloak hanya boleh memakai confidential service account `service-account-porprov-backend-service`. Role `manage-realm`, `manage-users`, dan `view-users` dilarang diberikan kepada klien browser/mobile; secret wajib eksplisit melalui environment yang tidak dilacak Git, dan penerapan production memerlukan otorisasi terpisah.
 - Deployment hosting harus dapat mengganti host port tanpa rebuild source. Pada production, tutup port diagnostik melalui Compose override/firewall.
 - Penambahan service/port wajib memperbarui registry ini, `.env.example`, `DOCUMENTATION.md`, dan dokumen root terkait.
 

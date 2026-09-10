@@ -4,6 +4,8 @@
 
 > **Kontrak Tahap 12:** kategori Panduan Kota dinamis; status akun tidak sama dengan arsip; peran dan hak akses bersifat granular serta ditegakkan ulang oleh API; aktor audit mengutamakan username; notifikasi selalu berscope penerima; grafik memakai pembungkus ApexCharts; unggah seret-dan-lepas tidak menggantikan validasi server; render failure wajib menampilkan pemulihan, bukan layar putih. Ikuti ADR-0019 dan `docs/uiux/ADMIN_ENTERPRISE_FEATURES_V12.md`.
 
+> **Kontrak Peran kustom Tahap 15:** sinkronisasi realm role hanya memakai confidential service account `service-account-porprov-backend-service` dengan `manage-users`, `view-users`, dan `manage-realm`; hak administrasi realm dilarang pada klien Admin/mobile. Bootstrap client harus idempotent, secret hanya dari environment lokal yang tidak dilacak, dan penerapan production memerlukan izin terpisah.
+
 > **WAJIB DIBACA PERTAMA.** Agent AI/Codex wajib membaca keenam dokumen tata kelola root—`README.md`, `AI.md`, `AGENTS.md`, `RULES.md`, `FEATURES.md`, dan `DOCUMENTATION.md`—sebelum menganalisis, menulis, atau mengubah kode. Untuk seluruh pekerjaan VPS, `DEPLOYMENT_VPS.md` juga wajib dibaca lengkap.
 
 ## Konteks Aplikasi Aktif
@@ -116,7 +118,7 @@ Exception dependency harus exact-ID, exact-package, exact-project, beralasan, te
 - Docker memakai port internal tetap serta DNS nama service. Host port configurable melalui `.env` lokal dari `infra/docker/.env.example`; `.env` aktual tidak dilacak Git.
 - Local debugging memakai namespace `28xxx` hanya untuk satu komponen yang disengaja. Hentikan container domain yang sama dan jangan memakai mode lokal sebagai full-stack kedua.
 - Named volume `master_data_uploads` adalah storage runtime Media Library; jangan menjalankan Master Data lokal terhadap database Docker karena folder uploadnya berbeda.
-- Bootstrap Keycloak client/role/user development harus otomatis dan idempotent sebelum Gateway/Admin dipakai.
+- Bootstrap Keycloak client/role/user development harus otomatis dan idempotent sebelum Gateway/Admin dipakai. Hak `manage-realm` hanya boleh dimiliki service account backend untuk sinkronisasi Peran kustom; browser/mobile tetap tanpa hak realm-management.
 - Jangan menulis URL service atau port diagnostik langsung di frontend; gunakan environment dan API Gateway.
 - Agregasi referensi lintas service untuk konsumsi publik harus dikerjakan sebagai read-model di backend pemilik alur, bukan rangkaian request langsung dari browser. Jadwal memakai `/schedule/matches/enriched` melalui API Gateway.
 - Master Data memiliki referensi Kontingen, Schedule memiliki susunan peserta per match, dan LiveScore memiliki revisi skor. Penggantian susunan peserta wajib satu transaksi dengan perubahan Jadwal serta melakukan soft delete pada susunan lama.
