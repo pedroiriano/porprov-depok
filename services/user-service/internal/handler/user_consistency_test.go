@@ -277,7 +277,7 @@ func TestUpdateUserRestoresKeycloakIdentityWhenDatabaseUpdateFails(t *testing.T)
 		t.Fatalf("Keycloak identity updates = %d, want update plus compensation", len(identity.updatedUsers))
 	}
 	restored := identity.updatedUsers[1]
-	if restored.Username == nil || *restored.Username != "old-user" || restored.Email == nil || *restored.Email != "old@example.test" || restored.FirstName == nil || *restored.FirstName != "Old User" {
+	if restored.Username == nil || *restored.Username != "old-user" || restored.Email == nil || *restored.Email != "old@example.test" || restored.FirstName == nil || *restored.FirstName != "Old" || restored.LastName == nil || *restored.LastName != "User" {
 		t.Fatalf("Keycloak identity was not restored: %#v", restored)
 	}
 }

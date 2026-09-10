@@ -10,6 +10,7 @@ KEYCLOAK_SERVER_URL="${KEYCLOAK_SERVER_URL:-http://localhost:8080}"
 KEYCLOAK_REALM="${KEYCLOAK_REALM:-porprov}"
 KEYCLOAK_ADMIN_USER="${KEYCLOAK_ADMIN_USER:-${KEYCLOAK_ADMIN:-admin}}"
 KEYCLOAK_ADMIN_SECRET="${KEYCLOAK_ADMIN_SECRET:-${KEYCLOAK_ADMIN_PASSWORD:-admin_secret}}"
+KEYCLOAK_BACKEND_CLIENT_SECRET="${KEYCLOAK_BACKEND_CLIENT_SECRET:?KEYCLOAK_BACKEND_CLIENT_SECRET wajib diisi}"
 
 # SECURITY: Origins are explicit. Never use webOrigins=["+"] for browser clients.
 ADMIN_REDIRECT_URIS="${ADMIN_REDIRECT_URIS:-[\"http://localhost:5173/*\",\"http://127.0.0.1:5173/*\"]}"
@@ -107,7 +108,45 @@ upsert_mobile_client() {
   echo "Updated Keycloak client: porprov-mobile-admin"
 }
 
+upsert_backend_client() {
+  local client_uuid
+  local role
+  client_uuid="$(client_id_for porprov-backend-service)"
+
+  if [[ -z "${client_uuid}" ]]; then
+    "${KCADM}" create clients -r "${KEYCLOAK_REALM}" \
+      -s clientId=porprov-backend-service \
+      -s enabled=true \
+      -s publicClient=false \
+      -s standardFlowEnabled=false \
+      -s directAccessGrantsEnabled=false \
+      -s serviceAccountsEnabled=true \
+      -s "secret=${KEYCLOAK_BACKEND_CLIENT_SECRET}" >/dev/null
+    client_uuid="$(client_id_for porprov-backend-service)"
+  else
+    "${KCADM}" update "clients/${client_uuid}" -r "${KEYCLOAK_REALM}" \
+      -s enabled=true \
+      -s publicClient=false \
+      -s standardFlowEnabled=false \
+      -s directAccessGrantsEnabled=false \
+      -s serviceAccountsEnabled=true \
+      -s "secret=${KEYCLOAK_BACKEND_CLIENT_SECRET}" >/dev/null
+  fi
+
+  # SECURITY: Hak realm hanya dimiliki service account backend. Browser dan
+  # mobile client tidak pernah menerima hak administrasi ini.
+  for role in manage-users view-users manage-realm; do
+    "${KCADM}" add-roles -r "${KEYCLOAK_REALM}" \
+      --uusername service-account-porprov-backend-service \
+      --cclientid realm-management \
+      --rolename "${role}" >/dev/null
+  done
+
+  echo "Updated Keycloak client: porprov-backend-service"
+}
+
 authenticate
 ensure_realm
 upsert_admin_client
 upsert_mobile_client
+upsert_backend_client
