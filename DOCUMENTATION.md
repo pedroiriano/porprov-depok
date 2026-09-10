@@ -4,7 +4,7 @@
 
 Portal PORPROV XV Jawa Barat 2026 adalah platform sports event berbasis web dan mobile yang menyediakan informasi PORPROV, cabor, jadwal, venue/maps, LiveScore realtime, standings medali, galeri, Depok Guide, backend admin, dan aplikasi koresponden.
 
-Konteks governance per 7 September 2026: runtime canonical tetap satu Docker Compose dari root. Techwind menjadi otoritas visual Public; kontrak visual Cuba menjadi target Admin. Bukti pembelian satu lisensi Cuba telah diverifikasi, tetapi repository GitHub bersifat publik sehingga implementasi tetap clean-room tanpa source/aset vendor. Fondasi tersedia di balik feature flag dan baseline Techwind tetap menjadi rollback. Batas fitur lain mengikuti status aktual `FEATURES.md`.
+Konteks teknis per 10 September 2026: runtime canonical tetap satu Docker Compose dari root. Techwind menjadi otoritas visual Public; kontrak visual Cuba menjadi target Admin. Bukti pembelian satu lisensi Cuba telah diverifikasi, tetapi repository GitHub bersifat publik sehingga implementasi tetap clean-room tanpa source/aset vendor. Tahap 14 menambahkan kontrak OpenAPI Web Platform v14, timeout/graceful shutdown service domain, pembatasan CORS langsung, penghapusan wildcard CORS tracker Umami di edge, serta runbook kesiapan operasional lokal. Batas fitur dan residual mengikuti status aktual `FEATURES.md`.
 
 ## 2. Stack Final
 
@@ -568,7 +568,7 @@ Implementasi aktif memakai `deleted_by TEXT` karena identitas actor berasal dari
 
 | Database/service | Migration | Entity aktif |
 |---|---:|---|
-| `master_data_db` / Master Data | v13 | Cabor dengan UUID internal, slug publik, Hero Image Media Library opsional; City Guide dengan satu pin rekomendasi seluruh Venue; serta Media dengan checksum SHA-256, dimensi, dan actor unggahan |
+| `master_data_db` / Master Data | v15 | Cabor dengan UUID internal, slug publik, Hero Image Media Library opsional; City Guide dengan kategori dinamis dan satu pin rekomendasi seluruh Venue; serta Media dengan checksum SHA-256, dimensi, actor unggahan, dan metadata turunan |
 | `venue_db` / Venue | v3 | Venue dengan UUID internal dan slug publik unik |
 | `schedule_db` / Schedule | v5 | Jadwal/Match dan Peserta A/B bertipe Individu/Tim/Kontingen dengan slot serta soft replacement |
 | `livescore_db` / LiveScore | v1 | Revision append-only, current projection, transactional outbox |
@@ -603,7 +603,7 @@ Aturan integritas yang aktif:
 - Delete dan restore bersifat idempotent. Operasi yang benar-benar mengubah state menerbitkan event audit NATS berisi actor, reason/request ID, serta snapshot record/tombstone. Audit Service kini menyimpan event yang diterima secara immutable, tetapi publisher Master/Media/Venue/Jadwal masih best-effort dan belum memakai transactional outbox.
 - Kepemilikan serta kontrak Peserta A/B antara Master Data, Schedule, dan LiveScore dicatat pada `docs/adr/ADR-0006-schedule-participant-ownership.md`.
 
-Verifikasi baseline 14 Juli 2026 mencakup `go test ./...` pada Master Data, Venue, Schedule, dan API Gateway; lint dan production build Admin; Compose config/build; runtime test delete–invisibility–restore–dependency guard–media retention; serta migration state seluruhnya `dirty=false`. Target source terbaru adalah `master=13`, `venue=3`, dan `schedule=5`. Migrasi Master Data v12 diaktifkan pada 7 September 2026 dengan satu pin default `Department Sports Lab`. Migrasi additive v13 diaktifkan lokal pada 8 September 2026 setelah backup `master_data_db.dump` tervalidasi SHA-256 `2F12482DC6EBEF3AD9B643D28ABE5F91DE1B9386F7E461E09ABB6B327575A363`; jumlah Media tetap 378 dan state migration `13|false`. Keputusan soft delete dicatat pada ADR-0002; kompatibilitas slug/UUID Venue dan Cabor pada ADR-0011/ADR-0012; Hero Image Cabor pada ADR-0013; pin rekomendasi Venue pada ADR-0017.
+Verifikasi Tahap 14 per 10 September 2026 memastikan migration state lokal `user=5`, `master=15`, `venue=3`, `schedule=5`, `livescore=1`, `medals=3`, dan `audit=3`, seluruhnya `dirty=false`. Migrasi Master Data v12 menetapkan satu pin default `Department Sports Lab`; migrasi berikutnya menambah metadata turunan Media dan kategori Panduan Kota dinamis. Tahap 14 tidak menjalankan migrasi atau mengubah data. Keputusan soft delete dicatat pada ADR-0002; kompatibilitas slug/UUID Venue dan Cabor pada ADR-0011/ADR-0012; Hero Image Cabor pada ADR-0013; pin rekomendasi Venue pada ADR-0017.
 
 ### 16.5 LiveScore, Medali, Transactional Outbox, dan Audit Immutable
 

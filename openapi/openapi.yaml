@@ -1,13 +1,56 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "PORPROV Admin Enterprise API",
-    "version": "12.0.0",
-    "description": "Kontrak Admin Enterprise untuk otorisasi, akun, peran, notifikasi, taksonomi Panduan Kota, audit, media, dan tabel operasional."
+    "title": "PORPROV Web Platform API",
+    "version": "14.0.0",
+    "description": "Kontrak Web Platform untuk projection publik serta operasi Admin melalui API Gateway, termasuk otorisasi, akun, Master Data, jadwal, LiveScore, medali, audit, media, dan notifikasi."
   },
   "servers": [{ "url": "/api/v1" }],
   "security": [{ "bearerAuth": [] }],
   "paths": {
+    "/profile": {
+      "get": {
+        "summary": "Membaca profil akun yang sedang aktif",
+        "responses": { "200": { "description": "Profil akun" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/master-data/heroes/active": {
+      "get": {
+        "summary": "Membaca Hero aktif untuk Beranda publik",
+        "security": [],
+        "responses": { "200": { "description": "Hero aktif" }, "404": { "description": "Hero aktif belum tersedia" } }
+      }
+    },
+    "/master-data/heroes": {
+      "get": { "summary": "Membaca daftar Hero untuk Admin", "responses": { "200": { "description": "Daftar Hero" } } },
+      "post": { "summary": "Membuat Hero", "responses": { "201": { "description": "Hero dibuat" }, "422": { "description": "Data Hero tidak valid" } } }
+    },
+    "/master-data/heroes/{id}": {
+      "get": { "summary": "Membaca detail Hero", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Detail Hero" }, "404": { "description": "Hero tidak ditemukan" } } },
+      "put": { "summary": "Memperbarui Hero dengan riwayat perubahan", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Hero diperbarui" }, "409": { "description": "Versi data telah berubah" } } },
+      "delete": { "summary": "Mengarsipkan Hero", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Hero diarsipkan" } } }
+    },
+    "/master-data/city-guides": {
+      "get": { "summary": "Membaca Panduan Kota aktif untuk publik", "security": [], "responses": { "200": { "description": "Daftar Panduan Kota aktif" } } },
+      "post": { "summary": "Membuat Panduan Kota", "responses": { "201": { "description": "Panduan Kota dibuat" } } }
+    },
+    "/master-data/city-guides/{id}": {
+      "get": { "summary": "Membaca detail Panduan Kota", "security": [], "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Detail Panduan Kota" }, "404": { "description": "Data tidak ditemukan" } } },
+      "put": { "summary": "Memperbarui Panduan Kota", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Panduan Kota diperbarui" } } },
+      "delete": { "summary": "Mengarsipkan Panduan Kota", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Panduan Kota diarsipkan" } } }
+    },
+    "/master-data/city-guides/{id}/venue-pin": {
+      "put": { "summary": "Menetapkan satu rekomendasi tempat untuk seluruh Venue", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Rekomendasi terpin diperbarui" }, "409": { "description": "Data tidak dapat dipin pada kondisi saat ini" } } }
+    },
+    "/master-data/media/policy": {
+      "get": { "summary": "Membaca kebijakan unggah Media Library", "responses": { "200": { "description": "Kebijakan ukuran, MIME, dan dimensi" } } }
+    },
+    "/master-data/media/upload": {
+      "post": { "summary": "Mengunggah satu gambar tervalidasi", "responses": { "201": { "description": "Media tersimpan" }, "413": { "description": "Ukuran media melampaui batas" }, "422": { "description": "Media tidak valid atau perlu persetujuan kompresi lossy" } } }
+    },
+    "/master-data/media/{id}": {
+      "delete": { "summary": "Mengarsipkan metadata Media tanpa menghapus file fisik", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Media diarsipkan" }, "409": { "description": "Media masih digunakan" } } }
+    },
     "/drafts": {
       "get": {
         "summary": "Membaca draf milik pengguna aktif",
@@ -71,7 +114,13 @@
           { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["active", "inactive", "archived", "all"] } }
         ],
         "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "403": { "description": "Hak akses tidak mencukupi" } }
-      }
+      },
+      "post": { "summary": "Membuat akun pengguna", "responses": { "201": { "description": "Akun dibuat" }, "409": { "description": "Identitas akun telah digunakan" } } }
+    },
+    "/users/{id}": {
+      "get": { "summary": "Membaca detail akun", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Detail akun" } } },
+      "put": { "summary": "Memperbarui akun dan sinkronisasi Identity Provider", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Akun diperbarui" }, "409": { "description": "Perubahan melanggar perlindungan akun" } } },
+      "delete": { "summary": "Mengarsipkan akun", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Akun diarsipkan" }, "409": { "description": "Akun terlindungi" } } }
     },
     "/users/{id}/status": {
       "put": {
@@ -98,6 +147,16 @@
       },
       "post": { "summary": "Membuat peran khusus", "responses": { "201": { "description": "Peran dibuat" } } }
     },
+    "/access-roles/{id}": {
+      "put": { "summary": "Memperbarui peran khusus dan hak akses", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Peran diperbarui" }, "409": { "description": "Peran sistem atau peran terpakai dilindungi" } } },
+      "delete": { "summary": "Mengarsipkan peran khusus yang tidak digunakan", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Peran diarsipkan" }, "409": { "description": "Peran masih digunakan atau merupakan peran sistem" } } }
+    },
+    "/access-roles/{id}/status": {
+      "put": { "summary": "Mengaktifkan atau menonaktifkan peran khusus", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Status peran diperbarui" }, "409": { "description": "Peran tidak dapat dinonaktifkan" } } }
+    },
+    "/access-roles/{id}/restore": {
+      "post": { "summary": "Memulihkan peran khusus", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Peran dipulihkan" } } }
+    },
     "/access-roles/permissions": {
       "get": { "summary": "Membaca katalog hak akses", "responses": { "200": { "description": "Daftar hak akses" } } }
     },
@@ -118,7 +177,7 @@
       "put": { "summary": "Menandai seluruh notifikasi penerima sebagai telah dibaca", "responses": { "204": { "description": "Seluruh notifikasi ditandai telah dibaca" } } }
     },
     "/master-data/city-guide-categories": {
-      "get": { "summary": "Membaca kategori Panduan Kota aktif", "responses": { "200": { "description": "Daftar kategori aktif" } } }
+      "get": { "summary": "Membaca kategori Panduan Kota aktif", "security": [], "responses": { "200": { "description": "Daftar kategori aktif" } } }
     },
     "/master-data/city-guide-categories/manage": {
       "get": {
@@ -127,6 +186,26 @@
         "responses": { "200": { "$ref": "#/components/responses/PaginatedList" } }
       },
       "post": { "summary": "Membuat kategori Panduan Kota", "responses": { "201": { "description": "Kategori dibuat" } } }
+    },
+    "/master-data/city-guide-categories/manage/{id}": {
+      "put": { "summary": "Memperbarui kategori Panduan Kota", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Kategori diperbarui" }, "409": { "description": "Versi kategori telah berubah" } } },
+      "delete": { "summary": "Mengarsipkan kategori Panduan Kota", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Kategori diarsipkan" }, "409": { "description": "Kategori masih digunakan" } } }
+    },
+    "/master-data/city-guide-categories/manage/{id}/status": {
+      "put": { "summary": "Mengaktifkan atau menonaktifkan kategori Panduan Kota", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Status kategori diperbarui" }, "409": { "description": "Kategori masih digunakan" } } }
+    },
+    "/master-data/city-guide-categories/manage/{id}/restore": {
+      "post": { "summary": "Memulihkan kategori Panduan Kota", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Kategori dipulihkan" } } }
+    },
+    "/master-data/deleted": {
+      "get": { "summary": "Membaca data Master Data yang diarsipkan", "responses": { "200": { "description": "Daftar data terarsip" } } }
+    },
+    "/master-data/deleted/{entity}/{id}/restore": {
+      "post": {
+        "summary": "Memulihkan satu data Master Data yang diarsipkan",
+        "parameters": [{ "$ref": "#/components/parameters/EntityPath" }, { "$ref": "#/components/parameters/Id" }],
+        "responses": { "200": { "description": "Data dipulihkan" }, "404": { "description": "Data terarsip tidak ditemukan" } }
+      }
     },
     "/master-data/city-guides/manage": {
       "get": {
@@ -145,56 +224,150 @@
     "/master-data/cabors": {
       "get": {
         "summary": "Membaca cabang olahraga untuk tabel Admin",
+        "security": [],
         "parameters": [
           { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
           { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
           { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["name", "kategori", "total_medali", "technical_delegate", "status"] } }
         ],
         "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
-      }
+      },
+      "post": { "summary": "Membuat cabang olahraga", "responses": { "201": { "description": "Cabang olahraga dibuat" } } }
+    },
+    "/master-data/cabors/{id}": {
+      "get": { "summary": "Membaca detail cabang olahraga", "security": [], "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Detail cabang olahraga" }, "404": { "description": "Data tidak ditemukan" } } },
+      "put": { "summary": "Memperbarui cabang olahraga", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Cabang olahraga diperbarui" } } },
+      "delete": { "summary": "Mengarsipkan cabang olahraga", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Cabang olahraga diarsipkan" } } }
     },
     "/master-data/kontingens": {
       "get": {
         "summary": "Membaca kontingen untuk tabel Admin",
+        "security": [],
         "parameters": [
           { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
           { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
           { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["name", "region_type"] } }
         ],
         "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
-      }
+      },
+      "post": { "summary": "Membuat kontingen", "responses": { "201": { "description": "Kontingen dibuat" } } }
+    },
+    "/master-data/kontingens/{id}": {
+      "get": { "summary": "Membaca detail kontingen", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Detail kontingen" } } },
+      "put": { "summary": "Memperbarui kontingen", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Kontingen diperbarui" } } },
+      "delete": { "summary": "Mengarsipkan kontingen", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Kontingen diarsipkan" } } }
     },
     "/master-data/nomor-tandings": {
       "get": {
         "summary": "Membaca nomor pertandingan untuk tabel Admin",
+        "security": [],
         "parameters": [
           { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
           { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
           { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["name", "gender_category", "match_type"] } }
         ],
         "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
-      }
+      },
+      "post": { "summary": "Membuat nomor pertandingan", "responses": { "201": { "description": "Nomor pertandingan dibuat" } } }
+    },
+    "/master-data/nomor-tandings/{id}": {
+      "get": { "summary": "Membaca detail nomor pertandingan", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Detail nomor pertandingan" } } },
+      "put": { "summary": "Memperbarui nomor pertandingan", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Nomor pertandingan diperbarui" } } },
+      "delete": { "summary": "Mengarsipkan nomor pertandingan", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Nomor pertandingan diarsipkan" } } }
     },
     "/venues": {
       "get": {
         "summary": "Membaca lokasi pertandingan untuk tabel Admin",
+        "security": [],
         "parameters": [
           { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
           { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
           { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["name", "address", "capacity", "readiness_status"] } }
         ],
         "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
-      }
+      },
+      "post": { "summary": "Membuat Venue", "responses": { "201": { "description": "Venue dibuat" } } }
+    },
+    "/venues/{id}": {
+      "get": { "summary": "Membaca detail Venue publik", "security": [], "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Detail Venue" }, "404": { "description": "Venue tidak ditemukan" } } },
+      "put": { "summary": "Memperbarui Venue", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Venue diperbarui" } } },
+      "delete": { "summary": "Mengarsipkan Venue", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Venue diarsipkan" } } }
+    },
+    "/venues/deleted": {
+      "get": { "summary": "Membaca Venue yang diarsipkan", "responses": { "200": { "description": "Daftar Venue terarsip" } } }
+    },
+    "/venues/{id}/restore": {
+      "post": { "summary": "Memulihkan Venue", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Venue dipulihkan" } } }
     },
     "/schedule/matches/enriched": {
       "get": {
         "summary": "Membaca jadwal beserta peserta untuk tabel Admin",
+        "security": [],
         "parameters": [
           { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
           { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
           { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["match_date", "nomor_tanding", "venue", "round", "status"] } }
         ],
         "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
+      }
+    },
+    "/schedule/matches": {
+      "get": { "summary": "Membaca jadwal pertandingan publik", "security": [], "responses": { "200": { "description": "Daftar pertandingan aktif" } } },
+      "post": { "summary": "Membuat pertandingan beserta dua peserta A/B", "responses": { "201": { "description": "Pertandingan dibuat" }, "422": { "description": "Peserta atau referensi tidak valid" } } }
+    },
+    "/schedule/matches/{id}": {
+      "get": { "summary": "Membaca detail pertandingan", "security": [], "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Detail pertandingan" } } },
+      "put": { "summary": "Memperbarui pertandingan dan peserta secara atomik", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Pertandingan diperbarui" }, "409": { "description": "Versi pertandingan telah berubah" } } },
+      "delete": { "summary": "Mengarsipkan pertandingan dan susunan peserta", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "204": { "description": "Pertandingan diarsipkan" } } }
+    },
+    "/schedule/matches/{id}/participants": {
+      "get": { "summary": "Membaca dua peserta terurut A/B", "security": [], "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Susunan peserta" } } }
+    },
+    "/schedule/matches/deleted": {
+      "get": { "summary": "Membaca pertandingan terarsip", "responses": { "200": { "description": "Daftar pertandingan terarsip" } } }
+    },
+    "/schedule/matches/{id}/restore": {
+      "post": { "summary": "Memulihkan pertandingan", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Pertandingan dipulihkan" } } }
+    },
+    "/livescore/public": {
+      "get": { "summary": "Membaca projection LiveScore tersanitasi untuk publik", "security": [], "responses": { "200": { "description": "Skor terkini publik" } } }
+    },
+    "/livescore": {
+      "get": { "summary": "Membaca skor terkini untuk operator", "responses": { "200": { "description": "Daftar skor terkini" } } }
+    },
+    "/livescore/update": {
+      "post": { "summary": "Menambahkan revisi skor atau status secara append-only", "responses": { "201": { "description": "Revisi skor tersimpan dan masuk outbox" }, "409": { "description": "Expected revision tidak lagi cocok" }, "422": { "description": "Pertandingan atau skor tidak valid" } } }
+    },
+    "/livescore/matches/{matchID}": {
+      "get": { "summary": "Membaca skor terkini satu pertandingan", "parameters": [{ "$ref": "#/components/parameters/MatchId" }], "responses": { "200": { "description": "Skor terkini" }, "404": { "description": "Skor belum tersedia" } } }
+    },
+    "/livescore/matches/{matchID}/history": {
+      "get": { "summary": "Membaca riwayat revisi skor immutable", "parameters": [{ "$ref": "#/components/parameters/MatchId" }], "responses": { "200": { "description": "Riwayat revisi skor" } } }
+    },
+    "/livescore/matches/{matchID}/correct": {
+      "post": { "summary": "Membuat revisi koreksi skor baru", "parameters": [{ "$ref": "#/components/parameters/MatchId" }], "responses": { "201": { "description": "Koreksi tersimpan sebagai revisi baru" }, "409": { "description": "Expected revision tidak lagi cocok" } } }
+    },
+    "/medals/standings": {
+      "get": { "summary": "Membaca klasemen dari medali berstatus resmi", "security": [], "responses": { "200": { "description": "Klasemen medali resmi" } } }
+    },
+    "/medals/submissions": {
+      "get": { "summary": "Membaca pengajuan medali untuk verifikasi", "responses": { "200": { "description": "Daftar pengajuan medali" } } },
+      "post": { "summary": "Membuat pengajuan medali", "responses": { "201": { "description": "Pengajuan medali dibuat" }, "422": { "description": "Pengajuan tidak valid" } } }
+    },
+    "/medals/submissions/{submissionID}/verify": {
+      "post": { "summary": "Memverifikasi pengajuan medali", "parameters": [{ "$ref": "#/components/parameters/SubmissionId" }], "responses": { "200": { "description": "Pengajuan terverifikasi" }, "409": { "description": "Transisi status tidak valid" } } }
+    },
+    "/medals/submissions/{submissionID}/reject": {
+      "post": { "summary": "Menolak pengajuan medali dengan alasan", "parameters": [{ "$ref": "#/components/parameters/SubmissionId" }], "responses": { "200": { "description": "Pengajuan ditolak" }, "409": { "description": "Transisi status tidak valid" } } }
+    },
+    "/medals/submissions/{submissionID}/publish": {
+      "post": { "summary": "Mempublikasikan pengajuan terverifikasi sebagai medali resmi", "parameters": [{ "$ref": "#/components/parameters/SubmissionId" }], "responses": { "200": { "description": "Medali resmi dipublikasikan dan masuk outbox" }, "409": { "description": "Pengajuan belum dapat dipublikasikan" } } }
+    },
+    "/audit": {
+      "get": {
+        "summary": "Membaca log audit append-only dengan identitas aktor",
+        "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" }, { "$ref": "#/components/parameters/Query" }],
+        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "403": { "description": "Hak audit tidak tersedia" } }
       }
     }
   },
@@ -208,7 +381,10 @@
       "PerPage": { "name": "per_page", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 10 } },
       "Query": { "name": "q", "in": "query", "schema": { "type": "string", "maxLength": 80 } },
       "Direction": { "name": "direction", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" } },
-      "Id": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+      "Id": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "MatchId": { "name": "matchID", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "SubmissionId": { "name": "submissionID", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+      ,"EntityPath": { "name": "entity", "in": "path", "required": true, "schema": { "type": "string", "enum": ["cabor", "nomor-tanding", "kontingen", "city-guide", "hero"] } }
     },
     "responses": {
       "Unauthorized": { "description": "Autentikasi diperlukan" },

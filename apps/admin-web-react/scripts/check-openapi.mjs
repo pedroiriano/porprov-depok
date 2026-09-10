@@ -2,20 +2,61 @@ import { readFile } from 'node:fs/promises';
 
 const document = JSON.parse(await readFile(new URL('../../../openapi/openapi.yaml', import.meta.url), 'utf8'));
 const requiredPaths = [
+  '/profile',
   '/drafts',
   '/integrations/health',
+  '/master-data/heroes/active',
+  '/master-data/heroes',
+  '/master-data/heroes/{id}',
+  '/master-data/cabors',
+  '/master-data/cabors/{id}',
+  '/master-data/kontingens',
+  '/master-data/kontingens/{id}',
+  '/master-data/nomor-tandings',
+  '/master-data/nomor-tandings/{id}',
   '/master-data/media',
+  '/master-data/media/policy',
+  '/master-data/media/upload',
+  '/master-data/media/{id}',
   '/authorization/session',
   '/users',
+  '/users/{id}',
   '/users/{id}/status',
   '/access-roles',
+  '/access-roles/{id}',
   '/notifications',
   '/master-data/city-guide-categories',
+  '/master-data/city-guide-categories/manage',
+  '/master-data/city-guide-categories/manage/{id}',
+  '/master-data/city-guide-categories/manage/{id}/status',
+  '/master-data/city-guide-categories/manage/{id}/restore',
+  '/master-data/deleted',
+  '/master-data/deleted/{entity}/{id}/restore',
   '/master-data/city-guides/manage',
+  '/master-data/city-guides',
+  '/master-data/city-guides/{id}',
+  '/master-data/city-guides/{id}/venue-pin',
   '/user-directory/lookup',
+  '/venues',
+  '/venues/{id}',
+  '/schedule/matches',
+  '/schedule/matches/enriched',
+  '/schedule/matches/{id}',
+  '/schedule/matches/{id}/participants',
+  '/livescore/public',
+  '/livescore',
+  '/livescore/update',
+  '/livescore/matches/{matchID}/history',
+  '/livescore/matches/{matchID}/correct',
+  '/medals/standings',
+  '/medals/submissions',
+  '/medals/submissions/{submissionID}/verify',
+  '/medals/submissions/{submissionID}/reject',
+  '/medals/submissions/{submissionID}/publish',
+  '/audit',
 ];
 const missing = requiredPaths.filter((path) => !document.paths?.[path]);
-if (document.openapi !== '3.1.0' || !document.components?.securitySchemes?.bearerAuth || missing.length) {
+if (document.openapi !== '3.1.0' || document.info?.version !== '14.0.0' || !document.components?.securitySchemes?.bearerAuth || missing.length) {
   throw new Error(`Kontrak OpenAPI tidak lengkap: ${missing.join(', ') || 'metadata/security'}`);
 }
-console.log('PASS: kontrak OpenAPI Admin Enterprise tersedia dan dapat dibaca.');
+console.log('PASS: kontrak OpenAPI Web Platform tersedia dan dapat dibaca.');

@@ -14,7 +14,9 @@ func SetupRouter(userHandler *handler.UserHandler, draftHandler *handler.DraftHa
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"},
+		// SECURITY: Service domain hanya mengizinkan origin pengembangan kanonis;
+		// production mengaksesnya melalui API Gateway same-origin.
+		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:5173", "http://localhost:5174", "https://localhost:5174"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
