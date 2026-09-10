@@ -34,6 +34,19 @@ type identityProvider interface {
 	DeleteRealmRoleFromUser(context.Context, string, string, string, []gocloak.Role) error
 }
 
+func keycloakDisplayName(fullName string) (string, string) {
+	parts := strings.Fields(strings.TrimSpace(fullName))
+	if len(parts) == 0 {
+		return "", ""
+	}
+	if len(parts) == 1 {
+		// INFO: Keycloak profile lokal mewajibkan nama belakang. Duplikasi nama
+		// tunggal menjaga akun siap login tanpa mengubah full_name domain.
+		return parts[0], parts[0]
+	}
+	return parts[0], strings.Join(parts[1:], " ")
+}
+
 type userAuditEvent struct {
 	EventVersion     string      `json:"eventVersion"`
 	EventType        string      `json:"eventType"`
@@ -158,11 +171,13 @@ func (h *UserHandler) rollbackUserUpdate(
 		}
 	}
 	if state.identityUpdated {
+		firstName, lastName := keycloakDisplayName(existing.FullName.String)
 		if err := h.kc.UpdateUser(ctx, accessToken, h.cfg.KeycloakRealm, gocloak.User{
 			ID:        gocloak.StringP(existing.KeycloakID),
 			Username:  gocloak.StringP(existing.Username),
 			Email:     gocloak.StringP(existing.Email),
-			FirstName: gocloak.StringP(existing.FullName.String),
+			FirstName: gocloak.StringP(firstName),
+			LastName:  gocloak.StringP(lastName),
 		}); err != nil {
 			log.Printf("Failed to restore identity for Keycloak user %s: %v", existing.KeycloakID, err)
 		}
@@ -202,10 +217,12 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	// 2. Create User in Keycloak
 	enabled := true
 	emailVerified := true
+	firstName, lastName := keycloakDisplayName(req.FullName)
 	kcUser := gocloak.User{
 		Username:      gocloak.StringP(req.Username),
 		Email:         gocloak.StringP(req.Email),
-		FirstName:     gocloak.StringP(req.FullName), // Mapping full name primarily to first name for simplicity
+		FirstName:     gocloak.StringP(firstName),
+		LastName:      gocloak.StringP(lastName),
 		Enabled:       &enabled,
 		EmailVerified: &emailVerified,
 		Credentials: &[]gocloak.CredentialRepresentation{
@@ -404,11 +421,13 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Update reversible identity fields in Keycloak.
+	firstName, lastName := keycloakDisplayName(req.FullName)
 	var kcUser = gocloak.User{
 		ID:        gocloak.StringP(existingUser.KeycloakID),
 		Username:  gocloak.StringP(req.Username),
 		Email:     gocloak.StringP(req.Email),
-		FirstName: gocloak.StringP(req.FullName),
+		FirstName: gocloak.StringP(firstName),
+		LastName:  gocloak.StringP(lastName),
 	}
 
 	err = h.kc.UpdateUser(r.Context(), token.AccessToken, h.cfg.KeycloakRealm, kcUser)

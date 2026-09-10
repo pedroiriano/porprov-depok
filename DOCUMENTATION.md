@@ -4,7 +4,7 @@
 
 Portal PORPROV XV Jawa Barat 2026 adalah platform sports event berbasis web dan mobile yang menyediakan informasi PORPROV, cabor, jadwal, venue/maps, LiveScore realtime, standings medali, galeri, Depok Guide, backend admin, dan aplikasi koresponden.
 
-Konteks teknis per 10 September 2026: runtime canonical tetap satu Docker Compose dari root. Techwind menjadi otoritas visual Public; kontrak visual Cuba menjadi target Admin. Bukti pembelian satu lisensi Cuba telah diverifikasi, tetapi repository GitHub bersifat publik sehingga implementasi tetap clean-room tanpa source/aset vendor. Tahap 14 menambahkan kontrak OpenAPI Web Platform v14, timeout/graceful shutdown service domain, pembatasan CORS langsung, penghapusan wildcard CORS tracker Umami di edge, serta runbook kesiapan operasional lokal. Batas fitur dan residual mengikuti status aktual `FEATURES.md`.
+Konteks teknis per 10 September 2026: runtime canonical tetap satu Docker Compose dari root. Techwind menjadi otoritas visual Public; kontrak visual Cuba menjadi target Admin. Bukti pembelian satu lisensi Cuba telah diverifikasi, tetapi repository GitHub bersifat publik sehingga implementasi tetap clean-room tanpa source/aset vendor. Tahap 14 menambahkan kontrak OpenAPI Web Platform v14, timeout/graceful shutdown service domain, pembatasan CORS langsung, penghapusan wildcard CORS tracker Umami di edge, serta runbook kesiapan operasional lokal. Tahap 15 membuktikan alur bisnis lintas peran menggunakan fixture lokal terisolasi, snapshot ber-checksum, dan restore drill. UAT Peran kustom telah lulus setelah `manage-realm` dibatasi hanya pada service account backend, bootstrap client dibuat idempotent, dan seluruh fixture tambahan di-rollback; production tetap tidak berubah. Detail bukti dan risiko terdapat pada `docs/runbook/RELEASE_CANDIDATE_UAT_V15.md` serta `docs/release/RELEASE_MANIFEST_V15.md`.
 
 ## 2. Stack Final
 
@@ -230,6 +230,8 @@ Admin Web membentuk `redirect_uri` dan `post_logout_redirect_uri` dari `window.l
 File `apps/admin-web-react/.env.development` telah dihapus agar tidak ada perpindahan Gateway diam-diam. Menu Admin membaca realm role dari ID token dan access token; API Gateway tetap melakukan otorisasi final.
 
 Service one-shot `keycloak-bootstrap` menjalankan `create_clients.sh` dan `create_users.sh` secara idempotent sebelum API Gateway dimulai. Login ulang diperlukan setelah perubahan role agar browser memperoleh token baru.
+
+Client confidential `porprov-backend-service` memakai service account khusus dengan mapping `realm-management` tepat `manage-users`, `view-users`, dan `manage-realm`. Hak ini diperlukan agar User Service menyinkronkan Peran kustom ke Keycloak dan tidak boleh diberikan kepada klien browser/mobile. Secret berasal dari environment lokal yang tidak dilacak Git; nilai production wajib dikelola terpisah dan penerapannya memerlukan otorisasi deployment.
 
 Untuk deployment, override `ADMIN_REDIRECT_URIS` dan `ADMIN_WEB_ORIGINS` ketika menjalankan script dengan origin HTTPS resmi. Jangan menambahkan `webOrigins=["+"]` atau wildcard port pada client browser.
 

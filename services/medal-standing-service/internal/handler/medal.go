@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -267,14 +268,14 @@ func (h *MedalHandler) transition(w http.ResponseWriter, r *http.Request, target
 		http.Error(w, "invalid medal workflow transition", http.StatusConflict)
 		return
 	}
-	_, err = tx.Exec(r.Context(), `UPDATE medal_submissions SET status=$2,
-		verified_by=CASE WHEN $2='VERIFIED' THEN $3 ELSE verified_by END,
-		rejected_by=CASE WHEN $2='REJECTED' THEN $3 ELSE rejected_by END,
-		published_by=CASE WHEN $2='OFFICIAL' THEN $3 ELSE published_by END,
-		verification_notes=CASE WHEN $2 IN ('VERIFIED','REJECTED') THEN NULLIF($4,'') ELSE verification_notes END,
-		verified_at=CASE WHEN $2='VERIFIED' THEN NOW() ELSE verified_at END,
-		rejected_at=CASE WHEN $2='REJECTED' THEN NOW() ELSE rejected_at END,
-		published_at=CASE WHEN $2='OFFICIAL' THEN NOW() ELSE published_at END,updated_at=NOW() WHERE id=$1::uuid`, chi.URLParam(r, "submissionID"), target, actor, request.Reason)
+	_, err = tx.Exec(r.Context(), `UPDATE medal_submissions SET status=$2::varchar,
+		verified_by=CASE WHEN $2::varchar='VERIFIED' THEN $3::varchar ELSE verified_by END,
+		rejected_by=CASE WHEN $2::varchar='REJECTED' THEN $3::varchar ELSE rejected_by END,
+		published_by=CASE WHEN $2::varchar='OFFICIAL' THEN $3::varchar ELSE published_by END,
+		verification_notes=CASE WHEN $2::varchar IN ('VERIFIED','REJECTED') THEN NULLIF($4::text,'') ELSE verification_notes END,
+		verified_at=CASE WHEN $2::varchar='VERIFIED' THEN NOW() ELSE verified_at END,
+		rejected_at=CASE WHEN $2::varchar='REJECTED' THEN NOW() ELSE rejected_at END,
+		published_at=CASE WHEN $2::varchar='OFFICIAL' THEN NOW() ELSE published_at END,updated_at=NOW() WHERE id=$1::uuid`, chi.URLParam(r, "submissionID"), target, actor, request.Reason)
 	if err == nil && target == "OFFICIAL" {
 		_, err = tx.Exec(r.Context(), `INSERT INTO medals(kontingen_id,gold,silver,bronze) VALUES($1::uuid,$2,$3,$4) ON CONFLICT(kontingen_id) DO UPDATE SET gold=medals.gold+EXCLUDED.gold,silver=medals.silver+EXCLUDED.silver,bronze=medals.bronze+EXCLUDED.bronze,updated_at=NOW()`, kontingenID, gold, silver, bronze)
 	}
@@ -288,7 +289,13 @@ func (h *MedalHandler) transition(w http.ResponseWriter, r *http.Request, target
 	if err == nil && target == "OFFICIAL" {
 		err = insertRealtimeOutbox(r.Context(), tx, actor, r.Header.Get("X-Request-ID"), payload)
 	}
-	if err != nil || tx.Commit(r.Context()) != nil {
+	if err != nil {
+		log.Printf("medal workflow transition failed before commit: target=%s submission=%s error=%v", target, chi.URLParam(r, "submissionID"), err)
+		http.Error(w, "failed to persist workflow transition", http.StatusInternalServerError)
+		return
+	}
+	if err = tx.Commit(r.Context()); err != nil {
+		log.Printf("medal workflow transition commit failed: target=%s submission=%s error=%v", target, chi.URLParam(r, "submissionID"), err)
 		http.Error(w, "failed to persist workflow transition", http.StatusInternalServerError)
 		return
 	}

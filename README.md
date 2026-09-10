@@ -6,6 +6,8 @@
 
 > Tahap 14 menutup kesiapan operasional Web secara lokal: kontrak OpenAPI v14 mencakup alur Public/Admin utama, service domain memakai timeout serta graceful shutdown, CORS langsung dibatasi ke origin pengembangan kanonis, dan wildcard CORS tracker Umami ditutup di edge. ZAP, CodeQL, dependency review, serta seluruh required check lulus melalui PR #31. Bukti audit, matriks fitur, dan batas UAT tanpa mutasi data dicatat di `docs/runbook/WEB_PLATFORM_OPERATIONAL_READINESS_V14.md`; production tetap tidak berubah.
 
+> Tahap 15 menjalankan UAT bisnis terisolasi dengan snapshot dan rollback lokal: 19 pemeriksaan lintas peran/domain lulus, fixture telah dibuang, 379 file Media Library kembali cocok checksum, 19 kontainer sehat, dan penerimaan visual representatif Public/Admin lulus. Setelah otorisasi eksplisit, UAT Peran kustom juga lulus untuk create, perubahan status, arsip, dan pemulihan; role Keycloak `manage-realm` dibatasi hanya pada service account backend dan seluruh fixture tambahan telah di-rollback. Implementasi release candidate tercatat pada commit `b832bd0`; detail dan manifest tersedia di `docs/runbook/RELEASE_CANDIDATE_UAT_V15.md` serta `docs/release/RELEASE_MANIFEST_V15.md`. Production tetap tidak berubah.
+
 Monorepo aplikasi web, mobile, Golang microservices, dan infrastruktur Docker untuk penyelenggaraan PORPROV XV Jawa Barat 2026 di Kota Depok. Repository ini juga memuat enam dokumen tata kelola root dan `DEPLOYMENT_VPS.md` sebagai pedoman operasional aman bagi pengembang dan Agent AI.
 
 ## Kondisi Aplikasi Saat Ini

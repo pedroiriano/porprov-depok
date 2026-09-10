@@ -36,18 +36,18 @@ upsert_backend_client() {
 }
 
 assign_roles() {
-  # Get service account user id
-  local sa_user_id
-  sa_user_id=$("${KCADM}" get clients/$(client_id_for porprov-backend-service)/service-account-user -r "${KEYCLOAK_REALM}" --fields id --format csv --noquotes)
-  
-  local rm_client_id
-  rm_client_id=$("${KCADM}" get clients -r "${KEYCLOAK_REALM}" -q clientId=realm-management --fields id --format csv --noquotes | head -n 1)
+  local role
 
-  # Assign manage-users
-  "${KCADM}" add-roles -r "${KEYCLOAK_REALM}" --uusername "service-account-porprov-backend-service" --cclientid realm-management --rolename manage-users
-  "${KCADM}" add-roles -r "${KEYCLOAK_REALM}" --uusername "service-account-porprov-backend-service" --cclientid realm-management --rolename view-users
-  
-  echo "Assigned manage-users and view-users to backend service account."
+  # SECURITY: manage-realm diperlukan hanya untuk sinkronisasi Peran kustom.
+  # Hak ini tidak diberikan kepada browser/mobile client.
+  for role in manage-users view-users manage-realm; do
+    "${KCADM}" add-roles -r "${KEYCLOAK_REALM}" \
+      --uusername "service-account-porprov-backend-service" \
+      --cclientid realm-management \
+      --rolename "${role}"
+  done
+
+  echo "Assigned backend realm-management roles."
 }
 
 authenticate
