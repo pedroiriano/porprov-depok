@@ -8,8 +8,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -483,8 +485,8 @@ func publishOutboxBatch(ctx context.Context, pool *pgxpool.Pool, js jetstream.Je
 }
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 	dbURL := envOrDefault("DATABASE_URL", "postgres://porprov_admin:porprov_secret@localhost:15432/livescore_db?sslmode=disable")
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
@@ -544,7 +546,17 @@ func main() {
 	})
 	port := envOrDefault("PORT", "28083")
 	log.Printf("Livescore Service running on port %s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
-		log.Fatal(err)
+	// INFO: Timeout dan graceful shutdown melindungi request serta worker outbox.
+	server := &http.Server{Addr: ":" + port, Handler: r, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second}
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
+	<-ctx.Done()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Failed to stop Livescore Service gracefully: %v", err)
 	}
 }

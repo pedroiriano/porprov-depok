@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/porprov-xv/porprov-depok/packages/messaging"
@@ -19,7 +22,8 @@ func main() {
 	cfg := config.LoadConfig()
 
 	// INFO: Use a PostgreSQL pool because HTTP handlers execute concurrently.
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 	pool, err := pgxpool.New(ctx, cfg.DBConn)
 	if err != nil {
 		log.Fatalf("Gagal membuat pool database PostgreSQL: %v\n", err)
@@ -47,10 +51,19 @@ func main() {
 	// INFO: Setup Chi Router
 	r := router.SetupRouter(matchHandler)
 
-	// INFO: Start HTTP Server
+	// INFO: Batasi waktu koneksi HTTP dan hentikan service secara elegan.
 	serverAddr := fmt.Sprintf(":%s", cfg.Port)
+	server := &http.Server{Addr: serverAddr, Handler: r, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second}
 	log.Printf("Menjalankan Schedule Service di port %s...\n", cfg.Port)
-	if err := http.ListenAndServe(serverAddr, r); err != nil {
-		log.Fatalf("Gagal menjalankan server: %v\n", err)
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Gagal menjalankan server: %v\n", err)
+		}
+	}()
+	<-ctx.Done()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Gagal menghentikan Schedule Service secara elegan: %v", err)
 	}
 }

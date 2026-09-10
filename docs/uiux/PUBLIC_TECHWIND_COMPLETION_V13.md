@@ -2,7 +2,7 @@
 
 ## Status
 
-Fase 13.1–13.5 telah selesai dan terverifikasi pada source serta runtime Docker lokal per 8 September 2026. Git delivery belum dilakukan dan tetap memerlukan persetujuan eksplisit terpisah.
+Fase 13.1–13.5 telah selesai dan terverifikasi pada source serta runtime Docker lokal per 8 September 2026. Git delivery kemudian digabung melalui PR #30 pada commit `7c373207042da10fad93b89da7be97b06dbb64f3`.
 
 ## Otoritas dan pemetaan
 
@@ -38,4 +38,4 @@ Koleksi lokal hanya mendefinisikan feed terkini dan populer. URL bySlug/byTag se
 | DevSecOps dinamis | PASS — OWASP ZAP baseline pasif pada HTTPS edge: 0 temuan gagal |
 | Image | PASS — Trivy Critical/High fixable: Public 0 dan Nginx 0 setelah hardening Alpine serta runner |
 
-CodeQL dan dependency review adalah gate GitHub yang hanya berjalan setelah commit/PR; keduanya belum dijalankan karena Fase 13.5 secara eksplisit berhenti sebelum Git delivery. Temuan SAST tambahan lama di backend berada di luar diff Public v13 dan dicatat sebagai utang keamanan untuk pekerjaan terpisah, tanpa ditutupi sebagai temuan Fase 13.5.
+Pada penutupan lokal Fase 13.5, CodeQL dan dependency review memang belum dapat berjalan karena keduanya adalah gate GitHub. Git delivery berikutnya telah diselesaikan melalui PR #30; catatan ini mempertahankan urutan bukti lokal dan delivery tanpa menyamakan keduanya.

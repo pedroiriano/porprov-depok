@@ -16,7 +16,9 @@ ENV VITE_BASE_PATH=$VITE_BASE_PATH
 ENV VITE_ADMIN_CUBA_PHASE_1=$VITE_ADMIN_CUBA_PHASE_1
 RUN npm run build
 
-FROM nginx:1.27-alpine
+# SECURITY: gunakan runtime Nginx Alpine aktif dan pasang patch OS terbaru.
+FROM nginx:alpine
+RUN apk upgrade --no-cache
 COPY apps/admin-web-react/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
