@@ -746,3 +746,18 @@ popover notifikasi yang menutup lewat klik luar/Escape, sidebar desktop/mobile,
 dan error boundary berbahasa Indonesia. OpenAPI v12, ADR-0019, matriks penerimaan,
 backup/checksum, ancaman, serta rollback berada di
 `docs/uiux/ADMIN_ENTERPRISE_FEATURES_V12.md`. Production tidak berubah.
+
+## 22. Release Readiness Tahap 16
+
+Audit lokal Tahap 16 memetakan empat alert dependency mobile ke dua advisory,
+memperbarui lockfile tanpa exception, mem-pin commit builder eksternal, dan
+menghasilkan 21 SBOM CycloneDX serta 21 laporan Trivy untuk image buatan
+repository. Migrator memakai `4.20.1-porprov.1`, PostgreSQL/PostGIS memakai
+`15-3.5-porprov.1`, dan Prometheus memakai `3.13.3-porprov.1` berbasis Go
+1.26.6. Detail alert, digest, checksum artefak, hasil gate, dan blocker
+deployment berada di `docs/release/RELEASE_READINESS_V16.md`.
+
+Runbook VPS telah dikonvergensikan ke origin canonical
+`https://porprov.depok.go.id`; alamat IP hanya untuk SSH atau pemeriksaan SNI
+loopback. Tahap ini tidak melakukan Git delivery, migrasi, deploy, atau akses
+VPS.

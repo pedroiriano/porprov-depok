@@ -417,3 +417,17 @@ Aturan mutlak:
 PORPROV mengadopsi arah berikut tanpa menganggapnya sudah terimplementasi: source-of-truth matrix; root OpenAPI contract-first; environment security matrix; threat model per fitur; draft recovery; unified data table; media policy endpoint/checksum; backup/restore RPO/RTO drill; release evidence berdasarkan commit/image digest; OpenTelemetry+Loki+Tempo; Integration Health Center read-only; centralized platform config; notification center; SEO taxonomy/slug history/thin-page policy; dan vendor regression test. Status masing-masing wajib tercatat faktual di `FEATURES.md`.
 
 Detail penerapan normatif berada di `docs/governance/ENGINEERING_UIUX_QUALITY_STANDARD.md`. Keputusan split UI berada di `docs/adr/ADR-0015-split-ui-authority-techwind-public-cuba-admin.md`; kontrak Admin berada di `docs/uiux/ADMIN_CUBA_VISUAL_CONTRACT.md`.
+
+## 25. Baseline Supply Chain Release Tahap 16
+
+- Tag source eksternal pada Docker builder wajib diverifikasi terhadap commit
+  SHA yang disetujui; perubahan tag atau SHA harus menggagalkan build.
+- Baseline lokal adalah migrator `4.20.1-porprov.1`, PostgreSQL 15/PostGIS 3.5
+  Alpine, Prometheus `3.13.3-porprov.1`, Go 1.26.6,
+  `decode-uri-component` 0.5.0, dan `uuid` 11.1.1.
+- Seluruh image buatan repository wajib memiliki SBOM CycloneDX dan nol
+  High/Critical fixable pada Trivy sebelum Git delivery release.
+- Alert `decode-uri-component` dan `uuid` tidak boleh dimasukkan ke exception;
+  exception `image-size` terikat waktu tetap satu-satunya exception mobile.
+- Perubahan dependency manifest wajib menjalani dependency review pada PR;
+  bukti lokal tidak boleh diklaim sebagai protected CI.

@@ -182,3 +182,11 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 - [ ] Test relevan dijalankan atau dijelaskan.
 - [ ] Enam Markdown root yang terdampak aturan/standar telah sinkron.
 - [ ] Dokumentasi, ADR, dan feature tracking diperbarui sesuai perubahan.
+
+## 10. Kandidat Release Readiness Tahap 16
+
+| Area | Status | Bukti lokal | Sisa gate |
+|---|---|---|---|
+| Empat alert dependency mobile | `[~] In Progress` | Dua advisory pada dua lockfile diperbaiki tanpa exception; audit npm kedua mobile 0 | Commit/PR dan Dependabot default branch belum diperbarui |
+| Supply chain image | `[~] In Progress` | 21 SBOM CycloneDX; 21 laporan Trivy dengan 0 High/Critical fixable; upstream builder dipin | Registry digest/provenance dan protected CI belum tersedia |
+| Kesiapan deployment | `[~] In Progress` | Compose, Nginx, header, ZAP pasif, rollback lokal, dan dry-run runbook diverifikasi | Secret/TLS/capacity/backup target serta persetujuan VPS belum tersedia |

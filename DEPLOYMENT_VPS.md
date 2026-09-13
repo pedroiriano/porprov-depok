@@ -961,3 +961,16 @@ dan log pascadeploy terverifikasi. Berikan handoff tanpa credential.
 
 Agent AI tidak boleh menukar keamanan dan integritas data demi menyelesaikan
 pekerjaan lebih cepat.
+
+## 23. Baseline Kandidat Tahap 16
+
+Kandidat yang boleh diajukan ke Git delivery berikutnya memakai migrator
+`4.20.1-porprov.1`, PostgreSQL 15/PostGIS 3.5 Alpine, Prometheus
+`3.13.3-porprov.1`, dan Go builder 1.26.6. Commit upstream builder wajib dipin
+dan diverifikasi saat build. Sebelum deployment, 21 image buatan repository
+wajib memiliki SBOM CycloneDX dan nol High/Critical fixable pada Trivy.
+
+Status lokal tidak menggantikan protected CI, registry digest, backup target,
+validasi secret/TLS production, kapasitas VPS, maintenance window, atau
+persetujuan eksplisit. Runbook ringkas wajib menggunakan origin canonical
+`https://porprov.depok.go.id`; alamat IP hanya untuk SSH atau SNI loopback.

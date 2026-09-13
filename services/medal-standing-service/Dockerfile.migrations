@@ -1,2 +1,19 @@
-FROM migrate/migrate:v4.18.2
+FROM golang:1.26.6-alpine3.24 AS builder
+
+RUN apk add --no-cache git
+WORKDIR /src
+RUN git init \
+    && git remote add origin https://github.com/golang-migrate/migrate.git \
+    && git fetch --depth 1 origin refs/tags/v4.20.1 \
+    && test "$(git rev-parse FETCH_HEAD)" = "504568a3cbd23b8754760f55a3d89aec1b0c4963" \
+    && git checkout --detach FETCH_HEAD \
+    && go get golang.org/x/crypto@v0.56.0 golang.org/x/text@v0.41.0 google.golang.org/grpc@v1.83.2 \
+    && go mod tidy \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -tags "postgres" -ldflags="-s -w -X main.Version=4.20.1-porprov.1" -o /out/migrate ./cmd/migrate
+
+FROM alpine:3.24
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates
+COPY --from=builder /out/migrate /usr/local/bin/migrate
 COPY services/medal-standing-service/migrations /migrations
+ENTRYPOINT ["migrate"]
