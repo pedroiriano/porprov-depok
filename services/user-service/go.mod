@@ -6,7 +6,7 @@ require (
 	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-chi/cors v1.2.2
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/porprov-xv/porprov-depok/packages/messaging v0.0.0-00010101000000-000000000000
 )
 
