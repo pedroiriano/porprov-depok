@@ -151,3 +151,14 @@ Exception dependency harus exact-ID, exact-package, exact-project, beralasan, te
 ## Prinsip Hak Cipta dan Orisinalitas
 
 Techwind Public dan Cuba Admin adalah dua otoritas visual yang dipisahkan tegas. Produk lain tidak boleh dijadikan sumber visual ketiga. Jangan menyalin brand, logo, demo copy, atau identitas pihak ketiga; fidelity template hanya berlaku pada anatomy, layout, spacing, density, responsive behavior, dan interaction pattern yang diadaptasi dengan identitas serta design tokens PORPROV.
+
+## Baseline Keamanan Image Tahap 16
+
+- Builder eksternal wajib memverifikasi commit SHA tag upstream sebelum build.
+- Baseline lokal memakai migrator `4.20.1-porprov.1`, PostgreSQL 15/PostGIS 3.5
+  Alpine, Prometheus `3.13.3-porprov.1`, dan Go builder 1.26.6.
+- Kedua mobile memaksa `decode-uri-component` 0.5.0 dan `uuid` 11.1.1. Empat
+  alert Moderate lama tidak memakai exception dan harus hilang setelah Git
+  delivery memperbarui default branch.
+- SBOM/Trivy lokal tidak menggantikan CodeQL/dependency review pada SHA Git
+  final dan tidak memberi izin deploy.

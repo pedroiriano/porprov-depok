@@ -3,7 +3,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/postgres/Dockerfile
-    image: porprov/postgres:15-postgis
+    image: porprov/postgres:15-3.5-porprov.1
     container_name: porprov_postgres
     restart: always
     environment:
@@ -578,7 +578,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/prometheus/Dockerfile
-    image: porprov/prometheus:v2.45.0
+    image: porprov/prometheus:v3.13.3-porprov.1
     container_name: porprov_prometheus
     restart: always
     ports:

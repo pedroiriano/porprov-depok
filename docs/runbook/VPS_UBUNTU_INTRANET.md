@@ -13,14 +13,14 @@ masuk Git.
 
 | Area | Endpoint |
 |---|---|
-| Public Web intranet | `https://<IP-VPS>/` (`http://` hanya redirect) |
-| Admin Web | `https://<IP-VPS>/admin/` |
-| API browser | `https://<IP-VPS>/api/v1` |
-| Keycloak browser | `https://<IP-VPS>/realms/porprov` |
+| Public Web | `https://porprov.depok.go.id/` (`http://` hanya redirect) |
+| Admin Web | `https://porprov.depok.go.id/admin/` |
+| API browser | `https://porprov.depok.go.id/api/v1` |
+| Keycloak browser | `https://porprov.depok.go.id/realms/porprov` |
 
-Admin, Keycloak, dan token API wajib memakai HTTPS. Alamat IP HTTP bukan secure
-context browser sehingga Authorization Code + PKCE gagal saat membentuk code
-challenge melalui Web Crypto.
+Admin, Keycloak, dan token API wajib memakai origin HTTPS canonical yang sama.
+Alamat IP hanya dipakai operator untuk koneksi SSH atau pemeriksaan SNI
+loopback; alamat IP HTTP bukan origin aplikasi dan bukan secure context browser.
 
 Jika Public/Admin/API/Keycloak direcreate, reload atau recreate Nginx setelah
 upstream stabil lalu jalankan smoke HTTPS. Nginx dapat mempertahankan alamat IP
@@ -61,17 +61,19 @@ Host porprov-intranet
 `deploy-vps.sh` idempotent dan memakai `flock`, sehingga reconnect atau
 pengulangan perintah tidak menjalankan dua deployment bersamaan.
 
-## TLS Intranet
+## TLS
 
-Gunakan PKI resmi Diskominfo bila tersedia. Untuk tahap intranet tanpa PKI:
+Gunakan sertifikat resmi yang mencakup `porprov.depok.go.id`. Pemasangan
+canonical memakai installer dengan backup dan rollback otomatis:
 
 ```bash
 cd ~/porprov-depok/infra/docker
-PORPROV_TLS_IP=<IP-VPS> ./generate-intranet-tls.sh
+./install-official-tls.sh <FULLCHAIN_PEM> <PRIVATE_KEY_PEM>
 ```
 
-Distribusikan hanya `infra/docker/tls/ca.crt` ke trust store perangkat operator.
-Jangan pernah menyalin `ca.key` atau `server.key` ke klien.
+Private key tidak boleh masuk Git, prompt, log, atau dibagikan ke klien. Mode CA
+lokal dari `generate-intranet-tls.sh` hanya untuk pengujian terisolasi dan bukan
+identitas production.
 
 ## Environment VPS
 
@@ -79,17 +81,18 @@ Nilai non-secret minimum:
 
 ```dotenv
 APP_ENV=production
-NEXT_PUBLIC_API_URL=http://<IP-VPS>/api/v1
-NEXT_PUBLIC_SITE_URL=http://<IP-VPS>
-VITE_API_URL=https://<IP-VPS>/api/v1
-VITE_OIDC_AUTHORITY=https://<IP-VPS>/realms/porprov
+NEXT_PUBLIC_API_URL=/api/v1
+NEXT_PUBLIC_SITE_URL=https://porprov.depok.go.id
+VITE_API_URL=/api/v1
+VITE_OIDC_AUTHORITY=https://porprov.depok.go.id/realms/porprov
 VITE_OIDC_CLIENT_ID=porprov-admin-web
 VITE_BASE_PATH=/admin/
-KEYCLOAK_PUBLIC_HOST=<IP-VPS>
-KEYCLOAK_ISSUER=https://<IP-VPS>/realms/porprov
-CORS_ALLOWED_ORIGINS=https://<IP-VPS>
-ADMIN_REDIRECT_URIS=["https://<IP-VPS>/admin/*"]
-ADMIN_WEB_ORIGINS=["https://<IP-VPS>"]
+KEYCLOAK_PUBLIC_HOST=porprov.depok.go.id
+KEYCLOAK_ISSUER=https://porprov.depok.go.id/realms/porprov
+CORS_ALLOWED_ORIGINS=https://porprov.depok.go.id
+ADMIN_REDIRECT_URIS=["https://porprov.depok.go.id/admin/*"]
+ADMIN_WEB_ORIGINS=["https://porprov.depok.go.id"]
+PORPROV_DEPLOY_COMMIT=<full SHA commit yang disetujui>
 ```
 
 Semua secret wajib acak, unik, dan hanya berada di `.env` VPS.
