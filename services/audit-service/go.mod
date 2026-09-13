@@ -5,7 +5,7 @@ go 1.26.6
 replace github.com/porprov-xv/porprov-depok/packages/messaging => ../../packages/messaging
 
 require (
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/nats-io/nats.go v1.53.1
 	github.com/porprov-xv/porprov-depok/packages/messaging v0.0.0-00010101000000-000000000000
 )
