@@ -162,3 +162,13 @@ Techwind Public dan Cuba Admin adalah dua otoritas visual yang dipisahkan tegas.
   delivery memperbarui default branch.
 - SBOM/Trivy lokal tidak menggantikan CodeQL/dependency review pada SHA Git
   final dan tidak memberi izin deploy.
+
+## Kontrak Staging Pra-Cutover Tahap 17
+
+- Build production Admin memakai `VITE_ADMIN_CUBA_PHASE_1=true`; nilai `false`
+  tetap menjadi rollback build, bukan runtime paralel.
+- Commit hasil merge, 21 digest image, SBOM, Trivy, checksum backup, latihan
+  migrasi terisolasi, dan salinan backup terenkripsi wajib terikat dalam bukti
+  operasional sebelum cutover.
+- Staging source/config/image tidak memberi izin `docker load`, restart,
+  migrasi production, bootstrap, reload Nginx, atau perubahan data.

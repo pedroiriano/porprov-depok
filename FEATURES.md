@@ -34,7 +34,7 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | Kebijakan otoritas visual terpisah | `[x] Done` | v5.0 | enam root docs, ADR-0015, kontrak UI Admin | Techwind untuk Public dan Cuba untuk Admin; visual language ketiga serta campuran global style dilarang |
 | Tema wajib Techwind Public | `[x] Done` | v4.0 | `theme-reference/HTML/Landing/dist/`, `apps/public-web-nextjs/` | Seluruh rute aktif dipetakan dan diaudit; rute baru wajib mengikuti pola `Landing/dist` |
 | Baseline Techwind Admin aktif | `[x] Done` | v4.0 | `theme-reference/HTML/Dashboard/dist/`, `apps/admin-web-react/` | Dipertahankan sebagai runtime transisi dan rollback; bukan target visual layar baru v5 |
-| Target Cuba Admin | `[~] In Progress` | v12 | `apps/admin-web-react/`, `docs/uiux/` | Seluruh route utama memakai implementasi clean-room tanpa source/aset vendor. Tahap 12 menambah taksonomi dinamis, akun/peran/permission, notifikasi, ApexCharts, Dropzone, sidebar responsif, dan recovery UI; production tetap menunggu deployment terpisah. |
+| Target Cuba Admin | `[~] In Progress` | v17 | `apps/admin-web-react/`, `infra/docker/docker-compose.vps.yml`, `docs/uiux/` | Seluruh route utama memakai implementasi clean-room tanpa source/aset vendor. Build production Tahap 17B mengaktifkan flag Cuba; runtime production tetap menunggu cutover terpisah dan nilai `false` dipertahankan sebagai rollback build. |
 | Kontrak visual Admin Cuba | `[x] Done` | v1.0 | `docs/uiux/ADMIN_CUBA_VISUAL_CONTRACT.md` | Mapping shell/form/table/chart/login/help/media/editor menjadi aturan implementasi clean-room; slice representatif sudah diterapkan tanpa source/aset vendor |
 | Strategi tema terang/gelap | `[x] Done` | v4.0 | Public/Admin CSS + Theme Provider | Class `.dark` menjadi single source of truth; preferensi sistem hanya tema awal; token semantik dan fallback contrast-safe tersedia |
 | Masterpiece quality gate | `[~] In Progress` | v4.1 | public/admin/design system | Audit 27 Juli 2026 mencakup 9 rute Public dan 10 rute Admin pada mobile/desktop, light/dark, lint, build, gambar, overflow, serta Console. Visual regression dan audit WCAG otomatis penuh masih perlu diintegrasikan ke CI |
@@ -190,3 +190,13 @@ Dokumen ini melacak status implementasi fitur, komponen, arsitektur, dan quality
 | Empat alert dependency mobile | `[~] In Progress` | Dua advisory pada dua lockfile diperbaiki tanpa exception; audit npm kedua mobile 0 | Commit/PR dan Dependabot default branch belum diperbarui |
 | Supply chain image | `[~] In Progress` | 21 SBOM CycloneDX; 21 laporan Trivy dengan 0 High/Critical fixable; upstream builder dipin | Registry digest/provenance dan protected CI belum tersedia |
 | Kesiapan deployment | `[~] In Progress` | Compose, Nginx, header, ZAP pasif, rollback lokal, dan dry-run runbook diverifikasi | Secret/TLS/capacity/backup target serta persetujuan VPS belum tersedia |
+
+## 11. Staging Pra-Cutover Tahap 17
+
+| Area | Status | Acceptance criterion |
+|---|---|---|
+| Cuba Admin production build | `[~] In Progress` | Flag build `true`, CI/DevSecOps final PASS, baseline `false` tetap dapat dibangun untuk rollback |
+| Artefak release immutable | `[ ] Planned` | 21 image linux/amd64, digest, SBOM CycloneDX, Trivy 0 High/Critical, checksum tervalidasi |
+| Backup production baru | `[ ] Planned` | Seluruh domain data/config terarsip, checksum PASS, dan salinan terenkripsi off-host PASS |
+| Latihan migrasi terisolasi | `[ ] Planned` | User 2→5, Master 11→15, Audit 2→3, integritas data/Keycloak/Media PASS tanpa menyentuh production |
+| Cutover production | `[ ] Not authorized` | Persetujuan eksplisit baru setelah seluruh gate staging PASS |

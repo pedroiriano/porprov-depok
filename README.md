@@ -149,7 +149,18 @@ Panduan startup lengkap tersedia di [`docs/runbook/LOCAL_DEVELOPMENT.md`](docs/r
 
 Techwind pada `Landing/dist` adalah otoritas Public; kontrak visual Cuba adalah target otoritas Admin. Implementasi Admin wajib clean-room karena repository bersifat publik. Produk lain tidak boleh menjadi visual language ketiga, dan global style kedua template tidak boleh dicampur. Dilarang memublikasikan source, aset premium, brand, logo, demo copy, atau identitas vendor sebagai bagian dari PORPROV.
 
-## Kandidat Hardening Release Tahap 16
+## Kandidat Production Readiness Tahap 17
+
+Tahap 17B mengaktifkan shell Admin Cuba clean-room pada build production melalui
+`VITE_ADMIN_CUBA_PHASE_1=true`. Aktivasi runtime tetap menunggu backup terverifikasi,
+latihan migrasi terisolasi, artefak image berdasarkan commit hasil merge, dan
+persetujuan cutover terpisah. Rollback UI dilakukan dengan build ulang memakai
+flag `false`; tahap ini tidak menghapus baseline rollback atau source/aset vendor.
+
+Rencana, gate penghentian, urutan migrasi, dan bukti yang harus diikat ke commit
+hasil merge dicatat di `docs/release/RELEASE_MANIFEST_V17.md`.
+
+## Baseline Hardening Release Tahap 16
 
 Kandidat lokal setelah commit `a3bc7037d8f1065544910a15194f203c990b54ce`
 menggunakan migrator `4.20.1-porprov.1`, PostgreSQL 15/PostGIS 3.5 Alpine,
@@ -157,5 +168,5 @@ Prometheus `3.13.3-porprov.1`, serta dependency patched
 `decode-uri-component` 0.5.0 dan `uuid` 11.1.1 pada kedua aplikasi mobile.
 Commit upstream builder dipin. Seluruh 21 image buatan repository memiliki
 SBOM CycloneDX dan hasil Trivy lokal tanpa High/Critical fixable. Status ini
-belum menjadi release Git atau izin deployment; lihat
+menjadi baseline keamanan untuk Tahap 17 dan bukan izin deployment; lihat
 `docs/release/RELEASE_READINESS_V16.md`.

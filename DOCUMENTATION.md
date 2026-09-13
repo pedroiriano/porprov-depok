@@ -205,7 +205,7 @@ Public Web canonical tersedia di `http://localhost:3000` dari service `public-we
 
 ### 5.4 Admin Web
 
-Admin Web canonical tersedia di `http://localhost:5173` dari service `admin-web`. Compose lokal mengaktifkan implementasi Cuba clean-room v5.6 yang telah melewati lint/build, smoke runtime, serta visual acceptance terautentikasi; production tetap memakai baseline rollback sampai deployment disetujui. Jangan menjalankan Vite kedua pada port alternatif ketika full stack aktif.
+Admin Web canonical tersedia di `http://localhost:5173` dari service `admin-web`. Compose lokal mengaktifkan implementasi Cuba clean-room v5.6 yang telah melewati lint/build, smoke runtime, serta visual acceptance terautentikasi. Sejak Tahap 17B, build production juga memakai Cuba melalui flag `true`, tetapi runtime production tetap tidak berubah sampai cutover disetujui. Build dengan flag `false` dipertahankan sebagai rollback. Jangan menjalankan Vite kedua pada port alternatif ketika full stack aktif.
 
 Admin Web menggunakan variabel berikut:
 
@@ -214,7 +214,7 @@ Admin Web menggunakan variabel berikut:
 | `VITE_API_URL` | `http://localhost:8000/api/v1` | Satu-satunya entry point API browser |
 | `VITE_OIDC_AUTHORITY` | `http://localhost:8080/realms/porprov` | Authority Keycloak |
 | `VITE_OIDC_CLIENT_ID` | `porprov-admin-web` | Client OIDC Admin Web |
-| `VITE_ADMIN_CUBA_PHASE_1` | `false` (`true` pada overlay lokal) | Memilih shell clean-room Cuba; `false` adalah rollback Techwind |
+| `VITE_ADMIN_CUBA_PHASE_1` | `true` pada overlay lokal dan production | Memilih shell clean-room Cuba; build `false` adalah rollback Techwind |
 
 API Gateway/Realtime menggunakan variabel keamanan berikut:
 
@@ -761,3 +761,19 @@ Runbook VPS telah dikonvergensikan ke origin canonical
 `https://porprov.depok.go.id`; alamat IP hanya untuk SSH atau pemeriksaan SNI
 loopback. Tahap ini tidak melakukan Git delivery, migrasi, deploy, atau akses
 VPS.
+
+## 23. Staging Pra-Cutover Tahap 17
+
+Tahap 17B mempromosikan Cuba clean-room sebagai target build Admin production,
+menyusun Git delivery pada branch terisolasi, dan mewajibkan 21 artefak image
+linux/amd64 yang terikat commit hasil merge. Setelah merge, source, image, dan
+environment hanya boleh ditempatkan pada direktori sibling staging di VPS.
+
+Sebelum cutover, backup baru harus mencakup source beserta perubahan lokal,
+delapan database, Media Library, NATS, Redis, environment, TLS, Nginx,
+Prometheus, dan Grafana. Seluruh checksum serta salinan terenkripsi off-host
+harus lulus. Migrasi User 2→5, Master Data 11→15, dan Audit 2→3 diuji pada
+restore terisolasi. Proses berhenti sebelum load image, swap source, restart,
+migrasi/bootstrap production, reload Nginx, atau perubahan data production.
+
+Manifest gate berada di `docs/release/RELEASE_MANIFEST_V17.md`.

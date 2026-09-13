@@ -128,7 +128,7 @@ Aturan:
 - Techwind wajib untuk Public dan Cuba wajib untuk Admin. Admin Techwind yang berjalan dipertahankan sementara sebagai baseline transisi dan rollback sampai migrasi Cuba lulus parity.
 - Folder upstream `C:\Datas\Proyek\UI\techwind-pembelajaran\source` dan `C:\Datas\Proyek\UI\cuba-pembelajaran\template` hanya boleh dibaca. Build, Docker, test, dan runtime tidak boleh bergantung pada path luar root.
 - Pembelian satu lisensi Cuba untuk satu end product PORPROV telah diverifikasi dan dicatat tanpa purchase code. Karena repository GitHub bersifat publik, source/aset premium Cuba dilarang di-copy, commit, atau didistribusikan melalui repository.
-- Implementasi wajib clean-room berdasarkan kontrak visual repository tanpa menyalin aset/source vendor. Implementasi berada di balik `VITE_ADMIN_CUBA_PHASE_1`; lokal boleh aktif, production wajib tetap nonaktif sampai regression gate disetujui.
+- Implementasi wajib clean-room berdasarkan kontrak visual repository tanpa menyalin aset/source vendor. Implementasi berada di balik `VITE_ADMIN_CUBA_PHASE_1`; setelah regression gate dan otorisasi Tahap 17B, build production memakai nilai `true`. Nilai `false` tetap menjadi rollback build sampai penerimaan pasca-cutover dinyatakan lulus.
 - Source Gulp, demo JavaScript, brand, logo, demo copy, dan identitas vendor tidak boleh masuk runtime. “Sama persis” berarti fidelity anatomy, hierarchy, layout, spacing, density, responsive behavior, dan interaction pattern—bukan menyalin brand atau HTML mentah.
 - Dilarang memakai visual language ketiga atau mengimpor global CSS/JavaScript Techwind dan Cuba secara bersamaan.
 - Tailwind CSS v4.x adalah alat implementasi utility dan token, bukan tema alternatif. Library komponen hanya boleh dipakai untuk perilaku teknis dan harus dinormalisasi terhadap otoritas produk.
@@ -431,3 +431,14 @@ Detail penerapan normatif berada di `docs/governance/ENGINEERING_UIUX_QUALITY_ST
   exception `image-size` terikat waktu tetap satu-satunya exception mobile.
 - Perubahan dependency manifest wajib menjalani dependency review pada PR;
   bukti lokal tidak boleh diklaim sebagai protected CI.
+
+## 26. Gate Staging Pra-Cutover Tahap 17
+
+- Source staging harus berupa sibling directory, bukan menimpa checkout aktif,
+  dan harus mengikat commit hasil merge serta image linux/amd64 immutable.
+- Backup baru wajib mencakup source beserta dirty diff/untracked, seluruh database,
+  Media Library, NATS, Redis, environment, TLS, Nginx, Prometheus, dan Grafana;
+  checksum lokal target serta salinan terenkripsi off-host wajib tervalidasi.
+- Latihan migrasi User 2→5, Master Data 11→15, dan Audit 2→3 hanya boleh
+  dijalankan pada restore terisolasi. Tahap staging berhenti sebelum load image,
+  swap source, Compose up, restart, migrasi/bootstrap production, atau reload Nginx.
