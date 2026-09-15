@@ -25,11 +25,17 @@ tidak boleh dianggap sebagai visitor analytics.
    hasil statistik tersanitasi, bukan token atau credential Umami.
 6. Public Web tetap berfungsi ketika Umami gagal; analytics bukan dependency
    rendering konten publik.
+7. Endpoint koleksi Nginx wajib menuju validator API Gateway. Validator
+   menerapkan allowlist dan batas payload lalu merakit ulang request sebelum
+   meneruskannya ke endpoint Umami internal; browser tidak boleh mem-proxy
+   payload langsung ke Umami.
 
 ## Keamanan dan Privasi
 
 - CSP nonce tetap dipakai tanpa menambahkan `script-src unsafe-inline`.
 - Endpoint koleksi memakai rate limit, hanya menerima POST, dan tidak dicache.
+- Payload koleksi dibatasi ukuran dan skemanya; nilai judul yang menyerupai
+  path/traversal, URL lintas-origin, query/hash, serta field tak dikenal ditolak.
 - Telemetry/update check Umami dinonaktifkan agar data tetap lokal.
 - Session replay, heatmap, dan identifikasi pengguna tidak diaktifkan.
 - Retensi awal diusulkan 13 bulan dan wajib diselaraskan dengan kebijakan

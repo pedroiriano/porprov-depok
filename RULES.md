@@ -200,7 +200,7 @@ Sebuah UI hanya boleh disebut masterpiece bila memenuhi seluruh quality bar beri
 - Database access: utamakan `pgxpool` + `sqlc`; ORM hanya bila disetujui. HTTP service dilarang membagikan satu `pgx.Conn` antargoroutine dan wajib memverifikasi pool dengan `Ping` saat startup.
 - Error database lengkap wajib dicatat pada log internal terstruktur dan tidak boleh dikirim mentah pada response API.
 - Gunakan validator, logging Zap/Zerolog, OpenTelemetry, Prometheus.
-- Analytics pengunjung wajib terpisah dari monitoring teknis dan memakai Umami self-hosted di jaringan internal. Hanya tracker/kolektor same-origin yang boleh diekspos; panel/login/API Umami tetap privat. Tracker wajib menghormati Do Not Track dan dilarang mengirim query, hash, distinct ID, atau identitas akun. Dashboard Admin hanya membaca agregat melalui API Gateway ber-JWT/RBAC; browser tidak boleh menerima credential/token Umami. Access log Nginx tidak boleh dianggap jumlah pengunjung.
+- Analytics pengunjung wajib terpisah dari monitoring teknis dan memakai Umami self-hosted di jaringan internal. Hanya tracker/kolektor same-origin yang boleh diekspos; panel/login/API Umami tetap privat. Kolektor publik wajib melewati validasi API Gateway untuk Origin, website, hostname, tipe event, ukuran body, URL/referrer, dan judul; proxy langsung payload browser ke Umami dilarang. Tracker wajib menghormati Do Not Track dan dilarang mengirim query, hash, distinct ID, atau identitas akun. Dashboard Admin hanya membaca agregat melalui API Gateway ber-JWT/RBAC; browser tidak boleh menerima credential/token Umami. Access log Nginx tidak boleh dianggap jumlah pengunjung.
 - Semua entity persisten mengikuti kontrak soft delete pada Bagian 17.
 - API response wajib mengikuti format:
 ```json
