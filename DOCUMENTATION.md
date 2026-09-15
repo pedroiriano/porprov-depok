@@ -674,6 +674,12 @@ operasional dan tidak boleh dipakai untuk melewati approval gate pada pedoman
 kanonis tersebut. Recreate upstream harus disertai reload/recreate Nginx dan
 smoke HTTPS untuk menghindari cache resolusi DNS Docker lama pada edge.
 
+Insiden Production 15 September 2026 terkait resolver URL media Admin dan
+route proxy gambar Berita Depok telah diperbaiki pada release
+`5cc155ccc72df7b2c606afbd74cbaa025855dae2`. Akar masalah, bukti pascadeploy,
+backup/checksum, image rollback, dan langkah acceptance pengguna dicatat pada
+[`docs/runbook/PRODUCTION_INCIDENT_2026-09-15_MEDIA_PROXY.md`](docs/runbook/PRODUCTION_INCIDENT_2026-09-15_MEDIA_PROXY.md).
+
 ## 19. Standar Engineering, Authoring, dan Nonfungsional v5
 
 `RULES.md` Bagian 20–24 adalah sumber normatif; detail penerapan berada di
