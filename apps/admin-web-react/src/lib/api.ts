@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { resolveMediaUrlFromBase } from './media-url';
 
 export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
 
@@ -52,13 +53,8 @@ export function unwrapApiData<T>(payload: T | ApiEnvelope<T>): T {
 }
 
 export function resolveMediaUrl(value?: string | null): string {
-  if (!value) return '';
-  if (/^https?:\/\//i.test(value) || value.startsWith('data:') || value.startsWith('blob:')) {
-    return value;
-  }
-
-  const gatewayOrigin = new URL(API_BASE_URL).origin;
-  return new URL(value.startsWith('/') ? value : `/${value}`, gatewayOrigin).toString();
+  const browserOrigin = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
+  return resolveMediaUrlFromBase(value, API_BASE_URL, browserOrigin);
 }
 
 export function normalizeStoredMediaUrl(value?: string | null): string {
