@@ -115,6 +115,7 @@ Exception dependency harus exact-ID, exact-package, exact-project, beralasan, te
 
 - Production hanya mengekspos Nginx `80/443`; aplikasi browser masuk melalui origin resmi dan API Gateway.
 - Full-stack development memakai satu baseline `infra/docker/docker-compose.yml`, termasuk Public Web `3000`, Admin `5173`, Gateway `8000`, Keycloak, seluruh core service, migration, data/event infrastructure, observability teknis, dan Umami self-hosted. Panel/API Umami tidak diekspos langsung; tracker publik harus same-origin dan statistik Admin wajib melalui API Gateway ber-JWT/RBAC.
+- Kolektor Umami publik wajib melewati validator API Gateway yang membatasi Origin, website, hostname, tipe event, body, URL/referrer, dan judul halaman; Nginx dilarang mem-proxy payload browser langsung ke Umami.
 - Docker memakai port internal tetap serta DNS nama service. Host port configurable melalui `.env` lokal dari `infra/docker/.env.example`; `.env` aktual tidak dilacak Git.
 - Local debugging memakai namespace `28xxx` hanya untuk satu komponen yang disengaja. Hentikan container domain yang sama dan jangan memakai mode lokal sebagai full-stack kedua.
 - Named volume `master_data_uploads` adalah storage runtime Media Library; jangan menjalankan Master Data lokal terhadap database Docker karena folder uploadnya berbeda.

@@ -151,6 +151,7 @@ func serviceBaseURL(rawURL string) string {
 func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) *chi.Mux {
 	r := chi.NewRouter()
 	analyticsHandler := handler.NewAnalyticsHandler(cfg.UmamiURL, cfg.UmamiUsername, cfg.UmamiPassword, cfg.UmamiWebsiteID)
+	visitorAnalyticsHandler := handler.NewVisitorAnalyticsHandler(cfg.UmamiURL, cfg.UmamiWebsiteID, cfg.AllowedOrigins)
 	integrationHealthHandler := handler.NewIntegrationHealthHandler(cfg)
 	permissionAuthorizer := customMiddleware.NewPermissionAuthorizer(cfg.UserURL)
 	r.Use(securityHeaders)
@@ -174,6 +175,8 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 
 	// Endpoint publik
 	r.Get("/health", handler.HealthCheckHandler)
+	// SECURITY: Kolektor publik divalidasi sebelum diteruskan ke Umami internal.
+	r.Post("/analytics/api/collect", visitorAnalyticsHandler.Collect)
 
 	// Observability: Metrics Endpoint
 	r.Handle("/metrics", promhttp.Handler())

@@ -509,9 +509,11 @@ Wajib: Prometheus, Grafana, Loki, OpenTelemetry, Sentry, Uptime Kuma, Alertmanag
 
 Metrik: API latency p95/p99, error rate, DB query time, Redis hit ratio, NATS consumer lag, WebSocket connection count, failed login rate, LiveScore event latency, CPU/memory/disk, queue lag.
 
-Visitor analytics memakai Umami `3.2.0` self-hosted dengan database dan role PostgreSQL terpisah. Umami tidak memiliki host port dan panelnya tidak dipublikasikan. Nginx hanya meneruskan `/analytics/porprov-insight.js` dan POST `/analytics/api/collect`; seluruh path `/analytics/` lain ditolak. Public Web memuat tracker memakai nonce CSP, domain allowlist, Do Not Track, serta tanpa query/hash/distinct ID.
+Visitor analytics memakai Umami `3.2.0` self-hosted dengan database dan role PostgreSQL terpisah. Umami tidak memiliki host port dan panelnya tidak dipublikasikan. Nginx hanya meneruskan `/analytics/porprov-insight.js` dan POST `/analytics/api/collect`; seluruh path `/analytics/` lain ditolak. Endpoint koleksi diteruskan ke validator API Gateway, bukan langsung ke Umami. Validator membatasi Origin, website, hostname, tipe event, body 16 KiB, URL/referrer, judul, data event, metric, timeout, dan ukuran response; payload yang lolos dirakit ulang sebelum dikirim ke `/api/send` internal. Public Web memuat tracker memakai nonce CSP, domain allowlist, Do Not Track, serta tanpa query/hash/distinct ID.
 
 API Gateway membaca statistik Umami secara server-side dan menerbitkan agregat tersanitasi melalui `GET /api/v1/analytics/overview?days=1|7|30|90`. Endpoint ini membutuhkan JWT dengan role `super_admin` atau `auditor`; credential dan token Umami tidak pernah dikirim ke browser. Dashboard Admin menyediakan pengunjung aktif/unik, page views, rata-rata waktu kunjungan, tren, halaman populer, referrer, perangkat, dan browser. Kegagalan analytics tidak boleh mengganggu rendering Public. Backup wajib mencakup `umami_db`; retensi awal 13 bulan masih menunggu penyelarasan kebijakan Diskominfo sebelum purge otomatis diaktifkan. Lihat `docs/adr/ADR-0014-self-hosted-visitor-analytics.md`.
+
+Temuan ZAP High 15 September 2026 pada `payload.title=/collect` tidak memiliki bukti pembacaan file dan secara teknis merupakan false positive terhadap cara Umami menyimpan judul. Defense-in-depth tetap diterapkan dan diuji agar input path/traversal ditolak sebelum dependency internal. Lihat `docs/security/VA_2026-09-15_ZAP_HIGH_REMEDIATION.md`.
 
 ## 13. Testing
 
