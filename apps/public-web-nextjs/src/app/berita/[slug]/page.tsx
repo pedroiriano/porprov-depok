@@ -79,7 +79,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
         </article>
 
         <aside className="h-fit rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-labelledby="related-news-title">
-          <h2 id="related-news-title" className="rounded-lg bg-slate-100 p-3 text-center text-lg font-black dark:bg-slate-800">Berita terbaru</h2>
+          <h2 id="related-news-title" className="rounded-lg bg-slate-100 p-3 text-center text-lg font-black dark:bg-slate-800">Kabar PORPROV lainnya</h2>
           <div className="mt-4 divide-y divide-slate-200 dark:divide-slate-800">{overview.latest.filter((item) => item.slug !== article.slug).slice(0, 5).map((item) => <Link key={item.id} href={`/berita/${encodeURIComponent(item.slug)}`} className="block min-h-16 py-4 font-bold leading-snug hover:text-primary-600 dark:hover:text-sky-300">{item.title}<small className="mt-1 block font-normal text-slate-500">{formatDate(item.publishedAt)}</small></Link>)}</div>
         </aside>
       </div>
