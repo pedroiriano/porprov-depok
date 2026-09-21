@@ -2,6 +2,9 @@ import "server-only";
 
 const DEFAULT_REVALIDATE_SECONDS = 300;
 const REQUEST_TIMEOUT_MS = 5_000;
+const PORPROV_TAG_PATH = "/api/v1/find-posts-by-tags/PorprovJabar2026";
+const PORPROV_TAG_LABEL = "PORPROV Jabar 2026";
+const MAX_TAG_PAGES = 20;
 
 export interface DepokNewsArticle {
   id: string;
@@ -20,7 +23,7 @@ export type DepokNewsStatus = "ready" | "unconfigured" | "unavailable";
 
 export interface DepokNewsOverview {
   latest: DepokNewsArticle[];
-  popular: DepokNewsArticle[];
+  related: DepokNewsArticle[];
   status: DepokNewsStatus;
 }
 
@@ -204,28 +207,29 @@ export function newsImageProxyPath(value: string): string {
   return isAllowedNewsAssetUrl(value) ? `/api/berita/image?url=${encodeURIComponent(value)}` : "";
 }
 
-async function requestNews(path: string): Promise<{ ok: boolean; items: DepokNewsArticle[] }> {
+async function requestNews(path: string): Promise<{ ok: boolean; items: DepokNewsArticle[]; hasNext: boolean }> {
   const configuration = getNewsConfiguration();
-  if (!configuration) return { ok: false, items: [] };
+  if (!configuration) return { ok: false, items: [], hasNext: false };
   try {
     const endpoint = new URL(path, `${configuration.baseUrl}/`);
-    if (endpoint.origin !== new URL(configuration.baseUrl).origin) return { ok: false, items: [] };
+    if (endpoint.origin !== new URL(configuration.baseUrl).origin) return { ok: false, items: [], hasNext: false };
     const response = await fetch(endpoint, {
       headers: { Accept: "application/json", "x-api-key": configuration.apiKey },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       next: { revalidate: DEFAULT_REVALIDATE_SECONDS },
     });
-    if (!response.ok) return { ok: false, items: [] };
+    if (!response.ok) return { ok: false, items: [], hasNext: false };
     const payload: unknown = await response.json();
     return {
       ok: true,
       items: unwrapNewsPayload(payload)
         .map(normalizeNewsArticle)
         .filter((item): item is DepokNewsArticle => item !== null),
+      hasNext: isRecord(payload) && typeof payload.next_page_url === "string" && payload.next_page_url.length > 0,
     };
   } catch {
     // INFO: Beranda dan halaman berita tetap dapat dirender saat sumber eksternal gagal.
-    return { ok: false, items: [] };
+    return { ok: false, items: [], hasNext: false };
   }
 }
 
@@ -233,18 +237,39 @@ function boundedCount(value: number, maximum: number): number {
   return Math.max(1, Math.min(Math.trunc(value), maximum));
 }
 
-export async function loadDepokNewsOverview(latestCount = 8, popularCount = 5): Promise<DepokNewsOverview> {
-  if (!getNewsConfiguration()) return { latest: [], popular: [], status: "unconfigured" };
-  const [latest, popular] = await Promise.all([
-    requestNews(`/api/v1/latest/${boundedCount(latestCount, 48)}`),
-    requestNews(`/api/v1/popular/${boundedCount(popularCount, 24)}`),
-  ]);
+async function requestTaggedNews(limit: number, targetSlug?: string) {
+  const articles = new Map<string, DepokNewsArticle>();
+  for (let page = 1; page <= MAX_TAG_PAGES; page += 1) {
+    // SECURITY: Nomor halaman dibentuk sendiri; next_page_url dari API tidak
+    // pernah diikuti agar sumber eksternal tidak dapat mengubah host request.
+    const result = await requestNews(`${PORPROV_TAG_PATH}?page=${page}`);
+    if (!result.ok) return { items: [...articles.values()], ok: false, complete: false };
+    for (const item of result.items) {
+      articles.set(item.slug, { ...item, tags: item.tags.length > 0 ? item.tags : [PORPROV_TAG_LABEL] });
+    }
+    if (targetSlug && articles.has(targetSlug)) {
+      return { items: [...articles.values()], ok: true, complete: false };
+    }
+    if (!result.hasNext) return { items: [...articles.values()], ok: true, complete: true };
+    if (!targetSlug && articles.size >= limit) {
+      return { items: [...articles.values()], ok: true, complete: false };
+    }
+  }
+  return { items: [...articles.values()], ok: true, complete: false };
+}
+
+export async function loadDepokNewsOverview(latestCount = 8, relatedCount = 5): Promise<DepokNewsOverview> {
+  if (!getNewsConfiguration()) return { latest: [], related: [], status: "unconfigured" };
+  const latestLimit = boundedCount(latestCount, 100);
+  const relatedLimit = Math.max(0, Math.min(Math.trunc(relatedCount), 24));
+  const tagged = await requestTaggedNews(latestLimit + relatedLimit);
+  const related = tagged.items.slice(latestLimit, latestLimit + relatedLimit);
   return {
-    // INFO: API populer dapat mengembalikan lebih banyak item daripada parameter
-    // jumlah, jadi batas tampilan tetap ditegakkan pada consumer tepercaya.
-    latest: latest.items.slice(0, boundedCount(latestCount, 48)),
-    popular: popular.items.slice(0, boundedCount(popularCount, 24)),
-    status: latest.ok || popular.ok ? "ready" : "unavailable",
+    latest: tagged.items.slice(0, latestLimit),
+    // INFO: Endpoint bertag tidak menyediakan peringkat populer. Sidebar
+    // memakai berita terkait berikutnya, lalu fallback ke awal feed.
+    related: related.length > 0 ? related : tagged.items.slice(0, relatedLimit),
+    status: tagged.ok ? "ready" : "unavailable",
   };
 }
 
@@ -253,18 +278,20 @@ export async function loadDepokNewsBySlug(slug: string): Promise<{ article: Depo
   const configuration = getNewsConfiguration();
   if (!configuration) return { article: null, status: "unconfigured" };
 
+  // SECURITY: Slug harus terbukti anggota feed bertag sebelum detail opsional
+  // dipanggil. Artikel di luar tag tidak boleh muncul melalui URL langsung.
+  const tagged = await requestTaggedNews(100, slug);
+  const taggedArticle = tagged.items.find((item) => item.slug === slug);
+  if (!taggedArticle) return { article: null, status: tagged.complete ? "ready" : "unavailable" };
+
   const detailTemplate = process.env.BERITA_DEPOK_DETAIL_PATH_TEMPLATE?.trim();
   if (detailTemplate?.startsWith("/") && detailTemplate.includes("{slug}")) {
     const detail = await requestNews(detailTemplate.replace("{slug}", encodeURIComponent(slug)));
-    const exact = detail.items.find((item) => item.slug === slug) ?? detail.items[0] ?? null;
-    if (detail.ok && exact) return { article: exact, status: "ready" };
+    const exact = detail.items.find((item) => item.slug === slug);
+    if (detail.ok && exact) return { article: { ...exact, tags: taggedArticle.tags }, status: "ready" };
   }
 
-  // INFO: Koleksi Postman belum mendefinisikan URL bySlug. Fallback terbatas
-  // mencari slug pada feed yang sudah terdokumentasi, tanpa mengarang endpoint.
-  const overview = await loadDepokNewsOverview(48, 24);
-  return {
-    article: [...overview.latest, ...overview.popular].find((item) => item.slug === slug) ?? null,
-    status: overview.status,
-  };
+  // INFO: API bertag hanya menyediakan judul, caption foto, dan metadata;
+  // sumber resmi tetap ditautkan untuk membaca artikel lengkap.
+  return { article: taggedArticle, status: "ready" };
 }

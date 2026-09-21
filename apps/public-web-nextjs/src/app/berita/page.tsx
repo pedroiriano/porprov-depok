@@ -5,8 +5,8 @@ import { PublicPageHero } from "@/components/PublicPageHero";
 import { loadDepokNewsOverview } from "@/lib/depok-news";
 
 export const metadata: Metadata = {
-  title: "Berita Kota Depok",
-  description: "Berita terkini dan populer dari Portal Berita Depok untuk masyarakat dan peserta PORPROV XV Jawa Barat 2026.",
+  title: "Berita PORPROV Jabar 2026",
+  description: "Berita terkait PORPROV XV Jawa Barat 2026 dari Portal Berita Depok untuk masyarakat, atlet, dan peserta.",
   alternates: { canonical: "/berita" },
 };
 
@@ -37,7 +37,7 @@ export default async function NewsPage({
   const tag = singleValue(params.tag).slice(0, 80);
   const requestedPage = singleValue(params.page);
   const page = /^\d{1,5}$/.test(requestedPage) ? Math.max(1, Number.parseInt(requestedPage, 10)) : 1;
-  const news = await loadDepokNewsOverview(48, 8);
+  const news = await loadDepokNewsOverview(100, 8);
   const normalizedQuery = query.toLocaleLowerCase("id");
   const filtered = news.latest.filter((article) => {
     const queryMatches = !normalizedQuery || `${article.title} ${article.summary}`.toLocaleLowerCase("id").includes(normalizedQuery);
@@ -51,7 +51,7 @@ export default async function NewsPage({
 
   return (
     <main className="bg-slate-50 dark:bg-slate-950">
-      <PublicPageHero eyebrow="Kabar Kota Tuan Rumah" title="Berita Kota Depok" description="Ikuti kabar terkini Kota Depok dari sumber resmi untuk melengkapi informasi PORPROV XV Jawa Barat 2026." icon="ri-newspaper-line" breadcrumbs={[{ label: "Berita" }]} />
+      <PublicPageHero eyebrow="Kabar Kota Tuan Rumah" title="Berita PORPROV Jabar 2026" description="Ikuti berita terkait PORPROV XV Jawa Barat 2026 dari Portal Berita Depok." icon="ri-newspaper-line" breadcrumbs={[{ label: "Berita" }]} />
       <div className="container grid gap-10 py-14 md:py-20 lg:grid-cols-[minmax(0,2fr)_320px]">
         <section aria-labelledby="news-list-title">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -90,8 +90,8 @@ export default async function NewsPage({
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-labelledby="popular-sidebar-title">
-            <h2 id="popular-sidebar-title" className="rounded-lg bg-slate-100 p-3 text-center text-lg font-black dark:bg-slate-800">Berita populer</h2>
-            <div className="mt-4 divide-y divide-slate-200 dark:divide-slate-800">{news.popular.map((article) => <Link key={article.id} href={`/berita/${encodeURIComponent(article.slug)}`} className="block min-h-16 py-4 font-bold leading-snug hover:text-primary-600 dark:hover:text-sky-300">{article.title}</Link>)}</div>
+            <h2 id="popular-sidebar-title" className="rounded-lg bg-slate-100 p-3 text-center text-lg font-black dark:bg-slate-800">Kabar PORPROV lainnya</h2>
+            <div className="mt-4 divide-y divide-slate-200 dark:divide-slate-800">{news.related.map((article) => <Link key={article.id} href={`/berita/${encodeURIComponent(article.slug)}`} className="block min-h-16 py-4 font-bold leading-snug hover:text-primary-600 dark:hover:text-sky-300">{article.title}</Link>)}</div>
           </section>
 
           {tags.length > 0 && (

@@ -10,8 +10,8 @@ export async function NewsSection() {
         <div className="grid items-end gap-6 md:grid-cols-12">
           <div className="text-center md:col-span-8 md:text-start">
             <p className="text-sm font-black uppercase tracking-[0.2em] text-primary-600 dark:text-sky-300">Kabar Kota Tuan Rumah</p>
-            <h2 id="featured-news-title" className="mt-3 text-3xl font-black tracking-tight md:text-4xl">Berita Pilihan Depok</h2>
-            <p className="mt-4 max-w-2xl text-slate-600 dark:text-slate-300">Informasi terkini Kota Depok untuk menyertai perjalanan PORPROV XV Jawa Barat 2026.</p>
+            <h2 id="featured-news-title" className="mt-3 text-3xl font-black tracking-tight md:text-4xl">Kabar PORPROV Jabar 2026</h2>
+            <p className="mt-4 max-w-2xl text-slate-600 dark:text-slate-300">Berita terkait persiapan dan penyelenggaraan PORPROV XV Jawa Barat 2026 dari Portal Berita Depok.</p>
           </div>
           <div className="text-center md:col-span-4 md:text-end">
             <Link href="/berita" className="inline-flex min-h-11 items-center font-black text-primary-600 hover:text-primary-700 dark:text-sky-300">Lihat semua berita <i className="ri-arrow-right-line ms-2" aria-hidden="true" /></Link>
@@ -30,9 +30,9 @@ export async function NewsSection() {
               {news.latest.map((article) => <NewsCard key={article.id} article={article} horizontal />)}
             </div>
             <aside className="h-fit rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-28 lg:col-span-4 lg:self-start" aria-labelledby="popular-news-title">
-              <h3 id="popular-news-title" className="rounded-lg bg-slate-100 p-3 text-center text-lg font-black dark:bg-slate-800">Berita populer</h3>
+              <h3 id="popular-news-title" className="rounded-lg bg-slate-100 p-3 text-center text-lg font-black dark:bg-slate-800">Kabar PORPROV lainnya</h3>
               <div className="mt-5 divide-y divide-slate-200 dark:divide-slate-800">
-                {news.popular.map((article, index) => (
+                {news.related.map((article, index) => (
                   <Link key={article.id} href={`/berita/${encodeURIComponent(article.slug)}`} className="group flex min-h-20 gap-4 py-4">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-500/10 font-black text-primary-600 dark:text-sky-300">{String(index + 1).padStart(2, "0")}</span>
                     <span><strong className="line-clamp-2 leading-snug group-hover:text-primary-600 dark:group-hover:text-sky-300">{article.title}</strong><small className="mt-1 block text-slate-500">Portal Berita Depok</small></span>

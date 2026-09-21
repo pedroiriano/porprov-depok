@@ -14,9 +14,9 @@ function getSiteUrl() {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl();
   const lastModified = new Date();
-  const news = await loadDepokNewsOverview(48, 24);
+  const news = await loadDepokNewsOverview(100, 0);
   const articles = Array.from(
-    new Map([...news.latest, ...news.popular].map((article) => [article.slug, article])).values(),
+    new Map(news.latest.map((article) => [article.slug, article])).values(),
   );
 
   const staticRoutes: MetadataRoute.Sitemap = PUBLIC_ROUTES.map((route) => ({
