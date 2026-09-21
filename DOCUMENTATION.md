@@ -515,6 +515,8 @@ API Gateway membaca statistik Umami secara server-side dan menerbitkan agregat t
 
 Temuan ZAP High 15 September 2026 pada `payload.title=/collect` tidak memiliki bukti pembacaan file dan secara teknis merupakan false positive terhadap cara Umami menyimpan judul. Defense-in-depth tetap diterapkan dan diuji agar input path/traversal ditolak sebelum dependency internal. Lihat `docs/security/VA_2026-09-15_ZAP_HIGH_REMEDIATION.md`.
 
+Hotfix aktif di production sejak 21 September 2026 pada commit `ecbbb270bb7dd8e604654b26f7f71bfa68095bd9`; backup source/config, delapan database, dan Media Library ber-checksum tersedia tanpa migrasi atau perubahan data bisnis. ZAP pasif pascadeploy tidak menemukan High, tetapi satu alert Medium SRI pada preload gambar same-origin ditriase terpisah tanpa mengubah konten. Detail image digest, lokasi rollback, dan hash laporan berada pada catatan remediasi di atas.
+
 ## 13. Testing
 
 Backend: unit, integration, contract, migration, load, stress, security.  
