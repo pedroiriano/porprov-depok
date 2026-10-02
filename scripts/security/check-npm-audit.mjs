@@ -95,6 +95,7 @@ const blockingPackages = Object.entries(vulnerabilities)
   .filter(([, vulnerability]) => isBlockingSeverity(vulnerability.severity));
 const unapproved = [];
 const approvedIds = new Set();
+const approvedExpiryDates = new Set();
 const now = new Date();
 
 for (const [packageName] of blockingPackages) {
@@ -123,6 +124,7 @@ for (const [packageName] of blockingPackages) {
     }
 
     approvedIds.add(finding.id);
+    approvedExpiryDates.add(exception.expiresOn);
   }
 }
 
@@ -132,8 +134,9 @@ if (unapproved.length > 0) {
 }
 
 const summary = report.metadata?.vulnerabilities ?? {};
+const latestApprovedExpiry = [...approvedExpiryDates].sort().at(-1);
 const exceptionSummary = approvedIds.size > 0
-  ? `; temporary exceptions=${[...approvedIds].sort().join(',')} until 2026-10-07`
+  ? `; temporary exceptions=${[...approvedIds].sort().join(',')} until ${latestApprovedExpiry}`
   : '';
 console.log(
   `PASS npm audit ${projectPath}: critical=${summary.critical ?? 0}, high=${summary.high ?? 0}, moderate=${summary.moderate ?? 0}${exceptionSummary}`,

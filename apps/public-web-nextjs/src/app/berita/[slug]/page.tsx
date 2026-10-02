@@ -66,7 +66,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
           {imageUrl && (
             // SECURITY: Proxy same-origin menjaga CSP/COEP dan membatasi host sumber.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="" className="max-h-[560px] w-full object-cover" />
+            <img src={imageUrl} alt="" loading="lazy" decoding="async" className="max-h-[560px] w-full object-cover" />
           )}
           <div className="p-6 sm:p-8 lg:p-10">
             <div className="flex flex-wrap gap-2">{article.tags.map((tag) => <Link key={tag} href={`/berita?tag=${encodeURIComponent(tag)}`} className="inline-flex min-h-11 items-center rounded-full bg-primary-500/10 px-4 text-sm font-black text-primary-700 dark:text-sky-300">{tag}</Link>)}</div>

@@ -59,7 +59,7 @@ export function CaborDirectory({ cabors }: { cabors: CaborModel[] }) {
                 <span className="relative flex size-24 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-white/95 text-4xl text-primary-700 shadow-lg">
                   {cabor.iconUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={cabor.iconUrl} alt="" className="size-16 object-contain" />
+                    <img src={cabor.iconUrl} alt="" loading="lazy" decoding="async" className="size-16 object-contain" />
                   ) : <i className="ri-medal-fill" aria-hidden="true" />}
                 </span>
               </div>

@@ -18,7 +18,7 @@ function buildContentSecurityPolicy(nonce: string) {
     // attribute dinamis. Scope ini lebih sempit daripada unsafe-inline pada
     // seluruh style-src.
     "style-src-attr 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://unpkg.com",
+    "img-src 'self' data: blob: https://*.tile.openstreetmap.org",
     "font-src 'self' data:",
     "connect-src 'self'",
     "manifest-src 'self'",

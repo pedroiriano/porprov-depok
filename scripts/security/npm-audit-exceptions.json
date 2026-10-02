@@ -21,6 +21,17 @@
         "apps/mobile-admin-react-native"
       ],
       "reason": "No patched npm release exists. The package is reached through Metro build tooling and is not shipped in the application runtime bundle."
+    },
+    {
+      "id": "GHSA-86w9-cpqp-85rv",
+      "package": "node-forge",
+      "severity": "high",
+      "expiresOn": "2026-10-16",
+      "projects": [
+        "apps/mobile-public-react-native",
+        "apps/mobile-admin-react-native"
+      ],
+      "reason": "No patched npm release exists as of 2026-10-02. The vulnerable RSA verification path is reached only through Expo CLI code-signing tooling and is not shipped in either mobile runtime bundle; production web services do not execute this package."
     }
   ]
 }

@@ -77,7 +77,7 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
         <div className="absolute inset-0 bg-gradient-to-br from-primary-900 via-slate-950 to-slate-900" aria-hidden="true" />
         {venue.imageUrl && (
           // PERFORMANCE: URL Media Library ditentukan saat runtime.
-          <img src={venue.imageUrl} alt="" className="absolute inset-0 size-full object-cover opacity-45" />
+          <img src={venue.imageUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover opacity-45" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" aria-hidden="true" />
         <div className="container relative flex min-h-[520px] flex-col justify-end py-14">

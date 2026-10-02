@@ -30,7 +30,7 @@ export function ScheduleMatchCard({ match, compact = false }: ScheduleMatchCardP
               {match.caborIconUrl ? (
                 // PERFORMANCE: Ikon Media Library ditentukan pada runtime.
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={match.caborIconUrl} alt="" className="size-7 object-contain" />
+                <img src={match.caborIconUrl} alt="" loading="lazy" decoding="async" className="size-7 object-contain" />
               ) : <i className="ri-medal-line text-xl" aria-hidden="true" />}
             </span>
             <div className="min-w-0">
