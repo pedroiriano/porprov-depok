@@ -28,6 +28,10 @@ tidak menyimpan token atau identitas pengguna.
 - Gate dependency menaikkan Next.js ke `16.3.8`, Axios ke `1.20.0`, dan
   transitive `brace-expansion` ke versi patched; runtime API Gateway juga
   menjalankan pembaruan paket keamanan Alpine saat image dibangun.
+- Advisory `GHSA-86w9-cpqp-85rv` pada `node-forge` belum mempunyai rilis
+  patched. Dependency hanya berada pada Expo CLI code-signing tooling, tidak
+  masuk runtime Web/VPS maupun bundle mobile, dan diberi exception terbatas
+  sampai 16 Oktober 2026 agar upstream wajib dievaluasi ulang.
 
 ## Kriteria Verifikasi
 
