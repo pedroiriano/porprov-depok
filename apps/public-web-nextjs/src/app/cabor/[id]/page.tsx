@@ -67,10 +67,10 @@ export default async function CaborDetailPage({ params }: { params: Promise<{ id
           <>
             {/* PERFORMANCE: Lapisan blur mengisi kanvas tanpa mengubah rasio gambar utama. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cabor.heroImageUrl} alt="" className="absolute inset-0 size-full scale-105 object-cover opacity-55 blur-xl" aria-hidden="true" />
+            <img src={cabor.heroImageUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full scale-105 object-cover opacity-55 blur-xl" aria-hidden="true" />
             {/* ACCESSIBILITY: object-contain mempertahankan seluruh komposisi Hero tanpa crop atau distorsi. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cabor.heroImageUrl} alt="" className="absolute inset-0 size-full object-contain brightness-110" aria-hidden="true" />
+            <img src={cabor.heroImageUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-contain brightness-110" aria-hidden="true" />
           </>
         )}
         <div className={`absolute inset-0 ${cabor.heroImageUrl ? "bg-slate-950/40" : "opacity-20 [background-image:radial-gradient(circle_at_75%_25%,white_0,transparent_28%)]"}`} aria-hidden="true" />
@@ -81,7 +81,7 @@ export default async function CaborDetailPage({ params }: { params: Promise<{ id
             <span className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-white/20 bg-white/10 text-5xl backdrop-blur">
               {cabor.iconUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={cabor.iconUrl} alt={`Ikon ${cabor.name}`} className="size-20 object-contain" />
+                <img src={cabor.iconUrl} alt={`Ikon ${cabor.name}`} loading="lazy" decoding="async" className="size-20 object-contain" />
               ) : <i className="ri-medal-fill" aria-hidden="true" />}
             </span>
             <div><p className="text-sm font-black uppercase tracking-[0.2em] text-primary-100">{cabor.category}</p><h1 className="mt-2 text-4xl font-black tracking-tight md:text-6xl">{cabor.name}</h1><p className="mt-4 max-w-3xl text-lg leading-relaxed text-blue-50">{cabor.description}</p></div>

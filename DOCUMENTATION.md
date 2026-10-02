@@ -515,6 +515,14 @@ API Gateway membaca statistik Umami secara server-side dan menerbitkan agregat t
 
 Temuan ZAP High 15 September 2026 pada `payload.title=/collect` tidak memiliki bukti pembacaan file dan secara teknis merupakan false positive terhadap cara Umami menyimpan judul. Defense-in-depth tetap diterapkan dan diuji agar input path/traversal ditolak sebelum dependency internal. Lihat `docs/security/VA_2026-09-15_ZAP_HIGH_REMEDIATION.md`.
 
+Laporan ZAP Attack 21 September 2026 ditriage berdasarkan origin. Dua alert High
+pada kolektor analitik ditutup dengan penolakan path internal serta error
+validasi deterministik; marker Leaflet dipindahkan menjadi same-origin dan
+preload gambar dinamis dihilangkan. Alert Medium/Low yang seluruh instancenya
+berasal dari Google/OpenStreetMap tidak diklaim sebagai celah server PORPROV.
+Detail klasifikasi dan acceptance criteria tersedia di
+`docs/security/VA_2026-09-21_ZAP_ATTACK_REMEDIATION.md`.
+
 ## 13. Testing
 
 Backend: unit, integration, contract, migration, load, stress, security.  

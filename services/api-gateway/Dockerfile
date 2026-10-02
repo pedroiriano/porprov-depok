@@ -6,7 +6,10 @@ COPY services/api-gateway/ ./
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/api-gateway .
 
 FROM alpine:3.21
-RUN apk add --no-cache ca-certificates && addgroup -S porprov && adduser -S porprov -G porprov
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates \
+    && addgroup -S porprov \
+    && adduser -S porprov -G porprov
 COPY --from=builder /out/api-gateway /usr/local/bin/api-gateway
 USER porprov
 EXPOSE 8000

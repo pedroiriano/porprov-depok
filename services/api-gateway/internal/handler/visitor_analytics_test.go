@@ -95,7 +95,10 @@ func TestVisitorAnalyticsRejectsTraversalAndUntrustedPayloads(t *testing.T) {
 		body   string
 		origin string
 	}{
-		{name: "ZAP attack value", body: validPayload("/collect", "porprov.depok.go.id", "/")},
+		{name: "ZAP title attack value", body: validPayload("/collect", "porprov.depok.go.id", "/")},
+		{name: "ZAP URL attack value", body: validPayload("Beranda", "porprov.depok.go.id", "/collect")},
+		{name: "reserved analytics path", body: validPayload("Beranda", "porprov.depok.go.id", "/analytics/api/collect")},
+		{name: "reserved API path", body: validPayload("Beranda", "porprov.depok.go.id", "/api/v1/master-data/cabors")},
 		{name: "relative traversal", body: validPayload("../etc/passwd", "porprov.depok.go.id", "/")},
 		{name: "double encoded traversal", body: validPayload("%252e%252e%252fetc", "porprov.depok.go.id", "/")},
 		{name: "control character", body: validPayload("judul\x00rahasia", "porprov.depok.go.id", "/")},
@@ -119,6 +122,35 @@ func TestVisitorAnalyticsRejectsTraversalAndUntrustedPayloads(t *testing.T) {
 	}
 	if calls.Load() != 0 {
 		t.Fatalf("rejected payload reached upstream %d times", calls.Load())
+	}
+}
+
+func TestVisitorAnalyticsRejectsSQLScannerPayloadDeterministically(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer upstream.Close()
+	handler := NewVisitorAnalyticsHandler(upstream.URL, analyticsTestWebsiteID, []string{"https://porprov.depok.go.id"})
+
+	var responseBody string
+	for _, screen := range []string{`800x600" AND "1"="1" --`, `800x600" AND "1"="2" --`} {
+		body := fmt.Sprintf(`{"type":"event","payload":{"website":%q,"hostname":"porprov.depok.go.id","url":"/","title":"Beranda","screen":%q}}`, analyticsTestWebsiteID, screen)
+		recorder := httptest.NewRecorder()
+		handler.Collect(recorder, analyticsRequest(body))
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("expected deterministic 400, got %d: %s", recorder.Code, recorder.Body.String())
+		}
+		if responseBody == "" {
+			responseBody = recorder.Body.String()
+		} else if recorder.Body.String() != responseBody {
+			t.Fatalf("scanner variants returned different bodies: %q != %q", recorder.Body.String(), responseBody)
+		}
+	}
+	if calls.Load() != 0 {
+		t.Fatalf("SQL scanner payload reached upstream %d times", calls.Load())
 	}
 }
 

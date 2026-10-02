@@ -5,12 +5,11 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Fix Leaflet's default icon path issues in Next.js
+// SECURITY: Ikon Leaflet di-self-host agar peta tidak bergantung pada CDN pihak ketiga.
 const customIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  crossOrigin: "anonymous",
+  iconUrl: "/assets/leaflet/marker-icon.png",
+  iconRetinaUrl: "/assets/leaflet/marker-icon-2x.png",
+  shadowUrl: "/assets/leaflet/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],

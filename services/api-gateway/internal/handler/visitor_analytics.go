@@ -50,6 +50,11 @@ type visitorAnalyticsEnvelope struct {
 	Payload visitorAnalyticsPayload `json:"payload"`
 }
 
+type visitorAnalyticsClientError struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
 // VisitorAnalyticsHandler menjadi batas validasi same-origin sebelum data anonim diteruskan ke Umami.
 type VisitorAnalyticsHandler struct {
 	endpoint       string
@@ -142,12 +147,17 @@ func pathHasTraversal(path string) bool {
 	return false
 }
 
+func reservedAnalyticsPagePath(path string) bool {
+	normalized := strings.ToLower(strings.TrimSuffix(path, "/"))
+	return normalized == "/collect" || normalized == "/api" || strings.HasPrefix(normalized, "/api/") || normalized == "/analytics" || strings.HasPrefix(normalized, "/analytics/")
+}
+
 func (h *VisitorAnalyticsHandler) validatePageURL(raw string) error {
 	if len(raw) == 0 || len(raw) > 2048 || hasControlCharacters(raw) {
 		return errors.New("invalid page URL")
 	}
 	parsed, err := url.Parse(raw)
-	if err != nil || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.User != nil || pathHasTraversal(parsed.EscapedPath()) {
+	if err != nil || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.User != nil || pathHasTraversal(parsed.EscapedPath()) || reservedAnalyticsPagePath(parsed.Path) {
 		return errors.New("invalid page URL")
 	}
 	if parsed.IsAbs() {
@@ -181,6 +191,15 @@ func sanitizeAnalyticsReferrer(raw string) (string, error) {
 	parsed.RawQuery = ""
 	parsed.Fragment = ""
 	return parsed.String(), nil
+}
+
+// SECURITY: Error validasi kolektor bersifat deterministik agar payload berbeda
+// tidak menghasilkan oracle berbasis timestamp/request ID untuk scanner maupun klien.
+func writeVisitorAnalyticsClientError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(visitorAnalyticsClientError{Success: false, Message: message})
 }
 
 func validateAnalyticsMetric(value *float64) bool {
@@ -258,16 +277,16 @@ func (h *VisitorAnalyticsHandler) Collect(w http.ResponseWriter, r *http.Request
 	}
 	origin, err := canonicalAnalyticsOrigin(r.Header.Get("Origin"))
 	if err != nil {
-		response.Error(w, r, http.StatusForbidden, "Origin analitik tidak diizinkan", nil)
+		writeVisitorAnalyticsClientError(w, http.StatusForbidden, "Permintaan analitik ditolak")
 		return
 	}
 	if _, ok := h.allowedOrigins[origin]; !ok {
-		response.Error(w, r, http.StatusForbidden, "Origin analitik tidak diizinkan", nil)
+		writeVisitorAnalyticsClientError(w, http.StatusForbidden, "Permintaan analitik ditolak")
 		return
 	}
 	contentType := strings.ToLower(strings.TrimSpace(strings.Split(r.Header.Get("Content-Type"), ";")[0]))
 	if contentType != "application/json" {
-		response.Error(w, r, http.StatusUnsupportedMediaType, "Format analitik harus JSON", nil)
+		writeVisitorAnalyticsClientError(w, http.StatusUnsupportedMediaType, "Permintaan analitik ditolak")
 		return
 	}
 
@@ -276,15 +295,15 @@ func (h *VisitorAnalyticsHandler) Collect(w http.ResponseWriter, r *http.Request
 	decoder.DisallowUnknownFields()
 	var envelope visitorAnalyticsEnvelope
 	if err := decoder.Decode(&envelope); err != nil {
-		response.Error(w, r, http.StatusBadRequest, "Payload analitik tidak valid", nil)
+		writeVisitorAnalyticsClientError(w, http.StatusBadRequest, "Payload analitik ditolak")
 		return
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		response.Error(w, r, http.StatusBadRequest, "Payload analitik tidak valid", nil)
+		writeVisitorAnalyticsClientError(w, http.StatusBadRequest, "Payload analitik ditolak")
 		return
 	}
 	if err := h.validate(&envelope); err != nil {
-		response.Error(w, r, http.StatusBadRequest, "Payload analitik ditolak", nil)
+		writeVisitorAnalyticsClientError(w, http.StatusBadRequest, "Payload analitik ditolak")
 		return
 	}
 	body, err := json.Marshal(envelope)
