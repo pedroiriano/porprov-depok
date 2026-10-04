@@ -204,6 +204,17 @@ body {
   outline-offset: 3px;
 }
 
+/* ACCESSIBILITY: Placeholder text carries search instructions. Vendor defaults
+ * use 50% opacity and slate-400, which fail AA in both themes. */
+html:root :is(input, textarea):not(:disabled)::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+:root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+  border-color: #64748b;
+}
+
 img,
 svg,
 video,
@@ -302,28 +313,62 @@ canvas {
 .nav-sticky .login-btn-primary { display: inline-block; }
 .nav-sticky .login-btn-light { display: none; }
 
-.nav-light .sub-menu-item { color: white; }
-.nav-light .sub-menu-item:hover { color: var(--color-primary-200); }
+/* ACCESSIBILITY: Own the text/surface pair; inner routes and 404 pages do not
+ * all have the homepage hero. Vendor links use !important; keep the necessary
+ * override scoped to our navigation instead of changing the vendor stylesheet. */
+#topnav {
+  --nav-text: #0f172a;
+  --nav-accent: #0f4c81;
+  --nav-surface: #ffffff;
+  --nav-control: #e6f4fe;
+}
 
-.nav-sticky .nav-light .sub-menu-item { color: var(--color-primary-900); }
-.nav-sticky .nav-light .sub-menu-item:hover { color: var(--color-primary-500); }
+.dark #topnav {
+  --nav-text: #f8fafc;
+  --nav-accent: #7dd3fc;
+  --nav-surface: #111c31;
+  --nav-control: #1e293b;
+}
 
-.dark .nav-sticky .nav-light .sub-menu-item { color: white; }
-.dark .nav-sticky .nav-light .sub-menu-item:hover { color: var(--color-primary-200); }
+#topnav .navigation-menu > li > .sub-menu-item {
+  color: var(--nav-text) !important;
+}
 
-.dark #topnav .navigation-menu > li.active > .sub-menu-item {
-  color: var(--color-primary-300);
+#topnav .navigation-menu > li:is(.active, :hover) > .sub-menu-item,
+#topnav .navigation-menu > li > .sub-menu-item:focus-visible {
+  color: var(--nav-accent) !important;
+}
+
+#topnav .navigation-menu > li.active > .sub-menu-item {
+  text-decoration: underline;
+  text-underline-offset: 0.4em;
+  text-decoration-thickness: 2px;
+}
+
+#topnav .porprov-theme-toggle > span > span {
+  background-color: var(--nav-control);
+  color: var(--nav-accent);
+  border-color: var(--nav-accent);
+}
+
+#topnav .porprov-theme-toggle:hover > span > span {
+  background-color: var(--nav-accent);
+  color: var(--nav-surface);
+}
+
+#topnav .navbar-toggle .lines span {
+  background-color: var(--nav-text);
 }
 
 /* Ensure navbar background behaves nicely on scroll */
-#topnav {
+#topnav[data-appearance] {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   z-index: 999;
-  background-color: transparent;
-  transition: all 0.5s ease;
+  background-color: var(--nav-surface);
+  transition: background-color 200ms ease, box-shadow 200ms ease;
 }
 
 #topnav.nav-sticky {
@@ -341,6 +386,27 @@ canvas {
   #topnav .navbar-toggle {
     min-height: 44px;
     min-width: 44px;
+  }
+
+  #topnav #navigation {
+    background-color: var(--nav-surface);
+  }
+}
+
+/* CHANGE: Only the homepage overlays imagery. A bounded dark surface keeps
+ * navigation readable even when the editorial hero image is changed. */
+@media (min-width: 992px) {
+  #topnav[data-appearance="overlay"] {
+    --nav-text: #ffffff;
+    --nav-accent: #b3dcfb;
+    --nav-surface: #0f172a;
+    --nav-control: #1e293b;
+    background-color: rgb(2 6 23 / 85%);
+  }
+
+  /* ACCESSIBILITY: Techwind navigation starts at 992px, before Tailwind lg. */
+  #topnav[data-appearance="overlay"] .logo img {
+    filter: brightness(0) invert(1);
   }
 }
 

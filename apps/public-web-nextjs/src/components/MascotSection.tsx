@@ -38,7 +38,7 @@ export function MascotSection() {
 
       <div className="container relative">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">Maskot Resmi Kota Depok</p>
+          <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-sky-800 dark:text-sky-300">Maskot Resmi Kota Depok</p>
           <h2 id="mascot-title" className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">Kenali Toca dan Toci.</h2>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-700 dark:text-slate-300 md:text-lg">
             Dua karakter yang membawa semangat prestasi, sportivitas, dan persaudaraan dalam PORPROV XV Jawa Barat 2026.
@@ -51,7 +51,7 @@ export function MascotSection() {
             return (
               <article key={mascot.name} className={`group overflow-hidden rounded-[2rem] border bg-white text-slate-950 shadow-2xl transition duration-500 hover:-translate-y-1 dark:bg-slate-900 dark:text-white ${isToca ? "border-red-200/80 dark:border-red-900/70" : "border-sky-200/80 dark:border-sky-900/70"}`}>
                 <div className={`relative min-h-[390px] overflow-hidden ${isToca ? "bg-gradient-to-br from-red-50 via-white to-red-100 dark:from-red-950 dark:via-slate-900 dark:to-red-950/60" : "bg-gradient-to-br from-sky-50 via-white to-blue-100 dark:from-sky-950 dark:via-slate-900 dark:to-blue-950/60"}`}>
-                  <div className={`absolute start-6 top-6 rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.2em] ${isToca ? "bg-red-600 text-white" : "bg-sky-600 text-white"}`}>Maskot PORPROV XV</div>
+                  <div className={`absolute start-6 top-6 rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.2em] ${isToca ? "bg-red-600 text-white" : "bg-sky-700 text-white"}`}>Maskot PORPROV XV</div>
                   <div className={`absolute bottom-8 start-1/2 size-64 -translate-x-1/2 rounded-full blur-2xl ${isToca ? "bg-red-400/25" : "bg-sky-400/25"}`} aria-hidden="true" />
                   <Image src={mascot.image} alt={mascot.imageAlt} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-contain object-bottom px-8 pt-16 transition duration-500 group-hover:scale-[1.03]" />
                 </div>
@@ -59,7 +59,7 @@ export function MascotSection() {
                 <div className="p-6 sm:p-8">
                   <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
-                      <p className={`text-xs font-black uppercase tracking-[0.2em] ${isToca ? "text-red-600 dark:text-red-300" : "text-sky-600 dark:text-sky-300"}`}>{mascot.tagline}</p>
+                      <p className={`text-xs font-black uppercase tracking-[0.2em] ${isToca ? "text-red-600 dark:text-red-300" : "text-sky-700 dark:text-sky-300"}`}>{mascot.tagline}</p>
                       <h3 className="mt-1 text-4xl font-black tracking-tight">{mascot.name}</h3>
                     </div>
                     <span className={`flex size-12 items-center justify-center rounded-full text-2xl ${isToca ? "bg-red-500/10 text-red-600 dark:text-red-300" : "bg-sky-500/10 text-sky-600 dark:text-sky-300"}`} aria-hidden="true">

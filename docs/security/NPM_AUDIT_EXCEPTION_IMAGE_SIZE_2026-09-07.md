@@ -7,7 +7,7 @@ Dua advisory High berikut diotorisasi sebagai exception kontingensi hanya untuk 
 - `GHSA-5p2g-fcmc-qvqq`
 - `GHSA-w3rx-r6r6-pgpr`
 
-Exception dibatasi pada package `image-size` di `apps/mobile-public-react-native` dan `apps/mobile-admin-react-native`. Tidak ada advisory Critical atau High lain yang diizinkan.
+Exception pada keputusan 7 September ini dibatasi pada package `image-size` di `apps/mobile-public-react-native` dan `apps/mobile-admin-react-native`. Persetujuan terpisah yang lebih baru untuk `node-forge` dan `braces` tidak memperluas scope exception ini; lihat `VA_2026-09-21_ZAP_ATTACK_REMEDIATION.md` dan `NPM_AUDIT_EXCEPTION_BRACES_2026-10-04.md`.
 
 Lockfile final memakai Metro 0.84.5 dan tidak lagi memuat `image-size`, sehingga exception tidak sedang dikonsumsi: audit aktif kedua aplikasi adalah 0 Critical, 0 High, dan 14 Moderate. Allowlist bertanggal tetap dipertahankan sesuai persetujuan eksplisit sebagai proteksi kontingensi terhadap variasi resolver selama periode transisi.
 
@@ -19,7 +19,7 @@ Risiko utamanya adalah denial of service pada proses build jika parser menerima 
 
 ## Enforcement
 
-`scripts/security/check-npm-audit.mjs` menjalankan audit penuh dan hanya menerima dua advisory exact di atas untuk dua project exact. Semua temuan Critical/High lain, exception salah scope, dan exception kedaluwarsa menggagalkan CI.
+`scripts/security/check-npm-audit.mjs` menjalankan audit penuh dan mengevaluasi setiap advisory berdasarkan registry exact-ID/package/project/severity/expiry. Dua advisory di atas hanya berlaku untuk dua project mobile. Semua temuan lain yang tidak mempunyai persetujuan terpisah, exception salah scope, dan exception kedaluwarsa menggagalkan CI pada threshold yang berlaku.
 
 Exception wajib dihapus paling lambat 7 Oktober 2026. Removal lebih awal dilakukan apabila baseline Metro 0.84.5 telah stabil pada protected CI dan pengguna menyetujui penutupan kontingensi. Exception juga langsung menjadi tidak sah apabila salah satu kondisi berikut terpenuhi:
 

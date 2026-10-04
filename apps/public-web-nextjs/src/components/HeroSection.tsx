@@ -36,7 +36,8 @@ export function HeroSection({ hero }: HeroSectionProps) {
           className="object-cover object-center motion-safe:scale-[1.08]"
         />
       </div>
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(2,6,23,0.40)_0%,rgba(3,19,38,0.25)_48%,rgba(13,62,113,0.10)_100%)]" aria-hidden="true" />
+      {/* ACCESSIBILITY: Bound contrast against bright editorial images, not only the current photograph. */}
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(2,6,23,0.78)_0%,rgba(3,19,38,0.72)_48%,rgba(13,62,113,0.80)_100%)]" aria-hidden="true" />
       <div className="absolute inset-x-0 top-0 -z-10 h-40 bg-gradient-to-b from-slate-950/70 to-transparent" aria-hidden="true" />
       <div className="absolute inset-x-0 bottom-0 -z-10 h-48 bg-gradient-to-t from-slate-950 to-transparent" aria-hidden="true" />
 

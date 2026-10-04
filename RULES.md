@@ -252,7 +252,7 @@ Sebuah UI hanya boleh disebut masterpiece bila memenuhi seluruh quality bar beri
 - Response upstream `5xx` yang melintasi API Gateway wajib disanitasi; detail database, query, hostname internal, path, dan stack trace hanya boleh berada pada log internal terproteksi.
 - Production Compose wajib fail-closed terhadap secret placeholder, origin non-canonical, working tree kotor, dan commit tidak cocok. Container aplikasi wajib non-root, read-only bila kompatibel, `no-new-privileges`, dan capability minimum.
 - Release gate Git wajib menjalankan secret scan, audit penuh dependency npm termasuk toolchain build, `govulncheck`, lint/build/test, CodeQL, dan dependency review. Action eksternal harus dipin ke SHA immutable.
-- Exception audit dependency wajib fail-closed, time-bounded, dan exact-scope: advisory ID, package, project, alasan, mitigasi, persetujuan, serta expiry harus terdokumentasi; semua Critical/High lain dan exception kedaluwarsa wajib menggagalkan CI. Sampai 7 Oktober 2026 hanya `GHSA-5p2g-fcmc-qvqq` dan `GHSA-w3rx-r6r6-pgpr` pada `image-size` melalui Metro untuk dua aplikasi mobile yang diizinkan sesuai `docs/security/NPM_AUDIT_EXCEPTION_IMAGE_SIZE_2026-09-07.md`.
+- Exception audit dependency wajib fail-closed, time-bounded, dan exact-scope: advisory ID, package, project, alasan, mitigasi, persetujuan, serta expiry harus terdokumentasi. Threshold Web tetap Moderate dan mobile High; semua temuan lain pada threshold tersebut dan exception kedaluwarsa menggagalkan CI. Kontingensi dua advisory `image-size` mobile berakhir 7 Oktober 2026; `GHSA-86w9-cpqp-85rv` (`node-forge`) tooling mobile berakhir 16 Oktober 2026 sesuai remediation VA. Persetujuan 4 Oktober mengizinkan `GHSA-vfj7-8cjw-p6xm` (`braces` 3.0.3) pada tooling build/lint Public dan dua mobile dengan input tepercaya sampai 7 Oktober 2026 pukul 23:59:59 WIB, hanya selama bukti tidak masuk runtime tetap PASS; kontrak terperinci berada di `docs/security/NPM_AUDIT_EXCEPTION_BRACES_2026-10-04.md`.
 - Runtime Go pada source, CI, dan builder container wajib minimum 1.26.6 sampai baseline diperbarui berdasarkan advisory resmi.
 - Release production wajib menjalankan regression probe header dan ZAP baseline pasif setelah deploy. Klaim penutupan alert Medium/Low hanya sah bila laporan JSON hasil scan baru menunjukkan `riskcode` 2 dan 1 masing-masing nol serta daftar site/instance tidak memuat origin pihak ketiga yang tidak disengaja; scan pasif anonim tidak menggantikan active/authenticated testing terjadwal.
 - Credential yang pernah tercatat pada Git wajib dirotasi/revoke. Rewrite histori dan force-push hanya boleh dilakukan setelah backup, koordinasi seluruh clone, dan persetujuan eksplisit.
@@ -428,7 +428,7 @@ Detail penerapan normatif berada di `docs/governance/ENGINEERING_UIUX_QUALITY_ST
 - Seluruh image buatan repository wajib memiliki SBOM CycloneDX dan nol
   High/Critical fixable pada Trivy sebelum Git delivery release.
 - Alert `decode-uri-component` dan `uuid` tidak boleh dimasukkan ke exception;
-  exception `image-size` terikat waktu tetap satu-satunya exception mobile.
+  exception yang diizinkan hanya registry exact-ID bertanggal dan persetujuan terdokumentasi, bukan bypass seluruh package atau penurunan threshold.
 - Perubahan dependency manifest wajib menjalani dependency review pada PR;
   bukti lokal tidak boleh diklaim sebagai protected CI.
 

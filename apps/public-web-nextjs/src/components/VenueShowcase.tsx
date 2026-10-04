@@ -163,11 +163,11 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3" role="status" aria-live="polite">
-            <span className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${online && !error ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400"}`}>
+            <span className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${online && !error ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-400" : "border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-400"}`}>
               <span className={`size-2.5 rounded-full ${online && !error ? "animate-pulse bg-emerald-500" : "bg-amber-500"}`} aria-hidden="true" />
               {online && !error ? "Terhubung live" : online ? "Koneksi terganggu" : "Offline"}
             </span>
-            <button type="button" onClick={() => void fetchVenues(true)} disabled={refreshing} className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-bold transition hover:border-primary-500 hover:text-primary-500 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:border-slate-700 dark:bg-slate-900" aria-label="Perbarui data venue sekarang">
+            <button type="button" onClick={() => void fetchVenues(true)} disabled={refreshing} className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-bold transition hover:border-primary-500 hover:text-primary-500 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:hover:text-primary-300" aria-label="Perbarui data venue sekarang">
               <i className={`ri-refresh-line me-2 text-lg ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
               {lastUpdated ? `Diperbarui ${lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}` : "Perbarui data"}
             </button>
@@ -256,7 +256,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
             </div>
 
             <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-slate-200 pt-6 sm:flex-row dark:border-slate-800">
-              <p className="text-sm text-slate-500 dark:text-slate-400">Menampilkan {visibleVenues.length} dari {venues.length} venue · pembaruan otomatis setiap 30 detik</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Menampilkan {visibleVenues.length} dari {venues.length} venue · pembaruan otomatis setiap 30 detik</p>
               <div className="flex items-center gap-2" aria-label="Navigasi halaman venue">
                 <button type="button" onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="inline-flex size-11 items-center justify-center rounded-full border border-slate-300 transition hover:border-primary-500 hover:bg-primary-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:border-slate-700" aria-label="Halaman venue sebelumnya"><i className="ri-arrow-left-s-line text-xl" aria-hidden="true" /></button>
                 <span className="min-w-28 text-center text-sm font-bold">Halaman {currentPage} / {totalPages}</span>
@@ -266,7 +266,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
 
             {!isPage && (
               <div className="mt-10 text-center">
-                <Link href="/venue" className="inline-flex min-h-11 items-center justify-center rounded-md border border-primary-500 px-5 py-3 font-black text-primary-500 transition hover:bg-primary-500 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500">Lihat semua venue <i className="ri-arrow-right-line ms-2" aria-hidden="true" /></Link>
+                <Link href="/venue" className="inline-flex min-h-11 items-center justify-center rounded-md border border-primary-500 px-5 py-3 font-black text-primary-500 transition hover:bg-primary-500 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:text-primary-300 dark:hover:text-white">Lihat semua venue <i className="ri-arrow-right-line ms-2" aria-hidden="true" /></Link>
               </div>
             )}
           </>
