@@ -78,6 +78,8 @@ Folder referensi UI di luar root hanya upstream read-only dan tidak boleh menjad
 
 Tema runtime wajib memakai class `.dark` sebagai satu-satunya pemicu utility `dark:*`; preferensi warna sistem hanya boleh menentukan nilai awal. Teks normal harus mencapai rasio kontras minimal 4,5:1 dan teks besar/komponen grafis esensial minimal 3:1 pada kedua tema.
 
+Audit dependency terkini 4 Oktober 2026 tidak boleh disamakan dengan angka nol pada baseline historis di atas. Exception `GHSA-vfj7-8cjw-p6xm` (`braces` 3.0.3) hanya berlaku pada tooling build/lint Public dan dua mobile sampai 7 Oktober pukul 23:59:59 WIB, dengan bukti tidak masuk runtime dan input source tepercaya. Registry juga mempertahankan exception mobile `node-forge` yang telah disetujui sampai 16 Oktober serta kontingensi `image-size` sampai 7 Oktober. Threshold Web Moderate/mobile High tetap fail-closed; lihat [kontrak braces](docs/security/NPM_AUDIT_EXCEPTION_BRACES_2026-10-04.md).
+
 ## Aturan Data Utama
 
 Semua penghapusan data persisten wajib menggunakan soft delete. Record menyimpan waktu, actor, dan alasan yang relevan; query aktif menyembunyikan data terhapus; restore harus terotorisasi dan diaudit. File Media Library tetap disimpan selama masa retensi. Hard delete hanya diperbolehkan sebagai purge terkontrol, bukan aksi delete biasa.

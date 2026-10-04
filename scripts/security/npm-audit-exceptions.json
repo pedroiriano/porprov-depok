@@ -1,6 +1,19 @@
 {
   "exceptions": [
     {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "severity": "high",
+      "expiresOn": "2026-10-07",
+      "expiresAt": "2026-10-07T23:59:59.999+07:00",
+      "projects": [
+        "apps/public-web-nextjs",
+        "apps/mobile-public-react-native",
+        "apps/mobile-admin-react-native"
+      ],
+      "reason": "Explicit user approval on 2026-10-04. braces 3.0.3 is limited to trusted repository build/lint glob inputs through micromatch; absent from Public standalone runner and Android/iOS/Web mobile export source maps. No patched release exists. See docs/security/NPM_AUDIT_EXCEPTION_BRACES_2026-10-04.md."
+    },
+    {
       "id": "GHSA-5p2g-fcmc-qvqq",
       "package": "image-size",
       "severity": "high",

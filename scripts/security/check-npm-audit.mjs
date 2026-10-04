@@ -2,10 +2,16 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { evaluateAudit } from './npm-audit-policy.mjs';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, '..', '..');
 const projectArgument = process.argv[2];
+const levelArgument = process.argv[3] ?? '--audit-level=high';
+if (!['--audit-level=high', '--audit-level=moderate'].includes(levelArgument) || process.argv.length > 4) {
+  console.error('FAIL invalid audit threshold: use moderate or high');
+  process.exit(2);
+}
 
 if (!projectArgument) {
   console.error('Usage: node scripts/security/check-npm-audit.mjs <project-directory>');
@@ -56,77 +62,11 @@ if (
   process.exit(2);
 }
 
-const vulnerabilities = report.vulnerabilities ?? {};
-const severityRank = { low: 1, moderate: 2, high: 3, critical: 4 };
-const isBlockingSeverity = (severity) => (severityRank[severity] ?? 0) >= severityRank.high;
-const advisoryId = (finding) => finding.url?.match(/GHSA-[\w-]+$/)?.[0] ?? null;
-
-function collectBlockingAdvisories(packageName, visited = new Set()) {
-  if (visited.has(packageName)) {
-    return [];
-  }
-
-  visited.add(packageName);
-  const vulnerability = vulnerabilities[packageName];
-  if (!vulnerability) {
-    return [];
-  }
-
-  const findings = [];
-  for (const via of vulnerability.via ?? []) {
-    if (typeof via === 'string') {
-      findings.push(...collectBlockingAdvisories(via, visited));
-      continue;
-    }
-
-    if (isBlockingSeverity(via.severity)) {
-      findings.push({
-        id: advisoryId(via),
-        package: via.name ?? packageName,
-        severity: via.severity,
-      });
-    }
-  }
-
-  return findings;
-}
-
-const blockingPackages = Object.entries(vulnerabilities)
-  .filter(([, vulnerability]) => isBlockingSeverity(vulnerability.severity));
-const unapproved = [];
-const approvedIds = new Set();
-const approvedExpiryDates = new Set();
-const now = new Date();
-
-for (const [packageName] of blockingPackages) {
-  const findings = collectBlockingAdvisories(packageName);
-  if (findings.length === 0) {
-    unapproved.push(`${packageName}: blocking advisory could not be resolved`);
-    continue;
-  }
-
-  for (const finding of findings) {
-    const exception = exceptions.find((candidate) =>
-      candidate.id === finding.id
-      && candidate.package === finding.package
-      && candidate.severity === finding.severity
-      && candidate.projects?.includes(projectPath));
-
-    if (!exception) {
-      unapproved.push(`${finding.id ?? 'UNKNOWN'} ${finding.package} ${finding.severity}`);
-      continue;
-    }
-
-    const expiresAt = new Date(`${exception.expiresOn}T23:59:59.999Z`);
-    if (Number.isNaN(expiresAt.getTime()) || now > expiresAt) {
-      unapproved.push(`${finding.id} ${finding.package}: exception expired ${exception.expiresOn}`);
-      continue;
-    }
-
-    approvedIds.add(finding.id);
-    approvedExpiryDates.add(exception.expiresOn);
-  }
-}
+const { unapproved, approvedIds, approvedExpiryDates } = evaluateAudit(report, {
+  project: projectPath,
+  exceptions,
+  minimumSeverity: levelArgument.split('=')[1],
+});
 
 if (unapproved.length > 0) {
   console.error(`FAIL npm audit ${projectPath}: ${[...new Set(unapproved)].join('; ')}`);
