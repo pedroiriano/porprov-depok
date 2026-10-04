@@ -16,13 +16,13 @@ export function CityGuideSection() {
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-8">
           {/* Text Content - Left Side */}
           <div className="lg:col-span-5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-sky-400">
+            <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-sky-800 dark:text-sky-300">
               <i className="ri-compass-3-line text-base"></i>
               Depok City Guide
             </div>
             
             <h2 id="city-guide-title" className="mt-6 text-4xl font-black leading-tight tracking-tight text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
-              Jelajahi Kota <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">Tuan Rumah.</span>
+              Jelajahi Kota <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-700 to-indigo-700 dark:from-sky-300 dark:to-indigo-300">Tuan Rumah.</span>
             </h2>
             
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">
@@ -32,11 +32,11 @@ export function CityGuideSection() {
             <div className="mt-10 flex flex-wrap gap-4">
               <Link 
                 href="/city-guide" 
-                className="group relative inline-flex h-12 md:h-14 items-center justify-center gap-3 overflow-hidden rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 px-8 font-bold text-white transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(56,189,248,0.4)] focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-950"
+                className="group relative inline-flex h-12 md:h-14 items-center justify-center gap-3 overflow-hidden rounded-xl bg-gradient-to-r from-sky-700 to-indigo-700 px-8 font-bold text-white transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(56,189,248,0.4)] focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-950"
               >
                 <span className="relative z-10">Buka Panduan Kota</span>
                 <i className="ri-arrow-right-up-line relative z-10 text-xl transition-transform group-hover:translate-x-1 group-hover:-translate-y-1"></i>
-                <div className="absolute inset-0 z-0 bg-gradient-to-r from-indigo-600 to-sky-500 opacity-0 transition-opacity duration-500 group-hover:opacity-100"></div>
+                <div className="absolute inset-0 z-0 bg-gradient-to-r from-indigo-700 to-sky-700 opacity-0 transition-opacity duration-500 group-hover:opacity-100" aria-hidden="true"></div>
               </Link>
             </div>
             
@@ -44,15 +44,15 @@ export function CityGuideSection() {
             <div className="mt-12 grid grid-cols-3 gap-4 divide-x divide-slate-200 border-t border-slate-200 dark:divide-slate-800 dark:border-slate-800 pt-8">
               <div className="px-2">
                 <div className="text-2xl font-black text-slate-900 dark:text-white">40+</div>
-                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-500">Destinasi</div>
+                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-400">Destinasi</div>
               </div>
               <div className="px-4">
                 <div className="text-2xl font-black text-slate-900 dark:text-white">120+</div>
-                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-500">Kuliner</div>
+                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-400">Kuliner</div>
               </div>
               <div className="px-4">
                 <div className="text-2xl font-black text-slate-900 dark:text-white">24/7</div>
-                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-500">Transportasi</div>
+                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-400">Transportasi</div>
               </div>
             </div>
           </div>

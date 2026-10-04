@@ -34,7 +34,7 @@ export function CaborDirectory({ cabors }: { cabors: CaborModel[] }) {
             {categories.map((item) => {
               const active = category === item;
               return (
-                <button key={item} type="button" onClick={() => setCategory(item)} aria-pressed={active} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-black transition ${active ? "border-primary-600 bg-primary-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-primary-500 hover:text-primary-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"}`}>
+                <button key={item} type="button" onClick={() => setCategory(item)} aria-pressed={active} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-black transition ${active ? "border-primary-600 bg-primary-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-primary-500 hover:text-primary-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-primary-300"}`}>
                   {item === "semua" ? "Semua" : item}
                 </button>
               );

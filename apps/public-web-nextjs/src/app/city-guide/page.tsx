@@ -261,7 +261,7 @@ export default async function CityGuidePage({
                       </div>
                     </div>
                     
-                    <h2 className="text-xl font-black text-slate-900 dark:text-white group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors line-clamp-2">
+                    <h2 className="text-xl font-black text-slate-900 dark:text-white group-hover:text-sky-700 dark:group-hover:text-sky-400 transition-colors line-clamp-2">
                       {guide.title}
                     </h2>
                     

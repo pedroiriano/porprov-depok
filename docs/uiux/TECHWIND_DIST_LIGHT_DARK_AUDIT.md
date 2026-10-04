@@ -95,6 +95,10 @@ Popup penanda Venue memakai class terisolasi `venue-map-popup`: surface putih/sl
 5. Jangan menyalin brand/demo copy Techwind dan jangan memasukkan Gulp/demo JavaScript ke runtime.
 6. Jangan memakai tema/template/design system visual lain, termasuk sebagai inspirasi sebagian; jika pola belum tersedia, komposisikan pola Techwind terdekat dan dokumentasikan mapping-nya.
 
-## Gap Dokumen Referensi
+## Audit lanjutan 4 Oktober 2026
+
+Perbaikan regresi navbar Public pada mode terang sebelum scroll dan pasangan kontras komponen mengikuti [audit terkini](PUBLIC_THEME_CONTRAST_2026-10-04.md). Hasil QA di atas merupakan baseline historis, bukan bukti ulang kandidat ini. Penutupan kandidat membuktikan viewport aktual 390/1440 dan integrasi berita lokal; audit Admin terautentikasi serta delivery production tetap dipisahkan. Otoritas Admin sekarang mengikuti ADR-0015 dan kontrak Cuba; bagian pemetaan Techwind Admin di dokumen lama ini hanya konteks transisi/rollback.
+
+## Gap Dokumen Referensi (historis)
 
 Tiga path DOCX yang diwajibkan `AGENTS.md` belum tersedia di `docs/reference/`. Enam DOCX ditemukan di `design/`: tiga sumber lengkap dan tiga `Final_*` yang hanya berupa ringkasan singkat. Audit ini memakai dokumen sumber lengkap sebagai konteks tambahan, tetapi enam Markdown root dan source Techwind `dist` tetap menjadi baseline yang dapat diverifikasi sampai dokumen canonical dipindahkan ke `docs/reference/`.

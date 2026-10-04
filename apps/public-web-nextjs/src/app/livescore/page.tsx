@@ -91,7 +91,7 @@ export default function LiveScorePage() {
   return (
     <main className="bg-slate-50 dark:bg-slate-950">
       <PublicPageHero eyebrow="Pusat Pertandingan" title="LiveScore" description="Skor, peserta, babak, dan venue dalam satu aliran data resmi." icon="ri-live-line" breadcrumbs={[{ label: "LiveScore" }]}>
-        <div className={`inline-flex min-h-11 w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-black ${connected ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-300"}`} role="status" aria-live="polite"><Radio className={`size-4 ${connected ? "animate-pulse" : ""}`} aria-hidden="true" />{connected ? "Realtime terhubung" : "Menghubungkan realtime"}</div>
+        <div className={`inline-flex min-h-11 w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-black ${connected ? "border-emerald-300/40 bg-emerald-950 text-emerald-200" : "border-amber-300/40 bg-amber-950 text-amber-200"}`} role="status" aria-live="polite"><Radio className={`size-4 ${connected ? "animate-pulse" : ""}`} aria-hidden="true" />{connected ? "Realtime terhubung" : "Menghubungkan realtime"}</div>
       </PublicPageHero>
 
       <div className="container py-14 md:py-20">
