@@ -3,7 +3,7 @@ module porprov.id/realtime-gateway
 go 1.26.6
 
 require (
-	github.com/go-chi/chi/v5 v5.3.1
+	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-chi/cors v1.2.2
 	github.com/nats-io/nats.go v1.53.1
 	github.com/redis/go-redis/v9 v9.21.0
