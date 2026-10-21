@@ -5,7 +5,7 @@ go 1.26.6
 replace github.com/porprov-xv/porprov-depok/packages/messaging => ../../packages/messaging
 
 require (
-	github.com/go-chi/chi/v5 v5.3.1
+	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-chi/cors v1.2.2
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/porprov-xv/porprov-depok/packages/messaging v0.0.0-00010101000000-000000000000
