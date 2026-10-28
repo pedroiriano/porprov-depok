@@ -5,12 +5,12 @@ go 1.26.10
 replace github.com/porprov-xv/porprov-depok/packages/portal-config => ../../packages/portal-config
 
 require (
-	github.com/porprov-xv/porprov-depok/packages/portal-config v0.0.0
-	github.com/go-chi/chi/v5 v5.3.1
+	github.com/go-chi/chi/v5 v5.4.0
 	github.com/go-chi/cors v1.2.2
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/joho/godotenv v1.5.1
 	github.com/porprov-xv/porprov-depok/packages/messaging v0.0.0-00010101000000-000000000000
+	github.com/porprov-xv/porprov-depok/packages/portal-config v0.0.0
 )
 
 require (
