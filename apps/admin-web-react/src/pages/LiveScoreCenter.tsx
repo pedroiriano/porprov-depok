@@ -55,7 +55,7 @@ export default function LiveScoreCenter() {
     setLoading(true);
     try {
       const [matchResponse, scoreResponse] = await Promise.all([
-        apiClient.get<ScheduleMatch[]>('/schedule/matches/enriched', authConfig(token)),
+        apiClient.get<ScheduleMatch[]>('/portal/references/livescore-matches', authConfig(token)),
         apiClient.get<ScoreRecord[]>('/livescore/', authConfig(token)),
       ]);
       const matchItems = unwrapApiData<ScheduleMatch[]>(matchResponse.data) || [];

@@ -1,5 +1,8 @@
 **
 !packages/
+!packages/portal-config/
+!packages/portal-config/**
+!packages/
 !packages/messaging/
 !packages/messaging/**
 !services/
@@ -10,3 +13,5 @@
 **/tmp_build
 **/*.zip
 **/uploads
+**/.env
+**/node_modules

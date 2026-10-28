@@ -1,0 +1,424 @@
+{
+  "schema_version": 1,
+  "version": 0,
+  "modules": [
+    {
+      "id": "home",
+      "label": "Beranda",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": true,
+      "external_url": ""
+    },
+    {
+      "id": "cabor",
+      "label": "Cabang Olahraga",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": true,
+      "external_url": ""
+    },
+    {
+      "id": "kontingen",
+      "label": "Kontingen",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": true,
+      "external_url": ""
+    },
+    {
+      "id": "atlet",
+      "label": "Atlet dan Peserta",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": true,
+      "external_url": ""
+    },
+    {
+      "id": "venue",
+      "label": "Lokasi Pertandingan",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": true,
+      "external_url": ""
+    },
+    {
+      "id": "jadwal",
+      "label": "Jadwal Pertandingan",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": true,
+      "external_url": ""
+    },
+    {
+      "id": "livescore",
+      "label": "Skor Langsung",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": true,
+      "external_url": ""
+    },
+    {
+      "id": "medali",
+      "label": "Perolehan Medali",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": true,
+      "external_url": ""
+    },
+    {
+      "id": "city_guide",
+      "label": "Panduan Kota",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": true,
+      "external_url": ""
+    },
+    {
+      "id": "berita",
+      "label": "Berita",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": true,
+      "external_url": ""
+    }
+  ],
+  "pages": [
+    {
+      "id": "home",
+      "path": "/",
+      "title": "Beranda",
+      "description": "Portal PORPROV XV Jawa Barat 2026 di Kota Depok.",
+      "status": "published",
+      "module_id": "home",
+      "sections": [
+        {
+          "id": "hero",
+          "type": "hero",
+          "enabled": true,
+          "variant": "standard",
+          "heading": "",
+          "body": "",
+          "href": "",
+          "image_url": ""
+        },
+        {
+          "id": "introduction",
+          "type": "introduction",
+          "enabled": true,
+          "variant": "standard",
+          "heading": "",
+          "body": "",
+          "href": "",
+          "image_url": ""
+        },
+        {
+          "id": "mascot",
+          "type": "mascot",
+          "enabled": true,
+          "variant": "standard",
+          "heading": "",
+          "body": "",
+          "href": "",
+          "image_url": ""
+        },
+        {
+          "id": "information",
+          "type": "information",
+          "enabled": true,
+          "variant": "standard",
+          "heading": "",
+          "body": "",
+          "href": "",
+          "image_url": ""
+        },
+        {
+          "id": "competition",
+          "type": "competition",
+          "enabled": true,
+          "variant": "standard",
+          "heading": "",
+          "body": "",
+          "href": "",
+          "image_url": ""
+        },
+        {
+          "id": "venues",
+          "type": "venues",
+          "enabled": true,
+          "variant": "standard",
+          "heading": "",
+          "body": "",
+          "href": "",
+          "image_url": ""
+        },
+        {
+          "id": "news",
+          "type": "news",
+          "enabled": true,
+          "variant": "standard",
+          "heading": "",
+          "body": "",
+          "href": "",
+          "image_url": ""
+        },
+        {
+          "id": "city_guide",
+          "type": "city_guide",
+          "enabled": true,
+          "variant": "standard",
+          "heading": "",
+          "body": "",
+          "href": "",
+          "image_url": ""
+        }
+      ]
+    },
+    {
+      "id": "cabor",
+      "path": "/cabor",
+      "title": "Cabang Olahraga",
+      "description": "Informasi cabang olahraga PORPROV.",
+      "status": "published",
+      "module_id": "cabor",
+      "sections": []
+    },
+    {
+      "id": "venue",
+      "path": "/venue",
+      "title": "Lokasi Pertandingan",
+      "description": "Venue resmi PORPROV di Kota Depok.",
+      "status": "published",
+      "module_id": "venue",
+      "sections": []
+    },
+    {
+      "id": "jadwal",
+      "path": "/jadwal",
+      "title": "Jadwal Pertandingan",
+      "description": "Jadwal pertandingan resmi.",
+      "status": "published",
+      "module_id": "jadwal",
+      "sections": [
+        {
+          "id": "schedule-periods",
+          "type": "schedule_periods",
+          "enabled": true,
+          "variant": "standard",
+          "heading": "",
+          "body": "",
+          "href": "",
+          "image_url": ""
+        },
+        {
+          "id": "schedule-matches",
+          "type": "schedule_matches",
+          "enabled": true,
+          "variant": "standard",
+          "heading": "",
+          "body": "",
+          "href": "",
+          "image_url": ""
+        }
+      ]
+    },
+    {
+      "id": "livescore",
+      "path": "/livescore",
+      "title": "Skor Langsung",
+      "description": "Pembaruan skor pertandingan.",
+      "status": "published",
+      "module_id": "livescore",
+      "sections": []
+    },
+    {
+      "id": "medali",
+      "path": "/medali",
+      "title": "Klasemen Medali",
+      "description": "Informasi perolehan medali.",
+      "status": "published",
+      "module_id": "medali",
+      "sections": []
+    },
+    {
+      "id": "city-guide",
+      "path": "/city-guide",
+      "title": "Panduan Kota",
+      "description": "Jelajahi Kota Depok.",
+      "status": "published",
+      "module_id": "city_guide",
+      "sections": []
+    },
+    {
+      "id": "berita",
+      "path": "/berita",
+      "title": "Berita PORPROV",
+      "description": "Berita PORPROV dari Portal Berita Depok.",
+      "status": "published",
+      "module_id": "berita",
+      "sections": []
+    }
+  ],
+  "menus": [
+    {
+      "id": "header-home",
+      "label": "Beranda",
+      "location": "header",
+      "target": "/",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "header-cabor",
+      "label": "Cabor",
+      "location": "header",
+      "target": "/cabor",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "header-venue",
+      "label": "Venue",
+      "location": "header",
+      "target": "/venue",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "header-jadwal",
+      "label": "Jadwal",
+      "location": "header",
+      "target": "/jadwal",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "header-medali",
+      "label": "Klasemen",
+      "location": "header",
+      "target": "/medali",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "header-guide",
+      "label": "Jelajah",
+      "location": "header",
+      "target": "/city-guide",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "header-news",
+      "label": "Berita",
+      "location": "header",
+      "target": "/berita",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "footer-home",
+      "label": "Beranda",
+      "location": "footer-primary",
+      "target": "/",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "footer-cabor",
+      "label": "Cabang Olahraga",
+      "location": "footer-primary",
+      "target": "/cabor",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "footer-venue",
+      "label": "Lokasi Pertandingan",
+      "location": "footer-primary",
+      "target": "/venue",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "footer-jadwal",
+      "label": "Jadwal Pertandingan",
+      "location": "footer-primary",
+      "target": "/jadwal",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "footer-medali",
+      "label": "Klasemen Medali",
+      "location": "footer-primary",
+      "target": "/medali",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "footer-guide",
+      "label": "Panduan Kota",
+      "location": "footer-primary",
+      "target": "/city-guide",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "info-about",
+      "label": "Tentang PORPROV XV",
+      "location": "footer-info",
+      "target": "/#tentang-porprov",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "info-mascot",
+      "label": "Maskot Toca dan Toci",
+      "location": "footer-info",
+      "target": "/#maskot",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "info-information",
+      "label": "Pusat Informasi",
+      "location": "footer-info",
+      "target": "/#informasi",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "info-livescore",
+      "label": "Skor Langsung",
+      "location": "footer-info",
+      "target": "/livescore",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "info-news",
+      "label": "Berita Kota Depok",
+      "location": "footer-info",
+      "target": "/berita",
+      "parent_id": "",
+      "enabled": true
+    }
+  ],
+  "features": [
+    {
+      "id": "schedule_periods",
+      "module_id": "jadwal",
+      "label": "Rentang Jadwal Cabor",
+      "public_enabled": true,
+      "admin_enabled": true
+    },
+    {
+      "id": "schedule_matches",
+      "module_id": "jadwal",
+      "label": "Rincian Pertandingan",
+      "public_enabled": true,
+      "admin_enabled": true
+    }
+  ]
+}

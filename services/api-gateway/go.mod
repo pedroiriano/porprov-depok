@@ -1,8 +1,11 @@
 module github.com/porprov-xv/porprov-depok/services/api-gateway
 
-go 1.26.6
+replace github.com/porprov-xv/porprov-depok/packages/portal-config => ../../packages/portal-config
+
+go 1.26.10
 
 require (
+	github.com/porprov-xv/porprov-depok/packages/portal-config v0.0.0
 	github.com/MicahParks/keyfunc/v2 v2.1.0
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-chi/cors v1.2.2

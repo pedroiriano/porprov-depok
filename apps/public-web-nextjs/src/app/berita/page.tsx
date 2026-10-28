@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { portalMetadata } from '@/lib/portal-config';
 import Link from "next/link";
 import { NewsCard } from "@/components/NewsCard";
 import { PublicPageHero } from "@/components/PublicPageHero";
 import { loadDepokNewsOverview } from "@/lib/depok-news";
 
-export const metadata: Metadata = {
+export function generateMetadata():Promise<Metadata>{return portalMetadata('berita',baseMetadata);}
+const baseMetadata: Metadata = {
   title: "Berita PORPROV Jabar 2026",
   description: "Berita terkait PORPROV XV Jawa Barat 2026 dari Portal Berita Depok untuk masyarakat, atlet, dan peserta.",
   alternates: { canonical: "/berita" },

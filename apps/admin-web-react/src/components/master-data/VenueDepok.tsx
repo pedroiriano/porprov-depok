@@ -107,7 +107,7 @@ export default function VenueDepok() {
 
   const fetchCabors = useCallback(async () => {
     try {
-      const res = await apiClient.get<Cabor[] | { data: Cabor[] }>('/master-data/cabors', authConfig(auth.user?.access_token));
+      const res = await apiClient.get<Cabor[] | { data: Cabor[] }>('/portal/references/venue-cabors', authConfig(auth.user?.access_token));
       setCabors(unwrapApiData(res.data) || []);
     } catch (error) {
       console.error('Failed to fetch cabors:', error);

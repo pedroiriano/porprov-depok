@@ -205,6 +205,7 @@ services:
     container_name: porprov_master_data
     restart: always
     environment:
+      INTERNAL_STREAM_TOKEN: ${INTERNAL_STREAM_TOKEN:-local-development-stream-token}
       PORT: "8081"
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgres://${POSTGRES_USER:-porprov_admin}:${POSTGRES_PASSWORD:-porprov_secret}@postgres:5432/master_data_db?sslmode=disable
@@ -263,6 +264,7 @@ services:
       PORT: "8082"
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgres://${POSTGRES_USER:-porprov_admin}:${POSTGRES_PASSWORD:-porprov_secret}@postgres:5432/schedule_db?sslmode=disable
+      INTERNAL_STREAM_TOKEN: ${INTERNAL_STREAM_TOKEN:-local-development-stream-token}
       MASTER_DATA_SERVICE_URL: http://master-data-service:8081/api/v1
       VENUE_SERVICE_URL: http://venue-service:8087/api/v1/venues
       NATS_URL: nats://nats:4222
@@ -578,7 +580,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/prometheus/Dockerfile
-    image: porprov/prometheus:v3.13.3-porprov.1
+    image: porprov/prometheus:v3.13.3-porprov.2
     container_name: porprov_prometheus
     restart: always
     ports:

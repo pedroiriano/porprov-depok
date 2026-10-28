@@ -1,4 +1,5 @@
-FROM golang:1.26.6-alpine AS builder
+FROM golang:1.26.10-alpine@sha256:a2012b4a1d1f9f7e9f44e0d39b805a901e856b1dd80b4e6ee4338db547050308 AS builder
+COPY packages/portal-config/ /src/packages/portal-config/
 WORKDIR /src/services/api-gateway
 COPY services/api-gateway/go.mod services/api-gateway/go.sum ./
 RUN go mod download

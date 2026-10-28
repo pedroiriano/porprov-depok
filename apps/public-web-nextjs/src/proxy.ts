@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { loadPortalConfig, portalPageFor, defaultPortalConfig } from './lib/portal-config';
 
 function buildContentSecurityPolicy(nonce: string) {
   const developmentScriptPolicy = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
@@ -28,7 +29,7 @@ function buildContentSecurityPolicy(nonce: string) {
   ].join("; ");
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // SECURITY: Nonce unik per response memungkinkan hydration Next.js tanpa
   // unsafe-inline pada script production. Request header diperlukan agar
   // renderer Next.js menerapkan nonce yang sama pada script framework.
@@ -39,13 +40,29 @@ export function proxy(request: NextRequest) {
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
 
-  const response = NextResponse.next({
+  let destination: URL | null=null;
+  let status=200;
+  const path=request.nextUrl.pathname;
+  // RELIABILITY: Authorized for local implementation; managed feature routes only. Root, recovery and assets are not guarded.
+  const builtin=portalPageFor(defaultPortalConfig,path);
+  if (builtin && path!=='/' || path.startsWith('/informasi/')) {
+    const portal=await loadPortalConfig();
+    if(!portal){destination=new URL('/portal-unavailable',request.url);status=503;}
+    else {
+      const page=portalPageFor(portal,path);
+      const portalModule=page&&portal.modules.find(m=>m.id===page.module_id);
+      if(!page || page.status!=='published' || portalModule&&(!portalModule.public_enabled||portalModule.mode==='disabled')){destination=new URL('/portal-unavailable',request.url);status=404;}
+      else if(portalModule?.mode==='external')destination=new URL(`/rujukan/${portalModule.id}`,request.url);
+    }
+  }
+  const response = destination ? NextResponse.rewrite(destination,{status,request:{headers:requestHeaders}}) : NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
 
   response.headers.set("Content-Security-Policy", contentSecurityPolicy);
+  if (builtin || path.startsWith('/informasi/')) response.headers.set('Cache-Control','no-store');
   return response;
 }
 
@@ -53,10 +70,6 @@ export const config = {
   matcher: [
     {
       source: "/((?!api|_next/static|_next/image|favicon.ico|icon.png|manifest.webmanifest|robots.txt|sitemap.xml|sw.js).*)",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
     },
   ],
 };

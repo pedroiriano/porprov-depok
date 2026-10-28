@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
+	portal "github.com/porprov-xv/porprov-depok/packages/portal-config"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -47,6 +49,54 @@ var (
 var requiredStreams = []jetstream.StreamConfig{
 	{Name: "LIVESCORE", Subjects: []string{"livescore.update.>"}},
 	{Name: "MEDALS", Subjects: []string{"realtime.medals"}},
+}
+
+var publicPortalPolicy atomic.Pointer[portal.Document]
+
+// SECURITY: Fail closed for public domain events while preserving private operational streams.
+func publicEventEnabled(data []byte) bool {
+	policy := publicPortalPolicy.Load()
+	if policy == nil {
+		return false
+	}
+	var event struct {
+		Type string `json:"eventType"`
+	}
+	if json.Unmarshal(data, &event) != nil {
+		return false
+	}
+	switch event.Type {
+	case "LIVESCORE_UPDATED", "LIVESCORE_CORRECTED":
+		return policy.Local("livescore", false)
+	case "MEDAL_STANDING_UPDATED":
+		return policy.Local("medali", false)
+	default:
+		return false
+	}
+}
+
+// PERFORMANCE: One bounded configuration request per interval, never per subscriber or under client locks.
+func refreshPublicPortalPolicy(ctx context.Context) {
+	load := portal.RemoteLoader("http://master-data-service:8081")
+	refresh := func() {
+		document, err := load(ctx)
+		if err != nil {
+			publicPortalPolicy.Store(nil)
+			return
+		}
+		publicPortalPolicy.Store(&document)
+	}
+	refresh()
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			refresh()
+		}
+	}
 }
 
 func envOrDefault(key, fallback string) string {
@@ -192,7 +242,7 @@ func streamHandler(rdb *redis.Client, ctx context.Context, scope, internalToken 
 		for _, key := range keys {
 			if data, err := rdb.Get(ctx, key).Bytes(); err == nil {
 				if scope == "public" {
-					if sanitized, allowed := sanitizePublicEvent(data); allowed {
+					if sanitized, allowed := sanitizePublicEvent(data); allowed && publicEventEnabled(sanitized) {
 						data = sanitized
 					} else {
 						continue
@@ -203,7 +253,7 @@ func streamHandler(rdb *redis.Client, ctx context.Context, scope, internalToken 
 		}
 		if data, err := rdb.Get(ctx, "medals:latest").Bytes(); err == nil {
 			if scope == "public" {
-				if sanitized, allowed := sanitizePublicEvent(data); allowed {
+				if sanitized, allowed := sanitizePublicEvent(data); allowed && publicEventEnabled(sanitized) {
 					data = sanitized
 				} else {
 					data = nil
@@ -226,6 +276,9 @@ func streamHandler(rdb *redis.Client, ctx context.Context, scope, internalToken 
 			case eventData, open := <-client.eventChan:
 				if !open {
 					return
+				}
+				if scope == "public" && !publicEventEnabled(eventData) {
+					continue
 				}
 				fmt.Fprintf(w, "data: %s\n\n", eventData)
 				flusher.Flush()
@@ -256,6 +309,7 @@ func main() {
 	})
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	go refreshPublicPortalPolicy(ctx)
 
 	// NATS setup
 	natsURL := os.Getenv("NATS_URL")

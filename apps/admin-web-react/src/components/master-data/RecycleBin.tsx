@@ -10,6 +10,8 @@ import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
 import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
 import { useAuthorization } from '../../contexts/authorization';
+import {usePortalAdmin} from '../../contexts/portal';
+import {localFeature} from '../../../../../packages/portal-config/config';
 
 const entityLabels: Record<DeletedRecord['entity_type'], string> = {
   cabor: 'Cabang Olahraga',
@@ -32,6 +34,8 @@ function restorePath(record: DeletedRecord) {
 
 export default function RecycleBin() {
   const auth = useAuth();
+  const portal=usePortalAdmin();
+  const matchesEnabled=!!portal.config&&localFeature(portal.config,'schedule_matches',true);
   const authorization = useAuthorization();
   const canRestore = authorization.hasPermission('master_data.restore');
   const queryClient = useQueryClient();
@@ -51,12 +55,12 @@ export default function RecycleBin() {
   }, [search, resetPage]);
 
   const deletedQuery = useQuery({
-    queryKey: ['soft-delete', 'recycle-bin'],
+    queryKey: ['soft-delete', 'recycle-bin',matchesEnabled],
     queryFn: async () => {
       const [master, venues, matches] = await Promise.all([
         apiClient.get<DeletedRecord[] | { data: DeletedRecord[] }>('/master-data/deleted', requestConfig()),
         apiClient.get<DeletedRecord[] | { data: DeletedRecord[] }>('/venues/deleted', requestConfig()),
-        apiClient.get<DeletedRecord[] | { data: DeletedRecord[] }>('/schedule/matches/deleted', requestConfig()),
+        matchesEnabled?apiClient.get<DeletedRecord[] | { data: DeletedRecord[] }>('/schedule/matches/deleted', requestConfig()):Promise.resolve({data:[] as DeletedRecord[]}),
       ]);
       return [
         ...(unwrapApiData(master.data) || []),

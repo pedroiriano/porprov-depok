@@ -8,6 +8,660 @@
   "servers": [{ "url": "/api/v1" }],
   "security": [{ "bearerAuth": [] }],
   "paths": {
+    "/portal/public": {
+      "get": {
+        "summary": "Projection konfigurasi Portal yang telah dipublikasikan",
+        "description": "Adapter read-only menambahkan dua fitur Jadwal pada konfigurasi lama. Draf dan bagian tersembunyi tidak diterbitkan; versi dan JSON tersimpan tetap utuh.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Konfigurasi tayang",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency tidak tersedia"
+          }
+        }
+      }
+    },
+    "/portal/manage": {
+      "get": {
+        "summary": "Draf dan publikasi Portal",
+        "description": "Hanya Super Admin aktif dengan izin terbaru role.update.",
+        "responses": {
+          "200": {
+            "description": "State Portal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "JWT tidak tersedia/tidak valid"
+          },
+          "403": {
+            "description": "Modul/fitur tidak aktif atau izin tidak cukup"
+          },
+          "503": {
+            "description": "Dependency tidak tersedia"
+          }
+        }
+      },
+      "put": {
+        "summary": "Simpan draf Portal berversi",
+        "description": "Hanya Super Admin aktif dengan role.update. Fitur yang tidak dikirim klien lama dipertahankan dari draf yang dikunci; penyimpanan tidak mempublikasikan perubahan.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Draf tersimpan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "JWT tidak tersedia/tidak valid"
+          },
+          "403": {
+            "description": "Modul/fitur tidak aktif atau izin tidak cukup"
+          },
+          "409": {
+            "description": "Versi konflik"
+          },
+          "422": {
+            "description": "Registry, bagian, atau referensi media tidak valid"
+          },
+          "503": {
+            "description": "Dependency tidak tersedia"
+          }
+        }
+      }
+    },
+    "/portal/publish": {
+      "post": {
+        "summary": "Publikasikan draf tersimpan secara atomik",
+        "description": "Super Admin aktif dengan role.update; menyimpan revisi immutable dan audit outbox. Modul induk dan flag fitur berlaku kumulatif pada UI, Gateway, serta mutasi service.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalVersionChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "State dipublikasikan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "JWT tidak tersedia/tidak valid"
+          },
+          "403": {
+            "description": "Modul/fitur tidak aktif atau izin tidak cukup"
+          },
+          "409": {
+            "description": "Versi konflik"
+          },
+          "503": {
+            "description": "Dependency tidak tersedia"
+          }
+        }
+      }
+    },
+    "/portal/references/livescore-matches": {
+      "get": {
+        "summary": "Referensi pertandingan baca-saja untuk operator skor",
+        "description": "JWT + izin terbaru livescore.view dan modul LiveScore Admin aktif. Tetap terpisah dari kewenangan penyuntingan Jadwal; tidak menyediakan mutasi.",
+        "responses": {
+          "200": {
+            "description": "Projection pertandingan diperkaya",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "Projection yang sama dengan GET /schedule/matches/enriched; bentuk koleksi mengikuti parameter pagination existing."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "JWT tidak tersedia/tidak valid"
+          },
+          "403": {
+            "description": "Modul/fitur tidak aktif atau izin tidak cukup"
+          },
+          "503": {
+            "description": "Dependency tidak tersedia"
+          }
+        }
+      }
+    },
+    "/livescore/schedule-projection": {
+      "get": {
+        "summary": "Projection jadwal baca-saja untuk LiveScore Public",
+        "description": "Hanya saat modul LiveScore Public lokal aktif; fitur penyuntingan/publikasi Rincian Pertandingan tidak menjadi prasyarat. Tidak ada endpoint tulis.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Projection pertandingan diperkaya",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "Projection yang sama dengan GET /schedule/matches/enriched; bentuk koleksi mengikuti parameter pagination existing."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Modul/fitur tidak aktif atau izin tidak cukup"
+          },
+          "503": {
+            "description": "Dependency tidak tersedia"
+          }
+        }
+      }
+    },
+    "/schedule/periods": {
+      "get": {
+        "summary": "Membaca rentang pelaksanaan cabor yang tayang",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 12
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Query"
+          },
+          {
+            "name": "cabor_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Hari inklusif dalam rentang; tahun 2000–2100",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "starts_on",
+                "ends_on",
+                "cabor_name",
+                "label",
+                "is_published"
+              ],
+              "default": "starts_on"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Direction"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rentang tayang nonarsip; tanpa draf, versi atau identitas operator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulePeriodPublicPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload, UUID, atau query tidak valid"
+          },
+          "403": {
+            "description": "Izin atau modul tidak tersedia"
+          },
+          "503": {
+            "description": "Dependency belum tersedia; detail internal disanitasi"
+          }
+        }
+      },
+      "post": {
+        "summary": "Membuat rentang jadwal; versi awal 0, default draf",
+        "x-permission": "master_data.create",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulePeriodChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "State dan versi terbaru; snapshot/outbox tersimpan atomik",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulePeriodManaged"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload, UUID, atau query tidak valid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Izin atau modul tidak tersedia"
+          },
+          "409": {
+            "description": "Versi berubah, status arsip berubah atau duplikat aktif"
+          },
+          "422": {
+            "description": "Validasi rentang, referensi atau alasan gagal"
+          },
+          "503": {
+            "description": "Dependency belum tersedia; detail internal disanitasi"
+          }
+        }
+      }
+    },
+    "/schedule/periods/manage": {
+      "get": {
+        "summary": "Membaca rentang aktif/draf/arsip untuk Admin",
+        "x-permission": "master_data.view",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Query"
+          },
+          {
+            "name": "cabor_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Hari inklusif dalam rentang; tahun 2000–2100",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "starts_on",
+                "ends_on",
+                "cabor_name",
+                "label",
+                "is_published"
+              ],
+              "default": "starts_on"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Direction"
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar rentang sesuai filter Admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulePeriodManagedPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload, UUID, atau query tidak valid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Izin atau modul tidak tersedia"
+          },
+          "409": {
+            "description": "Versi berubah, status arsip berubah atau duplikat aktif"
+          },
+          "422": {
+            "description": "Validasi rentang, referensi atau alasan gagal"
+          },
+          "503": {
+            "description": "Dependency belum tersedia; detail internal disanitasi"
+          }
+        }
+      }
+    },
+    "/schedule/periods/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "put": {
+        "summary": "Mengubah rentang dengan expected_version terbaru",
+        "x-permission": "master_data.update",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulePeriodChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "State dan versi terbaru; snapshot/outbox tersimpan atomik",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulePeriodManaged"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload, UUID, atau query tidak valid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Izin atau modul tidak tersedia"
+          },
+          "409": {
+            "description": "Versi berubah, status arsip berubah atau duplikat aktif"
+          },
+          "422": {
+            "description": "Validasi rentang, referensi atau alasan gagal"
+          },
+          "503": {
+            "description": "Dependency belum tersedia; detail internal disanitasi"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Soft delete rentang; data dan riwayat tetap tersedia",
+        "x-permission": "master_data.archive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulePeriodChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "State dan versi terbaru; snapshot/outbox tersimpan atomik",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulePeriodManaged"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload, UUID, atau query tidak valid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Izin atau modul tidak tersedia"
+          },
+          "409": {
+            "description": "Versi berubah, status arsip berubah atau duplikat aktif"
+          },
+          "422": {
+            "description": "Validasi rentang, referensi atau alasan gagal"
+          },
+          "503": {
+            "description": "Dependency belum tersedia; detail internal disanitasi"
+          }
+        }
+      }
+    },
+    "/schedule/periods/{id}/restore": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "post": {
+        "summary": "Memulihkan arsip sebagai draf",
+        "x-permission": "master_data.restore",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulePeriodChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "State dan versi terbaru; snapshot/outbox tersimpan atomik",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulePeriodManaged"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload, UUID, atau query tidak valid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Izin atau modul tidak tersedia"
+          },
+          "409": {
+            "description": "Versi berubah, status arsip berubah atau duplikat aktif"
+          },
+          "422": {
+            "description": "Validasi rentang, referensi atau alasan gagal"
+          },
+          "503": {
+            "description": "Dependency belum tersedia; detail internal disanitasi"
+          }
+        }
+      }
+    },
+    "/schedule/periods/{id}/restore-revision": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "post": {
+        "summary": "Memulihkan snapshot milik entitas yang sama sebagai versi baru",
+        "x-permission": "master_data.update",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulePeriodChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "State dan versi terbaru; snapshot/outbox tersimpan atomik",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulePeriodManaged"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload, UUID, atau query tidak valid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Izin atau modul tidak tersedia"
+          },
+          "409": {
+            "description": "Versi berubah, status arsip berubah atau duplikat aktif"
+          },
+          "422": {
+            "description": "Validasi rentang, referensi atau alasan gagal"
+          },
+          "503": {
+            "description": "Dependency belum tersedia; detail internal disanitasi"
+          }
+        }
+      }
+    },
+    "/schedule/periods/{id}/history": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "get": {
+        "summary": "Membaca riwayat immutable, 20 snapshot per halaman",
+        "x-permission": "master_data.view",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revisi beserta username, alasan dan waktu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulePeriodHistoryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload, UUID, atau query tidak valid"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Izin atau modul tidak tersedia"
+          },
+          "409": {
+            "description": "Versi berubah, status arsip berubah atau duplikat aktif"
+          },
+          "422": {
+            "description": "Validasi rentang, referensi atau alasan gagal"
+          },
+          "503": {
+            "description": "Dependency belum tersedia; detail internal disanitasi"
+          }
+        }
+      }
+    },
     "/profile": {
       "get": {
         "summary": "Membaca profil akun yang sedang aktif",
@@ -395,6 +1049,504 @@
       }
     },
     "schemas": {
+      "PortalFeature": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "module_id",
+          "label",
+          "public_enabled",
+          "admin_enabled"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "schedule_periods",
+              "schedule_matches"
+            ]
+          },
+          "module_id": {
+            "const": "jadwal"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "public_enabled": {
+            "type": "boolean"
+          },
+          "admin_enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PortalSection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "enabled",
+          "variant"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Jenis native milik halaman atau text/cta/image. Jadwal memiliki schedule_periods dan schedule_matches; urutan array menentukan tampilan."
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "variant": {
+            "enum": [
+              "standard",
+              "compact"
+            ]
+          },
+          "heading": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "href": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          }
+        }
+      },
+      "PortalDocument": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "version",
+          "modules",
+          "features",
+          "pages",
+          "menus"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Registry 10 modul tetap; mode dan flag induk membatasi fitur."
+          },
+          "features": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "$ref": "#/components/schemas/PortalFeature"
+            }
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "published",
+                    "draft",
+                    "archived"
+                  ]
+                },
+                "module_id": {
+                  "type": "string"
+                },
+                "sections": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PortalSection"
+                  }
+                }
+              }
+            }
+          },
+          "menus": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "PortalState": {
+        "type": "object",
+        "required": [
+          "version",
+          "draft",
+          "published",
+          "published_version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "draft": {
+            "$ref": "#/components/schemas/PortalDocument"
+          },
+          "published": {
+            "$ref": "#/components/schemas/PortalDocument"
+          },
+          "published_version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PortalVersionChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_version",
+          "reason"
+        ],
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          }
+        }
+      },
+      "PortalChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_version",
+          "reason",
+          "document"
+        ],
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          },
+          "document": {
+            "$ref": "#/components/schemas/PortalDocument"
+          }
+        }
+      },
+      "SchedulePeriodPublic": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "cabor_id",
+          "cabor_name",
+          "label",
+          "starts_on",
+          "ends_on",
+          "notes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cabor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cabor_name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "starts_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "ends_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "SchedulePeriodManaged": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "cabor_id",
+          "cabor_name",
+          "label",
+          "starts_on",
+          "ends_on",
+          "notes",
+          "version",
+          "is_published",
+          "archived"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cabor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cabor_name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "starts_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "ends_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "is_published": {
+            "type": "boolean"
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SchedulePeriodChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_version",
+          "reason"
+        ],
+        "description": "CREATE/UPDATE juga wajib cabor_id, starts_on dan ends_on; CREATE memakai versi 0. RESTORE_REVISION memerlukan revision_id. Body maksimal 16 KiB.",
+        "properties": {
+          "cabor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "starts_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "ends_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "is_published": {
+            "type": "boolean",
+            "default": false
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SchedulePeriodPublicPage": {
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "page",
+          "per_page"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchedulePeriodPublic"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      },
+      "SchedulePeriodManagedPage": {
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "page",
+          "per_page"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchedulePeriodManaged"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      },
+      "SchedulePeriodRevision": {
+        "type": "object",
+        "required": [
+          "id",
+          "version",
+          "action",
+          "snapshot",
+          "actor_username",
+          "reason",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "ARCHIVE",
+              "RESTORE",
+              "RESTORE_REVISION"
+            ]
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/SchedulePeriodManaged"
+          },
+          "actor_username": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SchedulePeriodHistoryPage": {
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "page",
+          "per_page"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchedulePeriodRevision"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      },
       "FormDraft": {
         "type": "object",
         "required": ["id", "route_key", "entity_key", "form_version", "payload", "version", "updated_at", "expires_at"],

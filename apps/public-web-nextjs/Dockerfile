@@ -7,6 +7,7 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY apps/public-web-nextjs/ ./
+COPY packages/portal-config/ /packages/portal-config/
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ARG NEXT_PUBLIC_UMAMI_WEBSITE_ID=e013f972-fc45-440c-a872-575545e6e65f

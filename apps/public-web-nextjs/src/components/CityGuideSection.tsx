@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { PortalLink as Link } from './PortalProvider';
 
 export function CityGuideSection() {
   return (

@@ -1,6 +1,7 @@
 package router
 
 import (
+	portal "github.com/porprov-xv/porprov-depok/packages/portal-config"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -10,8 +11,12 @@ import (
 	"github.com/porprov-xv/porprov-depok/services/master-data-service/internal/handler"
 )
 
-func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler *handler.CityGuideHandler, cityGuideCategoryHandler *handler.CityGuideCategoryHandler, heroHandler *handler.HeroHandler) *chi.Mux {
+func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler *handler.CityGuideHandler, cityGuideCategoryHandler *handler.CityGuideCategoryHandler, heroHandler *handler.HeroHandler, portalHandlers ...*handler.PortalHandler) *chi.Mux {
 	r := chi.NewRouter()
+	if len(portalHandlers) > 0 {
+		h := portalHandlers[0]
+		r.Use(portal.Guard(h.LoadPublished, func(r *http.Request) bool { return r.Header.Get("X-Actor-ID") != "" }, true))
+	}
 
 	r.Use(cors.Handler(cors.Options{
 		// SECURITY: Service domain hanya mengizinkan origin pengembangan kanonis;
@@ -28,6 +33,16 @@ func SetupRouter(masterDataHandler *handler.MasterDataHandler, cityGuideHandler 
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	if len(portalHandlers) > 0 {
+		h := portalHandlers[0]
+		r.Get("/api/v1/portal/public", h.Public)
+		r.Get("/api/v1/portal/manage", h.Manage)
+		r.Put("/api/v1/portal/manage", h.Change("SAVE_DRAFT"))
+		r.Post("/api/v1/portal/publish", h.Change("PUBLISH"))
+		r.Post("/api/v1/portal/restore", h.Change("RESTORE"))
+		r.Get("/api/v1/portal/history", h.History)
+		r.Get("/api/v1/portal/history/{id}", h.Revision)
+	}
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status": "master-data-service is healthy"}`))

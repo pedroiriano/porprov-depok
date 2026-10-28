@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { loadPortalConfig, portalMenus, portalTarget } from '@/lib/portal-config';
 
 const primaryLinks = [
   { href: "/", label: "Beranda" },
@@ -10,16 +11,12 @@ const primaryLinks = [
   { href: "/city-guide", label: "Jelajah Kota Depok" },
 ];
 
-const informationLinks = [
-  { href: "/#panduan-penonton", label: "Panduan Penonton" },
-  { href: "/#tentang-porprov", label: "Tentang PORPROV XV" },
-  { href: "/#maskot", label: "Maskot Toca & Toci" },
-  { href: "/#informasi", label: "Pusat Informasi" },
-  { href: "/livescore", label: "LiveScore Center" },
-  { href: "/berita", label: "Berita Kota Depok" },
-];
 
-export function Footer() {
+export async function Footer() {
+  const config=await loadPortalConfig();
+  const configured=(location:'footer-primary'|'footer-info')=>config?portalMenus(config,location).map(item=>({href:portalTarget(config,item.target)!,label:item.label,parent_id:item.parent_id})):[];
+  const primary=config?configured('footer-primary'):[primaryLinks[0]];
+  const information=config?configured('footer-info'):[];
   return (
     <footer className="relative mt-auto overflow-hidden bg-slate-950 text-slate-200">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary-400/70 to-transparent" aria-hidden="true" />
@@ -42,7 +39,7 @@ export function Footer() {
           <nav className="md:col-span-4 lg:col-span-2" aria-label="Pintasan footer">
             <h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Pintasan</h2>
             <ul className="mt-5 space-y-3">
-              {primaryLinks.map((item) => (
+              {primary.map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className="inline-flex min-h-11 items-center text-sm text-slate-300 transition hover:translate-x-1 hover:text-white">
                     <i className="ri-arrow-right-s-line me-1 text-primary-300" aria-hidden="true" /> {item.label}
@@ -55,7 +52,7 @@ export function Footer() {
           <nav className="md:col-span-4 lg:col-span-2" aria-label="Informasi footer">
             <h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Informasi</h2>
             <ul className="mt-5 space-y-3">
-              {informationLinks.map((item) => (
+              {information.map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className="inline-flex min-h-11 items-center text-sm text-slate-300 transition hover:translate-x-1 hover:text-white">
                     <i className="ri-arrow-right-s-line me-1 text-primary-300" aria-hidden="true" /> {item.label}

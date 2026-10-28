@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { PortalLink as Link } from './PortalProvider';
 import dynamic from "next/dynamic";
 import {
   publicApiUrl,

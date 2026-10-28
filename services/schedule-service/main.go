@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	portal "github.com/porprov-xv/porprov-depok/packages/portal-config"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -47,14 +49,17 @@ func main() {
 
 	// INFO: Initialize Handlers
 	matchHandler := handler.NewMatchHandler(queries, pool, cfg.MasterDataURL, cfg.VenueURL)
+	periodHandler := handler.NewPeriodHandler(pool, cfg.MasterDataURL, os.Getenv("INTERNAL_STREAM_TOKEN"))
+	go periodHandler.RunOutbox(ctx)
 
 	// INFO: Setup Chi Router
-	r := router.SetupRouter(matchHandler)
+	r := router.SetupRouter(matchHandler, periodHandler)
 
 	// INFO: Batasi waktu koneksi HTTP dan hentikan service secara elegan.
 	serverAddr := fmt.Sprintf(":%s", cfg.Port)
 	server := &http.Server{Addr: serverAddr, Handler: r, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second}
 	log.Printf("Menjalankan Schedule Service di port %s...\n", cfg.Port)
+	server.Handler = portal.Guard(portal.RemoteLoader("http://master-data-service:8081"), func(r *http.Request) bool { return r.Header.Get("X-Actor-ID") != "" }, true)(server.Handler)
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Gagal menjalankan server: %v\n", err)

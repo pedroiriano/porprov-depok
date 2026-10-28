@@ -145,6 +145,9 @@ func TestVenuePinRouteRequiresPermission(t *testing.T) {
 	jwtMiddleware, privateKey, issuer := testJWTMiddleware(t)
 	businessCalls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if servePortalFixture(w, r) {
+			return
+		}
 		if r.URL.Path == "/api/v1/authorization/check" {
 			allowed := r.Header.Get("X-Actor-ID") == "operator-super_admin"
 			_ = json.NewEncoder(w).Encode(map[string]bool{"active": true, "allowed": allowed})
@@ -191,6 +194,9 @@ func TestContentMutationRoutesRequirePermission(t *testing.T) {
 	jwtMiddleware, privateKey, issuer := testJWTMiddleware(t)
 	businessCalls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if servePortalFixture(w, r) {
+			return
+		}
 		if r.URL.Path == "/api/v1/authorization/check" {
 			allowed := r.Header.Get("X-Actor-ID") == "operator-super_admin"
 			_ = json.NewEncoder(w).Encode(map[string]bool{"active": true, "allowed": allowed})
@@ -251,6 +257,9 @@ func TestEnterpriseRoutesRequestGranularPermission(t *testing.T) {
 	jwtMiddleware, privateKey, issuer := testJWTMiddleware(t)
 	desiredPermission := ""
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if servePortalFixture(w, r) {
+			return
+		}
 		if r.URL.Path == "/api/v1/authorization/check" {
 			permission := r.URL.Query().Get("permission")
 			_ = json.NewEncoder(w).Encode(map[string]bool{"active": true, "allowed": permission == desiredPermission})
@@ -387,6 +396,9 @@ func TestPublicScheduleReadDoesNotRequireJWT(t *testing.T) {
 
 	var receivedPath string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if servePortalFixture(w, r) {
+			return
+		}
 		receivedPath = r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = io.WriteString(w, `[]`)
@@ -418,6 +430,9 @@ func TestPublicScheduleReadDoesNotRequireJWT(t *testing.T) {
 func TestPublicActiveHeroReadDoesNotRequireJWT(t *testing.T) {
 	t.Parallel()
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if servePortalFixture(w, r) {
+			return
+		}
 		if r.URL.Path != "/heroes/active" {
 			t.Fatalf("unexpected upstream path %q", r.URL.Path)
 		}
@@ -445,6 +460,9 @@ func TestPublicActiveHeroReadDoesNotRequireJWT(t *testing.T) {
 func TestPublicLivescoreProjectionDoesNotRequireJWT(t *testing.T) {
 	t.Parallel()
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if servePortalFixture(w, r) {
+			return
+		}
 		if r.URL.Path != "/api/v1/livescore/public" {
 			t.Fatalf("unexpected upstream path %q", r.URL.Path)
 		}

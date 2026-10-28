@@ -1,4 +1,7 @@
 **
+!packages/
+!packages/portal-config/
+!packages/portal-config/**
 !services/
 !services/api-gateway/
 !services/api-gateway/**
@@ -7,3 +10,5 @@
 **/tmp_build
 **/*.zip
 **/uploads
+**/.env
+**/node_modules

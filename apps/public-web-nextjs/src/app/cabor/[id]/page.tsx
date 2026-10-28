@@ -1,3 +1,5 @@
+import {PortalFeature} from '@/components/PortalProvider';
+import { loadPortalConfig, localModule, localFeature } from '@/lib/portal-config';
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -26,7 +28,9 @@ const getCabor = cache(async (id: string) => {
   return normalizeCabor(await response.json() as RawCabor);
 });
 
-async function getCollection<T>(path: string): Promise<T[]> {
+async function getCollection<T>(path: string, moduleID: string): Promise<T[]> {
+  const config = await loadPortalConfig();
+  if (!config || !localModule(config, moduleID) || moduleID==='jadwal'&&!localFeature(config,'schedule_matches')) return [];
   const response = await fetch(publicApiUrl(path), { cache: "no-store" });
   if (!response.ok) return [];
   return unwrapCollection<T>(await response.json());
@@ -52,9 +56,9 @@ export default async function CaborDetailPage({ params }: { params: Promise<{ id
   }
 
   const [rawNomor, rawVenues, rawMatches] = await Promise.all([
-    getCollection<RawNomorTanding>("/master-data/nomor-tandings"),
-    getCollection<RawVenueModel>("/venues"),
-    getCollection<RawEnrichedMatch>("/schedule/matches/enriched"),
+    getCollection<RawNomorTanding>("/master-data/nomor-tandings", "cabor"),
+    getCollection<RawVenueModel>("/venues", "venue"),
+    getCollection<RawEnrichedMatch>("/schedule/matches/enriched", "jadwal"),
   ]);
   const nomor = rawNomor.map(normalizeNomorTanding).filter((item) => item.caborId === cabor.id);
   const venues = rawVenues.map(normalizeVenueModel).filter((venue) => venue.caborIds.includes(cabor.id));
@@ -94,7 +98,7 @@ export default async function CaborDetailPage({ params }: { params: Promise<{ id
           <section aria-labelledby="nomor-title"><div className="flex items-end justify-between gap-4"><div><p className="text-sm font-black uppercase tracking-wider text-primary-500">Disiplin</p><h2 id="nomor-title" className="mt-2 text-3xl font-black">Nomor pertandingan</h2></div><span className="text-sm font-bold text-slate-500">{nomor.length} nomor</span></div>
             {nomor.length ? <div className="mt-6 grid gap-4 sm:grid-cols-2">{nomor.map((item) => <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><h3 className="font-black">{item.name}</h3><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{item.genderCategory} · {item.matchType}</p></article>)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-slate-500 dark:border-slate-700">Nomor pertandingan sedang disahkan panitia.</p>}
           </section>
-          <section aria-labelledby="schedule-title"><h2 id="schedule-title" className="text-3xl font-black">Jadwal {cabor.name}</h2>{matches.length ? <div className="mt-6 grid gap-5">{matches.map((match) => <ScheduleMatchCard key={match.id} match={match} />)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-slate-500 dark:border-slate-700">Jadwal belum dipublikasikan.</p>}</section>
+          <PortalFeature id="schedule_matches"><section aria-labelledby="schedule-title"><h2 id="schedule-title" className="text-3xl font-black">Jadwal {cabor.name}</h2>{matches.length ? <div className="mt-6 grid gap-5">{matches.map((match) => <ScheduleMatchCard key={match.id} match={match} />)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-slate-500 dark:border-slate-700">Jadwal belum dipublikasikan.</p>}</section></PortalFeature>
         </div>
         <aside className="space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Informasi resmi</h2><dl className="mt-5 space-y-4 text-sm"><div><dt className="text-slate-500">Status</dt><dd className="mt-1 font-black">{cabor.status}</dd></div><div><dt className="text-slate-500">Total medali</dt><dd className="mt-1 font-black">{cabor.totalMedals || "Menunggu penetapan"}</dd></div><div><dt className="text-slate-500">Delegasi teknis</dt><dd className="mt-1 font-black">{cabor.technicalDelegate || "Menunggu penetapan"}</dd></div></dl></div>

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Edit, Plus, Search, Trash, Users } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
+import { usePortalAdmin } from '../../contexts/portal';
+import { localModule } from '../../../../../packages/portal-config/config';
 import SearchableSelect from '../common/SearchableSelect';
 import type { SelectOption } from '../common/SearchableSelect';
 import ModalForm from '../common/ModalForm';
@@ -97,6 +99,8 @@ export default function JadwalPertandingan() {
   const [archiving, setArchiving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const auth = useAuth();
+  const portal=usePortalAdmin();
+  const manageParticipants=Boolean(portal.config&&localModule(portal.config,'atlet',true));
   const authorization = useAuthorization();
   const canCreate = authorization.hasPermission('master_data.create');
   const canUpdate = authorization.hasPermission('master_data.update');
@@ -129,9 +133,9 @@ export default function JadwalPertandingan() {
     try {
       const [venueResponse, caborResponse, nomorResponse, kontingenResponse] = await Promise.all([
         apiClient.get<Venue[] | { data: Venue[] }>('/venues', getAuthConfig()),
-        apiClient.get<Cabor[] | { data: Cabor[] }>('/master-data/cabors', getAuthConfig()),
-        apiClient.get<NomorTanding[] | { data: NomorTanding[] }>('/master-data/nomor-tandings', getAuthConfig()),
-        apiClient.get<Kontingen[] | { data: Kontingen[] }>('/master-data/kontingens', getAuthConfig()),
+        apiClient.get<Cabor[] | { data: Cabor[] }>('/portal/references/cabors', getAuthConfig()),
+        apiClient.get<NomorTanding[] | { data: NomorTanding[] }>('/portal/references/nomor-tandings', getAuthConfig()),
+        apiClient.get<Kontingen[] | { data: Kontingen[] }>('/portal/references/kontingens', getAuthConfig()),
       ]);
       setVenues(unwrapApiData(venueResponse.data) || []);
       setCabors(unwrapApiData(caborResponse.data) || []);
@@ -212,6 +216,7 @@ export default function JadwalPertandingan() {
     if (!formData.nomor_tanding_id || !formData.venue_id || !formData.match_date) {
       return 'Cabang olahraga/nomor pertandingan, lokasi, dan waktu pertandingan wajib diisi.';
     }
+    if(!manageParticipants)return '';
     for (const [index, participant] of formData.participants.entries()) {
       const side = index === 0 ? 'A' : 'B';
       if (!participant.kontingen_id) return `Kontingen Peserta ${side} wajib dipilih.`;
@@ -243,13 +248,13 @@ export default function JadwalPertandingan() {
         match_date: new Date(formData.match_date).toISOString(),
         status: formData.status,
         round: formData.round,
-        participants: formData.participants.map((participant, index) => ({
+        participants: manageParticipants?formData.participants.map((participant, index) => ({
           participant_type: participant.participant_type,
           kontingen_id: participant.kontingen_id,
           athlete_name: participant.participant_type === 'individual' ? participant.athlete_name.trim() : '',
           team_name: participant.participant_type === 'team' ? participant.team_name.trim() : '',
           slot: index + 1,
-        })),
+        })):undefined,
       };
       if (formData.id) {
         await apiClient.put(`/schedule/matches/${formData.id}`, payload, getAuthConfig());
@@ -424,6 +429,8 @@ export default function JadwalPertandingan() {
 
         <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
           <legend className="px-2 text-sm font-black text-slate-900 dark:text-white">Susunan peserta resmi</legend>
+          {!manageParticipants&&<p className="mb-4 text-sm">Pengelolaan atlet dan peserta lokal dinonaktifkan. Susunan existing dipertahankan tanpa perubahan.</p>}
+          <fieldset disabled={!manageParticipants} hidden={!manageParticipants}>
           <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Kontingen wajib dipilih sebagai afiliasi. Nama atlet hanya untuk Individu; nama tim hanya untuk Tim.</p>
           <div className="mb-4 max-w-sm"><SelectInput label="Jenis Peserta Pertandingan" required value={formData.participants[0].participant_type} onChange={(event) => { const participantType = event.target.value as ParticipantType; setFormData((current) => ({ ...current, participants: current.participants.map((participant) => ({ ...participant, participant_type: participantType, athlete_name: '', team_name: '' })) })); }} options={Object.entries(participantTypeLabels).map(([value, label]) => ({ value, label }))} /></div>
           <div className="grid gap-4 lg:grid-cols-2">{formData.participants.map((participant, index) => (
@@ -437,6 +444,7 @@ export default function JadwalPertandingan() {
               </div>
             </section>
           ))}</div>
+          </fieldset>
         </fieldset>
 
         <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">

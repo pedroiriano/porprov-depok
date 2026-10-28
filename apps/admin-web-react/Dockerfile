@@ -1,9 +1,10 @@
 FROM node:24-alpine AS builder
 WORKDIR /app
 COPY apps/admin-web-react/package.json apps/admin-web-react/package-lock.json ./
-# INFO: npm install is used because npm 11 resolves platform-specific Rolldown optional packages differently between Windows and Linux lockfile generation.
-RUN npm install --include=optional --no-audit --no-fund
+# SECURITY: Linux-validated lockfiles permit reproducible installs including optional native bindings.
+RUN npm ci --include=optional --no-audit --no-fund
 COPY apps/admin-web-react/ ./
+COPY packages/portal-config/ /packages/portal-config/
 ARG VITE_API_URL=http://localhost:8000/api/v1
 ARG VITE_OIDC_AUTHORITY=http://localhost:8080/realms/porprov
 ARG VITE_OIDC_CLIENT_ID=porprov-admin-web
@@ -18,7 +19,9 @@ RUN npm run build
 
 # SECURITY: gunakan runtime Nginx Alpine aktif dan pasang patch OS terbaru.
 FROM nginx:alpine
-RUN apk upgrade --no-cache
+# SECURITY: Enforce the patched curl minimum even when a previous upgrade layer was cached.
+RUN apk upgrade --no-cache \
+    && apk add --no-cache 'curl>=8.23.0-r0' 'libcurl>=8.23.0-r0'
 COPY apps/admin-web-react/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80

@@ -1,5 +1,13 @@
 # DOCUMENTATION.md — Dokumentasi Teknis Portal PORPROV Enterprise UI/UX v5
 
+> **Kandidat rilis keamanan 28 Oktober 2026:** pengguna mengotorisasi remediasi scoped, Git delivery melalui PR/CI PASS, deployment VPS, serta migrasi additive Master v16 dan Schedule v6 setelah backup tervalidasi. Baseline Go minimum source/CI/builder kini 1.26.10 untuk GO-2026-6809 dan advisory HTTP/TLS terkait; builder resmi dipin digest. Public memakai Next.js/eslint-config-next 16.4.3, Serwist 9.5.13 dan dependency patched; Admin memakai Vite 8.1.6; runtime Nginx/Admin mensyaratkan curl dan libcurl minimum 8.23.0-r0. Instalasi Web memakai lockfile yang divalidasi pada Linux. Prometheus 3.13.3-porprov.2 memakai patch x/net v0.60.0 untuk CVE-2026-78669. Tooling Expo tetap SDK 57 dengan uji kompatibilitas Zod 4.6.6, tanpa memperpanjang exception kedaluwarsa. Data lokal, publikasi modul, credential dan fixture tidak disalin ke production. Status aktivasi harus dibuktikan terpisah; lihat `docs/runbook/RELEASE_PORTAL_SCHEDULE_20261028.md`.
+
+> **Penyempurnaan Jadwal — lokal 27 Oktober 2026:** Pengelolaan Portal memiliki fitur `schedule_periods` (Rentang Jadwal Cabor) dan `schedule_matches` (Rincian Pertandingan) di bawah modul `jadwal`, dengan flag Admin/Public terpisah. Halaman Jadwal memiliki dua bagian native yang dapat diurutkan, ditampilkan/disembunyikan, dan dibuat ringkas. Hak akses dan modul induk tetap berlaku. Adapter konfigurasi lama mempertahankan status, urutan, varian, versi, serta JSON publikasi tersimpan; klien lama yang tidak mengirim fitur mempertahankan pilihan draf terkunci. Referensi baca-saja LiveScore tetap mengikuti modul/izin LiveScore. Tidak ada migrasi tambahan, publikasi otomatis, Git delivery, atau perubahan VPS. Kontrak dan verifikasi: ADR-0022 serta `docs/runbook/PORTAL_MANAGEMENT_LOCAL.md`.
+
+> **Rentang Jadwal Cabor — lokal 27 Oktober 2026:** ADR-0021 dan `docs/runbook/CABOR_SCHEDULE_PERIODS_LOCAL.md` menetapkan rentang tanggal inklusif per cabang/nama kategori, terpisah dari pertandingan. Schedule v6 additive menyimpan draf/tayang, soft delete/restore, versi optimistis, riwayat immutable dan outbox audit. UI Cuba dan Public Techwind memakai API berpaginasi, validasi client/server dan kapabilitas modul `jadwal`; pengelolaan memerlukan JWT, izin terbaru serta proof internal khusus. Referensi Cabor divalidasi saat mutasi. Pemulihan arsip menghasilkan draf; pemulihan revisi mencatat versi baru. Otorisasi hanya lokal setelah backup/checksum, tanpa Git delivery atau perubahan production.
+
+> **Pengelolaan Portal — kandidat lokal 24 Oktober 2026:** ADR-0020 dan `docs/runbook/PORTAL_MANAGEMENT_LOCAL.md` mengatur modul lokal/tautan resmi/nonaktif, halaman dan bagian, menu/submenu, draf berversi, publikasi atomik, riwayat immutable serta audit outbox. Hanya Super Admin aktif dengan izin terbaru dapat mengubah konfigurasi; UI, Gateway, mutasi service dan stream Public mengikuti kapabilitas tayang. Akun/peran/audit/SSO/pemulihan tidak dapat dinonaktifkan melalui registry. Migrasi Master v16 additive hanya diotorisasi untuk Docker lokal, tanpa penghapusan data domain. Baseline existing dipertahankan; penonaktifan modul kewenangan Provinsi memerlukan publikasi pilihan pemilik. Status source/build/runtime lokal tidak membuktikan penerimaan visual atau aktivasi production. Git delivery, full DevSecOps dan deployment tidak diotorisasi dalam pekerjaan ini.
+
 ## 1. Ringkasan
 
 Portal PORPROV XV Jawa Barat 2026 adalah platform sports event berbasis web dan mobile yang menyediakan informasi PORPROV, cabor, jadwal, venue/maps, LiveScore realtime, standings medali, galeri, Depok Guide, backend admin, dan aplikasi koresponden.
@@ -458,7 +466,7 @@ Keputusan integrasi ini dicatat pada `docs/adr/ADR-0001-master-data-media-integr
 - Admin, API, dan LiveScore memakai `Cache-Control: no-store`. Upload publik
   hanya diperlakukan sebagai konten pasif dengan cache singkat.
 - API Gateway menyanitasi body upstream `5xx` menjadi error JSON stabil.
-- Runtime Go minimum 1.26.6 dan `golang.org/x/text` minimum 0.39.0 sesuai gate
+- Runtime Go minimum 1.26.10 dan `golang.org/x/text` minimum 0.39.0 sesuai gate
   CI 6 September 2026. Dependency npm, termasuk toolchain development/build,
   wajib nol Critical/High kecuali exception exact-ID yang disetujui, memiliki
   mitigasi, dan otomatis kedaluwarsa. Angka audit baseline historis tidak

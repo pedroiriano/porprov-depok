@@ -25,6 +25,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { AuthContextProps } from 'react-oidc-context';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuthorization } from '../../contexts/authorization';
+import { usePortalAdmin,adminModuleForPath } from '../../contexts/portal';
+import { localModule } from '../../../../../packages/portal-config/config';
+import { getRealmRoles } from '../../lib/auth';
 import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../../lib/api';
 import { Link, useLocation } from '../../lib/router';
 import './cuba-admin.css';
@@ -34,6 +37,7 @@ type NavigationItem = {
   label: string;
   path: string;
   permission?: string;
+  ownerOnly?: boolean;
 };
 
 type NotificationItem = { id: string; title: string; message: string; target_path: string; read_at: string | null; created_at: string };
@@ -73,6 +77,7 @@ const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
   {
     label: 'Administrasi',
     items: [
+      { icon: PanelsTopLeft,label:'Pengelolaan Portal',path:'/portal-management',ownerOnly:true,permission:'role.update' },
       { icon: ShieldAlert, label: 'Log Audit', path: '/audit-log', permission: 'audit.view' },
       { icon: HeartPulse, label: 'Kesehatan Integrasi', path: '/integration-health', permission: 'integration.view' },
       { icon: Users, label: 'Manajemen Akun', path: '/user-management', permission: 'user.view' },
@@ -108,11 +113,13 @@ export function CubaAdminShell({
   const notificationRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const authorization = useAuthorization();
+  const portal=usePortalAdmin();
+  const owner=getRealmRoles(auth.user).includes('super_admin');
 
   const visibleGroups = useMemo(() => navigationGroups.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.permission || authorization.hasPermission(item.permission)),
-  })).filter((group) => group.items.length > 0), [authorization]);
+    items: group.items.filter((item) => (!item.ownerOnly||owner)&&(!item.permission || authorization.hasPermission(item.permission))&&(!adminModuleForPath(item.path)||portal.config&&localModule(portal.config,adminModuleForPath(item.path)!,true))),
+  })).filter((group) => group.items.length > 0), [authorization,owner,portal.config]);
 
   const currentPage = visibleGroups
     .flatMap((group) => group.items)

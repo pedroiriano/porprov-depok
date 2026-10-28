@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { trustedNewsAssetUrl } from "@/lib/depok-news";
+import { loadPortalConfig,localModule } from '@/lib/portal-config';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/avif", "image/gif", "image/jpeg", "image/png", "image/webp"]);
@@ -7,6 +8,8 @@ const ALLOWED_IMAGE_TYPES = new Set(["image/avif", "image/gif", "image/jpeg", "i
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const portal=await loadPortalConfig();
+  if(!portal||!localModule(portal,'berita'))return NextResponse.json({message:'Gambar berita tidak tersedia.'},{status:portal?404:503,headers:{'Cache-Control':'no-store'}});
   const sourceUrl = request.nextUrl.searchParams.get("url") || "";
   const trustedSourceUrl = trustedNewsAssetUrl(sourceUrl);
   if (!trustedSourceUrl) {

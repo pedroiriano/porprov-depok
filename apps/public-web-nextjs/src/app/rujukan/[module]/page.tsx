@@ -1,0 +1,4 @@
+import { notFound } from 'next/navigation';
+import { loadPortalConfig } from '@/lib/portal-config';
+export const metadata={title:'Informasi Resmi Provinsi',robots:{index:false,follow:true}};
+export default async function OfficialReference({params}:{params:Promise<{module:string}>}){const id=(await params).module;const config=await loadPortalConfig();const portalModule=config?.modules.find(m=>m.id===id&&m.mode==='external'&&m.public_enabled);if(!portalModule)notFound();return <main className="container py-40"><h1 className="text-3xl font-black">{portalModule.label}</h1><p className="mt-5">Informasi ini dikelola oleh Pemerintah Provinsi Jawa Barat. Gunakan sumber resminya untuk melihat data terbaru.</p><a href={portalModule.external_url} rel="noopener noreferrer" className="mt-8 inline-flex min-h-11 items-center rounded-xl bg-primary-600 px-6 font-bold text-white">Buka informasi resmi Provinsi</a></main>;}

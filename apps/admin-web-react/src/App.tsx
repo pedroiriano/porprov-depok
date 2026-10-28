@@ -25,6 +25,9 @@ import { canAccessRole, getRealmRoles } from './lib/auth';
 import { CubaAdminShell } from './components/cuba/CubaAdminShell';
 import { AuthorizationProvider } from './contexts/AuthorizationContext';
 import { useAuthorization } from './contexts/authorization';
+import { PortalAdminProvider,PortalAdminGate,PortalOwnerGate } from './contexts/PortalContext';
+import {usePortalAdmin,adminModuleForPath} from './contexts/portal';
+import { localModule } from '../../../packages/portal-config/config';
 
 const adminAssetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
 
@@ -43,16 +46,20 @@ const HeroManagement = lazy(() => import('./pages/HeroManagement'));
 const IntegrationHealth = lazy(() => import('./pages/IntegrationHealth'));
 const RoleManagement = lazy(() => import('./pages/RoleManagement'));
 const CityGuideCategories = lazy(() => import('./pages/CityGuideCategories'));
+const PortalManagement = lazy(() => import('./pages/PortalManagement'));
 
 // Sidebar Item Component
-const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: LucideIcon, label: string, path: string, isActive: boolean }) => (
+const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: LucideIcon, label: string, path: string, isActive: boolean }) => {
+  const portal=usePortalAdmin();const module=adminModuleForPath(path);
+  if(module&&(!portal.config||!localModule(portal.config,module,true)))return null;
+  return (
   <li className={isActive ? 'active' : ''}>
     <Link to={path} className="flex min-h-11 items-center" aria-current={isActive ? 'page' : undefined}>
       <Icon className="w-5 h-5 align-middle me-2 inline-block" />
       {label}
     </Link>
   </li>
-);
+);};
 
 // Admin Layout
 const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any }) => {
@@ -68,6 +75,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
   // atau keduanya. Navigasi membaca keduanya agar role Admin tidak hilang hanya
   // karena mapper client berbeda, sementara otorisasi final tetap di API Gateway.
   const roles = getRealmRoles(auth.user);
+  const portalAuthorization=useAuthorization();
   const canAudit = canAccessRole(roles, ['auditor']);
   const canOperateScores = canAccessRole(roles, ['koresponden']);
   const canSubmitMedals = canAccessRole(roles, ['koresponden']);
@@ -122,6 +130,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
           <ul className="sidebar-menu border-t border-white/10" style={{ height: 'calc(100% - 70px)' }}>
             <SidebarItem icon={LayoutDashboard} label="Dasbor" path="/" isActive={location.pathname === '/'} />
             {canManageContent && <SidebarItem icon={Database} label="Data Utama" path="/master-data" isActive={location.pathname.startsWith('/master-data')} />}
+            {roles.includes('super_admin')&&portalAuthorization.active&&portalAuthorization.hasPermission('role.update')&&<SidebarItem icon={PanelsTopLeft} label="Pengelolaan Portal" path="/portal-management" isActive={location.pathname==='/portal-management'}/>}
             {canManageContent && <SidebarItem icon={PanelsTopLeft} label="Tampilan Utama" path="/hero" isActive={location.pathname.startsWith('/hero')} />}
             {canOperateScores && <SidebarItem icon={Activity} label="Pusat Skor Langsung" path="/livescore" isActive={location.pathname.startsWith('/livescore')} />}
             {canSubmitMedals && <SidebarItem icon={Medal} label="Perolehan Medali" path="/medals" isActive={location.pathname.startsWith('/medals')} />}
@@ -269,6 +278,7 @@ export default function App({ routerBasePath }: { routerBasePath?: string }) {
   return (
     <Router basename={routerBasePath}>
       <AuthorizationProvider>
+      <PortalAdminProvider>
       {cubaFoundationEnabled ? (
         <CubaAdminShell auth={auth}>
           <Suspense fallback={<div className="flex min-h-64 items-center justify-center" role="status"><span className="size-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-slate-700 dark:border-t-blue-400" aria-hidden="true" /><span className="sr-only">Memuat halaman Admin</span></div>}>
@@ -282,6 +292,7 @@ export default function App({ routerBasePath }: { routerBasePath?: string }) {
         </Suspense>
       </AdminLayout>
       )}
+      </PortalAdminProvider>
       </AuthorizationProvider>
     </Router>
   );
@@ -289,7 +300,9 @@ export default function App({ routerBasePath }: { routerBasePath?: string }) {
 
 function AdminRoutes() {
   return (
+    <PortalAdminGate>
     <Routes>
+      <Route path="/portal-management" element={<PortalOwnerGate><PortalManagement /></PortalOwnerGate>} />
       <Route path="/" element={<AdminRouteGuard permission="dashboard.view"><DashboardOverview /></AdminRouteGuard>} />
       <Route path="/master-data" element={<AdminRouteGuard permission="master_data.view"><MasterData /></AdminRouteGuard>} />
       <Route path="/hero" element={<AdminRouteGuard permission="master_data.manage"><HeroManagement /></AdminRouteGuard>} />
@@ -306,6 +319,7 @@ function AdminRoutes() {
       <Route path="/integration-health" element={<AdminRouteGuard permission="integration.view"><IntegrationHealth /></AdminRouteGuard>} />
       <Route path="*" element={<section className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"><h1 className="text-2xl font-black">Halaman tidak ditemukan</h1><p className="mt-2 text-slate-600 dark:text-slate-400">Kembali ke dasbor untuk melanjutkan pekerjaan.</p><Link to="/" className="mt-5 inline-flex min-h-11 items-center rounded-md bg-indigo-600 px-5 font-bold text-white hover:bg-indigo-700">Kembali ke Dasbor</Link></section>} />
     </Routes>
+    </PortalAdminGate>
   );
 }
 
