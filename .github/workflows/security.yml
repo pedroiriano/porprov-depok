@@ -80,6 +80,10 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run check:expo
+      - name: Verify patched Expo CLI schema compatibility
+        run: node --test ../../scripts/security/expo-zod-compat.test.mjs
+        env:
+          PORPROV_EXPO_TEST_APP: ${{ matrix.app }}
       - name: Build representative Expo web export
         run: npm run build:web -- --source-maps --output-dir "$RUNNER_TEMP/expo-export"
       - name: Prove build-only dependencies absent from mobile runtime export
@@ -87,11 +91,15 @@ jobs:
 
   go:
     runs-on: ubuntu-latest
+    env:
+      # SECURITY: Validate each module's actual container dependency graph, without workspace version masking.
+      GOWORK: "off"
     strategy:
       fail-fast: false
       matrix:
         module:
           - packages/messaging
+          - packages/portal-config
           - services/api-gateway
           - services/audit-service
           - services/livescore-service
@@ -108,7 +116,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.6"
+          go-version: "1.26.10"
           # SECURITY: cache dimatikan agar matriks modul memakai perilaku
           # dependency yang konsisten tanpa berbagi state cache antar-job.
           cache: false

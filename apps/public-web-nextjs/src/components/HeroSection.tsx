@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { PortalLink } from './PortalProvider';
 import { useState } from "react";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import type { HeroContentModel } from "@/lib/public-models";
@@ -85,10 +86,10 @@ export function HeroSection({ hero }: HeroSectionProps) {
         </div>
       </div>
 
-      <a href="#tuan-rumah" className="absolute bottom-4 left-1/2 hidden min-h-11 -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/75 transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:inline-flex">
+      <PortalLink href="/#tuan-rumah" className="absolute bottom-4 left-1/2 hidden min-h-11 -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/75 transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:inline-flex">
         Jelajahi
         <i className="ri-arrow-down-line animate-bounce text-lg" aria-hidden="true" />
-      </a>
+      </PortalLink>
     </section>
   );
 }

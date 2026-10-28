@@ -1,4 +1,10 @@
 **
+!packages/
+packages/**
+!packages/portal-config/
+!packages/portal-config/**
+packages/portal-config/**/.env*
+packages/portal-config/**/node_modules/
 !services/
 services/**
 !services/realtime-gateway/

@@ -2,6 +2,7 @@ package router
 
 import (
 	"bytes"
+	portal "github.com/porprov-xv/porprov-depok/packages/portal-config"
 	"io"
 	"net"
 	"net/http"
@@ -100,6 +101,10 @@ func setupProxyWithHeaders(targetURL string, trustedHeaders map[string]string) h
 		originalDirector(req)
 		req.Header.Set("X-Proxy", "API-Gateway")
 		// SECURITY: Jangan percaya header actor dari klien; selalu turunkan dari JWT tervalidasi.
+		req.Header.Del("X-Portal-Authorization")
+		req.Header.Del("X-Schedule-Authorization")
+		req.Header.Del("X-Actor-Username")
+		req.Header.Del("X-Actor-Display-Name")
 		req.Header.Del("X-Actor-ID")
 		req.Header.Del("X-Actor-IP")
 		req.Header.Del("X-Internal-Stream-Token")
@@ -148,12 +153,42 @@ func serviceBaseURL(rawURL string) string {
 }
 
 // SetupRouter mengonfigurasi dan mengembalikan Chi mux router
+// INFO: Read-only dependencies keep their owning module's publication and permission boundary.
+func scheduleProjection(target string) http.HandlerFunc {
+	proxy := setupProxy(target)
+	return func(w http.ResponseWriter, r *http.Request) {
+		copy := r.Clone(r.Context())
+		copyURL := *r.URL
+		copyURL.Path = "/matches/enriched"
+		copyURL.RawPath = ""
+		copy.URL = &copyURL
+		proxy.ServeHTTP(w, copy)
+	}
+}
+
 func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) *chi.Mux {
 	r := chi.NewRouter()
 	analyticsHandler := handler.NewAnalyticsHandler(cfg.UmamiURL, cfg.UmamiUsername, cfg.UmamiPassword, cfg.UmamiWebsiteID)
 	visitorAnalyticsHandler := handler.NewVisitorAnalyticsHandler(cfg.UmamiURL, cfg.UmamiWebsiteID, cfg.AllowedOrigins)
 	integrationHealthHandler := handler.NewIntegrationHealthHandler(cfg)
 	permissionAuthorizer := customMiddleware.NewPermissionAuthorizer(cfg.UserURL)
+	portalLoad := portal.RemoteLoader(cfg.MasterDataURL)
+	portalPublicGuard := portal.Guard(portalLoad, func(*http.Request) bool { return false }, false)
+	portalAdminGuard := portal.Guard(portalLoad, func(*http.Request) bool { return true }, false)
+	// SECURITY: A claimed Authorization header never selects Admin capability without JWT/active-account validation.
+	portalGate := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+			if len(portal.RequestModules(request.URL.Path)) == 0 {
+				next.ServeHTTP(w, request)
+				return
+			}
+			if request.Header.Get("Authorization") != "" {
+				jwtMid.RequireAuth(permissionAuthorizer.RequireActive(portalAdminGuard(next))).ServeHTTP(w, request)
+				return
+			}
+			portalPublicGuard(next).ServeHTTP(w, request)
+		})
+	}
 	r.Use(securityHeaders)
 	r.Use(middleware.RequestSize(12 << 20))
 
@@ -172,6 +207,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 	r.Use(requestMetrics)
 	r.Use(middleware.Logger)    // TODO: Ganti dengan Zap/Zerolog nanti
 	r.Use(middleware.Recoverer) // Mencegah panic mematikan server
+	r.Use(portalGate)
 
 	// Endpoint publik
 	r.Get("/health", handler.HealthCheckHandler)
@@ -183,13 +219,29 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 
 	// API Versi 1
 	r.Route("/api/v1", func(r chi.Router) {
+		portalProxy := http.StripPrefix("/api/v1/portal", setupProxy(cfg.MasterDataURL+"/portal"))
+		r.Get("/portal/public", portalProxy.ServeHTTP)
 		// INFO: Landing Page hanya membaca satu projection Hero aktif tanpa membuka endpoint mutasi.
 		r.Get("/master-data/heroes/active", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)
 
 		// Rute terproteksi (butuh token JWT Keycloak)
 		r.Group(func(r chi.Router) {
 			r.Use(jwtMid.RequireAuth)
+			portalOwner := permissionAuthorizer.RequirePermission("role.update")
+			portalManager := http.StripPrefix("/api/v1/portal", setupProxyWithHeaders(cfg.MasterDataURL+"/portal", map[string]string{"X-Portal-Authorization": portal.ManagementProof(cfg.InternalStreamToken)}))
+			r.With(jwtMid.RequireAnyRole("super_admin"), portalOwner).Handle("/portal/manage", portalManager)
+			r.With(jwtMid.RequireAnyRole("super_admin"), portalOwner).Post("/portal/publish", portalManager.ServeHTTP)
+			r.With(jwtMid.RequireAnyRole("super_admin"), portalOwner).Post("/portal/restore", portalManager.ServeHTTP)
+			r.With(jwtMid.RequireAnyRole("super_admin"), portalOwner).Get("/portal/history", portalManager.ServeHTTP)
+			r.With(jwtMid.RequireAnyRole("super_admin"), portalOwner).Get("/portal/history/{id}", portalManager.ServeHTTP)
 			permissionOnly := permissionAuthorizer.RequirePermission
+			// SECURITY: Read-only references stay available to authorized dependent workspaces; no mutation proxy is registered.
+			for _, reference := range []struct{ path, resource, permission string }{
+				{"venue-cabors", "cabors", "venue.view"}, {"cabors", "cabors", "master_data.view"}, {"nomor-tandings", "nomor-tandings", "master_data.view"}, {"kontingens", "kontingens", "master_data.view"},
+			} {
+				path := "/api/v1/portal/references/" + reference.path
+				r.With(permissionOnly(reference.permission)).Get("/portal/references/"+reference.path, http.StripPrefix(path, setupProxy(cfg.MasterDataURL+"/"+reference.resource)).ServeHTTP)
+			}
 			r.With(permissionAuthorizer.RequireActive).Get("/profile", handler.ProfileHandler)
 			r.With(permissionOnly("dashboard.view")).Get("/analytics/overview", analyticsHandler.Overview)
 			r.With(permissionOnly("integration.view")).Get("/integrations/health", integrationHealthHandler.ServeHTTP)
@@ -244,6 +296,15 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 			r.With(permissionOnly("master_data.archive")).Method(http.MethodDelete, "/master-data/*", masterDataProxy)
 
 			scheduleProxy := http.StripPrefix("/api/v1/schedule", setupProxy(cfg.ScheduleURL))
+			r.With(permissionOnly("livescore.view")).Get("/portal/references/livescore-matches", scheduleProjection(cfg.ScheduleURL))
+			periodProxy := http.StripPrefix("/api/v1/schedule", setupProxyWithHeaders(cfg.ScheduleURL, map[string]string{"X-Schedule-Authorization": portal.SchedulePeriodsProof(cfg.InternalStreamToken)}))
+			r.With(permissionOnly("master_data.view")).Get("/schedule/periods/manage", periodProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.view")).Get("/schedule/periods/{id}/history", periodProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.create")).Post("/schedule/periods", periodProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.update")).Put("/schedule/periods/{id}", periodProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.archive")).Delete("/schedule/periods/{id}", periodProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.restore")).Post("/schedule/periods/{id}/restore", periodProxy.ServeHTTP)
+			r.With(permissionOnly("master_data.update")).Post("/schedule/periods/{id}/restore-revision", periodProxy.ServeHTTP)
 			r.With(permissionOnly("master_data.restore")).Get("/schedule/deleted", scheduleProxy.ServeHTTP)
 			r.With(permissionOnly("master_data.restore")).Get("/schedule/matches/deleted", scheduleProxy.ServeHTTP)
 			r.With(permissionOnly("master_data.restore")).Post("/schedule/matches/{id}/restore", scheduleProxy.ServeHTTP)
@@ -320,6 +381,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 
 		// Public LiveScore projection tidak memuat actor, request ID, atau alasan koreksi.
 		r.Get("/livescore/public", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)).ServeHTTP)
+		r.Get("/livescore/schedule-projection", scheduleProjection(cfg.ScheduleURL))
 	})
 
 	// Rute Static File Uploads (Public)

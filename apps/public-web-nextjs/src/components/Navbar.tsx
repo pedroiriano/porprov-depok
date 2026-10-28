@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
+import { usePortalConfig, PortalLink } from './PortalProvider';
+import { portalMenus, portalTarget } from '../../../../packages/portal-config/config';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +14,9 @@ export function Navbar() {
   const { resolvedTheme: theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const config=usePortalConfig();
+  const menuItems=config?portalMenus(config,'header'):[];
+  const [openSubmenu,setOpenSubmenu]=useState<string|null>(null);
   
   // CHANGE: React owns sticky state, including a restored scroll on initial load.
   useEffect(() => {
@@ -31,16 +36,16 @@ export function Navbar() {
   }, []);
 
   const toggleMenu = () => setIsOpen((current) => !current);
-  const closeMenu = () => setIsOpen(false);
+  const closeMenu = () => {setIsOpen(false);setOpenSubmenu(null);};
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen && !openSubmenu) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsOpen(false);
+      if (event.key === "Escape") {setIsOpen(false);setOpenSubmenu(null);}
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [isOpen]);
+  }, [isOpen,openSubmenu]);
 
   const isHomePage = pathname === '/';
   const isCurrent = (href: string) => href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
@@ -82,10 +87,10 @@ export function Navbar() {
           </li>
   
           <li className="inline ps-1 mb-0">
-            <Link href="/livescore" className="inline-flex min-h-11 min-w-11 items-center justify-center" aria-label="Buka LiveScore Center" onClick={closeMenu}>
+            <PortalLink href="/livescore" className="inline-flex min-h-11 min-w-11 items-center justify-center" aria-label="Buka LiveScore Center" onClick={closeMenu}>
               <span className={`${(!isHomePage || isSticky) ? 'inline-block' : 'hidden'}`}><span className="size-11 inline-flex items-center justify-center tracking-wide align-middle duration-500 text-base text-center rounded-full bg-indigo-600 hover:bg-indigo-700 border border-indigo-600 hover:border-indigo-700 text-white"><i className="ri-live-line" aria-hidden="true"></i></span></span>
               <span className={`${(isHomePage && !isSticky) ? 'inline-block' : 'hidden'}`}><span className="size-11 inline-flex items-center justify-center tracking-wide border border-gray-50 align-middle duration-500 text-base text-center rounded-full bg-gray-50 hover:bg-gray-200 dark:bg-slate-900 dark:hover:bg-gray-700 hover:border-gray-100 dark:border-gray-800 dark:hover:border-gray-700"><i className="ri-live-line text-red-500" aria-hidden="true"></i></span></span>
-            </Link>
+            </PortalLink>
           </li>
         </ul>
         {/*Login button End*/}
@@ -95,13 +100,15 @@ export function Navbar() {
         <div id="navigation" className={isOpen ? "open" : undefined}>
           {/* Navigation Menu*/}   
           <ul className="navigation-menu font-bold">
-            <li className={isCurrent('/') ? 'active' : ''}><Link href="/" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/') ? 'page' : undefined}>Beranda</Link></li>
-            <li className={isCurrent('/cabor') ? 'active' : ''}><Link href="/cabor" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/cabor') ? 'page' : undefined}>Cabor</Link></li>
-            <li className={isCurrent('/venue') ? 'active' : ''}><Link href="/venue" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/venue') ? 'page' : undefined}>Venue</Link></li>
-            <li className={isCurrent('/jadwal') ? 'active' : ''}><Link href="/jadwal" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/jadwal') ? 'page' : undefined}>Jadwal</Link></li>
-            <li className={isCurrent('/medali') ? 'active' : ''}><Link href="/medali" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/medali') ? 'page' : undefined}>Klasemen</Link></li>
-            <li className={isCurrent('/city-guide') ? 'active' : ''}><Link href="/city-guide" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/city-guide') ? 'page' : undefined}>Jelajah</Link></li>
-            <li className={isCurrent('/berita') ? 'active' : ''}><Link href="/berita" className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent('/berita') ? 'page' : undefined}>Berita</Link></li>
+            {!config&&<li><Link href="/" className="sub-menu-item">Beranda</Link></li>}
+            {menuItems.filter(item=>!item.parent_id).map(item=>{
+              const children=menuItems.filter(child=>child.parent_id===item.id);
+              const target=portalTarget(config!,item.target)!;
+              return <li key={item.id} className={`relative ${isCurrent(item.target)?'active':''}`}>
+                <Link href={target} className="sub-menu-item" onClick={closeMenu} aria-current={isCurrent(item.target)?'page':undefined} rel={target.startsWith('https://')?'noopener noreferrer':undefined}>{item.label}</Link>
+                {children.length>0&&<><button type="button" aria-label={`Submenu ${item.label}`} aria-expanded={openSubmenu===item.id} aria-controls={`submenu-${item.id}`} onClick={()=>setOpenSubmenu(value=>value===item.id?null:item.id)} className="absolute end-0 top-0 min-h-11 min-w-11 text-[var(--nav-text)]" onKeyDown={e=>{if(e.key==='Escape')setOpenSubmenu(null);}}>⌄</button><ul id={`submenu-${item.id}`} hidden={openSubmenu!==item.id} className="relative min-w-48 rounded-xl border border-slate-200 bg-white p-3 text-slate-950 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-white lg:absolute lg:top-full">{children.map(child=><li key={child.id}><PortalLink href={child.target} onClick={closeMenu} className="flex min-h-11 items-center rounded-lg px-3 text-sm font-bold text-slate-950 hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800">{child.label}</PortalLink></li>)}</ul></>}
+              </li>;
+            })}
           </ul>
         </div>
       </div>

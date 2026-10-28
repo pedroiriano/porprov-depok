@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist } from "serwist";
+import { Serwist,NetworkOnly } from "serwist";
 
 // This declares the value of `injectionPoint` to TypeScript.
 // `injectionPoint` is the string that points to where the precache manifest should be injected.
@@ -17,7 +17,8 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  // SECURITY: Never resurrect disabled pages or protected/configuration API responses from a runtime cache.
+  runtimeCaching: [{matcher:({request,url})=>request.mode==='navigate'||url.pathname.startsWith('/api/')||request.headers.get('accept')?.includes('text/x-component')===true,handler:new NetworkOnly()},...defaultCache],
 });
 
 serwist.addEventListeners();

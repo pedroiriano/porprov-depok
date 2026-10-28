@@ -47,9 +47,11 @@ func main() {
 	cityGuideHandler := handler.NewCityGuideHandler(queries, conn)
 	cityGuideCategoryHandler := handler.NewCityGuideCategoryHandler(queries)
 	heroHandler := handler.NewHeroHandler(queries)
+	portalHandler := handler.NewPortalHandler(conn)
+	go portalHandler.RunOutbox(ctx)
 
 	// INFO: Setup Chi Router
-	r := router.SetupRouter(masterDataHandler, cityGuideHandler, cityGuideCategoryHandler, heroHandler)
+	r := router.SetupRouter(masterDataHandler, cityGuideHandler, cityGuideCategoryHandler, heroHandler, portalHandler)
 
 	// INFO: Batasi waktu koneksi HTTP dan hentikan service secara elegan.
 	serverAddr := fmt.Sprintf(":%s", cfg.Port)

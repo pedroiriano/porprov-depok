@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PortalLink as Link } from './PortalProvider';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   publicApiUrl,

@@ -1,4 +1,7 @@
-import Link from "next/link";
+'use client';
+import { PortalLink as Link,usePortalConfig } from './PortalProvider';
+import { usePathname } from 'next/navigation';
+import { defaultPortalConfig } from '../../../../packages/portal-config/config';
 
 interface BreadcrumbItem {
   href?: string;
@@ -22,6 +25,9 @@ export function PublicPageHero({
   breadcrumbs = [],
   children,
 }: PublicPageHeroProps) {
+  const config=usePortalConfig();const path=usePathname();
+  const page=config?.pages.find(p=>p.path===path);const original=defaultPortalConfig.pages.find(p=>p.path===path);
+  if(page&&original){if(page.title!==original.title)title=page.title;if(page.description!==original.description)description=page.description;}
   return (
     <section className="relative isolate overflow-hidden bg-slate-950 pb-16 pt-32 text-white md:pb-20 md:pt-40">
       <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.28),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(245,158,11,0.18),transparent_30%)]" aria-hidden="true" />

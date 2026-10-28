@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, type RefObject } from 'react';
 
 const dialogStack: symbol[] = [];
 let previousBodyOverflow = '';
@@ -32,9 +32,16 @@ export function useModalDialog({
   const titleId = `dialog-title-${generatedId}`;
   const descriptionId = `dialog-description-${generatedId}`;
 
+  // CHANGE: Fresh callbacks/options must not restart the dialog lifecycle on each keystroke.
+  const optionsRef = useRef({ onClose, closeDisabled, initialFocusRef });
+  useLayoutEffect(() => {
+    optionsRef.current = { onClose, closeDisabled, initialFocusRef };
+  });
+
   const requestClose = useCallback(() => {
-    if (!closeDisabled) onClose();
-  }, [closeDisabled, onClose]);
+    const options = optionsRef.current;
+    if (!options.closeDisabled) options.onClose();
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -58,7 +65,7 @@ export function useModalDialog({
     }
 
     const focusFrame = window.requestAnimationFrame(() => {
-      const preferred = initialFocusRef?.current
+      const preferred = optionsRef.current.initialFocusRef?.current
         || dialogRef.current?.querySelector<HTMLElement>('[data-autofocus]')
         || dialogRef.current?.querySelector<HTMLElement>(focusableSelector)
         || dialogRef.current;
@@ -113,7 +120,7 @@ export function useModalDialog({
 
       window.requestAnimationFrame(() => previousFocusRef.current?.focus());
     };
-  }, [initialFocusRef, isOpen, requestClose]);
+  }, [isOpen, requestClose]);
 
   return { dialogRef, titleId, descriptionId, requestClose };
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { portalMetadata } from '@/lib/portal-config';
 import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
 import { normalizeCabor, type CaborModel, type RawCabor } from "@/lib/public-models";
 import { CaborDirectory } from "@/components/CaborDirectory";
@@ -6,7 +7,8 @@ import { PublicPageHero } from "@/components/PublicPageHero";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export function generateMetadata():Promise<Metadata>{return portalMetadata('cabor',baseMetadata);}
+const baseMetadata: Metadata = {
   title: "Cabang Olahraga",
   description: "Daftar cabang olahraga, nomor pertandingan, venue, dan jadwal PORPROV XV Jawa Barat 2026 di Kota Depok.",
   alternates: { canonical: "/cabor" },

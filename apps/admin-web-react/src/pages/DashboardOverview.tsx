@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Activity, CalendarDays, Flag, Map, MapPin, Medal, RefreshCw, ScrollText } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
+import { usePortalAdmin } from '../contexts/portal';
+import { localModule, localFeature } from '../../../../packages/portal-config/config';
 import VisitorAnalytics from '../components/VisitorAnalytics';
 import { AdminAlert, AdminEmptyState, AdminLoadingState, AdminPageHeader } from '../components/cuba/AdminPrimitives';
 import { canAccessRole, getRealmRoles } from '../lib/auth';
@@ -50,6 +52,7 @@ const matchStatusLabels: Record<string, string> = {
 };
 
 export default function DashboardOverview() {
+  const portal=usePortalAdmin();
   const auth = useAuth();
   const token = auth.user?.access_token;
   const roles = getRealmRoles(auth.user);
@@ -64,17 +67,17 @@ export default function DashboardOverview() {
   const [overviewError, setOverviewError] = useState('');
 
   const loadOverview = useCallback(async () => {
-    if (!token) return;
+    if (!token||!portal.config) return;
     setOverviewLoading(true);
     setOverviewError('');
     try {
       const config = authConfig(token);
       const [caborsRes, venuesRes, cityGuidesRes, kontingensRes, matchesRes] = await Promise.all([
-        apiClient.get<unknown[]>('/master-data/cabors', config),
-        apiClient.get<unknown[]>('/venues', config),
-        apiClient.get<CityGuideSummary>('/master-data/city-guides?page=1&per_page=1', config),
-        apiClient.get<unknown[]>('/master-data/kontingens', config),
-        apiClient.get<MatchSchedule[]>('/schedule/matches/enriched', config),
+        localModule(portal.config,'cabor',true)?apiClient.get<unknown[]>('/master-data/cabors', config):Promise.resolve({data:[]}),
+        localModule(portal.config,'venue',true)?apiClient.get<unknown[]>('/venues', config):Promise.resolve({data:[]}),
+        localModule(portal.config,'city_guide',true)?apiClient.get<CityGuideSummary>('/master-data/city-guides?page=1&per_page=1', config):Promise.resolve({data:{total_items:0}}),
+        localModule(portal.config,'kontingen',true)?apiClient.get<unknown[]>('/master-data/kontingens', config):Promise.resolve({data:[]}),
+        localFeature(portal.config,'schedule_matches',true)?apiClient.get<MatchSchedule[]>('/schedule/matches/enriched', config):Promise.resolve({data:[]}),
       ]);
       const cabors = unwrapApiData<unknown[]>(caborsRes.data);
       const venues = unwrapApiData<unknown[]>(venuesRes.data);
@@ -89,7 +92,7 @@ export default function DashboardOverview() {
     } catch (cause) {
       setOverviewError(getApiErrorMessage(cause, 'Ringkasan operasional belum dapat dimuat.'));
     } finally { setOverviewLoading(false); }
-  }, [token]);
+  }, [token,portal.config]);
 
   const loadLogs = useCallback(async () => {
     if (!token || !canViewAudit) { setLogsLoading(false); return; }
@@ -125,10 +128,10 @@ export default function DashboardOverview() {
       {token && canViewAnalytics && <VisitorAnalytics token={token} />}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.6fr)]">
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="upcoming-match-title">
+        {portal.config&&localFeature(portal.config,'schedule_matches',true)&&<section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="upcoming-match-title">
           <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700"><div><h2 id="upcoming-match-title" className="flex items-center gap-2 font-black text-slate-950 dark:text-white"><CalendarDays className="size-5 text-blue-600 dark:text-blue-300" aria-hidden="true" />Jadwal terdekat</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Data langsung dari Jadwal Pertandingan.</p></div><a href={`${import.meta.env.BASE_URL}master-data?tab=jadwal`} className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-black text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-blue-200 dark:hover:bg-blue-950/40">Kelola jadwal</a></div>
           {overviewLoading ? <AdminLoadingState label="Memuat jadwal..." /> : upcomingMatches.length === 0 ? <AdminEmptyState icon={CalendarDays} title="Belum ada jadwal" description="Buat pertandingan lengkap dengan Peserta A/B agar siap digunakan oleh Pusat Skor Langsung." action={<a href={`${import.meta.env.BASE_URL}master-data?tab=jadwal`} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700">Buka Jadwal Pertandingan</a>} /> : <ol className="divide-y divide-slate-200 dark:divide-slate-700">{upcomingMatches.map((match) => <li key={match.id} className="grid gap-2 p-4 transition-colors hover:bg-blue-50/50 sm:grid-cols-[150px_minmax(0,1fr)_auto] sm:items-center dark:hover:bg-blue-950/20"><div><p className="text-sm font-black text-slate-900 dark:text-white">{new Date(match.match_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</p><p className="text-xs text-slate-500 dark:text-slate-300">{new Date(match.match_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p></div><div className="min-w-0"><p className="truncate font-black text-slate-950 dark:text-white">{match.cabor_name || 'Cabang belum tersedia'} · {match.nomor_tanding_name || 'Nomor belum tersedia'}</p><p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-300">{match.venue_name || 'Lokasi belum tersedia'} · {match.round}</p></div><span className="w-fit rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200">{matchStatusLabels[match.status] || 'Status belum dikenali'}</span></li>)}</ol>}
-        </section>
+        </section>}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-700 dark:bg-slate-900" aria-labelledby="system-log-title">
           <div className="flex items-center justify-between gap-3"><h2 id="system-log-title" className="flex items-center gap-2 font-black text-slate-950 dark:text-white"><ScrollText className="size-5 text-blue-600 dark:text-blue-300" aria-hidden="true" />Aktivitas terkini</h2>{canViewAudit && <a href={`${import.meta.env.BASE_URL}audit-log`} className="min-h-11 rounded-xl px-3 py-2 text-sm font-black text-blue-700 hover:bg-blue-50 dark:text-blue-200 dark:hover:bg-blue-950/40">Lihat riwayat</a>}</div>

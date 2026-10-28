@@ -1,8 +1,11 @@
 module github.com/porprov-xv/porprov-depok/services/medal-standing-service
 
-go 1.26.6
+go 1.26.10
+
+replace github.com/porprov-xv/porprov-depok/packages/portal-config => ../../packages/portal-config
 
 require (
+	github.com/porprov-xv/porprov-depok/packages/portal-config v0.0.0
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-chi/cors v1.2.2
 	github.com/jackc/pgx/v5 v5.10.0

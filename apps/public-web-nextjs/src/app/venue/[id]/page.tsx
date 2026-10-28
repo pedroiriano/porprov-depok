@@ -1,3 +1,5 @@
+import { loadPortalConfig, localModule, localFeature } from '@/lib/portal-config';
+import { PortalModule,PortalFeature } from '@/components/PortalProvider';
 /* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -29,7 +31,9 @@ const getVenue = cache(async (id: string) => {
   return normalizeVenueModel(await response.json() as RawVenueModel);
 });
 
-async function getCollection<T>(path: string): Promise<T[]> {
+async function getCollection<T>(path: string, moduleID: string): Promise<T[]> {
+  const config = await loadPortalConfig();
+  if (!config || !localModule(config, moduleID) || moduleID==='jadwal'&&!localFeature(config,'schedule_matches')) return [];
   const response = await fetch(publicApiUrl(path), { cache: "no-store" });
   if (!response.ok) return [];
   return unwrapCollection<T>(await response.json());
@@ -55,9 +59,9 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
   }
 
   const [rawCabors, rawGuides, rawMatches] = await Promise.all([
-    getCollection<RawCabor>("/master-data/cabors"),
-    getCollection<RawCityGuide>("/master-data/city-guides"),
-    getCollection<RawEnrichedMatch>("/schedule/matches/enriched"),
+    getCollection<RawCabor>("/master-data/cabors", "cabor"),
+    getCollection<RawCityGuide>("/master-data/city-guides", "city_guide"),
+    getCollection<RawEnrichedMatch>("/schedule/matches/enriched", "jadwal"),
   ]);
   const cabors = rawCabors.map(normalizeCabor).filter((cabor) => venue.caborIds.includes(cabor.id));
   const coordinateAvailable = venue.latitude !== 0 || venue.longitude !== 0;
@@ -93,18 +97,18 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
           <section aria-labelledby="facility-title"><p className="text-sm font-black uppercase tracking-wider text-primary-500">Arena Pertandingan</p><h2 id="facility-title" className="mt-2 text-3xl font-black">Fasilitas & kapasitas</h2><p className="mt-5 text-lg leading-relaxed text-slate-600 dark:text-slate-300">{venue.facilities || "Informasi fasilitas sedang diverifikasi oleh pengelola venue dan panitia PORPROV."}</p>
             <dl className="mt-7 grid gap-4 sm:grid-cols-3"><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-600 dark:text-slate-400">Kapasitas</dt><dd className="mt-2 text-2xl font-black">{venue.capacity ? new Intl.NumberFormat("id-ID").format(venue.capacity) : "TBA"}</dd></div><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-600 dark:text-slate-400">Cabang olahraga</dt><dd className="mt-2 text-2xl font-black">{cabors.length}</dd></div><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-600 dark:text-slate-400">Jadwal aktif</dt><dd className="mt-2 text-2xl font-black">{matches.length}</dd></div></dl>
           </section>
-          <section aria-labelledby="venue-schedule-title"><h2 id="venue-schedule-title" className="text-3xl font-black">Jadwal di venue ini</h2>{matches.length ? <div className="mt-6 grid gap-5">{matches.map((match) => <ScheduleMatchCard key={match.id} match={match} />)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-slate-500 dark:border-slate-700">Belum ada jadwal yang dipublikasikan untuk venue ini.</p>}</section>
+          <PortalFeature id="schedule_matches"><section aria-labelledby="venue-schedule-title"><h2 id="venue-schedule-title" className="text-3xl font-black">Jadwal di venue ini</h2>{matches.length ? <div className="mt-6 grid gap-5">{matches.map((match) => <ScheduleMatchCard key={match.id} match={match} />)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-slate-500 dark:border-slate-700">Belum ada jadwal yang dipublikasikan untuk venue ini.</p>}</section></PortalFeature>
         </div>
 
         <aside className="space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Navigasi venue</h2><p className="mt-3 text-sm leading-relaxed text-slate-500">Gunakan tautan rute resmi untuk membuka navigasi pada perangkat Anda.</p>{venue.mapRouteUrl ? <a href={venue.mapRouteUrl} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary-500 px-4 font-black text-white hover:bg-primary-600"><i className="ri-direction-line me-2" aria-hidden="true" />Buka rute</a> : <p className="mt-5 rounded-xl bg-slate-100 p-4 text-sm dark:bg-slate-800">Tautan rute belum tersedia.</p>}{coordinateAvailable && <p className="mt-4 text-xs text-slate-500">Koordinat: {venue.latitude.toFixed(6)}, {venue.longitude.toFixed(6)}</p>}</div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Cabang olahraga</h2>{cabors.length ? <ul className="mt-4 space-y-2">{cabors.map((cabor) => <li key={cabor.id}><Link href={publicCaborPath(cabor)} className="flex min-h-11 items-center justify-between rounded-xl px-3 font-bold hover:bg-primary-500/10 hover:text-primary-600 dark:hover:text-primary-300">{cabor.name}<i className="ri-arrow-right-s-line" aria-hidden="true" /></Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-500">Cabor belum ditautkan.</p>}</div>
+          <PortalModule id="cabor"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Cabang olahraga</h2>{cabors.length ? <ul className="mt-4 space-y-2">{cabors.map((cabor) => <li key={cabor.id}><Link href={publicCaborPath(cabor)} className="flex min-h-11 items-center justify-between rounded-xl px-3 font-bold hover:bg-primary-500/10 hover:text-primary-600 dark:hover:text-primary-300">{cabor.name}<i className="ri-arrow-right-s-line" aria-hidden="true" /></Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-500">Cabor belum ditautkan.</p>}</div></PortalModule>
         </aside>
       </div>
 
-      <div className="container mt-20 border-t border-slate-200 pt-16 dark:border-slate-800">
+      <PortalModule id="city_guide"><div className="container mt-20 border-t border-slate-200 pt-16 dark:border-slate-800">
         <NearbyCityGuides guides={nearbyGuides} venueName={venue.name} />
-      </div>
+      </div></PortalModule>
     </main>
   );
 }

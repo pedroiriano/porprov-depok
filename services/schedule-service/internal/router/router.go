@@ -10,7 +10,7 @@ import (
 	"github.com/porprov-xv/porprov-depok/services/schedule-service/internal/handler"
 )
 
-func SetupRouter(matchHandler *handler.MatchHandler) *chi.Mux {
+func SetupRouter(matchHandler *handler.MatchHandler, periods ...*handler.PeriodHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
@@ -34,6 +34,17 @@ func SetupRouter(matchHandler *handler.MatchHandler) *chi.Mux {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
+		if len(periods) > 0 {
+			p := periods[0]
+			r.Get("/periods", p.List(false))
+			r.Get("/periods/manage", p.List(true))
+			r.Get("/periods/{id}/history", p.History)
+			r.Post("/periods", p.Change("CREATE"))
+			r.Put("/periods/{id}", p.Change("UPDATE"))
+			r.Delete("/periods/{id}", p.Change("ARCHIVE"))
+			r.Post("/periods/{id}/restore", p.Change("RESTORE"))
+			r.Post("/periods/{id}/restore-revision", p.Change("RESTORE_REVISION"))
+		}
 		r.Get("/references/venue/{id}", matchHandler.ActiveVenueReference)
 		r.Get("/references/nomor-tanding/{id}", matchHandler.ActiveNomorTandingReference)
 		r.Route("/matches", func(r chi.Router) {

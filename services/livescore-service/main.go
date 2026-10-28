@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	portal "github.com/porprov-xv/porprov-depok/packages/portal-config"
 	"log"
 	"net/http"
 	"os"
@@ -548,6 +549,7 @@ func main() {
 	log.Printf("Livescore Service running on port %s", port)
 	// INFO: Timeout dan graceful shutdown melindungi request serta worker outbox.
 	server := &http.Server{Addr: ":" + port, Handler: r, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second}
+	server.Handler = portal.Guard(portal.RemoteLoader("http://master-data-service:8081"), func(r *http.Request) bool { return r.Header.Get("X-Actor-ID") != "" }, true)(server.Handler)
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)

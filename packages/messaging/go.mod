@@ -1,6 +1,6 @@
 module github.com/porprov-xv/porprov-depok/packages/messaging
 
-go 1.26.6
+go 1.26.10
 
 require github.com/nats-io/nats.go v1.53.1
 

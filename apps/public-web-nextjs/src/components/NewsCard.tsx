@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PortalLink as Link } from './PortalProvider';
 import { newsImageProxyPath, type DepokNewsArticle } from "@/lib/depok-news";
 
 function formatDate(value: string): string {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { portalMetadata } from '@/lib/portal-config';
 import Image from "next/image";
 import Link from "next/link";
 import { publicApiUrl, readPgText, unwrapCollection } from "@/lib/public-api";
@@ -31,7 +32,8 @@ function categorySlug(value: string): string {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-export const metadata: Metadata = {
+export function generateMetadata():Promise<Metadata>{return portalMetadata('city-guide',baseMetadata);}
+const baseMetadata: Metadata = {
   title: "Panduan Kota Depok",
   description: "Jelajahi keindahan, kuliner, dan akomodasi terbaik di Kota Depok selama perhelatan PORPROV XV Jawa Barat 2026.",
   alternates: { canonical: "/city-guide" },

@@ -1,4 +1,7 @@
-import Link from "next/link";
+import { PortalLink as Link } from '@/components/PortalProvider';
+import { loadPortalConfig, localModule, localFeature, portalTarget } from '@/lib/portal-config';
+import { EditorialSection } from '@/components/PortalSections';
+import type { ReactNode } from 'react';
 import { HeroSection } from "@/components/HeroSection";
 import { MascotSection } from "@/components/MascotSection";
 import { PorprovIntroduction } from "@/components/PorprovIntroduction";
@@ -64,12 +67,20 @@ async function loadActiveHero(): Promise<HeroContentModel> {
 }
 
 export default async function Home() {
-  const hero = await loadActiveHero();
-  return (
-    <main>
-      <HeroSection hero={hero} />
-      <PorprovIntroduction />
-      <MascotSection />
+  const portal=await loadPortalConfig();
+  if(!portal)return <main className="container py-40"><h1 className="text-3xl font-black">Portal PORPROV Kota Depok</h1><p className="mt-5" role="status">Informasi portal sedang dipulihkan. Silakan muat ulang beberapa saat lagi.</p></main>;
+  const sections=portal.pages.find(p=>p.id==='home')?.sections||[];
+  const hero = sections.some(s=>s.type==='hero'&&s.enabled)?await loadActiveHero():defaultHeroContent;
+  const renderSection=(type:string):ReactNode=>{
+    switch(type){
+      case 'hero':return <HeroSection hero={hero}/>;
+      case 'introduction':return <PorprovIntroduction/>;
+      case 'mascot':return <MascotSection/>;
+      case 'venues':return localModule(portal,'venue')?<VenueShowcase/>:null;
+      case 'news':return localModule(portal,'berita')?<NewsSection/>:null;
+      case 'city_guide':return localModule(portal,'city_guide')?<CityGuideSection/>:null;
+      case 'competition':return (localFeature(portal,'schedule_matches')||['livescore','medali'].some(id=>localModule(portal,id)))?<HomeCompetitionPulse/>:null;
+      case 'information':return (
 
       <section id="informasi" className="relative scroll-mt-24 overflow-hidden py-16 md:py-24 bg-white dark:bg-slate-950" aria-labelledby="information-title">
         <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-6xl bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-slate-700" aria-hidden="true" />
@@ -81,7 +92,7 @@ export default async function Home() {
           </div>
 
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {informationLinks.map((item) => (
+            {informationLinks.filter(item=>portalTarget(portal,item.href)).map((item) => (
               <Link key={item.href} href={item.href} className="group relative min-h-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1.5 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:border-slate-800 dark:bg-slate-900">
                 <div className={`absolute inset-0 -z-0 bg-gradient-to-br opacity-70 ${item.accent}`} aria-hidden="true" />
                 <div className="relative z-10">
@@ -97,15 +108,9 @@ export default async function Home() {
             ))}
           </div>
         </div>
-      </section>
-
-      <HomeCompetitionPulse />
-
-      <VenueShowcase />
-
-      <NewsSection />
-
-      <CityGuideSection />
-    </main>
-  );
+      </section>);
+      default:return null;
+    }
+  };
+  return <main>{!sections.some(s=>s.type==='hero'&&s.enabled)&&<h1 className="sr-only">Portal PORPROV Kota Depok</h1>}{sections.filter(s=>s.enabled).map(section=><div key={section.id} className={section.variant==='compact'?'[&>section]:py-8':'contents'}>{['text','image','cta'].includes(section.type)?<EditorialSection section={section}/>:renderSection(section.type)}</div>)}</main>;
 }

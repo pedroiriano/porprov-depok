@@ -34,7 +34,7 @@ export default function LiveScorePage() {
     setError("");
     try {
       const [matchResponse, scoreResponse] = await Promise.all([
-        fetch(publicApiUrl("/schedule/matches/enriched"), { cache: "no-store", headers: { Accept: "application/json" } }),
+        fetch(publicApiUrl("/livescore/schedule-projection"), { cache: "no-store", headers: { Accept: "application/json" } }),
         fetch(publicApiUrl("/livescore/public"), { cache: "no-store", headers: { Accept: "application/json" } }),
       ]);
       if (!matchResponse.ok || !scoreResponse.ok) throw new Error(`API Gateway merespons ${matchResponse.status}/${scoreResponse.status}`);

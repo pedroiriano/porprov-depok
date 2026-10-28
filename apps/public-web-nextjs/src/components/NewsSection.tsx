@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PortalLink as Link } from './PortalProvider';
 import { loadDepokNewsOverview } from "@/lib/depok-news";
 import { NewsCard } from "@/components/NewsCard";
 

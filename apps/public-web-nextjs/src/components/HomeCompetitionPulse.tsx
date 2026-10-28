@@ -1,6 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import { PortalLink as Link } from './PortalProvider';
+import { usePortalConfig } from './PortalProvider';
+import { localModule,localFeature } from '../../../../packages/portal-config/config';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { publicApiUrl, readPgNumber, readResourceId, unwrapCollection } from "@/lib/public-api";
 import { normalizeEnrichedMatch, normalizeKontingen, type EnrichedMatch, type RawEnrichedMatch, type RawKontingen } from "@/lib/public-models";
@@ -39,6 +41,7 @@ function formatMatchTime(value: string): string {
 }
 
 export function HomeCompetitionPulse() {
+  const portal=usePortalConfig();
   const [matches, setMatches] = useState<EnrichedMatch[]>([]);
   const [scores, setScores] = useState<Record<string, LiveScoreRecord>>({});
   const [medals, setMedals] = useState<MedalPreview[]>([]);
@@ -46,19 +49,20 @@ export function HomeCompetitionPulse() {
   const [error, setError] = useState(false);
 
   const loadData = useCallback(async () => {
+    if(!portal)return;
     try {
+      const read=async(path:string,enabled:boolean):Promise<unknown>=>{if(!enabled)return [];const response=await fetch(publicApiUrl(path),{cache:'no-store',headers:{Accept:'application/json'}});if(!response.ok)throw new Error('Ringkasan belum tersedia');return response.json();};
       const [scheduleResponse, scoreResponse, medalResponse, contingentResponse] = await Promise.all([
-        fetch(publicApiUrl("/schedule/matches/enriched"), { cache: "no-store", headers: { Accept: "application/json" } }),
-        fetch(publicApiUrl("/livescore/public"), { cache: "no-store", headers: { Accept: "application/json" } }),
-        fetch(publicApiUrl("/medals/standings"), { cache: "no-store", headers: { Accept: "application/json" } }),
-        fetch(publicApiUrl("/master-data/kontingens"), { cache: "no-store", headers: { Accept: "application/json" } }),
+        read(localFeature(portal,'schedule_matches')?'/schedule/matches/enriched':'/livescore/schedule-projection',localFeature(portal,'schedule_matches')||localModule(portal,'livescore')),
+        read('/livescore/public',localModule(portal,'livescore')),
+        read('/medals/standings',localModule(portal,'medali')),
+        read('/master-data/kontingens',localModule(portal,'medali')&&localModule(portal,'kontingen')),
       ]);
-      if (!scheduleResponse.ok || !scoreResponse.ok || !medalResponse.ok || !contingentResponse.ok) throw new Error("Sumber ringkasan belum lengkap");
-      const normalizedMatches = unwrapCollection<RawEnrichedMatch>(await scheduleResponse.json()).map(normalizeEnrichedMatch);
+      const normalizedMatches = unwrapCollection<RawEnrichedMatch>(scheduleResponse).map(normalizeEnrichedMatch);
       normalizedMatches.sort((left, right) => (left.matchDate || "9999").localeCompare(right.matchDate || "9999"));
-      const scoreRecords = unwrapCollection<LiveScoreRecord>(await scoreResponse.json());
-      const contingentMap = new Map(unwrapCollection<RawKontingen>(await contingentResponse.json()).map(normalizeKontingen).map((item) => [item.id, item.name]));
-      const medalRecords = unwrapCollection<RawMedalStanding>(await medalResponse.json()).map((item, index) => {
+      const scoreRecords = unwrapCollection<LiveScoreRecord>(scoreResponse);
+      const contingentMap = new Map(unwrapCollection<RawKontingen>(contingentResponse).map(normalizeKontingen).map((item) => [item.id, item.name]));
+      const medalRecords = unwrapCollection<RawMedalStanding>(medalResponse).map((item, index) => {
         const id = readResourceId(item.kontingen_id, `kontingen-${index}`);
         const gold = readPgNumber(item.gold);
         const silver = readPgNumber(item.silver);
@@ -75,7 +79,7 @@ export function HomeCompetitionPulse() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [portal]);
 
   useEffect(() => {
     const initial = window.setTimeout(() => void loadData(), 0);
@@ -111,7 +115,7 @@ export function HomeCompetitionPulse() {
                 return <article key={match.id} className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-sky-300">{match.caborName}</p><h3 className="mt-2 text-lg font-black">{match.nomorTandingName}</h3></div><span className={`rounded-full px-3 py-1 text-xs font-black ${score ? "bg-red-500 text-white" : "bg-white/10 text-slate-200"}`}>{score?.status || match.status}</span></div><div className="mt-6 space-y-3">{[0, 1].map((index) => <div key={index} className="flex items-center justify-between gap-4"><span className="truncate font-bold">{participants[index]?.display_name || `Peserta ${index === 0 ? "A" : "B"} menunggu`}</span><strong className="text-3xl tabular-nums">{score ? (index === 0 ? score.scoreA : score.scoreB) : "–"}</strong></div>)}</div><div className="mt-5 flex flex-wrap justify-between gap-3 border-t border-white/10 pt-4 text-xs text-slate-300"><span>{formatMatchTime(match.matchDate)}</span><span>{match.venueName}</span></div></article>;
               }) : <div className="rounded-xl border border-dashed border-white/20 p-10 text-center md:col-span-2"><h3 className="font-black">Pertandingan belum dipublikasikan</h3><p className="mt-2 text-sm text-slate-300">Ringkasan muncul otomatis setelah jadwal resmi tersedia.</p></div>}
             </div>
-            <aside className="rounded-xl bg-white p-6 text-slate-950 shadow-xl dark:bg-slate-900 dark:text-white lg:col-span-4" aria-labelledby="home-medal-title"><div className="flex items-center justify-between gap-3"><h3 id="home-medal-title" className="text-xl font-black">Tiga besar klasemen</h3><i className="ri-medal-line text-3xl text-amber-500" aria-hidden="true" /></div><ol className="mt-5 divide-y divide-slate-200 dark:divide-slate-800">{medals.length > 0 ? medals.map((item, index) => <li key={item.id} className="flex items-center gap-4 py-4"><span className={`flex size-10 shrink-0 items-center justify-center rounded-full font-black ${index === 0 ? "bg-amber-400 text-slate-950" : "bg-slate-100 dark:bg-slate-800"}`}>{index + 1}</span><span className="min-w-0 flex-1"><strong className="block truncate">{item.name}</strong><small className="text-slate-500">{item.gold} emas · {item.silver} perak · {item.bronze} perunggu</small></span><strong className="text-xl text-primary-600 dark:text-sky-300">{item.total}</strong></li>) : <li className="py-10 text-center text-slate-500">Klasemen belum tersedia.</li>}</ol><Link href="/medali" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary-600 px-5 font-black text-white hover:bg-primary-700">Lihat klasemen lengkap</Link></aside>
+            {localModule(portal!, 'medali') && <aside className="rounded-xl bg-white p-6 text-slate-950 shadow-xl dark:bg-slate-900 dark:text-white lg:col-span-4" aria-labelledby="home-medal-title"><div className="flex items-center justify-between gap-3"><h3 id="home-medal-title" className="text-xl font-black">Tiga besar klasemen</h3><i className="ri-medal-line text-3xl text-amber-500" aria-hidden="true" /></div><ol className="mt-5 divide-y divide-slate-200 dark:divide-slate-800">{medals.length > 0 ? medals.map((item, index) => <li key={item.id} className="flex items-center gap-4 py-4"><span className={`flex size-10 shrink-0 items-center justify-center rounded-full font-black ${index === 0 ? "bg-amber-400 text-slate-950" : "bg-slate-100 dark:bg-slate-800"}`}>{index + 1}</span><span className="min-w-0 flex-1"><strong className="block truncate">{item.name}</strong><small className="text-slate-500">{item.gold} emas · {item.silver} perak · {item.bronze} perunggu</small></span><strong className="text-xl text-primary-600 dark:text-sky-300">{item.total}</strong></li>) : <li className="py-10 text-center text-slate-500">Klasemen belum tersedia.</li>}</ol><Link href="/medali" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary-600 px-5 font-black text-white hover:bg-primary-700">Lihat klasemen lengkap</Link></aside>}
           </div>
         )}
       </div>

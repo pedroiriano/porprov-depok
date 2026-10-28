@@ -8,6 +8,9 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { BackToTop } from "@/components/BackToTop";
+import { PortalProvider } from '@/components/PortalProvider';
+import { loadPortalConfig } from '@/lib/portal-config';
+import { PortalPageCanvas } from '@/components/PortalPageCanvas';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
@@ -65,6 +68,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const nonce = (await headers()).get("x-nonce") || undefined;
+  const portalConfig=await loadPortalConfig();
   const umamiWebsiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
   const websiteStructuredData = JSON.stringify({
@@ -109,14 +113,16 @@ export default async function RootLayout({
           />
         )}
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          <PortalProvider initial={portalConfig}>
           <Navbar />
 
           <div id="main-content" tabIndex={-1} className="flex-1 flex flex-col relative w-full h-full outline-none">
-            {children}
+            <PortalPageCanvas>{children}</PortalPageCanvas>
           </div>
           
           <Footer />
           <BackToTop />
+          </PortalProvider>
         </ThemeProvider>
       </body>
     </html>
