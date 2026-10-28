@@ -144,6 +144,32 @@ jobs:
       - uses: github/codeql-action/autobuild@0b88f91c1c313eec6a3c4ee6b8342cb564c2060c # v4
       - uses: github/codeql-action/analyze@0b88f91c1c313eec6a3c4ee6b8342cb564c2060c # v4
 
+  compatible-infrastructure:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [redis, nats]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build pinned compatible infrastructure
+        run: docker build --platform linux/amd64 -f infra/docker/${{ matrix.service }}/Dockerfile -t porprov-ci:${{ matrix.service }} .
+      - name: Block all Critical High Medium Low findings and record SBOM
+        env:
+          SCANNER: aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+        run: |
+          # SECURITY: Include unfixed findings; do not suppress vendor advisories.
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$RUNNER_TEMP:/reports" "$SCANNER" image --timeout 15m --scanners vuln --severity CRITICAL,HIGH,MEDIUM,LOW --exit-code 1 --format json --output /reports/hml-${{ matrix.service }}.json porprov-ci:${{ matrix.service }}
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$RUNNER_TEMP:/reports" "$SCANNER" image --timeout 15m --format cyclonedx --output /reports/hml-${{ matrix.service }}.sbom.cdx.json porprov-ci:${{ matrix.service }}
+      - name: Retain image security evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: compatible-infrastructure-${{ matrix.service }}-${{ github.sha }}
+          path: ${{ runner.temp }}/hml-${{ matrix.service }}*.json
+          if-no-files-found: error
+          retention-days: 14
+
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

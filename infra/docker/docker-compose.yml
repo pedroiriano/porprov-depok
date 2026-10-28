@@ -485,7 +485,10 @@ services:
       - porprov_network
 
   redis:
-    image: redis:7-alpine
+    build:
+      context: ../..
+      dockerfile: infra/docker/redis/Dockerfile
+    image: porprov/redis:7.4.10-porprov.1
     container_name: porprov_redis
     restart: always
     command: redis-server --requirepass ${REDIS_PASSWORD:-porprov_redis_secret}
@@ -497,7 +500,10 @@ services:
       - porprov_network
 
   nats:
-    image: nats:2.10-alpine
+    build:
+      context: ../..
+      dockerfile: infra/docker/nats/Dockerfile
+    image: porprov/nats:2.10.29-porprov.1
     container_name: porprov_nats
     restart: always
     command: ["-js", "-sd", "/data", "-m", "8222"]
