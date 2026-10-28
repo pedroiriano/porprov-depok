@@ -39,15 +39,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
+          node-version: 24.22.1
           cache: npm
           cache-dependency-path: ${{ matrix.app }}/package-lock.json
       - run: npm ci
       - name: Test fail-closed dependency audit policy
         if: matrix.app == 'apps/public-web-nextjs'
         run: node --test ../../scripts/security/npm-audit-policy.test.mjs
-      - name: Audit dependencies with unchanged Moderate threshold
-        run: node ../../scripts/security/check-npm-audit.mjs ${{ matrix.app }} --audit-level=moderate
+      - name: Audit dependencies through Low severity
+        run: node ../../scripts/security/check-npm-audit.mjs ${{ matrix.app }} --audit-level=low
       - run: npm run lint
       - if: matrix.app == 'apps/admin-web-react'
         run: npm run check:language
@@ -71,17 +71,22 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
+          node-version: 24.22.1
           cache: npm
           cache-dependency-path: ${{ matrix.app }}/package-lock.json
       - run: npm ci
-      - name: Audit dependencies with time-bounded exceptions
-        run: node ../../scripts/security/check-npm-audit.mjs ${{ matrix.app }}
+      - name: Audit dependencies through Low severity
+        run: node ../../scripts/security/check-npm-audit.mjs ${{ matrix.app }} --audit-level=low
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run check:expo
       - name: Verify patched Expo CLI schema compatibility
         run: node --test ../../scripts/security/expo-zod-compat.test.mjs
+        env:
+          PORPROV_EXPO_TEST_APP: ${{ matrix.app }}
+      - name: Verify prototype-safe Expo configuration backport
+        # SECURITY: The private backport must be exercised through Expo itself before export.
+        run: node --test ../../scripts/security/deepmerge-backport.test.mjs
         env:
           PORPROV_EXPO_TEST_APP: ${{ matrix.app }}
       - name: Build representative Expo web export
@@ -148,4 +153,4 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
         with:
-          fail-on-severity: moderate
+          fail-on-severity: low

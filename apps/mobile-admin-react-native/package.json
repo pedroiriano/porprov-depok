@@ -53,6 +53,7 @@
     "build:web": "expo export --platform web"
   },
   "overrides": {
+    "deepmerge": "file:../../packages/deepmerge-safe",
     "decode-uri-component": "0.5.0",
     "uuid": "11.1.1",
     "follow-redirects": "1.16.1",

@@ -7,9 +7,9 @@ import { evaluateAudit } from './npm-audit-policy.mjs';
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, '..', '..');
 const projectArgument = process.argv[2];
-const levelArgument = process.argv[3] ?? '--audit-level=high';
-if (!['--audit-level=high', '--audit-level=moderate'].includes(levelArgument) || process.argv.length > 4) {
-  console.error('FAIL invalid audit threshold: use moderate or high');
+const levelArgument = process.argv[3] ?? '--audit-level=low';
+if (!['--audit-level=low', '--audit-level=high', '--audit-level=moderate'].includes(levelArgument) || process.argv.length > 4) {
+  console.error('FAIL invalid audit threshold: use low, moderate or high');
   process.exit(2);
 }
 
@@ -79,5 +79,5 @@ const exceptionSummary = approvedIds.size > 0
   ? `; temporary exceptions=${[...approvedIds].sort().join(',')} until ${latestApprovedExpiry}`
   : '';
 console.log(
-  `PASS npm audit ${projectPath}: critical=${summary.critical ?? 0}, high=${summary.high ?? 0}, moderate=${summary.moderate ?? 0}${exceptionSummary}`,
+  `PASS npm audit ${projectPath}: critical=${summary.critical ?? 0}, high=${summary.high ?? 0}, moderate=${summary.moderate ?? 0}, low=${summary.low ?? 0}${exceptionSummary}`,
 );

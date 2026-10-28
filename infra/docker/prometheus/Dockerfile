@@ -9,20 +9,24 @@ RUN git init \
     && test "$(git rev-parse 'FETCH_HEAD^{commit}')" = "b273ae3adeb64ad630d65ef7f16440df95658410" \
     && git checkout --detach b273ae3adeb64ad630d65ef7f16440df95658410 \
     && go get google.golang.org/grpc@v1.83.2 golang.org/x/net@v0.60.0 \
+       go.opentelemetry.io/otel/sdk@v1.45.0 \
+       go.opentelemetry.io/otel/exporters/otlp/otlptrace@v1.45.0 \
+       go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc@v1.45.0 \
+       go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.45.0 \
     && git config user.name porprov-build \
     && git config user.email build@porprov.invalid \
     && git add go.mod go.sum \
     && git commit -m "build: patch dependencies for PORPROV image" \
-    && git tag v0.313.3-porprov.2 \
+    && git tag v0.313.3-porprov.3 \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -tags "netgo,stringlabels,remove_all_sd" \
-       -ldflags="-s -w -X github.com/prometheus/common/version.Version=3.13.3-porprov.2 -X github.com/prometheus/common/version.Revision=b273ae3adeb64ad630d65ef7f16440df95658410" \
+       -ldflags="-s -w -X github.com/prometheus/common/version.Version=3.13.3-porprov.3 -X github.com/prometheus/common/version.Revision=b273ae3adeb64ad630d65ef7f16440df95658410" \
        -o /out/prometheus ./cmd/prometheus \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -tags "netgo,stringlabels,remove_all_sd" \
-       -ldflags="-s -w -X github.com/prometheus/common/version.Version=3.13.3-porprov.2 -X github.com/prometheus/common/version.Revision=b273ae3adeb64ad630d65ef7f16440df95658410" \
+       -ldflags="-s -w -X github.com/prometheus/common/version.Version=3.13.3-porprov.3 -X github.com/prometheus/common/version.Revision=b273ae3adeb64ad630d65ef7f16440df95658410" \
        -o /out/promtool ./cmd/promtool
 
 FROM prom/prometheus:v3.13.3-distroless
-LABEL org.opencontainers.image.version="3.13.3-porprov.2" \
+LABEL org.opencontainers.image.version="3.13.3-porprov.3" \
       org.opencontainers.image.revision="b273ae3adeb64ad630d65ef7f16440df95658410"
 COPY --from=builder /out/prometheus /bin/prometheus
 COPY --from=builder /out/promtool /bin/promtool

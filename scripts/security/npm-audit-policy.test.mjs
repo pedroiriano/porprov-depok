@@ -39,6 +39,20 @@ test('Web Moderate threshold is preserved; mobile High threshold is preserved', 
   assert.equal(evaluate(input).unapproved.length, 1);
   assert.equal(evaluate(input, { minimumSeverity: 'high' }).unapproved.length, 0);
 });
+
+// TEST: The stricter default blocks Low as well as transitive and malformed advisory severities.
+test('Low release threshold and default fail closed without suppressing advisories', () => {
+  const input = report([advisory('dependency', 'low', 'GHSA-aaaa-bbbb-cccc')]);
+  input.vulnerabilities.braces.severity = 'low';
+  assert.equal(evaluate(input, { minimumSeverity: 'low' }).unapproved.length, 1);
+  assert.equal(evaluateAudit(input, { project: options.project }).unapproved.length, 1);
+  input.vulnerabilities.parent = { severity: 'high', via: ['braces'] };
+  assert.equal(evaluate(input, { minimumSeverity: 'low' }).unapproved.length, 2);
+  for (const severity of ['__proto__', 'constructor', 'toString']) {
+    const malformed = report([advisory('dependency', severity, 'GHSA-aaaa-bbbb-cccc')]);
+    assert.equal(evaluate(malformed, { minimumSeverity: 'low' }).unapproved.length, 1);
+  }
+});
 test('transitive advisory resolution is exact and unresolved cycles fail closed', () => {
   const input = report();
   input.vulnerabilities.micromatch = { severity: 'high', via: ['braces'] };
