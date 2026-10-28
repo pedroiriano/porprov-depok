@@ -145,4 +145,43 @@ func TestSchedulePeriodLifecycleIsolatedPostgres(t *testing.T) {
 		t.Fatal("immutable history was mutable")
 	}
 	_ = savepoint.Rollback(ctx)
+	// TEST: Monthly overlap/day totals must remain complete across pagination and exclude drafts/archives.
+	if _, err = tx.Exec(ctx, `INSERT INTO pg_temp.schedule_periods(id,cabor_id,cabor_name,label,starts_on,ends_on,is_published) VALUES
+	 ('00000000-0000-4000-8000-000000000099',$1,'Bola Basket','Putri','2026-11-02','2026-11-13',true),
+	 ('00000000-0000-4000-8000-000000000100',$1,'Bola Basket','Tahun Baru','2026-12-31','2027-01-02',true)`, cabor); err != nil {
+		t.Fatal("calendar fixture setup failed")
+	}
+	calendar := func(query string, total int, expected map[string]int) {
+		t.Helper()
+		w := httptest.NewRecorder()
+		h.List(false).ServeHTTP(w, httptest.NewRequest("GET", "/periods"+query, nil).WithContext(ctx))
+		var body struct {
+			Total    int              `json:"total"`
+			Data     []schedulePeriod `json:"data"`
+			Calendar struct {
+				Month string         `json:"month"`
+				Days  map[string]int `json:"day_counts"`
+			} `json:"calendar"`
+		}
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &body) != nil || body.Total != total {
+			t.Fatalf("calendar response mismatch: %d %s", w.Code, w.Body.String())
+		}
+		for day, count := range expected {
+			if body.Calendar.Days[day] != count {
+				t.Fatalf("calendar %s count %d, want %d", day, body.Calendar.Days[day], count)
+			}
+		}
+		if len(body.Data) > 1 || strings.Contains(w.Body.String(), "DRAF_PRIVAT") || strings.Contains(w.Body.String(), "is_published") {
+			t.Fatal("calendar pagination/privacy boundary failed")
+		}
+	}
+	calendar("?month=2026-10&per_page=1", 1, map[string]int{"2026-10-30": 0, "2026-10-31": 1})
+	calendar("?month=2026-11&per_page=1", 2, map[string]int{"2026-11-01": 1, "2026-11-02": 2, "2026-11-05": 2, "2026-11-06": 1, "2026-11-13": 1, "2026-11-14": 0})
+	calendar("?month=2026-11&per_page=1&page=2", 2, map[string]int{"2026-11-02": 2})
+	calendar("?month=2026-12&per_page=1", 1, map[string]int{"2026-12-30": 0, "2026-12-31": 1})
+	calendar("?month=2027-01&per_page=1", 1, map[string]int{"2027-01-01": 1, "2027-01-02": 1, "2027-01-03": 0})
+	if _, err = tx.Exec(ctx, "UPDATE pg_temp.schedule_periods SET deleted_at=now() WHERE id='00000000-0000-4000-8000-000000000099'"); err != nil {
+		t.Fatal("calendar archive fixture failed")
+	}
+	calendar("?month=2026-11&per_page=1", 1, map[string]int{"2026-11-02": 1, "2026-11-13": 0})
 }

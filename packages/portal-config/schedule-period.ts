@@ -3,7 +3,7 @@ export type SchedulePeriod = {
   starts_on: string; ends_on: string; notes: string;
 };
 export type ManagedSchedulePeriod = SchedulePeriod & {is_published: boolean; version: number; archived: boolean};
-export type PeriodPage<T = SchedulePeriod> = {data: T[]; total: number; page: number; per_page: number};
+export type PeriodPage<T = SchedulePeriod> = {data: T[]; total: number; page: number; per_page: number; calendar?: {month: string; day_counts: Record<string, number>}};
 
 // INFO: Dates represent whole inclusive days in Indonesia, independent of the browser timezone.
 export function formatSchedulePeriod(start: string, end: string): string {

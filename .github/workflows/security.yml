@@ -53,6 +53,10 @@ jobs:
         run: npm run check:language
       - if: matrix.app == 'apps/admin-web-react'
         run: npm run check:contract
+      - if: matrix.app == 'apps/admin-web-react'
+        run: npm run test:session
+      - if: matrix.app == 'apps/public-web-nextjs'
+        run: node --test ../../scripts/uiux/test-schedule-calendar.mjs
       - run: npm run build
       - name: Prove build-only dependencies absent from Public runtime
         if: matrix.app == 'apps/public-web-nextjs'
@@ -126,6 +130,25 @@ jobs:
           # dependency yang konsisten tanpa berbagi state cache antar-job.
           cache: false
       - run: go test ./...
+      - name: Verify schedule calendar SQL in isolated temporary tables
+        if: matrix.module == 'services/schedule-service'
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture=porprov-schedule-calendar-ci
+          fixture_password=$(openssl rand -hex 24)
+          echo "::add-mask::$fixture_password"
+          export POSTGRES_PASSWORD="$fixture_password"
+          trap 'docker stop --time 10 "$fixture" >/dev/null 2>&1 || true' EXIT
+          docker run -d --rm --name "$fixture" --network none --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=256m -e POSTGRES_PASSWORD -e POSTGRES_USER=calendar_ci -e POSTGRES_DB=schedule_db postgres:15-alpine >/dev/null
+          for attempt in $(seq 1 40); do
+            if docker exec "$fixture" sh -c 'test "$(cat /proc/1/comm)" = postgres && pg_isready -U calendar_ci -d schedule_db' >/dev/null; then break; fi
+            sleep 1
+          done
+          docker exec "$fixture" sh -c 'test "$(cat /proc/1/comm)" = postgres && pg_isready -U calendar_ci -d schedule_db' >/dev/null
+          export SCHEDULE_PERIOD_TEST_DATABASE_URL="postgres://calendar_ci:$fixture_password@127.0.0.1:5432/schedule_db?sslmode=disable"
+          # SECURITY: No host ports, production credentials, real domain tables or external DB are used.
+          docker run --rm --network "container:$fixture" -e SCHEDULE_PERIOD_TEST_DATABASE_URL -e GOWORK=off -e GOPROXY=off -v "$GITHUB_WORKSPACE:/repo:ro" -v "$(go env GOMODCACHE):/go/pkg/mod:ro" -w /repo/services/schedule-service golang:1.26.10-alpine3.24@sha256:a2012b4a1d1f9f7e9f44e0d39b805a901e856b1dd80b4e6ee4338db547050308 go test ./internal/handler -run TestSchedulePeriod -count=1
       - name: Vulnerability scan
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.6.0

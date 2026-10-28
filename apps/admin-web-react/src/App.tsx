@@ -249,7 +249,8 @@ export default function App({ routerBasePath }: { routerBasePath?: string }) {
     return () => window.removeEventListener('porprov:session-expired', recoverSession);
   }, [auth]);
   
-  if (auth.isLoading) {
+  // RELIABILITY: Silent renewal must not unmount the authenticated workspace and its forms.
+  if (auth.isLoading && !(auth.isAuthenticated && auth.activeNavigator === 'signinSilent')) {
     return <div className="flex min-h-dvh w-full items-center justify-center bg-slate-50 px-4 font-semibold text-indigo-600 dark:bg-slate-900 dark:text-indigo-300" role="status">Memuat autentikasi...</div>;
   }
 
