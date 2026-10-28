@@ -55,7 +55,7 @@ func TestSchedulePeriodProofAndInputBoundary(t *testing.T) {
 			t.Fatal("invalid payload accepted")
 		}
 	}
-	for _, query := range []string{"?per_page=101", "?page=0", "?sort=starts_on%3BDROP%20TABLE%20schedule_periods", "?direction=other", "?date=not-a-date", "?date=0000-01-01", "?cabor_id=invalid"} {
+	for _, query := range []string{"?per_page=101", "?page=0", "?sort=starts_on%3BDROP%20TABLE%20schedule_periods", "?direction=other", "?date=not-a-date", "?date=0000-01-01", "?cabor_id=invalid", "?month=2026-13", "?month=2026-2", "?month=1999-12", "?month=2101-01", "?month=2026-10%27%3BDROP%20TABLE%20schedule_periods"} {
 		r := httptest.NewRequest("GET", "/periods"+query, nil)
 		w := httptest.NewRecorder()
 		h.List(false).ServeHTTP(w, r)

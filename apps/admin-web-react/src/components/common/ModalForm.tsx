@@ -1,10 +1,11 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useContext, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { History, Loader2 } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import { useModalDialog } from '../../hooks/useModalDialog';
 import { deleteFormDraft, readFormDraft, saveFormDraft, type StoredFormDraft } from '../../lib/formDraftStorage';
 import { deleteServerDraft, draftFieldDifferences, readServerDraft, sanitizeDraftPayload, saveServerDraft, ServerDraftConflictError, type ServerFormDraft } from '../../lib/serverDraft';
+import { AuthorizationContext } from '../../contexts/authorization';
 
 interface ModalFormDraft<T = unknown> {
   entityId: string;
@@ -37,6 +38,7 @@ export default function ModalForm<T = unknown>({
   draft,
 }: ModalFormProps<T>) {
   const auth = useAuth();
+  const revalidating = useContext(AuthorizationContext)?.refreshing ?? false;
   const [mounted, setMounted] = useState(false);
   const [draftCandidate, setDraftCandidate] = useState<StoredFormDraft<T> | null>(null);
   const [draftResolved, setDraftResolved] = useState(true);
@@ -65,7 +67,7 @@ export default function ModalForm<T = unknown>({
       }
       onClose();
     },
-    closeDisabled: submitting,
+    closeDisabled: submitting || revalidating,
   });
   const draftKey = (() => {
     if (!draft) return '';
@@ -77,9 +79,20 @@ export default function ModalForm<T = unknown>({
   const draftEntity = draft?.entityId || '';
   const draftVersion = draft?.version || '1';
   const token = auth.user?.access_token || '';
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+  const recoveryRef = useRef({ isOpen, draftKey, draftResolved, draftValue });
+  recoveryRef.current = { isOpen, draftKey, draftResolved, draftValue };
 
   useEffect(() => {
     setMounted(true);
+    return () => {
+      // RELIABILITY: Retain a safe actor-scoped draft before an actual route change/logout beats the debounce.
+      const current = recoveryRef.current;
+      if (current.isOpen && current.draftKey && current.draftResolved && current.draftValue !== undefined && JSON.stringify(current.draftValue) !== baselineRef.current) {
+        void saveFormDraft(current.draftKey, sanitizeDraftPayload(current.draftValue)).catch(() => undefined);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -97,7 +110,8 @@ export default function ModalForm<T = unknown>({
     setCloseConfirmationOpen(false);
     setDraftResolved(false);
     const localPromise = readFormDraft<T>(draftKey);
-    const serverPromise = token ? readServerDraft<T>(token, draftRoute, draftEntity, draftVersion).catch(() => null) : Promise.resolve(null);
+    const currentToken = tokenRef.current;
+    const serverPromise = currentToken ? readServerDraft<T>(currentToken, draftRoute, draftEntity, draftVersion).catch(() => null) : Promise.resolve(null);
     void Promise.all([localPromise, serverPromise]).then(([stored, remote]) => {
       if (!active) return;
       if (remote) {
@@ -113,7 +127,8 @@ export default function ModalForm<T = unknown>({
       }
     });
     return () => { active = false; };
-  }, [isOpen, draftKey, draftEntity, draftRoute, draftVersion, token]);
+    // RELIABILITY: Token renewal is not a new editing session; preserve baseline and server draft version.
+  }, [isOpen, draftKey, draftEntity, draftRoute, draftVersion]);
 
   useEffect(() => {
     if (!isOpen || draftValue === undefined || !draftKey || !draftResolved) return;
@@ -124,7 +139,7 @@ export default function ModalForm<T = unknown>({
       const safePayload = sanitizeDraftPayload(draftValue);
       void saveFormDraft(draftKey, safePayload).then((stored) => {
         setDraftSavedAt(stored.savedAt);
-        if (!token) { setDraftStatus('Draf tersimpan di perangkat ini.'); return; }
+        if (!token || revalidating) { setDraftStatus('Draf tersimpan di perangkat ini.'); return; }
         return saveServerDraft(token, draftRoute, draftEntity, draftVersion, safePayload, serverVersionRef.current).then((remote) => {
           serverVersionRef.current = remote.version;
           setServerDraft(remote);
@@ -140,7 +155,7 @@ export default function ModalForm<T = unknown>({
       });
     }, 800);
     return () => window.clearTimeout(timeout);
-  }, [draftValue, draftKey, draftResolved, isOpen, token, draftRoute, draftEntity, draftVersion]);
+  }, [draftValue, draftKey, draftResolved, isOpen, token, draftRoute, draftEntity, draftVersion, revalidating]);
 
   useEffect(() => {
     if (!isOpen || draftValue === undefined || !draftKey || !draftResolved || JSON.stringify(draftValue) === baselineRef.current) return;
@@ -265,7 +280,7 @@ export default function ModalForm<T = unknown>({
             </div>
           )}
           {compareOpen && comparison.length > 0 && <div className="mb-4 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700"><table className="min-w-full text-left text-sm"><caption className="sr-only">Perbandingan draf</caption><thead className="bg-slate-100 dark:bg-slate-800"><tr><th className="px-3 py-2">Bagian</th><th className="px-3 py-2">Perangkat ini</th><th className="px-3 py-2">Perangkat lain</th></tr></thead><tbody>{comparison.map((item) => <tr key={item.field} className="border-t border-slate-200 align-top dark:border-slate-700"><th className="px-3 py-2 font-bold">{item.field.replaceAll('_', ' ')}</th><td className="max-w-64 break-words px-3 py-2">{item.local}</td><td className="max-w-64 break-words px-3 py-2">{item.server}</td></tr>)}</tbody></table></div>}
-          <form id={formId} onSubmit={onSubmit} className="flex flex-col gap-4">
+          <form id={formId} aria-busy={revalidating} onSubmit={event => { if (revalidating) { event.preventDefault(); return; } onSubmit(event); }} className="flex flex-col gap-4">
             {children}
           </form>
           {draft && draftResolved && (draftStatus || draftSavedAt) && <p role="status" className="mt-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">{draftStatus || `Draf tersimpan ${new Date(draftSavedAt).toLocaleTimeString('id-ID')}.`}</p>}
@@ -276,7 +291,7 @@ export default function ModalForm<T = unknown>({
           <button 
             type="button"
             onClick={requestClose}
-            disabled={submitting}
+            disabled={submitting || revalidating}
             className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 sm:w-auto dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Batal
@@ -284,11 +299,11 @@ export default function ModalForm<T = unknown>({
           <button 
             type="submit" 
             form={formId}
-            disabled={submitting}
+            disabled={submitting || revalidating}
             className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-black text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
-            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {submitting ? 'Menyimpan...' : submitText}
+            {(submitting || revalidating) && <Loader2 className="w-4 h-4 animate-spin" />}
+            {submitting ? 'Menyimpan...' : revalidating ? 'Memeriksa sesi...' : submitText}
           </button>
         </div>
       </div>

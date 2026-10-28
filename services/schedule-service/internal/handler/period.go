@@ -184,6 +184,17 @@ func (h *PeriodHandler) List(manage bool) http.HandlerFunc {
 			return
 		}
 		cabor, date := q.Get("cabor_id"), q.Get("date")
+		month := q.Get("month")
+		monthStart, monthEnd := "", ""
+		if month != "" {
+			parsed, err := time.Parse("2006-01", month)
+			if err != nil || parsed.Year() < 2000 || parsed.Year() > 2100 {
+				periodError(w, 400, "Bulan pencarian tidak valid.")
+				return
+			}
+			monthStart = parsed.Format("2006-01-02")
+			monthEnd = parsed.AddDate(0, 1, -1).Format("2006-01-02")
+		}
 		if cabor != "" && !canonicalPeriodID(cabor) {
 			periodError(w, 400, "Cabang olahraga tidak valid.")
 			return
@@ -210,14 +221,15 @@ func (h *PeriodHandler) List(manage bool) http.HandlerFunc {
 			return
 		}
 		archived := manage && q.Get("archived") == "true"
-		where := ` WHERE (deleted_at IS NOT NULL)=$1 AND ($2 OR is_published) AND ($3='' OR strpos(lower(cabor_name||' '||label||' '||notes),lower($3))>0) AND ($4='' OR cabor_id::text=$4) AND ($5='' OR (starts_on<=NULLIF($5,'')::date AND ends_on>=NULLIF($5,'')::date))`
-		args := []any{archived, manage, search, cabor, date}
+		where := ` WHERE (deleted_at IS NOT NULL)=$1 AND ($2 OR is_published) AND ($3='' OR strpos(lower(cabor_name||' '||label||' '||notes),lower($3))>0) AND ($4='' OR cabor_id::text=$4) AND ($5='' OR (starts_on<=NULLIF($5,'')::date AND ends_on>=NULLIF($5,'')::date)) AND ($6='' OR (starts_on<=NULLIF($7,'')::date AND ends_on>=NULLIF($6,'')::date))`
+		args := []any{archived, manage, search, cabor, date, monthStart, monthEnd}
 		var total int
 		// RELIABILITY: Count and bounded page share one statement snapshot.
 		columns := "id::text AS id,cabor_id::text AS cabor_id,cabor_name,label,starts_on::text AS starts_on,ends_on::text AS ends_on,notes,is_published,version,(deleted_at IS NOT NULL) AS archived"
-		statement := "WITH filtered AS MATERIALIZED (SELECT " + columns + " FROM schedule_periods" + where + "), page_rows AS (SELECT * FROM filtered ORDER BY " + order + " " + direction + ",id LIMIT $6 OFFSET $7) SELECT (SELECT count(*) FROM filtered),(SELECT COALESCE(jsonb_agg(to_jsonb(page_rows) ORDER BY " + order + " " + direction + ",id),'[]'::jsonb) FROM page_rows)"
-		var raw []byte
-		err := h.pool.QueryRow(r.Context(), statement, append(args, perPage, (page-1)*perPage)...).Scan(&total, &raw)
+		// PERFORMANCE: Calendar totals cover every matching range, while event details remain paginated; never fetch the whole dataset into the browser.
+		statement := "WITH filtered AS MATERIALIZED (SELECT " + columns + " FROM schedule_periods" + where + "), page_rows AS (SELECT * FROM filtered ORDER BY " + order + " " + direction + ",id LIMIT $8 OFFSET $9) SELECT (SELECT count(*) FROM filtered),(SELECT COALESCE(jsonb_agg(to_jsonb(page_rows) ORDER BY " + order + " " + direction + ",id),'[]'::jsonb) FROM page_rows),(SELECT COALESCE(jsonb_object_agg(to_char(day,'YYYY-MM-DD'),(SELECT count(*) FROM filtered f WHERE f.starts_on<=to_char(day,'YYYY-MM-DD') AND f.ends_on>=to_char(day,'YYYY-MM-DD'))),'{}'::jsonb) FROM generate_series(NULLIF($6,'')::date::timestamp,NULLIF($7,'')::date::timestamp,INTERVAL '1 day') AS days(day))"
+		var raw, rawDays []byte
+		err := h.pool.QueryRow(r.Context(), statement, append(args, perPage, (page-1)*perPage)...).Scan(&total, &raw, &rawDays)
 		if err != nil {
 			periodFailure(w, err)
 			return
@@ -235,7 +247,16 @@ func (h *PeriodHandler) List(manage bool) http.HandlerFunc {
 				items = append(items, map[string]any{"id": p.ID, "cabor_id": p.CaborID, "cabor_name": p.CaborName, "label": p.Label, "starts_on": p.StartsOn, "ends_on": p.EndsOn, "notes": p.Notes})
 			}
 		}
-		periodJSON(w, 200, map[string]any{"data": items, "total": total, "page": page, "per_page": perPage})
+		result := map[string]any{"data": items, "total": total, "page": page, "per_page": perPage}
+		if month != "" {
+			var days map[string]int
+			if err = json.Unmarshal(rawDays, &days); err != nil {
+				periodFailure(w, err)
+				return
+			}
+			result["calendar"] = map[string]any{"month": month, "day_counts": days}
+		}
+		periodJSON(w, 200, result)
 	}
 }
 

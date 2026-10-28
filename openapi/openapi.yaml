@@ -237,6 +237,16 @@
             }
           },
           {
+            "name": "month",
+            "in": "query",
+            "description": "Bulan YYYY-MM, tahun 2000-2100; overlap inklusif dan ringkasan jumlah semua rentang per tanggal, detail tetap berpaginasi.",
+            "schema": {
+              "type": "string",
+              "pattern": "^(20[0-9]{2}|2100)-(0[1-9]|1[0-2])$"
+            },
+            "example": "2026-11"
+          },
+          {
             "name": "sort",
             "in": "query",
             "schema": {
@@ -359,6 +369,16 @@
               "type": "string",
               "format": "date"
             }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "description": "Bulan YYYY-MM, tahun 2000-2100; overlap inklusif dan ringkasan jumlah semua rentang per tanggal, detail tetap berpaginasi.",
+            "schema": {
+              "type": "string",
+              "pattern": "^(20[0-9]{2}|2100)-(0[1-9]|1[0-2])$"
+            },
+            "example": "2026-11"
           },
           {
             "name": "sort",
@@ -1439,6 +1459,26 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100
+          },
+          "calendar": {
+            "type": "object",
+            "description": "Tersedia bila month diisi; ringkasan memakai filter/publikasi yang sama dan mencakup seluruh hasil, bukan hanya halaman detail.",
+            "required": [
+              "month",
+              "day_counts"
+            ],
+            "properties": {
+              "month": {
+                "type": "string"
+              },
+              "day_counts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
           }
         }
       },
@@ -1469,6 +1509,26 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100
+          },
+          "calendar": {
+            "type": "object",
+            "description": "Tersedia bila month diisi; ringkasan memakai filter/publikasi yang sama dan mencakup seluruh hasil, bukan hanya halaman detail.",
+            "required": [
+              "month",
+              "day_counts"
+            ],
+            "properties": {
+              "month": {
+                "type": "string"
+              },
+              "day_counts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
           }
         }
       },

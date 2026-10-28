@@ -8,6 +8,7 @@ export type AuthorizationSession = {
 
 export type AuthorizationContextValue = AuthorizationSession & {
   loading: boolean;
+  refreshing: boolean;
   error: string;
   hasPermission: (permission: string) => boolean;
   refresh: () => Promise<void>;
