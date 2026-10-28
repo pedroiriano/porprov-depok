@@ -26,6 +26,18 @@ GHSA-gcqx-w48m-w2h4/CVE-2026-93753 belum mempunyai patched version upstream pada
 
 ## Audit image dan batas klaim
 
+### Patch infrastruktur dengan versi server dipertahankan
+
+Redis tetap memakai binary upstream 7.4.10 dengan SHA256 yang sama sebelum/sesudah upgrade paket Alpine. NATS tetap memakai source server 2.10.29 dari signed tag f207139f7b9ba0cf3982da9b1db6af0af32bb445 dan commit f91ddd892565760834f27404a92b80a57b8ec149; compiler Go 1.26.10, x/crypto v0.56.0, klauspost/compress v1.18.7 serta paket Alpine diperbarui. Tidak memakai kandidat Redis 7.4.12/NATS 2.15.2 untuk aktivasi ini dan tidak mengubah konfigurasi, credential atau format penyimpanan.
+
+Image canonical: `porprov/redis:7.4.10-porprov.1` dan `porprov/nats:2.10.29-porprov.1`. Inventaris image buatan repository menjadi 23 (21 baseline ditambah dua infrastruktur ini). Protected CI membangun/memindai kedua image dengan scanner terpin, seluruh severity termasuk unfixed, dan menyimpan CycloneDX serta laporan mentah. Bukti exact image lokal dan production tetap harus dicocokkan terpisah.
+
+Rehearsal terisolasi tanpa port host membuktikan binary Redis identik, RDB lama dapat dibaca dengan nilai/jumlah fixture yang sama, serta PING/reconnect. NATS membuktikan stream JetStream file-backed dari server lama dapat dibuka, pesan lama direplay dan publish berikutnya melanjutkan sequence. Semua fixture sintetis; bukan UAT multi-pengguna dan bukan data production.
+
+Sebelum aktivasi: backup konsisten kedua named volume melalui jeda singkat terukur, checksum, enkripsi/off-host dan verifikasi pemulihan; pertahankan image lama. Cutover hanya dua service dengan `--no-deps`, tidak menjalankan migrasi/bootstrap atau mengganti password. Verifikasi koneksi service, outbox, SSE/reconnect, health, SSO dan konten. Rollback memakai image lama dengan format data yang sama; restore data destruktif tetap memerlukan keputusan eksplisit.
+
+Job recovery wajib memulai kontainer runtime existing secara eksplisit; `docker compose start` dapat menelusuri dependency one-shot dan tidak boleh dipakai untuk memulihkan writer tanpa pembatasan. Validasi bahwa StartedAt/FinishedAt/ExitCode seluruh container migrate/bootstrap tidak berubah selama cutover.
+
 Audit baseline diperluas dari High/Critical fixable menjadi Critical/High/Medium/Low termasuk unfixed, dengan identitas image production/candidate dicocokkan. Catat CVE per package/target serta distinct advisory; jumlah instance dependency bukan jumlah celah yang terbukti dapat dieksploitasi.
 
 21 image repository dan lima image vendor production merupakan dua scope berbeda. Audit tambahan menemukan dependency pada image vendor lama yang belum tercakup gate 21 image. Root image/tag/digest, raw report dan matriks terperinci berada di `.tmp/security-closure-20261028/`, bukan laporan berisi credential/data bisnis di Git. ZAP pasif anonymous yang nol High/Medium/Low tidak menggantikan dependency/runtime scan, authenticated authorization, atau pentest aktif.
