@@ -13,6 +13,7 @@ Status: persiapan rilis. Tidak menyatakan production telah berubah. Pedoman cano
 - Runtime Admin/edge Nginx: curl dan libcurl minimum 8.23.0-r0 untuk CVE-2026-92392; persyaratan versi mematahkan reuse layer apk upgrade yang sudah usang. Admin memakai npm ci dari lockfile yang diverifikasi pada Linux.
 - Prometheus 3.13.3-porprov.2 mempertahankan source upstream yang dipin dan menambah patch golang.org/x/net v0.60.0 untuk CVE-2026-78669. Tidak mengganti konfigurasi, fungsi dashboard, atau major Prometheus.
 - User service juga memperbarui x/net ke v0.60.0 beserta dependency pendukung yang dipilih Go MVS. Unit test dan govulncheck dijalankan dengan GOWORK=off; matriks CI memakai isolasi yang sama agar versi dari workspace tidak menutupi graph dependency container. Tidak mengubah role, realm atau data akun.
+- Pemeriksaan Dependabot sesudah merge PR #54 menemukan delapan alert Medium GHSA-j6qf-3m9c-vwj3 pada chi. Delapan service pemakai chi memperbarui github.com/go-chi/chi/v5 ke v5.4.0. Pencarian source tidak menemukan pemanggilan ClientIPFromXFF/GetClientIP yang menjadi prasyarat advisory; patch tetap diterapkan tanpa mengubah middleware/otorisasi aplikasi. Verifikasi mencakup test dan govulncheck graph service terisolasi, CI final SHA, serta rebuild/Trivy/SBOM delapan image runtime terdampak. Migrator tidak memakai chi dan tidak memerlukan rebuild karena patch ini.
 - Mobile/tooling CI: tetap Expo SDK 57 patch, node-forge 1.4.2, shell-quote 1.12.0, source-map-js 1.2.2, follow-redirects 1.16.1 dan postcss-selector-parser 6.1.5. Override Zod 4.6.6 pada CLI dibuktikan terhadap schema plugin/output/MCP aktual melalui scripts/security/expo-zod-compat.test.mjs; bukan penggantian major SDK.
 - Source/CI/builder Go minimum 1.26.10. Digest indeks resmi golang:1.26.10-alpine dan alpine3.24: sha256:a2012b4a1d1f9f7e9f44e0d39b805a901e856b1dd80b4e6ee4338db547050308. Menggantikan minimum operasional 1.26.6 pada baseline sebelumnya.
 - Tidak memakai npm audit fix --force, tidak menurunkan threshold, tidak memperpanjang exception lama, dan tidak dismiss alert manual.
@@ -27,6 +28,7 @@ Status: persiapan rilis. Tidak menyatakan production telah berubah. Pedoman cano
 - https://curl.se/docs/CVE-2026-92392.html
 - https://go.dev/doc/devel/release
 - https://github.com/advisories/GHSA-gcqx-w48m-w2h4
+- https://github.com/advisories/GHSA-j6qf-3m9c-vwj3
 
 Temuan dependency tidak otomatis membuktikan eksploitasi di production. Contoh Next SVG advisory bergantung pada glibc dan use-cache advisory pada pola fungsi tertentu; audit/build runtime dan patch tetap wajib, tanpa exception untuk melewati gate.
 
