@@ -1,0 +1,11 @@
+{
+  "name": "@porprov/deepmerge-safe",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Private MIT-licensed deepmerge compatibility backport for Expo configuration tooling",
+  "main": "index.cjs",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "files": ["index.cjs", "index.d.ts", "LICENSE", "README.md"],
+  "engines": { "node": ">=18" }
+}

@@ -1,16 +1,16 @@
 // SECURITY: Evaluate each advisory independently; never ignore a whole package/tree.
-export function evaluateAudit(report, { project, exceptions = [], minimumSeverity = 'high', now = new Date() }) {
+export function evaluateAudit(report, { project, exceptions = [], minimumSeverity = 'low', now = new Date() }) {
   const rank = { low: 1, moderate: 2, high: 3, critical: 4 };
   const unapproved = [];
   const approvedIds = new Set();
   const approvedExpiryDates = new Set();
-  if (!['moderate', 'high'].includes(minimumSeverity) || Number.isNaN(now.getTime())
+  if (!['low', 'moderate', 'high'].includes(minimumSeverity) || Number.isNaN(now.getTime())
       || report.auditReportVersion !== 2 || report.error
       || !report.vulnerabilities || !report.metadata?.vulnerabilities) {
     return { unapproved: ['invalid audit report or policy'], approvedIds, approvedExpiryDates };
   }
   const vulnerabilities = report.vulnerabilities;
-  const blocking = (severity) => !(severity in rank) || rank[severity] >= rank[minimumSeverity];
+  const blocking = (severity) => !Object.hasOwn(rank, severity) || rank[severity] >= rank[minimumSeverity];
   function collect(name, visited = new Set()) {
     if (visited.has(name)) return [];
     visited.add(name);

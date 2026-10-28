@@ -7,7 +7,7 @@ RUN git init \
     && git fetch --depth 1 origin refs/tags/1.19 \
     && test "$(git rev-parse FETCH_HEAD)" = "6456aaa0f3c854d199d0f037f068eb97515b7513" \
     && git checkout --detach FETCH_HEAD \
-    && go get golang.org/x/sys@v0.47.0 \
+    && go get golang.org/x/sys@v0.47.0 github.com/moby/sys/user@v0.4.1 \
     && go mod tidy \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/gosu .
 

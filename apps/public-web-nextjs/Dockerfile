@@ -1,9 +1,11 @@
-FROM node:24-alpine AS dependencies
+FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS dependencies
+RUN apk upgrade --no-cache && apk add --no-cache 'zlib>=1.3.2-r1'
 WORKDIR /app
 COPY apps/public-web-nextjs/package.json apps/public-web-nextjs/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
-FROM node:24-alpine AS builder
+FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS builder
+RUN apk upgrade --no-cache && apk add --no-cache 'zlib>=1.3.2-r1'
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY apps/public-web-nextjs/ ./
@@ -17,7 +19,7 @@ ENV NEXT_PUBLIC_UMAMI_WEBSITE_ID=$NEXT_PUBLIC_UMAMI_WEBSITE_ID
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-FROM node:24-alpine AS runner
+FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -26,6 +28,7 @@ ENV HOSTNAME=0.0.0.0
 # SECURITY: runner tidak membutuhkan package manager. Upgrade paket keamanan
 # Alpine lalu hapus npm/Yarn/Corepack global untuk memperkecil attack surface.
 RUN apk upgrade --no-cache \
+    && apk add --no-cache 'zlib>=1.3.2-r1' \
     && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v1.22.22 \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg \
     && addgroup --system --gid 1001 nextjs \
