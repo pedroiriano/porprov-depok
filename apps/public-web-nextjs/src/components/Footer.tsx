@@ -63,13 +63,13 @@ export async function Footer() {
           </nav>
 
           <div className="md:col-span-4 lg:col-span-3">
-            <h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Status Portal</h2>
+            <h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Tentang Portal</h2>
             <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
               <p className="flex items-center gap-2 text-sm font-bold text-emerald-300">
                 <span className="size-2.5 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.8)]" aria-hidden="true" />
-                Informasi publik aktif
+                PORPROV di Kota Depok
               </p>
-              <p className="mt-3 text-sm leading-6 text-slate-400">Data pertandingan diperbarui dari service resmi panitia melalui API Gateway.</p>
+              <p className="mt-3 text-sm leading-6 text-slate-400">Temukan jadwal, lokasi pertandingan, dan kabar PORPROV di Kota Depok.</p>
             </div>
           </div>
         </div>

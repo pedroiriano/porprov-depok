@@ -61,6 +61,11 @@ jobs:
         run: npm run test:session
       - if: matrix.app == 'apps/public-web-nextjs'
         run: node --test ../../scripts/uiux/test-schedule-calendar.mjs ../../scripts/uiux/test-schedule-rounds.mjs
+      - name: Verify visitor-facing Public language
+        if: matrix.app == 'apps/public-web-nextjs'
+        run: |
+          node ../../scripts/uiux/check-public-language.mjs
+          node --test ../../scripts/uiux/test-public-language.mjs
       - run: npm run build
       - name: Prove build-only dependencies absent from Public runtime
         if: matrix.app == 'apps/public-web-nextjs'

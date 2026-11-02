@@ -3,7 +3,7 @@ import { portalMetadata } from '@/lib/portal-config';
 
 export function generateMetadata():Promise<Metadata>{return portalMetadata('livescore',baseMetadata);}
 const baseMetadata: Metadata = {
-  title: "LiveScore Pertandingan",
+  title: "Skor Langsung",
   description: "Pantau skor dan status pertandingan PORPROV XV Jawa Barat 2026 secara langsung dari data resmi panitia.",
   alternates: { canonical: "/livescore" },
 };

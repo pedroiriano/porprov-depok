@@ -22,7 +22,7 @@ export async function NewsSection() {
           <div className="mt-10 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center dark:border-slate-700 dark:bg-slate-900" role={news.status === "unavailable" ? "alert" : "status"}>
             <i className="ri-newspaper-line text-4xl text-primary-500" aria-hidden="true" />
             <h3 className="mt-4 text-xl font-black">Berita Depok belum dapat ditampilkan</h3>
-            <p className="mx-auto mt-2 max-w-xl text-slate-500 dark:text-slate-400">Portal PORPROV tetap dapat digunakan. Berita akan muncul kembali setelah koneksi sumber berita tersedia.</p>
+            <p className="mx-auto mt-2 max-w-xl text-slate-500 dark:text-slate-400">Berita belum tersedia. Silakan coba lagi nanti.</p>
           </div>
         ) : (
           <div className="mt-10 grid gap-8 lg:grid-cols-12">
