@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -59,6 +61,15 @@ func (h *MatchHandler) referenceExists(ctx context.Context, endpoint string) (bo
 	return true, nil
 }
 
+// SECURITY: Presets and custom rounds share the existing varchar(50), never markup or executable content.
+func normalizeMatchRound(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" || !utf8.ValidString(value) || utf8.RuneCountInString(value) > 50 || strings.ContainsFunc(value, func(r rune) bool { return unicode.IsControl(r) || unicode.Is(unicode.Cf, r) }) {
+		return "", errors.New("babak wajib berisi 1–50 karakter tanpa karakter kontrol")
+	}
+	return value, nil
+}
+
 func (h *MatchHandler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	var req matchRequest
 
@@ -70,6 +81,12 @@ func (h *MatchHandler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "nomor_tanding_id, venue_id, status, dan round wajib diisi", http.StatusUnprocessableEntity)
 		return
 	}
+	round, roundErr := normalizeMatchRound(req.Round)
+	if roundErr != nil {
+		http.Error(w, roundErr.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	req.Round = round
 
 	t, err := time.Parse(time.RFC3339, req.MatchDate)
 	if err != nil {
@@ -194,6 +211,14 @@ func (h *MatchHandler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var t time.Time
+	if req.Round != "" {
+		round, err := normalizeMatchRound(req.Round)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		req.Round = round
+	}
 	if req.MatchDate != "" {
 		var err error
 		t, err = time.Parse(time.RFC3339, req.MatchDate)

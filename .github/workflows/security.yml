@@ -60,7 +60,7 @@ jobs:
       - if: matrix.app == 'apps/admin-web-react'
         run: npm run test:session
       - if: matrix.app == 'apps/public-web-nextjs'
-        run: node --test ../../scripts/uiux/test-schedule-calendar.mjs
+        run: node --test ../../scripts/uiux/test-schedule-calendar.mjs ../../scripts/uiux/test-schedule-rounds.mjs
       - run: npm run build
       - name: Prove build-only dependencies absent from Public runtime
         if: matrix.app == 'apps/public-web-nextjs'

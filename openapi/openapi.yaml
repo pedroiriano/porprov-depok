@@ -1882,12 +1882,18 @@
     },
     "/schedule/matches/enriched": {
       "get": {
-        "summary": "Membaca jadwal beserta peserta untuk tabel Admin",
+        "summary": "Membaca rincian pertandingan berpaginasi dan kalender WIB",
+        "description": "Tanpa parameter tetap array legacy. Filter month/date/cabor/venue/status bersifat additive. Respons berhalaman menambah facets (Cabor/lokasi/status), calendar.month dan calendar.day_counts yang menghitung seluruh hasil terfilter sebelum pagination; tanggal pertandingan mengikuti Asia/Jakarta.",
         "security": [],
         "parameters": [
           { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
           { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
-          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["match_date", "nomor_tanding", "venue", "round", "status"] } }
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["match_date", "nomor_tanding", "venue", "round", "status"] } },
+          {"name": "month", "in": "query", "description": "Bulan kalender WIB, 2000–2100", "schema": {"type": "string", "pattern": "^(20[0-9]{2}|2100)-(0[1-9]|1[0-2])$"}},
+          {"name": "date", "in": "query", "description": "Tanggal pertandingan WIB, 2000–2100", "schema": {"type": "string", "format": "date"}},
+          {"name": "cabor", "in": "query", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "venue", "in": "query", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "status", "in": "query", "schema": {"type": "string", "maxLength": 50}}
         ],
         "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
       }

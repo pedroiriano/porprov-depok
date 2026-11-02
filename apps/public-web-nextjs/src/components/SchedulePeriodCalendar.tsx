@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { calendarWeekdays, groupSchedulePeriods, monthDays, periodsOnDay, scheduleColor } from '../../../../packages/portal-config/schedule-calendar';
 import { formatSchedulePeriod, type SchedulePeriod } from '../../../../packages/portal-config/schedule-period';
 
-const colors = [
+export const scheduleCalendarColors = [
   'border-blue-300 bg-blue-100 text-blue-950 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-100',
   'border-emerald-300 bg-emerald-100 text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-100',
   'border-violet-300 bg-violet-100 text-violet-950 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-100',
@@ -12,7 +12,7 @@ const colors = [
   'border-rose-300 bg-rose-100 text-rose-950 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-100',
   'border-cyan-300 bg-cyan-100 text-cyan-950 dark:border-cyan-700 dark:bg-cyan-950 dark:text-cyan-100',
 ];
-export const periodColorClass = (item: SchedulePeriod) => colors[scheduleColor(item)];
+export const periodColorClass = (item: SchedulePeriod) => scheduleCalendarColors[scheduleColor(item)];
 const groupLabel = (item: SchedulePeriod) => item.label.trim() ? `${item.cabor_name} · ${item.label.trim()}` : item.cabor_name;
 
 export function SchedulePeriodCalendar({ month, items, dayCounts, today, onShowDay }: { month: string; items: SchedulePeriod[]; dayCounts: Record<string, number>; today: string; onShowDay: (day: string) => void }) {

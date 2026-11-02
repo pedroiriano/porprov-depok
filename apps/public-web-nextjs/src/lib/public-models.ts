@@ -1,3 +1,4 @@
+import { scheduleRoundLabel } from '../../../../packages/portal-config/schedule-round';
 import {
   readPgNumber,
   readPgText,
@@ -368,7 +369,7 @@ export function normalizeEnrichedMatch(raw: RawEnrichedMatch, index = 0): Enrich
     venueMapRouteUrl: safeExternalUrl(raw.venue_map_route_url),
     matchDate: readPgTimestamp(raw.match_date),
     status: raw.status?.trim() || "Belum mulai",
-    round: raw.round?.trim() || "Tahap pertandingan",
+    round: scheduleRoundLabel(raw.round?.trim() || "Tahap pertandingan"),
     participants: Array.isArray(raw.participants) ? raw.participants : [],
   };
 }

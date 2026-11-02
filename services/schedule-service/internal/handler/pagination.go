@@ -8,23 +8,27 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type matchPageRequest struct {
-	query     string
-	page      int
-	perPage   int
-	sort      string
-	direction string
+	query                             string
+	page                              int
+	perPage                           int
+	sort                              string
+	direction                         string
+	month, date, cabor, venue, status string
 }
 
 func parseMatchPageRequest(r *http.Request) (*matchPageRequest, error) {
 	query := r.URL.Query()
-	if query.Get("page") == "" && query.Get("per_page") == "" && query.Get("q") == "" && query.Get("sort") == "" && query.Get("direction") == "" {
+	if query.Get("page") == "" && query.Get("per_page") == "" && query.Get("q") == "" && query.Get("sort") == "" && query.Get("direction") == "" && query.Get("month") == "" && query.Get("date") == "" && query.Get("cabor") == "" && query.Get("venue") == "" && query.Get("status") == "" {
 		return nil, nil
 	}
 	request := &matchPageRequest{query: strings.ToLower(strings.TrimSpace(query.Get("q"))), page: 1, perPage: 10, sort: "match_date", direction: "asc"}
-	if len(request.query) > 80 {
+	if utf8.RuneCountInString(request.query) > 80 {
 		return nil, errors.New("kata pencarian maksimal 80 karakter")
 	}
 	var err error
@@ -53,18 +57,99 @@ func parseMatchPageRequest(r *http.Request) (*matchPageRequest, error) {
 	if request.direction != "asc" && request.direction != "desc" {
 		return nil, errors.New("arah pengurutan wajib asc atau desc")
 	}
+	request.month, request.date = query.Get("month"), query.Get("date")
+	for _, field := range []struct{ value, layout string }{{request.month, "2006-01"}, {request.date, "2006-01-02"}} {
+		value, layout := field.value, field.layout
+		if value == "" {
+			continue
+		}
+		parsed, err := time.Parse(layout, value)
+		if err != nil || parsed.Year() < 2000 || parsed.Year() > 2100 {
+			return nil, errors.New("bulan atau tanggal tidak valid")
+		}
+	}
+	request.cabor, request.venue, request.status = query.Get("cabor"), query.Get("venue"), query.Get("status")
+	for _, value := range []string{request.cabor, request.venue} {
+		var id pgtype.UUID
+		if value != "" && (len(value) != 36 || id.Scan(value) != nil) {
+			return nil, errors.New("ID filter tidak valid")
+		}
+	}
+	if request.status != "" {
+		if _, err := normalizeMatchRound(request.status); err != nil {
+			return nil, errors.New("status filter tidak valid")
+		}
+	}
 	return request, nil
+}
+
+// INFO: A fixed UTC+7 offset keeps competition dates consistent with the Public calendar on every host.
+var matchTimeZone = time.FixedZone("Asia/Jakarta", 7*60*60)
+
+type matchFacetOption struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+type matchFacets struct {
+	Cabors   []matchFacetOption `json:"cabors"`
+	Venues   []matchFacetOption `json:"venues"`
+	Statuses []string           `json:"statuses"`
+}
+
+func buildMatchFacets(matches []enrichedMatch) matchFacets {
+	cabors, venues, statuses := map[string]string{}, map[string]string{}, map[string]bool{}
+	for _, match := range matches {
+		if match.CaborID != "" {
+			cabors[match.CaborID] = match.CaborName
+		}
+		if match.VenueID != "" {
+			venues[match.VenueID] = match.VenueName
+		}
+		if match.Status != "" {
+			statuses[match.Status] = true
+		}
+	}
+	options := func(values map[string]string) []matchFacetOption {
+		result := []matchFacetOption{}
+		for id, name := range values {
+			result = append(result, matchFacetOption{id, name})
+		}
+		sort.Slice(result, func(i, j int) bool {
+			if result[i].Name == result[j].Name {
+				return result[i].ID < result[j].ID
+			}
+			return result[i].Name < result[j].Name
+		})
+		return result
+	}
+	result := matchFacets{Cabors: options(cabors), Venues: options(venues), Statuses: []string{}}
+	for status := range statuses {
+		result.Statuses = append(result.Statuses, status)
+	}
+	sort.Strings(result.Statuses)
+	return result
 }
 
 func writeMatchPage(w http.ResponseWriter, matches []enrichedMatch, request *matchPageRequest) {
 	filtered := make([]enrichedMatch, 0, len(matches))
+	dayCounts := map[string]int{}
 	for _, match := range matches {
+		day := ""
+		if date, err := time.Parse(time.RFC3339, match.MatchDate); err == nil {
+			day = date.In(matchTimeZone).Format("2006-01-02")
+		}
+		if (request.month != "" && !strings.HasPrefix(day, request.month+"-")) || (request.date != "" && day != request.date) || (request.cabor != "" && request.cabor != match.CaborID) || (request.venue != "" && request.venue != match.VenueID) || (request.status != "" && request.status != match.Status) {
+			continue
+		}
 		parts := []string{match.NomorTandingName, match.CaborName, match.VenueName, match.Round, match.Status}
 		for _, participant := range match.Participants {
 			parts = append(parts, participant.DisplayName, participant.KontingenName)
 		}
 		if request.query == "" || strings.Contains(strings.ToLower(strings.Join(parts, " ")), request.query) {
 			filtered = append(filtered, match)
+			if day != "" {
+				dayCounts[day]++
+			}
 		}
 	}
 	sort.SliceStable(filtered, func(i, j int) bool {
@@ -88,7 +173,13 @@ func writeMatchPage(w http.ResponseWriter, matches []enrichedMatch, request *mat
 			}
 		}
 		if request.direction == "desc" {
+			if comparison == 0 {
+				return filtered[i].ID < filtered[j].ID
+			}
 			return comparison > 0
+		}
+		if comparison == 0 {
+			return filtered[i].ID < filtered[j].ID
 		}
 		return comparison < 0
 	})
@@ -109,5 +200,13 @@ func writeMatchPage(w http.ResponseWriter, matches []enrichedMatch, request *mat
 		Page       int             `json:"page"`
 		PerPage    int             `json:"per_page"`
 		TotalPages int             `json:"total_pages"`
-	}{data, total, request.page, request.perPage, totalPages})
+		Facets     matchFacets     `json:"facets"`
+		Calendar   struct {
+			Month     string         `json:"month"`
+			DayCounts map[string]int `json:"day_counts"`
+		} `json:"calendar"`
+	}{data, total, request.page, request.perPage, totalPages, buildMatchFacets(matches), struct {
+		Month     string         `json:"month"`
+		DayCounts map[string]int `json:"day_counts"`
+	}{request.month, dayCounts}})
 }
