@@ -1,6 +1,6 @@
-# Kandidat Deployment Dokumen dan Unduhan â€” 2 November 2026
+# Kandidat Deployment Dokumen dan Unduhan - 2 November 2026
 
-Status: PREPARED â€” belum deployment production.
+Status: GATE_FINAL_PENDING - belum merge/deployment production.
 
 Pengguna mengotorisasi Git delivery/gate keamanan, akses VPS, backup, migrasi additive yang dibutuhkan, deployment terkontrol dan verifikasi. Otorisasi tidak menurunkan TLS/SSH/JWT/CSP, tidak mengizinkan publikasi otomatis dokumen privat, penghapusan resource, penyalinan data lokal ke production atau bypass required CI.
 
@@ -20,9 +20,9 @@ CI mencakup test/build/lint, audit dependency Low, govulncheck, secret scan, Cod
 6. `nginx -t`, reload Nginx dalam job yang sama, smoke HTTPS Public/Admin/API/OIDC/media/realtime/ACL; anonymous list hanya tayang, privat/arsip tidak dapat diakses, ZIP dibatasi dan input analitik invalid tetap 4xx. Pengaturan dokumen source lokal dan berkas lokal tidak disalin ke production.
 7. Verifikasi schema bersih, data/domain existing dan checksum Media, header lengkap/nonce unik, no restart loop, ZAP pasif target-only. Bila aplikasi gagal, kembalikan image/source/config known-good tanpa schema down atau overwrite database yang menerima write baru. Backup dipertahankan.
 
-## Blocker akses yang sudah terbukti
+## Akses dan preflight
 
-2 November: SSH key `porprov_deploy` ditolak; satu percobaan credential DPAPI tersimpan melalui OpenSSH askpass juga ditolak. Status helper membuktikan credential terkirim sebagai UTF-8 tanpa nilai credential dicetak. Tidak ada perubahan production yang telah dilakukan. Tidak ada percobaan password berulang/brute force atau pelonggaran host key. Deployment menunggu akses autentik yang dipulihkan operator.
+SSH pulih setelah service ssh-agent lokal diaktifkan kembali; key tersimpan dapat digunakan tanpa perubahan credential atau konfigurasi production. Host key tetap strict. Preflight read-only membuktikan project `docker` dengan 19 layanan, Master v16/User v5/Schedule v6/Audit v3 clean. Disk tersedia sekitar 7,7 GB pada preflight. Patch Nginx existing diamankan; perbedaan semantik adalah analitik 60r/s/burst100, yang akan kembali ke baseline lebih ketat 10r/s/burst30. Tidak membuat project `porprov-depok` kedua di VPS.
 
 Browser lokal Work dinonaktifkan; acceptance visual tahap Unduhan belum dilakukan. HTTP/source/SQL lokal PASS bukan bukti browser production atau go-live PASS.
 
@@ -30,4 +30,4 @@ Rujukan konfigurasi CodeQL Go manual: https://docs.github.com/en/code-security/r
 
 ## Gate dependency
 
-Hasil awal PR #60 pada `a891687c4b57e8cffb2f99094a03c72672ca3bf3`: 29 check PASS dan empat job Web/mobile FAIL pada audit npm. Remediasi berikutnya memakai follow-redirects 1.16.2, glob 14.0.2 serta matcher modern patched; matcher legacy 3.1.5 masih diblokir GHSA-g3hv-75wg-m249. Tidak ada exception, downgrade, atau pengubahan API legacy secara buta. Bukti dan batas kompatibilitas: `docs/security/DEPENDENCY_RELEASE_GATE_20261102.md`. Artefak awal tidak boleh dipakai untuk source yang sudah berubah; gate wajib pada SHA final.
+Audit keempat aplikasi kini nol seluruh severity dengan engine matcher resmi patched dan adapter consumer privat, tanpa exception. Source/lockfile/build/export terarah PASS; hasil CI historis yang gagal tidak dipakai sebagai clearance. Bukti dan batas API: `docs/security/DEPENDENCY_RELEASE_GATE_20261102.md`. Artefak deployment wajib cocok dengan SHA final yang CI-nya PASS.

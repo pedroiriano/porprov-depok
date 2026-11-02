@@ -51,6 +51,53 @@ test('custom sensitive headers from another realm never follow a cross-origin re
 });
 
 if (app !== 'apps/admin-web-react') {
+  test('legacy lint consumers use the patched engine with their callable and predicate contracts', () => {
+    const consumer = createRequire(require.resolve('eslint-plugin-import'));
+    const match = consumer('minimatch');
+    assert.equal(consumer('minimatch/package.json').name, '@porprov/minimatch-compat');
+    const engine = createRequire(consumer.resolve('minimatch'));
+    assert.equal(engine('@porprov/minimatch-engine/package.json').version, '11.0.4');
+    const corpus = [
+      ['src/a.js', '**/*.js', {}, true], ['src/a.ts', '**/*.js', {}, false],
+      ['src/.a.js', '**/*.js', {}, false], ['src/.a.js', '**/*.js', { dot: true }, true],
+      ['APP.JS', '*.js', { nocase: true }, true], ['src/a.js', '*.js', { matchBase: true }, true],
+      ['a.ts', '*.{js,ts}', {}, true], ['a.ts', '*.{js,ts}', { nobrace: true }, false],
+      ['PanelCard', 'Panel*', {}, true], ['PanelCard', 'Other*', {}, false],
+      ['src/a.js', '!**/*.ts', {}, true], ['a.js', '+(a|b).js', {}, true],
+      ['a.js', '+(a|b).js', { noext: true }, false], ['#note', '#note', {}, false],
+    ];
+    for (const [path, pattern, options, expected] of corpus) {
+      assert.equal(match(path, pattern, options), expected, `${path}: ${pattern}`);
+      assert.equal(new match.Minimatch(pattern, options).match(path), expected);
+      assert.equal(match.makeRe(pattern, options).test(path), expected);
+      assert.equal(match.filter(pattern, options)(path), expected);
+    }
+    assert.deepEqual(match.match(['a.ts', 'a.js'], '*.js'), ['a.js']);
+    assert.deepEqual(match.braceExpand('*.{js,ts}'), ['*.js', '*.ts']);
+    assert.equal(match.defaults({ nocase: true })('APP.JS', '*.js'), true);
+    assert.equal(new (match.Minimatch.defaults({ nocase: true }))('*.js').match('APP.JS'), true);
+  });
+
+  test('actual ESLint import and JSX rules still reject violations and accept ordinary input', async () => {
+    const { ESLint } = require('eslint');
+    const lint = new ESLint({
+      cwd: resolve(root, app), overrideConfigFile: true, ignore: false,
+      overrideConfig: [{
+        files: ['**/*.jsx'],
+        languageOptions: { ecmaVersion: 2022, sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } } },
+        plugins: { import: require('eslint-plugin-import'), react: require('eslint-plugin-react') },
+        rules: {
+          'import/no-internal-modules': ['error', { forbid: ['private/**'] }],
+          'react/forbid-component-props': ['error', { forbid: [{ propNamePattern: 'secret*', disallowedForPatterns: ['Panel*'] }] }],
+        },
+      }],
+    });
+    const [bad] = await lint.lintText('import value from "private/secret"; export const View = () => <PanelCard secretToken="fixture" />;', { filePath: 'porprov-lint-fixture.jsx' });
+    assert.deepEqual(bad.messages.map(message => message.ruleId).sort(), ['import/no-internal-modules', 'react/forbid-component-props']);
+    const [good] = await lint.lintText('import value from "public/info"; export const View = () => <PanelCard label="fixture" />;', { filePath: 'porprov-lint-fixture.jsx' });
+    assert.equal(good.messages.length, 0);
+  });
+
   test('glob traversal stops when the first directory read aborts', async () => {
     assert.equal(require('glob/package.json').version, '14.0.2');
     const temporary = fs.mkdtempSync(join(tmpdir(), 'porprov-glob-fixture-'));
@@ -80,7 +127,9 @@ if (app !== 'apps/admin-web-react') {
 
   test('patched modern matcher bounds globparts amplification', () => {
     const consumer = createRequire(require.resolve('@typescript-eslint/typescript-estree/package.json'));
-    assert.equal(consumer('minimatch/package.json').version, '11.0.1');
+    assert.equal(consumer('minimatch/package.json').name, '@porprov/minimatch-compat');
+    const patched = createRequire(consumer.resolve('minimatch'));
+    assert.equal(patched('@porprov/minimatch-engine/package.json').version, '11.0.4');
     const entry = consumer.resolve('minimatch');
     const source = `const {Minimatch}=require(${JSON.stringify(entry)});try{new Minimatch('a/**/../'.repeat(32)+'z',{optimizationLevel:2,braceExpandMax:64}).match('a/z')}catch(e){if(!(e instanceof RangeError))throw e}`;
     const worker = spawnSync(process.execPath, ['--max-old-space-size=128', '-e', source], { timeout: 5000, encoding: 'utf8', maxBuffer: 1024 * 1024 });
