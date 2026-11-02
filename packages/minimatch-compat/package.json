@@ -7,12 +7,14 @@
   "files": [
     "index.cjs",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "register.cjs",
+    "provenance.json"
   ],
   "dependencies": {
-    "@porprov/minimatch-engine": "npm:minimatch@11.0.4"
+    "minimatch": "11.0.4"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24.22.1"
   }
 }

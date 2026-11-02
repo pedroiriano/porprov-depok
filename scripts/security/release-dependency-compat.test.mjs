@@ -9,11 +9,13 @@ import { runInNewContext } from 'node:vm';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const app = process.env.PORPROV_DEPENDENCY_TEST_APP || 'apps/public-web-nextjs';
 assert.ok(['apps/public-web-nextjs', 'apps/admin-web-react', 'apps/mobile-public-react-native', 'apps/mobile-admin-react-native'].includes(app));
 const require = createRequire(resolve(root, app, 'package.json'));
+if (app !== 'apps/admin-web-react') require('@porprov/minimatch-compat/register.cjs');
 
 test('custom sensitive headers from another realm never follow a cross-origin redirect', async () => {
   assert.equal(require('follow-redirects/package.json').version, '1.16.2');
@@ -54,9 +56,22 @@ if (app !== 'apps/admin-web-react') {
   test('legacy lint consumers use the patched engine with their callable and predicate contracts', () => {
     const consumer = createRequire(require.resolve('eslint-plugin-import'));
     const match = consumer('minimatch');
-    assert.equal(consumer('minimatch/package.json').name, '@porprov/minimatch-compat');
+    assert.equal(consumer('minimatch/package.json').name, 'minimatch');
+    assert.equal(consumer('minimatch/package.json').version, '11.0.4');
     const engine = createRequire(consumer.resolve('minimatch'));
-    assert.equal(engine('@porprov/minimatch-engine/package.json').version, '11.0.4');
+    assert.equal(engine('minimatch/package.json').version, '11.0.4');
+    assert.equal(match, require('@porprov/minimatch-compat'));
+    assert.equal(typeof require('minimatch'), 'object');
+    const proof = require('@porprov/minimatch-compat/provenance.json');
+    for (const [file, key] of [['index.cjs', 'adapter_source_sha256'], ['register.cjs', 'hook_source_sha256']]) {
+      const entry = file === 'index.cjs' ? require.resolve('@porprov/minimatch-compat') : require.resolve('@porprov/minimatch-compat/register.cjs');
+      const text = fs.readFileSync(entry, 'utf8').replaceAll('\r\n', '\n');
+      assert.equal(createHash('sha256').update(text).digest('hex'), proof[key]);
+    }
+    const locked = JSON.parse(fs.readFileSync(resolve(root, app, 'package-lock.json'), 'utf8')).packages['node_modules/minimatch'];
+    assert.equal(locked.version, '11.0.4');
+    assert.ok(locked.resolved.startsWith('https://registry.npmjs.org/minimatch/'));
+    assert.equal(locked.integrity, proof.engine_registry_integrity);
     const corpus = [
       ['src/a.js', '**/*.js', {}, true], ['src/a.ts', '**/*.js', {}, false],
       ['src/.a.js', '**/*.js', {}, false], ['src/.a.js', '**/*.js', { dot: true }, true],
@@ -127,9 +142,10 @@ if (app !== 'apps/admin-web-react') {
 
   test('patched modern matcher bounds globparts amplification', () => {
     const consumer = createRequire(require.resolve('@typescript-eslint/typescript-estree/package.json'));
-    assert.equal(consumer('minimatch/package.json').name, '@porprov/minimatch-compat');
+    assert.equal(consumer('minimatch/package.json').name, 'minimatch');
+    assert.equal(consumer('minimatch/package.json').version, '11.0.4');
     const patched = createRequire(consumer.resolve('minimatch'));
-    assert.equal(patched('@porprov/minimatch-engine/package.json').version, '11.0.4');
+    assert.equal(patched('minimatch/package.json').version, '11.0.4');
     const entry = consumer.resolve('minimatch');
     const source = `const {Minimatch}=require(${JSON.stringify(entry)});try{new Minimatch('a/**/../'.repeat(32)+'z',{optimizationLevel:2,braceExpandMax:64}).match('a/z')}catch(e){if(!(e instanceof RangeError))throw e}`;
     const worker = spawnSync(process.execPath, ['--max-old-space-size=128', '-e', source], { timeout: 5000, encoding: 'utf8', maxBuffer: 1024 * 1024 });

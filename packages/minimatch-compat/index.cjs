@@ -1,6 +1,6 @@
 'use strict';
 // SECURITY: Every match delegates to the official patched, nonrecursive engine.
-const engine = require('@porprov/minimatch-engine');
+const engine = require('minimatch');
 
 function compatibility(defaults = {}) {
   const options = input => ({ ...defaults, ...input });
