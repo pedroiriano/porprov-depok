@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -135,6 +136,22 @@ func TestSchedulePeriodLifecycleIsolatedPostgres(t *testing.T) {
 	_ = tx.QueryRow(ctx, "SELECT count(*) FROM schedule_period_outbox WHERE published_at IS NULL").Scan(&events)
 	if history != 5 || events != 6 {
 		t.Fatalf("revision/outbox mismatch %d/%d", history, events)
+	}
+	// SECURITY: VA boolean probes remain literal bound search text, not SQL predicates; ordinary apostrophes stay supported.
+	for _, query := range []string{" AND 1=1 -- ", " AND 1=2 -- ", "' OR '1'='1' --", "Jum'at"} {
+		list("?q="+url.QueryEscape(query), false, 0, 0)
+	}
+	literalSavepoint, err := tx.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO pg_temp.schedule_periods(id,cabor_id,cabor_name,label,starts_on,ends_on,is_published) VALUES ('00000000-0000-4000-8000-000000000098',$1,'Bola Basket',$2,'2026-11-02','2026-11-03',true)`, cabor, "AND 1=1 --"); err != nil {
+		t.Fatal("literal search fixture failed")
+	}
+	list("?q="+url.QueryEscape("AND 1=1 --"), false, 1, 1)
+	list("?q="+url.QueryEscape("AND 1=2 --"), false, 0, 0)
+	if err = literalSavepoint.Rollback(ctx); err != nil {
+		t.Fatal(err)
 	}
 	savepoint, err := tx.Begin(ctx)
 	if err != nil {

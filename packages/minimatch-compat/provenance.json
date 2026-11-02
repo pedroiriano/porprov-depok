@@ -1,0 +1,10 @@
+{
+  "engine_package": "minimatch",
+  "engine_version": "11.0.4",
+  "engine_license": "BlueOak-1.0.0",
+  "adapter_version": "1.0.0",
+  "adapter_source_sha256": "a22be4c39bf87cbd7124dcd8a012ca185c7742dbfb1111347465029426feab97",
+  "hook_source_sha256": "61efeadfd6521a893ce19b2b495ab8acdcb089f7f03e6f68704f64f919c4ccff",
+  "scope": "legacy lint consumer API only; official registry engine retains its real name/version",
+  "engine_registry_integrity": "sha512-/UJ1dEoVQTjPNDh6SGlUo+ueLMmoHTas4q+8yaAR/5t6nLAIiBDJtoYUh20IYleix7ehiQkgczb84PE3uzHkxg=="
+}

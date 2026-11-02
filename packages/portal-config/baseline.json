@@ -81,6 +81,22 @@
       "public_enabled": true,
       "admin_enabled": true,
       "external_url": ""
+    },
+    {
+      "id": "documents",
+      "label": "Pengelolaan Dokumen",
+      "mode": "local",
+      "public_enabled": false,
+      "admin_enabled": true,
+      "external_url": ""
+    },
+    {
+      "id": "downloads",
+      "label": "Unduhan Publik",
+      "mode": "local",
+      "public_enabled": true,
+      "admin_enabled": false,
+      "external_url": ""
     }
   ],
   "pages": [
@@ -257,6 +273,15 @@
       "status": "published",
       "module_id": "berita",
       "sections": []
+    },
+    {
+      "id": "downloads",
+      "path": "/unduhan",
+      "title": "Unduhan",
+      "description": "Dokumen resmi PORPROV XV Jawa Barat 2026 yang dapat diunduh.",
+      "status": "published",
+      "module_id": "downloads",
+      "sections": []
     }
   ],
   "menus": [
@@ -401,6 +426,14 @@
       "label": "Berita Kota Depok",
       "location": "footer-info",
       "target": "/berita",
+      "parent_id": "",
+      "enabled": true
+    },
+    {
+      "id": "header-downloads",
+      "label": "Unduhan",
+      "location": "header",
+      "target": "/unduhan",
       "parent_id": "",
       "enabled": true
     }

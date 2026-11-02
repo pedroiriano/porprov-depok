@@ -6,7 +6,7 @@ if (!['packages', 'sourcemaps'].includes(mode) || !directory) {
   throw new Error('Usage: check-build-only-dependencies.mjs <packages|sourcemaps> <artifact-directory>');
 }
 const root = resolve(directory);
-const forbidden = /(?:^|\/)(?:node_modules\/(?:braces|micromatch|fast-glob|deepmerge|@porprov\/deepmerge-safe)|packages\/deepmerge-safe)(?:\/|$)/;
+const forbidden = /(?:^|\/)(?:node_modules\/(?:braces|micromatch|fast-glob|minimatch|deepmerge|@porprov\/(?:deepmerge-safe|minimatch-compat|minimatch-engine))|packages\/(?:deepmerge-safe|minimatch-compat))(?:\/|$)/;
 let evidenceCount = 0;
 const findings = [];
 // SECURITY: Inspect actual generated runtime artifacts, not package.json classification.

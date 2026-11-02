@@ -1,0 +1,19 @@
+{
+  "name": "@porprov/decode-uri-component-safe",
+  "version": "0.5.1-porprov.1",
+  "private": true,
+  "description": "Private MIT CommonJS compatibility adaptation of patched decode-uri-component 0.5.1",
+  "main": "index.cjs",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "files": [
+    "index.cjs",
+    "index.d.ts",
+    "LICENSE",
+    "README.md",
+    "provenance.json"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

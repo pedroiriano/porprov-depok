@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -52,6 +53,9 @@ func main() {
 
 	// INFO: Setup Chi Router
 	r := router.SetupRouter(masterDataHandler, cityGuideHandler, cityGuideCategoryHandler, heroHandler, portalHandler)
+	documentHandler := handler.NewDocumentHandler(conn, os.Getenv("INTERNAL_STREAM_TOKEN"))
+	documentHandler.Routes(r)
+	go documentHandler.RunOutbox(ctx)
 
 	// INFO: Batasi waktu koneksi HTTP dan hentikan service secara elegan.
 	serverAddr := fmt.Sprintf(":%s", cfg.Port)

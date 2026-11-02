@@ -43,6 +43,10 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ matrix.app }}/package-lock.json
       - run: npm ci
+      - name: Verify patched redirect and file traversal contracts
+        run: node --test ../../scripts/security/release-dependency-compat.test.mjs
+        env:
+          PORPROV_DEPENDENCY_TEST_APP: ${{ matrix.app }}
       - name: Test fail-closed dependency audit policy
         if: matrix.app == 'apps/public-web-nextjs'
         run: node --test ../../scripts/security/npm-audit-policy.test.mjs
@@ -79,6 +83,10 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ matrix.app }}/package-lock.json
       - run: npm ci
+      - name: Verify patched redirect and file traversal contracts
+        run: node --test ../../scripts/security/release-dependency-compat.test.mjs
+        env:
+          PORPROV_DEPENDENCY_TEST_APP: ${{ matrix.app }}
       - name: Audit dependencies through Low severity
         run: node ../../scripts/security/check-npm-audit.mjs ${{ matrix.app }} --audit-level=low
       - run: npm run lint
@@ -91,6 +99,10 @@ jobs:
       - name: Verify prototype-safe Expo configuration backport
         # SECURITY: The private backport must be exercised through Expo itself before export.
         run: node --test ../../scripts/security/deepmerge-backport.test.mjs
+        env:
+          PORPROV_EXPO_TEST_APP: ${{ matrix.app }}
+      - name: Verify patched URI decoder through query-string
+        run: node --test ../../scripts/security/decode-uri-component-compat.test.mjs
         env:
           PORPROV_EXPO_TEST_APP: ${{ matrix.app }}
       - name: Build representative Expo web export
@@ -149,10 +161,123 @@ jobs:
           export SCHEDULE_PERIOD_TEST_DATABASE_URL="postgres://calendar_ci:$fixture_password@127.0.0.1:5432/schedule_db?sslmode=disable"
           # SECURITY: No host ports, production credentials, real domain tables or external DB are used.
           docker run --rm --network "container:$fixture" -e SCHEDULE_PERIOD_TEST_DATABASE_URL -e GOWORK=off -e GOPROXY=off -v "$GITHUB_WORKSPACE:/repo:ro" -v "$(go env GOMODCACHE):/go/pkg/mod:ro" -w /repo/services/schedule-service golang:1.26.10-alpine3.24@sha256:a2012b4a1d1f9f7e9f44e0d39b805a901e856b1dd80b4e6ee4338db547050308 go test ./internal/handler -run TestSchedulePeriod -count=1
+      - name: Verify documents and portal state in isolated PostgreSQL
+        if: matrix.module == 'services/master-data-service'
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture=porprov-documents-ci
+          fixture_password=$(openssl rand -hex 24)
+          echo "::add-mask::$fixture_password"
+          export POSTGRES_PASSWORD="$fixture_password"
+          trap 'docker stop --time 10 "$fixture" >/dev/null 2>&1 || true' EXIT
+          docker run -d --rm --name "$fixture" --network none --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=256m -e POSTGRES_PASSWORD -e POSTGRES_USER=documents_ci -e POSTGRES_DB=master_data_db postgres:15-alpine >/dev/null
+          for attempt in $(seq 1 40); do
+            if docker exec "$fixture" pg_isready -U documents_ci -d master_data_db >/dev/null; then break; fi
+            sleep 1
+          done
+          docker exec "$fixture" pg_isready -U documents_ci -d master_data_db >/dev/null
+          export DOCUMENT_TEST_DATABASE_URL="postgres://documents_ci:$fixture_password@127.0.0.1:5432/master_data_db?sslmode=disable"
+          export PORTAL_TEST_DATABASE_URL="$DOCUMENT_TEST_DATABASE_URL"
+          # SECURITY: Temporary tables/transactions only; no domain fixtures or production endpoint.
+          docker run --rm --network "container:$fixture" -e DOCUMENT_TEST_DATABASE_URL -e PORTAL_TEST_DATABASE_URL -e GOWORK=off -e GOPROXY=off -v "$GITHUB_WORKSPACE:/repo:ro" -v "$(go env GOMODCACHE):/go/pkg/mod:ro" -w /repo/services/master-data-service golang:1.26.10-alpine3.24@sha256:a2012b4a1d1f9f7e9f44e0d39b805a901e856b1dd80b4e6ee4338db547050308 go test ./internal/handler -run 'TestDocument|TestPortalLifecycle' -count=1
       - name: Vulnerability scan
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
           govulncheck ./...
+
+  gateway-release-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Build exact-source Gateway release image
+        run: docker build --platform linux/amd64 -f services/api-gateway/Dockerfile -t porprov-ci:gateway-release .
+      - name: Scan all severities and retain exact release artifacts
+        env:
+          SCANNER: aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/gateway-release"
+          mkdir -p "$output"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$output:/out" "$SCANNER" image --no-progress --timeout 15m --db-repository ghcr.io/aquasecurity/trivy-db:2 --scanners vuln --severity CRITICAL,HIGH,MEDIUM,LOW --exit-code 1 --format json --output /out/trivy.json porprov-ci:gateway-release
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$output:/out" "$SCANNER" image --no-progress --format cyclonedx --output /out/sbom.cdx.json porprov-ci:gateway-release
+          docker image inspect --format '{{.Id}}' porprov-ci:gateway-release >"$output/image.id"
+          git rev-parse HEAD >"$output/source.commit"
+          git rev-parse 'HEAD^{tree}' >"$output/source.tree"
+          docker image save porprov-ci:gateway-release | gzip -1 >"$output/images.tar.gz"
+          (cd "$output"; sha256sum image.id source.commit source.tree trivy.json sbom.cdx.json images.tar.gz >SHA256SUMS)
+      - name: Retain Gateway release evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gateway-release-${{ github.sha }}
+          path: ${{ runner.temp }}/gateway-release/
+          if-no-files-found: error
+          retention-days: 14
+
+  documents-release-images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: public-web
+            dockerfile: apps/public-web-nextjs/Dockerfile
+          - service: admin-web
+            dockerfile: apps/admin-web-react/Dockerfile
+          - service: master-data-service
+            dockerfile: services/master-data-service/Dockerfile
+          - service: schedule-service
+            dockerfile: services/schedule-service/Dockerfile
+          - service: livescore-service
+            dockerfile: services/livescore-service/Dockerfile
+          - service: medal-standing-service
+            dockerfile: services/medal-standing-service/Dockerfile
+          - service: venue-service
+            dockerfile: services/venue-service/Dockerfile
+          - service: realtime-gateway
+            dockerfile: services/realtime-gateway/Dockerfile
+          - service: migrate-master-data
+            dockerfile: services/master-data-service/Dockerfile.migrations
+          - service: migrate-user
+            dockerfile: services/user-service/Dockerfile.migrations
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Build exact-source production image
+        env:
+          RELEASE_SERVICE: ${{ matrix.service }}
+          RELEASE_DOCKERFILE: ${{ matrix.dockerfile }}
+        run: |
+          docker build --platform linux/amd64 -f "$RELEASE_DOCKERFILE" -t "porprov-ci:release-$RELEASE_SERVICE" --build-arg NEXT_PUBLIC_API_URL=/api/v1 --build-arg NEXT_PUBLIC_SITE_URL=https://porprov.depok.go.id --build-arg VITE_API_URL=/api/v1 --build-arg VITE_OIDC_AUTHORITY=https://porprov.depok.go.id/realms/porprov --build-arg VITE_BASE_PATH=/admin/ --build-arg VITE_ADMIN_CUBA_PHASE_1=true .
+      - name: Scan all severities and retain release evidence
+        env:
+          RELEASE_SERVICE: ${{ matrix.service }}
+          SCANNER: aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/documents-release"
+          mkdir -p "$output"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$output:/out" "$SCANNER" image --no-progress --timeout 15m --db-repository ghcr.io/aquasecurity/trivy-db:2 --scanners vuln --severity CRITICAL,HIGH,MEDIUM,LOW --exit-code 1 --format json --output /out/trivy.json "porprov-ci:release-$RELEASE_SERVICE"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$output:/out" "$SCANNER" image --no-progress --format cyclonedx --output /out/sbom.cdx.json "porprov-ci:release-$RELEASE_SERVICE"
+          docker image inspect --format '{{.Id}}' "porprov-ci:release-$RELEASE_SERVICE" >"$output/image.id"
+          git rev-parse HEAD >"$output/source.commit"
+          git rev-parse 'HEAD^{tree}' >"$output/source.tree"
+          docker image save "porprov-ci:release-$RELEASE_SERVICE" | gzip -1 >"$output/images.tar.gz"
+          (cd "$output"; sha256sum image.id source.commit source.tree trivy.json sbom.cdx.json images.tar.gz >SHA256SUMS)
+      - name: Retain release artifact
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: documents-release-${{ matrix.service }}-${{ github.sha }}
+          path: ${{ runner.temp }}/documents-release/
+          if-no-files-found: error
+          retention-days: 14
 
   codeql:
     runs-on: ubuntu-latest
@@ -166,6 +291,33 @@ jobs:
           languages: javascript-typescript
       - uses: github/codeql-action/autobuild@0b88f91c1c313eec6a3c4ee6b8342cb564c2060c # v4
       - uses: github/codeql-action/analyze@0b88f91c1c313eec6a3c4ee6b8342cb564c2060c # v4
+
+  codeql-go:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.10"
+          cache: false
+      - uses: github/codeql-action/init@0b88f91c1c313eec6a3c4ee6b8342cb564c2060c # v4
+        with:
+          languages: go
+          build-mode: manual
+      - name: Build affected Go services for security analysis
+        env:
+          GOWORK: "off"
+        run: |
+          set -euo pipefail
+          for service in api-gateway master-data-service schedule-service livescore-service medal-standing-service venue-service realtime-gateway; do
+            (cd "services/$service" && go build ./...)
+          done
+      - uses: github/codeql-action/analyze@0b88f91c1c313eec6a3c4ee6b8342cb564c2060c # v4
+        with:
+          category: /language:go
 
   compatible-infrastructure:
     runs-on: ubuntu-latest

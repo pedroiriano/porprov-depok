@@ -14,6 +14,7 @@ import (
 	"unicode"
 
 	"github.com/porprov-xv/porprov-depok/services/api-gateway/pkg/response"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -24,7 +25,7 @@ const (
 var (
 	analyticsUUIDPattern   = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$`)
 	analyticsScreenPattern = regexp.MustCompile(`^[0-9]{2,5}x[0-9]{2,5}$`)
-	analyticsLocalePattern = regexp.MustCompile(`^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$`)
+	analyticsLocalePattern = regexp.MustCompile(`^[A-Za-z]{1,8}(?:-[A-Za-z0-9]{1,8})*$`)
 )
 
 type visitorAnalyticsPayload struct {
@@ -228,8 +229,14 @@ func (h *VisitorAnalyticsHandler) validate(envelope *visitorAnalyticsEnvelope) e
 	if payload.Screen != "" && !analyticsScreenPattern.MatchString(payload.Screen) {
 		return errors.New("invalid screen dimensions")
 	}
-	if payload.Language != "" && !analyticsLocalePattern.MatchString(payload.Language) {
-		return errors.New("invalid language")
+	if payload.Language != "" {
+		// SECURITY: BCP 47 semantics reject arbitrary words such as a collector filename; syntax alone is insufficient.
+		if len(payload.Language) > 255 || !analyticsLocalePattern.MatchString(payload.Language) {
+			return errors.New("invalid language")
+		}
+		if _, err := language.Parse(payload.Language); err != nil {
+			return errors.New("invalid language")
+		}
 	}
 	if len(payload.Name) > 100 || len(payload.Tag) > 100 || hasControlCharacters(payload.Name) || hasControlCharacters(payload.Tag) {
 		return errors.New("invalid event metadata")
@@ -338,11 +345,17 @@ func (h *VisitorAnalyticsHandler) Collect(w http.ResponseWriter, r *http.Request
 		response.Error(w, r, http.StatusBadGateway, "Analitik pengunjung tidak tersedia", nil)
 		return
 	}
+	if upstream.StatusCode >= http.StatusBadRequest {
+		// SECURITY: Preserve rejection status without reflecting vendor validation details or variable request IDs.
+		writeVisitorAnalyticsClientError(w, upstream.StatusCode, "Payload analitik ditolak")
+		return
+	}
 	if !json.Valid(upstreamBody) {
 		response.Error(w, r, http.StatusBadGateway, "Respons analitik tidak valid", nil)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(upstream.StatusCode)
 	_, _ = w.Write(upstreamBody)
 }

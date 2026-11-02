@@ -26,6 +26,11 @@ func SchedulePeriodsProof(secret string) string {
 	return managementProof(secret, "porprov:schedule-periods:v1")
 }
 
+// SECURITY: Bind document service authorization to the exact granted operation.
+func DocumentsProof(secret, permission string) string {
+	return managementProof(secret, "porprov:documents:v1:"+permission)
+}
+
 func managementProof(secret, purpose string) string {
 	if len(secret) < 24 {
 		return ""
@@ -70,6 +75,7 @@ func RemoteLoader(baseURL string) Loader {
 		}
 		var d Document
 		e = json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&d)
+		d.NormalizeLegacy()
 		if e != nil || d.SchemaVersion != 1 || len(d.Modules) != len(Default().Modules) || len(d.Features) != len(Default().Features) {
 			return Document{}, errors.New("invalid portal projection")
 		}
@@ -78,6 +84,12 @@ func RemoteLoader(baseURL string) Loader {
 }
 
 func RequestModules(path string) []string {
+	if path == "/api/v1/documents/public" || strings.HasPrefix(path, "/api/v1/documents/public/") {
+		return []string{"downloads"}
+	}
+	if path == "/api/v1/documents" || strings.HasPrefix(path, "/api/v1/documents/") {
+		return []string{"documents"}
+	}
 	if path == "/api/v1/portal/references/livescore-matches" {
 		return []string{"livescore"}
 	}

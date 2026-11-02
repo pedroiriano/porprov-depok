@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -165,6 +166,12 @@ func (h *PortalHandler) Change(action string) http.HandlerFunc {
 			portalJSON(w, 409, map[string]any{"message": "Konfigurasi berubah di sesi lain. Muat versi terbaru sebelum menyimpan.", "current_version": current})
 			return
 		}
+		var previousDocument portal.Document
+		if err = json.Unmarshal(raw, &previousDocument); err != nil {
+			portalFailure(w, err)
+			return
+		}
+		previousDocument.NormalizeLegacy()
 		document := change.Document
 		if action == "SAVE_DRAFT" && document.Features == nil {
 			// SECURITY: Older clients preserve locked feature flags; omission cannot reactivate a disabled feature.
@@ -200,6 +207,24 @@ func (h *PortalHandler) Change(action string) http.HandlerFunc {
 				portalFailure(w, err)
 				return
 			}
+		}
+		// SECURITY: Omitting a module in an older client/revision cannot reactivate an owner's disabled workspace.
+		if document.Module("documents") == nil {
+			document.Modules = append(document.Modules, *previousDocument.Module("documents"))
+		}
+		if document.Module("downloads") == nil {
+			document.Modules = append(document.Modules, *previousDocument.Module("downloads"))
+			for _, page := range previousDocument.Pages {
+				if page.ID == "downloads" && !slices.ContainsFunc(document.Pages, func(p portal.Page) bool { return p.ID == "downloads" || p.Path == page.Path }) {
+					document.Pages = append(document.Pages, page)
+				}
+			}
+			for _, menu := range previousDocument.Menus {
+				if menu.ID == "header-downloads" && !slices.ContainsFunc(document.Menus, func(m portal.Menu) bool { return m.ID == menu.ID || m.Target == menu.Target }) {
+					document.Menus = append(document.Menus, menu)
+				}
+			}
+
 		}
 		document.NormalizeLegacy()
 		if err = document.Validate(); err != nil {

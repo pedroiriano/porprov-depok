@@ -46,6 +46,7 @@ const HeroManagement = lazy(() => import('./pages/HeroManagement'));
 const IntegrationHealth = lazy(() => import('./pages/IntegrationHealth'));
 const RoleManagement = lazy(() => import('./pages/RoleManagement'));
 const CityGuideCategories = lazy(() => import('./pages/CityGuideCategories'));
+const DocumentManagement = lazy(() => import('./pages/DocumentManagement'));
 const PortalManagement = lazy(() => import('./pages/PortalManagement'));
 
 // Sidebar Item Component
@@ -135,6 +136,7 @@ const AdminLayout = ({ children, auth }: { children: React.ReactNode, auth: any 
             {canOperateScores && <SidebarItem icon={Activity} label="Pusat Skor Langsung" path="/livescore" isActive={location.pathname.startsWith('/livescore')} />}
             {canSubmitMedals && <SidebarItem icon={Medal} label="Perolehan Medali" path="/medals" isActive={location.pathname.startsWith('/medals')} />}
             {canManageContent && <SidebarItem icon={MapPinned} label="Panduan Kota" path="/city-guide" isActive={location.pathname.startsWith('/city-guide')} />}
+            {portalAuthorization.hasPermission('document.view') && <SidebarItem icon={FileCheck} label="Pengelolaan Dokumen" path="/documents" isActive={location.pathname.startsWith('/documents')} />}
             {canManageContent && <SidebarItem icon={Images} label="Pustaka Media" path="/media" isActive={location.pathname.startsWith('/media')} />}
             {canVerifyMedals && (
               <>
@@ -313,6 +315,7 @@ function AdminRoutes() {
       <Route path="/medals" element={<AdminRouteGuard permission="medal.view"><Medals /></AdminRouteGuard>} />
       <Route path="/city-guide" element={<AdminRouteGuard permission="city_guide.view"><CityGuide /></AdminRouteGuard>} />
       <Route path="/city-guide-categories" element={<AdminRouteGuard permission="city_guide.view"><CityGuideCategories /></AdminRouteGuard>} />
+      <Route path="/documents" element={<AdminRouteGuard permission="document.view"><DocumentManagement /></AdminRouteGuard>} />
       <Route path="/media" element={<AdminRouteGuard permission="media.view"><MediaLibrary /></AdminRouteGuard>} />
       <Route path="/verifikasi" element={<AdminRouteGuard permission="medal.verify"><Medals /></AdminRouteGuard>} />
       <Route path="/user-management" element={<AdminRouteGuard permission="user.view"><UserManagement /></AdminRouteGuard>} />

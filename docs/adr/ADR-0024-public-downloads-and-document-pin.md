@@ -1,0 +1,20 @@
+# ADR-0024 — Unduhan Publik dan Satu Sematan Dokumen
+
+Tanggal: 2 November 2026. Scope: source dan Docker lokal. Pengguna menyetujui Master v18 additive sesudah backup/checksum dan rebuild lokal. Tanpa Git delivery atau VPS.
+
+## Keputusan
+
+- Tetap gunakan modul Admin privat `documents` dari ADR-0023. Tambahkan modul publik `downloads`, halaman `/unduhan`, dan menu Navbar **Unduhan** yang dikelola Pengelolaan Portal. Registry lama memperoleh entri baru melalui adapter; flag modul bisnis, JSON/versi publikasi dan pilihan pemilik existing tidak diubah. Setelah entri dikenal, menu/halaman yang dihapus atau dinonaktifkan pemilik tidak diaktifkan ulang oleh adapter.
+- Master v18 menambah `is_published` dan `is_pinned`, default false. **Seluruh dokumen existing tetap privat.** Hanya tindakan eksplisit Super Admin aktif dengan izin terbaru `document.update` dapat menayangkan/membatalkan tayang dan menyematkan/melepas sematan. Service memakai proof internal per aksi, bukan header actor klien atau proof baca.
+- Dokumen privat tetap hanya dapat diunduh oleh pemegang `document.view`. Projection anonim memiliki endpoint exact terpisah; tidak mengekspos username, actor, path penyimpanan, checksum, riwayat atau pengaturan MIME. Semua query publik mengharuskan `is_published AND deleted_at IS NULL`, serta modul dan halaman Unduhan yang dipublikasikan aktif. Tidak ada wildcard anonim atau pelonggaran ACL Admin.
+- Tepat paling banyak satu dokumen tayang dapat disematkan. Sematan tidak memublikasikan dokumen privat secara implisit. Partial unique index, constraint dan advisory transaction lock menjaga invariannya; penggantian sematan mencatat versi/revisi/outbox pada dokumen lama dan baru secara atomik. Batal tayang/arsip melepas sematan; restore arsip selalu privat. Restore revisi metadata tidak memulihkan status publikasi lama.
+- Tombol **Unduh {judul}** muncul di bagian pengantar Beranda, tepat di samping **Lihat Jadwal**. Ketersediaan mengikuti bagian pengantar serta modul/halaman Unduhan. Tidak ada dokumen tersemat berarti tombol tidak dirender. Projection diperbarui tanpa cache; endpoint unduh selalu memeriksa status terkini.
+- Public memakai `PublicDataTable` React canonical dengan semantik tabel, sorting `aria-sort`, checkbox/indeterminate, overflow lokal, pagination server-side, pencarian debounce/cancel, pilihan 10/25/50/100, state loading/empty/error dan fokus keyboard. Style mengikuti Techwind; tidak mengimpor CSS/komponen Cuba atau jQuery ke Public.
+- Bulk selection berlaku pada halaman aktif dan maksimal 10 dokumen. ZIP server-side maksimal 100 MiB total, memakai streaming `archive/zip` metode Store, tanpa memuat isi berkas penuh ke RAM, membuat arsip temporer, mengambil URL eksternal atau menambahkan dependency. Semua pilihan harus unik, canonical, masih aktif/tayang dan berkas tersedia; bila tidak, seluruh permintaan ditolak sebelum ZIP dikirim. Nama entry diberi awalan urutan dan memakai basename aman.
+- Semua unduhan dikirim attachment, nosniff/no-store dan CSP sandbox. Pemeriksaan MIME/signature existing tidak menjadi antivirus; jangan mengklaim bebas malware. Policy unggahan, batas 50 MiB default dan pembatas Gateway yang telah diperbaiki tetap berlaku.
+
+## Verifikasi dan rollback
+
+Uji TEMP PostgreSQL mencakup privat→tayang, pin privat ditolak, penggantian pin/revisi, konflik versi, metadata publik minimal, pencarian literal, pagination, ZIP, arsip/restore privat, dan modul nonaktif. Uji router mencakup anonymous read exact, header spoofing, proof salah aksi, owner-only publication dan pencabutan izin. Build/typecheck/lint kedua Web, regresi registry, Nginx dan smoke/visual lokal dijalankan proporsional; tidak menjalankan full DevSecOps.
+
+Backup baru, fingerprint, image rollback dan bukti final: `.tmp/document-downloads-20261102`. Rollback aplikasi mempertahankan tabel additive dan berkas; jangan down migration, menghapus volume, atau overwrite perubahan database yang lebih baru. Tidak ada publikasi otomatis dokumen existing maupun penyalinan data lokal ke production. Runbook: `docs/runbook/DOCUMENT_DOWNLOADS_LOCAL.md`.

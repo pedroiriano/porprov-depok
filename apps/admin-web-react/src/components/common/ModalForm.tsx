@@ -21,6 +21,7 @@ interface ModalFormProps<T = unknown> {
   onSubmit: (e: React.FormEvent) => void;
   submitting: boolean;
   submitText: string;
+  submitDisabled?: boolean;
   children: React.ReactNode;
   size?: 'default' | 'large';
   draft?: ModalFormDraft<T>;
@@ -33,6 +34,7 @@ export default function ModalForm<T = unknown>({
   onSubmit,
   submitting,
   submitText,
+  submitDisabled = false,
   children,
   size = 'default',
   draft,
@@ -299,7 +301,7 @@ export default function ModalForm<T = unknown>({
           <button 
             type="submit" 
             form={formId}
-            disabled={submitting || revalidating}
+            disabled={submitting || revalidating || submitDisabled}
             className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-black text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {(submitting || revalidating) && <Loader2 className="w-4 h-4 animate-spin" />}

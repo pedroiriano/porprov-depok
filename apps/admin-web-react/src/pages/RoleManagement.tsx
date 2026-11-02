@@ -18,7 +18,7 @@ type RolePage = { data: AccessRole[]; page: number; limit: number; total: number
 
 const emptyForm: RoleForm = { slug: '', name: '', description: '', permissions: [] };
 const roleCodePattern = /^[a-z][a-z0-9_]{2,63}$/;
-const domainLabels: Record<string, string> = { dashboard: 'Dasbor', master_data: 'Data Utama', city_guide: 'Panduan Kota', media: 'Pustaka Media', livescore: 'Skor Langsung', medal: 'Perolehan Medali', audit: 'Log Audit', integration: 'Kesehatan Integrasi', user: 'Akun Pengguna', role: 'Peran dan Hak Akses', notification: 'Notifikasi' };
+const domainLabels: Record<string, string> = { document: 'Pengelolaan Dokumen', dashboard: 'Dasbor', master_data: 'Data Utama', city_guide: 'Panduan Kota', media: 'Pustaka Media', livescore: 'Skor Langsung', medal: 'Perolehan Medali', audit: 'Log Audit', integration: 'Kesehatan Integrasi', user: 'Akun Pengguna', role: 'Peran dan Hak Akses', notification: 'Notifikasi' };
 
 export default function RoleManagement() {
   const auth = useAuth(); const token = auth.user?.access_token;

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { PortalLink as Link } from './PortalProvider';
+import {PinnedDocumentButton} from './DocumentDownloads';
 
 const purposes = [
   {
@@ -90,6 +91,7 @@ export function PorprovIntroduction() {
                 <Link href="/jadwal" className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 font-bold text-slate-800 transition hover:-translate-y-0.5 hover:border-primary-400 hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:border-primary-500 dark:hover:text-primary-300">
                   <i className="ri-calendar-event-line me-2 text-lg" aria-hidden="true" /> Lihat Jadwal
                 </Link>
+                <PinnedDocumentButton/>
               </div>
             </div>
           </div>

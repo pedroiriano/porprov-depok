@@ -1,0 +1,20 @@
+{
+  "name": "@porprov/minimatch-compat",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "main": "index.cjs",
+  "files": [
+    "index.cjs",
+    "README.md",
+    "LICENSE",
+    "register.cjs",
+    "provenance.json"
+  ],
+  "dependencies": {
+    "minimatch": "11.0.4"
+  },
+  "engines": {
+    "node": ">=24.22.1"
+  }
+}
