@@ -26,6 +26,7 @@ import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useAuthorization } from '../../contexts/authorization';
+import { scheduleRounds, scheduleRoundLabel, scheduleRoundError } from '../../../../../packages/portal-config/schedule-round';
 
 interface ParticipantDraft {
   participant_type: ParticipantType;
@@ -88,6 +89,7 @@ export default function JadwalPertandingan() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState<ScheduleFormState>(createEmptyForm);
+  const [customRound, setCustomRound] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const deferredSearch = useDebouncedValue(search);
@@ -154,7 +156,7 @@ export default function JadwalPertandingan() {
     return () => controller.abort();
   }, [fetchMatches, fetchReferences]);
 
-  const resetForm = () => setFormData(createEmptyForm());
+  const resetForm = () => { setFormData(createEmptyForm()); setCustomRound(false); };
   const getVenueName = (id: string) => venues.find((venue) => venue.id === id)?.name || id;
   const getKontingenName = (id: string) => kontingens.find((kontingen) => kontingen.id === id)?.name || '';
   const getNomorTandingName = (id: string) => {
@@ -213,6 +215,8 @@ export default function JadwalPertandingan() {
   };
 
   const validateForm = () => {
+    const roundError = scheduleRoundError(formData.round);
+    if (roundError) return roundError;
     if (!formData.nomor_tanding_id || !formData.venue_id || !formData.match_date) {
       return 'Cabang olahraga/nomor pertandingan, lokasi, dan waktu pertandingan wajib diisi.';
     }
@@ -247,7 +251,7 @@ export default function JadwalPertandingan() {
         venue_id: formData.venue_id,
         match_date: new Date(formData.match_date).toISOString(),
         status: formData.status,
-        round: formData.round,
+        round: formData.round.trim(),
         participants: manageParticipants?formData.participants.map((participant, index) => ({
           participant_type: participant.participant_type,
           kontingen_id: participant.kontingen_id,
@@ -297,6 +301,7 @@ export default function JadwalPertandingan() {
   };
 
   const editMatch = (item: MatchSchedule) => {
+    setCustomRound(false);
     const date = new Date(item.match_date);
     const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
     const existingParticipants = [...(item.participants || [])].sort((a, b) => a.slot - b.slot);
@@ -334,7 +339,7 @@ export default function JadwalPertandingan() {
     { key: 'nomor', label: 'Cabor / Nomor', sortKey: 'nomor_tanding', className: 'min-w-56', render: (item) => <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{getNomorTandingName(item.nomor_tanding_id)}</span> },
     { key: 'participants', label: 'Peserta', className: 'min-w-64', render: (item) => <span className={`text-sm font-black ${(item.participants?.length || 0) === 2 ? 'text-slate-950 dark:text-white' : 'text-amber-700 dark:text-amber-300'}`}>{participantSummary(item)}</span> },
     { key: 'venue', label: 'Lokasi', sortKey: 'venue', className: 'min-w-48', render: (item) => <span className="text-sm text-slate-600 dark:text-slate-300">{getVenueName(item.venue_id)}</span> },
-    { key: 'round', label: 'Babak', sortKey: 'round', render: (item) => <span className="text-sm font-bold capitalize text-slate-700 dark:text-slate-200">{item.round?.replaceAll('_', ' ')}</span> },
+    { key: 'round', label: 'Babak', sortKey: 'round', render: (item) => <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{scheduleRoundLabel(item.round)}</span> },
     {
       key: 'status',
       label: 'Status',
@@ -451,7 +456,15 @@ export default function JadwalPertandingan() {
           <legend className="px-2 text-sm font-black text-slate-950 dark:text-white">Waktu dan status</legend>
         <div className="grid gap-4 md:grid-cols-2">
           <TextInput label="Waktu Pertandingan" type="datetime-local" required value={formData.match_date} onChange={(event) => setFormData((current) => ({ ...current, match_date: event.target.value }))} />
-          <SelectInput label="Babak" value={formData.round} onChange={(event) => setFormData((current) => ({ ...current, round: event.target.value }))} options={[{ value: 'penyisihan', label: 'Penyisihan' }, { value: 'perempat_final', label: 'Perempat Final' }, { value: 'semifinal', label: 'Semifinal' }, { value: 'final', label: 'Final' }]} />
+          <div className="space-y-3">
+            <SelectInput label="Babak" required value={customRound || !scheduleRounds.some(round => round.value === formData.round) ? '__custom' : formData.round} onChange={(event) => {
+              const custom = event.target.value === '__custom';
+              setCustomRound(custom);
+              const value = event.target.value;
+              setFormData((current) => ({ ...current, round: custom ? (scheduleRounds.some(round => round.value === current.round) ? '' : current.round) : value }));
+            }} options={[...scheduleRounds, { value: '__custom', label: 'Babak lainnya — tulis sendiri' }]} helpText="Sesuaikan dengan ketentuan Cabor. Golf dapat memakai Putaran 1–4 atau putaran tambahan; format lain dapat ditulis sendiri." />
+            {(customRound || !scheduleRounds.some(round => round.value === formData.round)) && <TextInput label="Nama babak lainnya" required maxLength={100} value={formData.round} onChange={(event) => setFormData((current) => ({ ...current, round: event.target.value }))} placeholder="Contoh: Putaran 5, Seri 2, atau Penentuan Peringkat" helpText="Maksimal 50 karakter. Nama yang sudah tersimpan tetap dipertahankan." error={scheduleRoundError(formData.round)} />}
+          </div>
           <SelectInput label="Status" value={formData.status} onChange={(event) => setFormData((current) => ({ ...current, status: event.target.value }))} options={[{ value: 'scheduled', label: 'Terjadwal' }, { value: 'ongoing', label: 'Berlangsung' }, { value: 'finished', label: 'Selesai' }, { value: 'delayed', label: 'Ditunda' }]} />
         </div>
         </fieldset>

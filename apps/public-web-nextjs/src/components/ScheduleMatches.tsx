@@ -1,89 +1,70 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Calendar, Loader2, RefreshCw, Search } from "lucide-react";
-import { ScheduleMatchCard } from "@/components/ScheduleMatchCard";
-import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
-import { normalizeEnrichedMatch, type EnrichedMatch, type RawEnrichedMatch } from "@/lib/public-models";
+import { useEffect, useMemo, useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, List, RefreshCw } from "lucide-react";
+import { ScheduleMatchCard } from "./ScheduleMatchCard";
+import { ScheduleMatchCalendar } from "./ScheduleMatchCalendar";
+import { publicApiUrl } from "@/lib/public-api";
+import { normalizeEnrichedMatch, type RawEnrichedMatch } from "@/lib/public-models";
+import { jakartaDate, shiftCalendarMonth, matchStatusLabel } from '../../../../packages/portal-config/schedule-calendar';
 
-function localDateKey(timestamp: string): string {
-  if (!timestamp) return "";
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
+type MatchPage = {data:RawEnrichedMatch[];total:number;page:number;per_page:number;total_pages:number;facets:{cabors:{id:string;name:string}[];venues:{id:string;name:string}[];statuses:string[]};calendar:{month:string;day_counts:Record<string,number>}};
 
 export function ScheduleMatches() {
-  const [matches, setMatches] = useState<EnrichedMatch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [search, setSearch] = useState("");
-  const [date, setDate] = useState("");
-  const [cabor, setCabor] = useState("");
-  const [venue, setVenue] = useState("");
-  const [status, setStatus] = useState("");
-
-  const loadMatches = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch(publicApiUrl("/schedule/matches/enriched"), { cache: "no-store", headers: { Accept: "application/json" } });
-      if (!response.ok) throw new Error(`API Gateway merespons ${response.status}`);
-      const data = unwrapCollection<RawEnrichedMatch>(await response.json()).map(normalizeEnrichedMatch);
-      data.sort((left, right) => (left.matchDate || "9999").localeCompare(right.matchDate || "9999"));
-      setMatches(data);
-      setLastUpdated(new Date());
-    } catch (cause) {
-      setError(`Jadwal belum dapat dimuat. ${cause instanceof Error ? cause.message : "Periksa service terkait."}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void loadMatches(), 0);
-    return () => window.clearTimeout(timer);
-  }, [loadMatches]);
-
-  const options = useMemo(() => ({
-    dates: [...new Set(matches.map((match) => localDateKey(match.matchDate)).filter(Boolean))].sort(),
-    cabors: [...new Map(matches.filter((match) => match.caborId).map((match) => [match.caborId, match.caborName])).entries()].sort((a, b) => a[1].localeCompare(b[1], "id")),
-    venues: [...new Map(matches.filter((match) => match.venueId).map((match) => [match.venueId, match.venueName])).entries()].sort((a, b) => a[1].localeCompare(b[1], "id")),
-    statuses: [...new Set(matches.map((match) => match.status).filter(Boolean))].sort((a, b) => a.localeCompare(b, "id")),
-  }), [matches]);
-
-  const filteredMatches = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("id");
-    return matches.filter((match) => {
-      const searchable = [match.caborName, match.nomorTandingName, match.round, match.venueName, ...match.participants.map((item) => item.display_name)].join(" ").toLocaleLowerCase("id");
-      return (!query || searchable.includes(query)) && (!date || localDateKey(match.matchDate) === date) && (!cabor || match.caborId === cabor) && (!venue || match.venueId === venue) && (!status || match.status === status);
-    });
-  }, [cabor, date, matches, search, status, venue]);
-
-  const groupedMatches = useMemo(() => {
-    const groups = new Map<string, EnrichedMatch[]>();
-    for (const match of filteredMatches) groups.set(match.caborName, [...(groups.get(match.caborName) || []), match]);
-    return [...groups.entries()];
-  }, [filteredMatches]);
-
-  const resetFilters = () => { setSearch(""); setDate(""); setCabor(""); setVenue(""); setStatus(""); };
-
-  return <section aria-labelledby="schedule-matches-title">
-    <div className="flex flex-wrap items-center justify-between gap-4"><div><h2 id="schedule-matches-title" className="text-2xl font-black md:text-3xl">Rincian pertandingan</h2><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{lastUpdated?`Diperbarui ${lastUpdated.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}`:'Menunggu rincian pertandingan'}</p></div><button type="button" onClick={()=>void loadMatches()} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 px-4 font-bold disabled:opacity-50 dark:border-slate-600"><RefreshCw className={`size-4 ${loading?'animate-spin':''}`} aria-hidden="true"/>Perbarui rincian</button></div>
-      <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-labelledby="filter-title">
-        <div className="flex items-center justify-between gap-3"><h2 id="filter-title" className="font-black">Filter rincian pertandingan</h2><button type="button" onClick={resetFilters} className="min-h-11 px-3 text-sm font-bold text-primary-600 hover:text-primary-700">Reset filter</button></div>
-        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <label className="relative xl:col-span-1"><span className="sr-only">Cari jadwal</span><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cabor, peserta, venue..." className="min-h-11 w-full rounded-xl border border-slate-300 bg-transparent pl-10 pr-3 text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500" /></label>
-          <label><span className="sr-only">Tanggal</span><select value={date} onChange={(event) => setDate(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"><option value="">Semua tanggal</option>{options.dates.map((item) => <option key={item} value={item}>{new Date(`${item}T00:00:00`).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" })}</option>)}</select></label>
-          <label><span className="sr-only">Cabang olahraga</span><select value={cabor} onChange={(event) => setCabor(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"><option value="">Semua cabor</option>{options.cabors.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
-          <label><span className="sr-only">Venue</span><select value={venue} onChange={(event) => setVenue(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"><option value="">Semua venue</option>{options.venues.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
-          <label><span className="sr-only">Status</span><select value={status} onChange={(event) => setStatus(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"><option value="">Semua status</option>{options.statuses.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-        </div>
-      </section>
-
-      {error && <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="alert"><AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden="true" /><div><h2 className="font-black">Pembaruan rincian pertandingan tertunda</h2><p className="mt-1 text-sm">{error}</p></div></div>}
-      {loading && matches.length === 0 ? <div className="flex min-h-64 items-center justify-center" role="status"><Loader2 className="size-8 animate-spin text-primary-500" aria-hidden="true" /><span className="sr-only">Memuat jadwal</span></div> : groupedMatches.length === 0 ? <div className="mt-8 rounded-2xl border border-dashed border-slate-300 p-14 text-center dark:border-slate-700"><Calendar className="mx-auto size-12 text-slate-300" aria-hidden="true" /><h2 className="mt-4 text-xl font-black">{matches.length ? "Tidak ada jadwal yang cocok" : "Rincian pertandingan belum dipublikasikan"}</h2><p className="mt-2 text-slate-500">{matches.length ? "Coba ubah atau reset filter Anda." : "Jadwal akan tampil setelah disahkan panitia."}</p></div> : <div className="mt-10 space-y-10">{groupedMatches.map(([caborName, items]) => <section key={caborName} aria-labelledby={`schedule-${items[0].caborId}`}><div className="flex items-center justify-between gap-4"><h2 id={`schedule-${items[0].caborId}`} className="text-2xl font-black">{caborName}</h2><span className="text-sm font-bold text-slate-500">{items.length} pertandingan</span></div><div className="mt-5 grid gap-5 lg:grid-cols-2">{items.map((match) => <ScheduleMatchCard key={match.id} match={match} compact />)}</div></section>)}</div>}
-
+  const today=jakartaDate();
+  const [view,setView]=useState<'calendar'|'cards'>('calendar');
+  const [month,setMonth]=useState(today.slice(0,7));
+  const [search,setSearch]=useState('');
+  const [date,setDate]=useState('');
+  const [cabor,setCabor]=useState('');
+  const [venue,setVenue]=useState('');
+  const [status,setStatus]=useState('');
+  const [page,setPage]=useState(1);
+  const [refresh,setRefresh]=useState(0);
+  const perPage=view==='calendar'?24:12;
+  const requestKey=JSON.stringify([view,month,search,date,cabor,venue,status,page,refresh]);
+  const [settled,setSettled]=useState<{key:string;data:MatchPage|null;error:boolean}>({key:'',data:null,error:false});
+  const loading=settled.key!==requestKey;
+  const data=loading?null:settled.data;
+  const options=settled.data?.facets;
+  const matches=useMemo(()=>(data?.data||[]).map(normalizeEnrichedMatch),[data]);
+  useEffect(()=>{
+    const controller=new AbortController();
+    // PERFORMANCE: Month/date filters, complete day counts and bounded pagination run in Schedule Service, not in the browser.
+    const timer=window.setTimeout(async()=>{
+      try {
+        const params=new URLSearchParams({page:String(page),per_page:String(perPage),sort:'match_date',direction:'asc',q:search});
+        if(view==='calendar')params.set('month',month);else if(date)params.set('date',date);
+        if(cabor)params.set('cabor',cabor);if(venue)params.set('venue',venue);if(status)params.set('status',status);
+        const response=await fetch(publicApiUrl(`/schedule/matches/enriched?${params}`),{cache:'no-store',signal:controller.signal,headers:{Accept:'application/json'}});
+        if(!response.ok)throw new Error('Jadwal belum tersedia');
+        const next=await response.json() as MatchPage;
+        if(!Array.isArray(next.data)||!Number.isFinite(next.total)||!next.facets||(view==='calendar'&&next.calendar?.month!==month))throw new Error('Jadwal belum tersedia');
+        if(!controller.signal.aborted)setSettled({key:requestKey,data:next,error:false});
+      } catch {if(!controller.signal.aborted)setSettled({key:requestKey,data:null,error:true});}
+    },250);
+    return()=>{window.clearTimeout(timer);controller.abort();};
+  },[requestKey,view,month,search,date,cabor,venue,status,page,perPage]);
+  const groups=useMemo(()=>{
+    const result=new Map<string,{name:string;items:typeof matches}>();
+    for(const match of matches){const key=match.caborId||match.caborName;const group=result.get(key)||{name:match.caborName,items:[]};group.items.push(match);result.set(key,group);}
+    return [...result.entries()];
+  },[matches]);
+  const button='inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-40 dark:border-slate-600';
+  const field='mt-2 min-h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-white';
+  const reset=()=>{setSearch('');setDate('');setCabor('');setVenue('');setStatus('');setPage(1);};
+  return <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5 md:p-8" aria-labelledby="schedule-matches-title">
+    <div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-black uppercase tracking-widest text-primary-600 dark:text-sky-300">Agenda pertandingan</p><h2 id="schedule-matches-title" className="mt-2 text-2xl font-black md:text-3xl">Rincian pertandingan</h2><p className="mt-3 text-slate-600 dark:text-slate-300">Pilih pertandingan untuk melihat babak, peserta, waktu, dan lokasi.</p></div><button type="button" disabled={loading} onClick={()=>setRefresh(value=>value+1)} className={button}><RefreshCw className={`size-4 ${loading?'animate-spin':''}`} aria-hidden="true"/>Perbarui rincian</button></div>
+    <div role="group" aria-label="Pilihan tampilan rincian pertandingan" className="mt-6 flex flex-wrap gap-2">{([['calendar','Kalender',CalendarDays],['cards','Daftar Kartu',List]] as const).map(([id,label,Icon])=><button key={id} type="button" aria-pressed={view===id} onClick={()=>{setView(id);setPage(1);if(id==='calendar'&&date)setMonth(date.slice(0,7));}} className={`${button} ${view===id?'border-blue-700 bg-blue-700 text-white dark:border-blue-500':'bg-white text-slate-800 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800'}`}><Icon className="size-4" aria-hidden="true"/>{label}</button>)}</div>
+    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label className="min-w-0 text-sm font-bold">Cari rincian<span className="relative block"><input type="search" maxLength={80} value={search} onChange={event=>{setSearch(event.target.value);setPage(1);}} placeholder="Cabor, peserta, lokasi, atau babak" className={field}/></span></label>
+      {view==='calendar'?<div><label htmlFor="match-calendar-month" className="text-sm font-bold">Bulan pertandingan</label><div className="mt-2 flex gap-2"><button type="button" className={button} disabled={month==='2000-01'} aria-label="Bulan pertandingan sebelumnya" onClick={()=>{setMonth(shiftCalendarMonth(month,-1));setPage(1);}}><ChevronLeft className="size-4" aria-hidden="true"/></button><input id="match-calendar-month" type="month" min="2000-01" max="2100-12" value={month} onChange={event=>{if(/^(20\d{2}|2100)-(0[1-9]|1[0-2])$/.test(event.target.value)){setMonth(event.target.value);setPage(1);}}} className={`${field} mt-0`}/><button type="button" className={button} disabled={month==='2100-12'} aria-label="Bulan pertandingan berikutnya" onClick={()=>{setMonth(shiftCalendarMonth(month,1));setPage(1);}}><ChevronRight className="size-4" aria-hidden="true"/></button></div></div>:<label className="text-sm font-bold">Tanggal pertandingan<input type="date" min="2000-01-01" max="2100-12-31" value={date} onChange={event=>{setDate(event.target.value);setPage(1);}} className={field}/></label>}
+      <label className="text-sm font-bold">Cabang olahraga<select value={cabor} onChange={event=>{setCabor(event.target.value);setPage(1);}} className={field}><option value="">Semua Cabor</option>{options?.cabors.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label className="text-sm font-bold">Lokasi<select value={venue} onChange={event=>{setVenue(event.target.value);setPage(1);}} className={field}><option value="">Semua lokasi</option>{options?.venues.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label className="text-sm font-bold">Status<select value={status} onChange={event=>{setStatus(event.target.value);setPage(1);}} className={field}><option value="">Semua status</option>{options?.statuses.map(item=><option key={item} value={item}>{matchStatusLabel(item)}</option>)}</select></label>
+      <button type="button" onClick={reset} className={`${button} self-end text-blue-800 dark:text-sky-200`}>Atur ulang filter</button>
+    </div>
+    <div aria-live="polite">{loading?<p role="status" className="mt-6 text-slate-600 dark:text-slate-300">Memuat rincian pertandingan...</p>:settled.error?<div role="alert" className="mt-6 rounded-xl bg-amber-50 p-5 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">Rincian pertandingan belum dapat dimuat. <button type="button" className="min-h-11 underline" onClick={()=>setRefresh(value=>value+1)}>Coba lagi</button></div>:view==='calendar'&&data?<><ScheduleMatchCalendar key={requestKey} month={month} items={matches} dayCounts={data.calendar.day_counts} today={today} onShowDay={day=>{setDate(day);setView('cards');setPage(1);}}/>{!data.total&&<p className="mt-5 rounded-xl border border-dashed border-slate-300 p-5 text-slate-600 dark:border-slate-700 dark:text-slate-300">Belum ada pertandingan yang sesuai pada bulan ini. Pilih bulan lain atau ubah filter.</p>}</>:!matches.length?<p className="mt-6 rounded-xl border border-dashed border-slate-300 p-6 text-slate-600 dark:border-slate-700 dark:text-slate-300">Tidak ada rincian pertandingan yang sesuai. Ubah filter atau tunggu jadwal diterbitkan pengelola.</p>:<div className="mt-8 space-y-8">{groups.map(([id,group])=><section key={id} aria-label={group.name}><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h3 className="text-xl font-black">{group.name}</h3><span className="text-sm text-slate-600 dark:text-slate-300">{group.items.length} pertandingan pada halaman ini</span></div><div className="grid auto-rows-fr gap-4 xl:grid-cols-2">{group.items.map(match=><ScheduleMatchCard key={match.id} match={match} compact/>)}</div></section>)}</div>}</div>
+    {!!data?.total&&<div className="mt-6 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-600 dark:text-slate-300">Menampilkan {(data.page-1)*perPage+1}–{Math.min(data.page*perPage,data.total)} dari {data.total} pertandingan · Halaman {data.page} dari {data.total_pages}</p><div className="flex gap-2"><button type="button" className={button} disabled={loading||data.page===1} onClick={()=>setPage(data.page-1)}>Sebelumnya</button><button type="button" className={button} disabled={loading||data.page>=data.total_pages} onClick={()=>setPage(data.page+1)}>Berikutnya</button></div></div>}
   </section>;
 }

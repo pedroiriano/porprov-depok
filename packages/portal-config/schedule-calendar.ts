@@ -1,6 +1,17 @@
 import type { SchedulePeriod } from './schedule-period';
 
 export const calendarWeekdays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+export const matchStatusLabel = (value: string): string => ({scheduled:'Terjadwal',ongoing:'Berlangsung',live:'Berlangsung',finished:'Selesai',completed:'Selesai',delayed:'Ditunda',cancelled:'Dibatalkan'}[value.toLowerCase()] || value);
+export function matchDay(timestamp: string): string {
+  const date=new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? '' : jakartaDate(date);
+}
+// INFO: Stable colors use Cabor identity, not position or page number.
+export function matchColor(id: string): number {
+  let hash=0;
+  for (const character of id) hash=(Math.imul(hash,31)+character.codePointAt(0)!)>>>0;
+  return hash%6;
+}
 export function jakartaDate(now = new Date()): string {
   const parts = new Intl.DateTimeFormat('en', {timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
   const value = (type: string) => parts.find(part => part.type === type)!.value;
