@@ -18,7 +18,7 @@ export function CityGuideSection() {
           <div className="lg:col-span-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-sky-800 dark:text-sky-300">
               <i className="ri-compass-3-line text-base"></i>
-              Depok City Guide
+              Panduan Kota Depok
             </div>
             
             <h2 id="city-guide-title" className="mt-6 text-4xl font-black leading-tight tracking-tight text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">

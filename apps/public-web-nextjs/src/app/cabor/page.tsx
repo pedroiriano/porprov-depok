@@ -28,11 +28,11 @@ export default async function CaborPage() {
 
   return (
     <main className="bg-slate-50 dark:bg-slate-950">
-      <PublicPageHero eyebrow="Master Data Resmi" title="Cabang Olahraga" description="Kenali nomor pertandingan, venue, serta agenda setiap cabang olahraga PORPROV XV Jawa Barat 2026 di Kota Depok." icon="ri-basketball-line" breadcrumbs={[{ label: "Cabang Olahraga" }]} />
+      <PublicPageHero eyebrow="Cabang Olahraga PORPROV" title="Cabang Olahraga" description="Kenali nomor pertandingan, venue, serta agenda setiap cabang olahraga PORPROV XV Jawa Barat 2026 di Kota Depok." icon="ri-basketball-line" breadcrumbs={[{ label: "Cabang Olahraga" }]} />
       {cabors.length === 0 ? (
         <div className="container my-14 rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900/60" role={unavailable ? "alert" : "status"}>
-          <h2 className="text-xl font-black">{unavailable ? "Data cabor belum dapat dihubungi" : "Data cabor belum tersedia"}</h2>
-          <p className="mt-2 text-slate-500 dark:text-slate-400">{unavailable ? "Periksa API Gateway dan Master Data Service." : "Data akan tampil setelah dipublikasikan panitia."}</p>
+          <h2 className="text-xl font-black">{unavailable ? "Cabang olahraga belum dapat dimuat" : "Data cabor belum tersedia"}</h2>
+          <p className="mt-2 text-slate-500 dark:text-slate-400">{unavailable ? "Coba muat ulang halaman beberapa saat lagi." : "Informasi cabang olahraga belum tersedia."}</p>
         </div>
       ) : <CaborDirectory cabors={cabors} />}
     </main>

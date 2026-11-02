@@ -35,7 +35,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
   if (!article) {
     return (
       <main className="bg-slate-50 dark:bg-slate-950">
-        <PublicPageHero eyebrow="Kabar Kota Tuan Rumah" title="Berita belum dapat dibuka" description="Sumber berita sedang tidak tersedia. Portal PORPROV dan informasi pertandingan tetap dapat digunakan." icon="ri-newspaper-line" breadcrumbs={[{ href: "/berita", label: "Berita" }, { label: "Tidak tersedia" }]} />
+        <PublicPageHero eyebrow="Kabar Kota Tuan Rumah" title="Berita belum dapat dibuka" description="Berita belum dapat dimuat. Silakan coba lagi nanti." icon="ri-newspaper-line" breadcrumbs={[{ href: "/berita", label: "Berita" }, { label: "Tidak tersedia" }]} />
         <div className="container py-16 text-center"><Link href="/berita" className="inline-flex min-h-12 items-center rounded-lg bg-primary-600 px-6 font-black text-white"><i className="ri-arrow-left-line me-2" aria-hidden="true" />Kembali ke daftar berita</Link></div>
       </main>
     );

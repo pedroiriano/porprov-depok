@@ -22,7 +22,7 @@ const informationLinks = [
     href: "/livescore",
     icon: "ri-live-line",
     eyebrow: "Realtime",
-    title: "LiveScore Center",
+    title: "Skor langsung",
     description: "Ikuti perubahan skor dan status pertandingan dari arena.",
     accent: "from-red-500/20 to-orange-500/5 text-red-500",
   },
@@ -68,7 +68,7 @@ async function loadActiveHero(): Promise<HeroContentModel> {
 
 export default async function Home() {
   const portal=await loadPortalConfig();
-  if(!portal)return <main className="container py-40"><h1 className="text-3xl font-black">Portal PORPROV Kota Depok</h1><p className="mt-5" role="status">Informasi portal sedang dipulihkan. Silakan muat ulang beberapa saat lagi.</p></main>;
+  if(!portal)return <main className="container py-40"><h1 className="text-3xl font-black">Portal PORPROV Kota Depok</h1><p className="mt-5" role="status">Halaman belum dapat dimuat. Coba muat ulang beberapa saat lagi.</p></main>;
   const sections=portal.pages.find(p=>p.id==='home')?.sections||[];
   const hero = sections.some(s=>s.type==='hero'&&s.enabled)?await loadActiveHero():defaultHeroContent;
   const renderSection=(type:string):ReactNode=>{

@@ -5,7 +5,7 @@ import { MedalStandings } from "@/components/MedalStandings";
 export function generateMetadata():Promise<Metadata>{return portalMetadata('medali',baseMetadata);}
 const baseMetadata: Metadata = {
   title: "Klasemen Medali | PORPROV Depok",
-  description: "Klasemen perolehan medali resmi PORPROV XV Jawa Barat 2026 yang diperbarui secara realtime.",
+  description: "Klasemen perolehan medali resmi PORPROV XV Jawa Barat 2026 dengan hasil terbaru.",
 };
 
 export default function MedaliPage() {

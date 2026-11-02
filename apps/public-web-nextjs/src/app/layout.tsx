@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     default: "Portal PORPROV XV Jawa Barat 2026",
     template: "%s | PORPROV XV 2026",
   },
-  description: "Portal resmi Pekan Olahraga Provinsi (PORPROV) XV Jawa Barat 2026 di Kota Depok. Pantau klasemen medali, jadwal, venue, dan berita terkini secara real-time.",
+  description: "Portal resmi Pekan Olahraga Provinsi (PORPROV) XV Jawa Barat 2026 di Kota Depok. Pantau klasemen medali, jadwal, venue, dan berita terkini secara langsung.",
   keywords: ["PORPROV XV", "PORPROV 2026", "Jawa Barat", "Kota Depok", "Olahraga", "Klasemen Medali", "LiveScore", "Toca", "Toci"],
   authors: [{ name: "Diskominfo Kota Depok" }],
   creator: "Pemerintah Kota Depok",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     locale: "id_ID",
     url: "https://porprov.depok.go.id",
     title: "Portal PORPROV XV Jawa Barat 2026",
-    description: "Pantau klasemen medali, jadwal, venue, dan berita terkini secara real-time di Portal resmi PORPROV XV Jawa Barat 2026.",
+    description: "Pantau klasemen medali, jadwal, venue, dan berita terkini secara langsung di Portal resmi PORPROV XV Jawa Barat 2026.",
     siteName: "PORPROV XV 2026",
     images: [
       {
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Portal PORPROV XV Jawa Barat 2026",
-    description: "Pantau klasemen medali, jadwal, venue, dan berita terkini secara real-time.",
+    description: "Pantau klasemen medali, jadwal, venue, dan berita terkini secara langsung.",
     images: ["/assets/images/logo-porprov.png"],
   },
   manifest: "/manifest.webmanifest",

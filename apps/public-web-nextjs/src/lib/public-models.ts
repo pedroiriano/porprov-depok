@@ -29,7 +29,7 @@ export const defaultHeroContent: HeroContentModel = {
   id: "hero-fallback",
   title: "Panggung Juara Jawa Barat.",
   highlightText: "Jawa Barat.",
-  description: "Saksikan Pekan Olahraga Provinsi Jawa Barat ke XV 2026 dari Kota Depok.\nJadwal, Venue, LiveScore, dan perjalanan para Atlet dalam satu Portal Resmi.",
+  description: "Saksikan Pekan Olahraga Provinsi Jawa Barat ke XV 2026 dari Kota Depok.\nJadwal, lokasi, skor langsung, dan kabar atlet dalam satu portal.",
   backgroundImageUrl: "/assets/images/alun-alun.png",
 };
 

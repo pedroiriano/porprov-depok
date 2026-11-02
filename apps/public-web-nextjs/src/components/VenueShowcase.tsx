@@ -74,7 +74,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
   const fetchVenues = useCallback(async (silent = false) => {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       setOnline(false);
-      setError("Perangkat sedang offline. Data akan diperbarui saat koneksi kembali.");
+      setError("Tidak ada koneksi internet. Pembaruan dilanjutkan saat terhubung.");
       setLoading(false);
       return;
     }
@@ -101,9 +101,8 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
       setVenues(records);
       setCurrentPage((page) => Math.min(page, Math.max(1, Math.ceil(records.length / itemsPerPage))));
       setLastUpdated(new Date());
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "Kesalahan tidak dikenal";
-      setError(`Data venue belum dapat diperbarui. ${message}`);
+    } catch {
+      setError("Lokasi pertandingan belum dapat dimuat. Coba lagi nanti.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -118,7 +117,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
     const refreshOnFocus = () => void fetchVenues(true);
     const handleOffline = () => {
       setOnline(false);
-      setError("Perangkat sedang offline. Data terakhir tetap ditampilkan.");
+      setError("Tidak ada koneksi internet. Informasi terakhir tetap ditampilkan.");
     };
 
     window.addEventListener("focus", refreshOnFocus);
@@ -158,14 +157,14 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
               <h2 id="venue-heading" className="text-3xl font-black tracking-tight md:text-4xl">Arena para juara bertanding.</h2>
             )}
             <p className="mt-4 mx-auto max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-300">
-              Informasi alamat, kapasitas, fasilitas, cabang olahraga, dan kesiapan venue diperbarui melalui API Gateway PORPROV.
+              Temukan lokasi, fasilitas, dan cabang olahraga di setiap arena.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3" role="status" aria-live="polite">
             <span className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${online && !error ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-400" : "border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-400"}`}>
               <span className={`size-2.5 rounded-full ${online && !error ? "animate-pulse bg-emerald-500" : "bg-amber-500"}`} aria-hidden="true" />
-              {online && !error ? "Terhubung live" : online ? "Koneksi terganggu" : "Offline"}
+              {online && !error ? "Pembaruan langsung" : online ? "Pembaruan tertunda" : "Tidak terhubung"}
             </span>
             <button type="button" onClick={() => void fetchVenues(true)} disabled={refreshing} className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-bold transition hover:border-primary-500 hover:text-primary-500 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:hover:text-primary-300" aria-label="Perbarui data venue sekarang">
               <i className={`ri-refresh-line me-2 text-lg ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
@@ -201,7 +200,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
           <div className="mt-10 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900/50">
             <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary-500/10 text-3xl text-primary-500"><i className="ri-map-pin-line" aria-hidden="true" /></span>
             <h3 className="mt-5 text-xl font-black">Data venue belum tersedia</h3>
-            <p className="mx-auto mt-2 max-w-lg text-slate-500 dark:text-slate-400">Panitia sedang menyiapkan informasi arena pertandingan. Gunakan tombol perbarui untuk mencoba kembali.</p>
+            <p className="mx-auto mt-2 max-w-lg text-slate-500 dark:text-slate-400">Coba lagi nanti untuk melihat lokasi pertandingan.</p>
             <button type="button" onClick={() => void fetchVenues(false)} className="mt-6 inline-flex min-h-11 items-center rounded-md bg-primary-500 px-5 py-3 font-bold text-white hover:bg-primary-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500">Coba lagi</button>
           </div>
         ) : (
@@ -224,7 +223,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
                     <h3 className="text-xl font-black leading-snug">{venue.name}</h3>
                     <p className="mt-3 flex items-start gap-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                       <i className="ri-map-pin-line mt-0.5 shrink-0 text-base text-primary-500" aria-hidden="true" />
-                      {venue.address || "Alamat sedang dilengkapi panitia"}
+                      {venue.address || "Alamat belum tersedia"}
                     </p>
 
                     <dl className="mt-5 grid grid-cols-2 gap-3 border-y border-slate-100 py-4 dark:border-slate-800">
@@ -238,7 +237,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
                       </div>
                     </dl>
 
-                    <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{venue.facilities || "Informasi fasilitas sedang diverifikasi."}</p>
+                    <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{venue.facilities || "Informasi fasilitas belum tersedia."}</p>
 
                     <div className="mt-auto flex items-center justify-between gap-3 pt-5">
                       <Link href={publicVenuePath(venue)} className="inline-flex min-h-11 items-center text-sm font-black text-primary-500 hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500">
@@ -256,7 +255,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
             </div>
 
             <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-slate-200 pt-6 sm:flex-row dark:border-slate-800">
-              <p className="text-sm text-slate-600 dark:text-slate-400">Menampilkan {visibleVenues.length} dari {venues.length} venue · pembaruan otomatis setiap 30 detik</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Menampilkan {visibleVenues.length} dari {venues.length} venue</p>
               <div className="flex items-center gap-2" aria-label="Navigasi halaman venue">
                 <button type="button" onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="inline-flex size-11 items-center justify-center rounded-full border border-slate-300 transition hover:border-primary-500 hover:bg-primary-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:border-slate-700" aria-label="Halaman venue sebelumnya"><i className="ri-arrow-left-s-line text-xl" aria-hidden="true" /></button>
                 <span className="min-w-28 text-center text-sm font-bold">Halaman {currentPage} / {totalPages}</span>

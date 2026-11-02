@@ -203,7 +203,7 @@ export default async function CityGuidePage({
       {/* Grid Content */}
       <div className="container">
         {categoryResult.hasError && dynamicCategories.length === 0 && (
-          <p className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" role="status">Kategori dinamis sedang tidak tersedia; daftar lokasi tetap ditampilkan.</p>
+          <p className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" role="status">Kategori belum dapat dimuat. Semua lokasi tetap ditampilkan.</p>
         )}
         {hasInvalidSearch ? (
           <div role="alert" className="rounded-3xl border border-amber-200 bg-amber-50 px-6 py-16 text-center dark:border-amber-900/60 dark:bg-amber-950/30">
@@ -215,7 +215,7 @@ export default async function CityGuidePage({
           <div role="alert" className="rounded-3xl border border-red-200 bg-red-50 px-6 py-16 text-center dark:border-red-900/60 dark:bg-red-950/30">
             <i className="ri-error-warning-line text-4xl text-red-500" aria-hidden="true"></i>
             <h2 className="mt-4 text-2xl font-black text-slate-900 dark:text-white">Panduan Kota Belum Dapat Dimuat</h2>
-            <p className="mx-auto mt-2 max-w-xl text-slate-600 dark:text-slate-400">Layanan panduan kota sedang tidak tersedia. Silakan muat ulang halaman beberapa saat lagi.</p>
+            <p className="mx-auto mt-2 max-w-xl text-slate-600 dark:text-slate-400">Coba muat ulang halaman beberapa saat lagi.</p>
           </div>
         ) : filteredGuides.length > 0 ? (
           <div>
@@ -358,7 +358,7 @@ export default async function CityGuidePage({
             <p className="mt-2 text-slate-600 dark:text-slate-400 max-w-md mx-auto">
               {searchQuery
                 ? <>Tidak ada lokasi yang cocok dengan &quot;{searchQuery}&quot; pada kategori ini.</>
-                : <>Maaf, belum ada data City Guide untuk kategori &quot;{activeCategory}&quot;. Panitia masih melengkapi panduan ini.</>}
+                : <>Belum ada tempat dalam kategori &quot;{activeCategory}&quot;. Coba kategori lain.</>}
             </p>
             <Link
               href={searchQuery ? createCityGuideUrl(activeCategory, "") : "/city-guide"}

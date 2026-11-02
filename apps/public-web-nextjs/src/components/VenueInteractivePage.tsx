@@ -214,7 +214,7 @@ export function VenueInteractivePage() {
                 </div>
               ) : error ? (
                 <div className="p-4 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 rounded-xl">
-                  {error.message}
+                  Lokasi pertandingan belum dapat dimuat. Coba lagi nanti.
                 </div>
               ) : filteredVenues.length === 0 ? (
                 <div className="p-8 text-center text-sm text-slate-500">

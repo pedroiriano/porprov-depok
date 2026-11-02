@@ -67,7 +67,7 @@ export default async function NewsPage({
             <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900" role={news.status === "unavailable" ? "alert" : "status"}>
               <i className="ri-newspaper-line text-5xl text-primary-500" aria-hidden="true" />
               <h3 className="mt-5 text-xl font-black">Berita belum tersedia</h3>
-              <p className="mx-auto mt-2 max-w-lg text-slate-500">Coba hapus filter atau buka kembali halaman ini setelah sumber Berita Depok tersedia.</p>
+              <p className="mx-auto mt-2 max-w-lg text-slate-500">Ubah pencarian atau coba lagi nanti.</p>
               {(query || tag) && <Link href="/berita" className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-primary-600 px-5 font-black text-white">Hapus semua filter</Link>}
             </div>
           ) : (

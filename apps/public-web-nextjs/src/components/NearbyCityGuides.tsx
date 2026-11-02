@@ -72,8 +72,8 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
         </h2>
         <p className="mx-auto mt-4 max-w-2xl leading-relaxed text-slate-600 dark:text-slate-300">
           {hasCalculatedDistance
-            ? "Satu rekomendasi terdekat pada setiap kategori, dihitung dari koordinat resmi venue."
-            : "Rekomendasi City Guide yang telah ditautkan dengan venue ini."}
+            ? "Temukan tempat menginap, kuliner, dan layanan terdekat."
+            : "Tempat dan layanan pilihan di sekitar arena."}
         </p>
       </div>
 
@@ -84,7 +84,7 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
           </span>
           <h3 className="mt-4 text-xl font-black text-slate-950 dark:text-white">Belum ada rekomendasi dalam radius terdekat</h3>
           <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-            City Guide dalam radius 15 km dari {venueName} belum tersedia atau masih diverifikasi panitia.
+            Rekomendasi dalam jarak 15 km dari {venueName} belum tersedia.
           </p>
         </div>
       ) : (
@@ -101,7 +101,7 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
               <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-800">
                 <Image
                   src={imageUrl}
-                  alt={guide.imageUrl ? `Foto ${guide.title}` : `Visual kategori ${guide.nearbyCategoryLabel}`}
+                  alt={guide.imageUrl ? `Foto ${guide.title}` : `Ilustrasi tempat ${guide.nearbyCategoryLabel}`}
                   fill
                   unoptimized
                   sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
@@ -128,7 +128,7 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
 
                 {!guide.imageUrl && (
                   <span className="absolute bottom-4 left-4 text-[10px] font-bold uppercase tracking-wider text-white/80">
-                    Visual kategori
+                    Ilustrasi tempat
                   </span>
                 )}
               </div>
@@ -178,7 +178,7 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
           href="/city-guide"
           className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 px-5 text-sm font-black text-slate-700 transition hover:border-primary-500 hover:bg-primary-500 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:border-slate-700 dark:text-slate-200"
         >
-          Lihat Semua City Guide
+          Lihat panduan kota
           <i className="ri-arrow-right-line" aria-hidden="true" />
         </Link>
       </div>
