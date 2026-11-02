@@ -1,0 +1,12 @@
+{
+  "upstream": "decode-uri-component",
+  "version": "0.5.1",
+  "release": "https://github.com/SamVerschueren/decode-uri-component/releases/tag/v0.5.1",
+  "tarball": "https://registry.npmjs.org/decode-uri-component/-/decode-uri-component-0.5.1.tgz",
+  "integrity": "sha512-vWHQkXgg2cE3BB4rR0c+PYw9BCQzLoNIRMI7AunIkZst74tw/vpPp7VLoYtsR/cy1f55g3XDWUslfeCZjiZJyA==",
+  "upstream_source_sha256": "6a86ac891edf15c5efa0841ebb31935e3669d58b98318b57d7b08a4530317cb0",
+  "adapted_source_sha256": "ac9a6f6072d818ab5ec0093c2f51bda74d6e2d98c5efe6e5daee2f93c1372e51",
+  "conversion": "prepend strict CommonJS header; replace export default with module.exports; rename lexical token identifier to percentBytePattern",
+  "advisory_fixed": "GHSA-qr28-fpjm-wq7f",
+  "source_hash_normalization": "LF"
+}

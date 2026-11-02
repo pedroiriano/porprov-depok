@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -80,6 +81,30 @@ func Default() Document {
 
 // INFO: Legacy publication is adapted on read without changing stored JSON, version or history.
 func (d *Document) NormalizeLegacy() {
+	legacyDownloads := d.Module("downloads") == nil
+	// INFO: Add the new public directory without changing private document flags or existing owner choices.
+	if d.Module("downloads") == nil {
+		d.Modules = append(d.Modules, *Default().Module("downloads"))
+	}
+	if legacyDownloads && !slices.ContainsFunc(d.Pages, func(p Page) bool { return p.ID == "downloads" || p.Path == "/unduhan" }) {
+		for _, p := range Default().Pages {
+			if p.ID == "downloads" {
+				d.Pages = append(d.Pages, p)
+			}
+		}
+	}
+	if legacyDownloads && !slices.ContainsFunc(d.Menus, func(m Menu) bool { return m.ID == "header-downloads" || m.Target == "/unduhan" }) {
+		for _, m := range Default().Menus {
+			if m.ID == "header-downloads" {
+				d.Menus = append(d.Menus, m)
+			}
+		}
+	}
+
+	// INFO: Add the private document workspace without changing existing publication flags.
+	if d.Module("documents") == nil {
+		d.Modules = append(d.Modules, *Default().Module("documents"))
+	}
 	if d.Features == nil {
 		d.Features = Default().Features
 	}
@@ -238,6 +263,12 @@ func (d Document) Validate() error {
 		}
 		if !SafeTarget(m.ExternalURL) || m.ExternalURL != "" && !strings.HasPrefix(m.ExternalURL, "https://") || m.Mode == "external" && m.ExternalURL == "" {
 			return errors.New("tautan modul harus URL HTTPS resmi Depok atau Jawa Barat")
+		}
+		if m.ID == "documents" && (m.PublicEnabled || m.Mode == "external" || m.ExternalURL != "") {
+			return errors.New("Dokumen hanya tersedia pada pengelolaan Admin lokal")
+		}
+		if m.ID == "downloads" && (m.Mode == "external" || m.ExternalURL != "" || m.AdminEnabled) {
+			return errors.New("Unduhan adalah projection publik; pengelolaan dokumen tetap pada modul Admin")
 		}
 		if m.ID == "home" && (m.Mode != "local" || !m.PublicEnabled || !m.AdminEnabled) {
 			return errors.New("Beranda dan akses pengelolaan tidak boleh dinonaktifkan")

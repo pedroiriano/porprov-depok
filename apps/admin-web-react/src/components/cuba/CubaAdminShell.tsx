@@ -70,6 +70,7 @@ const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
       { icon: Medal, label: 'Perolehan Medali', path: '/medals', permission: 'medal.view' },
       { icon: MapPinned, label: 'Panduan Kota', path: '/city-guide', permission: 'city_guide.view' },
       { icon: MapPinned, label: 'Kategori Panduan Kota', path: '/city-guide-categories', permission: 'city_guide.view' },
+      { icon: FileCheck, label: 'Pengelolaan Dokumen', path: '/documents', permission: 'document.view' },
       { icon: Images, label: 'Pustaka Media', path: '/media', permission: 'media.view' },
       { icon: FileCheck, label: 'Verifikasi', path: '/verifikasi', permission: 'medal.verify' },
     ],

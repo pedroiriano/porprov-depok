@@ -2,8 +2,10 @@ package router
 
 import (
 	"bytes"
+	"errors"
 	portal "github.com/porprov-xv/porprov-depok/packages/portal-config"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -25,6 +27,34 @@ import (
 )
 
 const upstreamErrorBody = `{"error":{"code":"UPSTREAM_ERROR","message":"Layanan sementara tidak tersedia"}}`
+
+const (
+	defaultRequestBodyLimit  = 12 << 20
+	documentRequestBodyLimit = (100 << 20) + (64 << 10)
+)
+
+func requestTooLarge(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusRequestEntityTooLarge)
+	_, _ = io.WriteString(w, `{"error":{"code":"REQUEST_TOO_LARGE","message":"Ukuran permintaan melebihi batas yang diizinkan."}}`)
+}
+
+// SECURITY: Select the bound once, before wrapping the body. A later wrapper cannot raise an earlier limit.
+func requestBodyLimit(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limit := int64(defaultRequestBodyLimit)
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v1/documents" {
+			limit = documentRequestBodyLimit
+		}
+		if r.ContentLength > limit {
+			requestTooLarge(w)
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
+		next.ServeHTTP(w, r)
+	})
+}
 
 var (
 	httpRequestsTotal   = promauto.NewCounterVec(prometheus.CounterOpts{Name: "porprov_gateway_http_requests_total", Help: "Jumlah request API Gateway menurut route dan kelas status."}, []string{"method", "route", "status_class"})
@@ -73,6 +103,19 @@ func setupProxyWithHeaders(targetURL string, trustedHeaders map[string]string) h
 	url, _ := url.Parse(targetURL)
 	proxy := httputil.NewSingleHostReverseProxy(url)
 	proxy.FlushInterval = -1 // Ensure immediate flush for SSE
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		// SECURITY: Streaming/chunked overflow must remain 413, not a misleading 502/network error.
+		var limitError *http.MaxBytesError
+		if errors.As(err, &limitError) {
+			requestTooLarge(w)
+			return
+		}
+		log.Printf("http: proxy error: %v", err)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = io.WriteString(w, upstreamErrorBody)
+	}
 	proxy.ModifyResponse = func(response *http.Response) error {
 		// SECURITY: API Gateway adalah satu-satunya pemilik kebijakan CORS untuk browser.
 		// Header CORS dari service downstream akan menghasilkan nilai ganda yang ditolak browser.
@@ -102,6 +145,7 @@ func setupProxyWithHeaders(targetURL string, trustedHeaders map[string]string) h
 		req.Header.Set("X-Proxy", "API-Gateway")
 		// SECURITY: Jangan percaya header actor dari klien; selalu turunkan dari JWT tervalidasi.
 		req.Header.Del("X-Portal-Authorization")
+		req.Header.Del("X-Document-Authorization")
 		req.Header.Del("X-Schedule-Authorization")
 		req.Header.Del("X-Actor-Username")
 		req.Header.Del("X-Actor-Display-Name")
@@ -190,7 +234,6 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 		})
 	}
 	r.Use(securityHeaders)
-	r.Use(middleware.RequestSize(12 << 20))
 
 	// SECURITY: CORS strict setup
 	r.Use(cors.Handler(cors.Options{
@@ -207,6 +250,8 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 	r.Use(requestMetrics)
 	r.Use(middleware.Logger)    // TODO: Ganti dengan Zap/Zerolog nanti
 	r.Use(middleware.Recoverer) // Mencegah panic mematikan server
+	// SECURITY: Keep CORS, request IDs and metrics on early size rejections as well.
+	r.Use(requestBodyLimit)
 	r.Use(portalGate)
 
 	// Endpoint publik
@@ -224,6 +269,13 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 		// INFO: Landing Page hanya membaca satu projection Hero aktif tanpa membuka endpoint mutasi.
 		r.Get("/master-data/heroes/active", http.StripPrefix("/api/v1/master-data", setupProxy(cfg.MasterDataURL)).ServeHTTP)
 
+		// SECURITY: Only explicit sanitized public projection routes are anonymous; no generic documents wildcard.
+		publicDocuments := http.StripPrefix("/api/v1/documents", setupProxyWithHeaders(cfg.MasterDataURL+"/documents", map[string]string{"X-Document-Authorization": portal.DocumentsProof(cfg.InternalStreamToken, "document.public")}))
+		r.Get("/documents/public", publicDocuments.ServeHTTP)
+		r.Get("/documents/public/pinned", publicDocuments.ServeHTTP)
+		r.Get("/documents/public/bundle", publicDocuments.ServeHTTP)
+		r.Get("/documents/public/{id}/download", publicDocuments.ServeHTTP)
+
 		// Rute terproteksi (butuh token JWT Keycloak)
 		r.Group(func(r chi.Router) {
 			r.Use(jwtMid.RequireAuth)
@@ -234,6 +286,35 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 			r.With(jwtMid.RequireAnyRole("super_admin"), portalOwner).Post("/portal/restore", portalManager.ServeHTTP)
 			r.With(jwtMid.RequireAnyRole("super_admin"), portalOwner).Get("/portal/history", portalManager.ServeHTTP)
 			r.With(jwtMid.RequireAnyRole("super_admin"), portalOwner).Get("/portal/history/{id}", portalManager.ServeHTTP)
+			publisher := http.StripPrefix("/api/v1/documents", setupProxyWithHeaders(cfg.MasterDataURL+"/documents", map[string]string{"X-Document-Authorization": portal.DocumentsProof(cfg.InternalStreamToken, "document.publish")}))
+			r.With(jwtMid.RequireAnyRole("super_admin"), permissionAuthorizer.RequirePermission("document.update")).Put("/documents/{id}/publication", publisher.ServeHTTP)
+			r.With(jwtMid.RequireAnyRole("super_admin"), permissionAuthorizer.RequirePermission("document.update")).Put("/documents/{id}/pin", publisher.ServeHTTP)
+			// SECURITY: All document routes are authenticated, permission checked and action-proofed.
+			documentProxy := func(permission string) http.HandlerFunc {
+				return http.StripPrefix("/api/v1/documents", setupProxyWithHeaders(cfg.MasterDataURL+"/documents", map[string]string{"X-Document-Authorization": portal.DocumentsProof(cfg.InternalStreamToken, permission)})).ServeHTTP
+			}
+			for _, endpoint := range []struct{ method, path, permission string }{
+				{"GET", "/documents", "document.view"}, {"GET", "/documents/policy", "document.view"},
+				{"GET", "/documents/policy/history", "document.policy"}, {"PUT", "/documents/policy", "document.policy"},
+				{"GET", "/documents/{id}/download", "document.view"}, {"GET", "/documents/{id}/history", "document.view"},
+				{"PUT", "/documents/{id}", "document.update"}, {"DELETE", "/documents/{id}", "document.archive"},
+				{"POST", "/documents/{id}/restore", "document.restore"}, {"POST", "/documents/{id}/restore-revision", "document.update"},
+				{"POST", "/documents", "document.create"},
+			} {
+				target := documentProxy(endpoint.permission)
+				if endpoint.path == "/documents" && endpoint.method == "POST" {
+					next := target
+					target = func(w http.ResponseWriter, request *http.Request) {
+						_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(120 * time.Second))
+						next(w, request)
+					}
+				}
+				if endpoint.permission == "document.policy" {
+					r.With(jwtMid.RequireAnyRole("super_admin"), permissionAuthorizer.RequirePermission(endpoint.permission)).Method(endpoint.method, endpoint.path, target)
+				} else {
+					r.With(permissionAuthorizer.RequirePermission(endpoint.permission)).Method(endpoint.method, endpoint.path, target)
+				}
+			}
 			permissionOnly := permissionAuthorizer.RequirePermission
 			// SECURITY: Read-only references stay available to authorized dependent workspaces; no mutation proxy is registered.
 			for _, reference := range []struct{ path, resource, permission string }{

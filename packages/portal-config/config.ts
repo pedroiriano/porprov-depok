@@ -16,6 +16,12 @@ export const sectionFeature = (type:string) => type==='schedule_periods'||type==
 // INFO: Interpret old personal drafts/history consistently with the server, without modifying originals.
 export function normalizeLegacyPortalConfig(config:PortalConfig):PortalConfig {
   const copy=structuredClone(config);
+  const legacyDownloads=!copy.modules.some(module=>module.id==='downloads');
+  if(!copy.modules.some(module=>module.id==='downloads'))copy.modules.push(structuredClone(defaultPortalConfig.modules.find(module=>module.id==='downloads')!));
+  if(legacyDownloads&&!copy.pages.some(page=>page.id==='downloads'||page.path==='/unduhan'))copy.pages.push(structuredClone(defaultPortalConfig.pages.find(page=>page.id==='downloads')!));
+  if(legacyDownloads&&!copy.menus.some(menu=>menu.id==='header-downloads'||menu.target==='/unduhan'))copy.menus.push(structuredClone(defaultPortalConfig.menus.find(menu=>menu.id==='header-downloads')!));
+
+  if(!copy.modules.some(module=>module.id==='documents'))copy.modules.push(structuredClone(defaultPortalConfig.modules.find(module=>module.id==='documents')!));
   copy.features??=structuredClone(defaultPortalConfig.features);
   for(const page of copy.pages) {
     if(page.id!=='jadwal')continue;

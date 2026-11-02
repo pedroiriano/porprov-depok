@@ -8,6 +8,913 @@
   "servers": [{ "url": "/api/v1" }],
   "security": [{ "bearerAuth": [] }],
   "paths": {
+    "/documents/public": {
+      "get": {
+        "summary": "Daftar dokumen tayang, pencarian literal dan pagination server-side",
+        "description": "Hanya dokumen tayang dan Unduhan aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "404": {
+            "description": "Dokumen tidak tayang/tidak ditemukan"
+          },
+          "409": {
+            "description": "Versi/status berubah"
+          },
+          "413": {
+            "description": "Pilihan melebihi batas total"
+          },
+          "422": {
+            "description": "Parameter tidak valid"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "title",
+                "created_at",
+                "file_bytes"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "/documents/public/pinned": {
+      "get": {
+        "summary": "Satu dokumen tayang yang disematkan; data null bila kosong",
+        "description": "Hanya dokumen tayang dan Unduhan aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "404": {
+            "description": "Dokumen tidak tayang/tidak ditemukan"
+          },
+          "409": {
+            "description": "Versi/status berubah"
+          },
+          "413": {
+            "description": "Pilihan melebihi batas total"
+          },
+          "422": {
+            "description": "Parameter tidak valid"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "security": []
+      }
+    },
+    "/documents/public/{id}/download": {
+      "get": {
+        "summary": "Unduh attachment dokumen tayang",
+        "description": "Hanya dokumen tayang dan Unduhan aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "404": {
+            "description": "Dokumen tidak tayang/tidak ditemukan"
+          },
+          "409": {
+            "description": "Versi/status berubah"
+          },
+          "413": {
+            "description": "Pilihan melebihi batas total"
+          },
+          "422": {
+            "description": "Parameter tidak valid"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "security": []
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/documents/public/bundle": {
+      "get": {
+        "summary": "ZIP streaming maksimal 10 dokumen tayang, total 100 MiB",
+        "description": "Hanya dokumen tayang dan Unduhan aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "404": {
+            "description": "Dokumen tidak tayang/tidak ditemukan"
+          },
+          "409": {
+            "description": "Versi/status berubah"
+          },
+          "413": {
+            "description": "Pilihan melebihi batas total"
+          },
+          "422": {
+            "description": "Parameter tidak valid"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "1–10 UUID canonical unik, dipisahkan koma"
+            }
+          }
+        ]
+      }
+    },
+    "/documents/{id}/publication": {
+      "put": {
+        "summary": "Tayangkan/jadikan privat; privat melepas sematan",
+        "description": "Super Admin aktif dengan izin terbaru document.update; audit dan expected_version wajib.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "404": {
+            "description": "Dokumen tidak tayang/tidak ditemukan"
+          },
+          "409": {
+            "description": "Versi/status berubah"
+          },
+          "413": {
+            "description": "Pilihan melebihi batas total"
+          },
+          "422": {
+            "description": "Parameter tidak valid"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "expected_version",
+                  "enabled",
+                  "reason"
+                ],
+                "properties": {
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/documents/{id}/pin": {
+      "put": {
+        "summary": "Sematkan satu dokumen tayang; ganti sematan atomik",
+        "description": "Super Admin aktif dengan izin terbaru document.update; audit dan expected_version wajib.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "404": {
+            "description": "Dokumen tidak tayang/tidak ditemukan"
+          },
+          "409": {
+            "description": "Versi/status berubah"
+          },
+          "413": {
+            "description": "Pilihan melebihi batas total"
+          },
+          "422": {
+            "description": "Parameter tidak valid"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "expected_version",
+                  "enabled",
+                  "reason"
+                ],
+                "properties": {
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/documents": {
+      "get": {
+        "summary": "Daftar dokumen privat, pencarian literal, sorting dan pagination server-side",
+        "description": "JWT aktif dan izin document.view. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Page snapshot atomik",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ManagedDocument"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "per_page": {
+                      "type": "integer"
+                    },
+                    "total_pages": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "archived"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "title",
+                "created_at",
+                "file_bytes"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Unggah satu dokumen secara streaming",
+        "description": "JWT aktif dan izin document.create. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          },
+          "201": {
+            "description": "Dokumen tersimpan privat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedDocument"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Berkas melebihi ukuran aktif; berkas sementara dibersihkan"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "title"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Default PDF <=52.428.800 byte; mengikuti policy aktif, hard cap 104.857.600 byte"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents/policy": {
+      "get": {
+        "summary": "Pengaturan aktif dan katalog MIME tervalidasi",
+        "description": "JWT aktif dan izin document.view. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        }
+      },
+      "put": {
+        "summary": "Ubah MIME dan ukuran; khusus Super Admin",
+        "description": "JWT aktif dan izin document.policy. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentPolicyChange"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents/policy/history": {
+      "get": {
+        "summary": "Riwayat immutable pengaturan unggah",
+        "description": "JWT aktif dan izin document.policy. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ]
+      }
+    },
+    "/documents/{id}": {
+      "put": {
+        "summary": "Ubah judul/keterangan dokumen",
+        "description": "JWT aktif dan izin document.update. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentChange"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Soft delete, mempertahankan berkas privat",
+        "description": "JWT aktif dan izin document.archive. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentChange"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/documents/{id}/download": {
+      "get": {
+        "summary": "Unduh dokumen aktif dengan attachment, nosniff dan no-store",
+        "description": "JWT aktif dan izin document.view. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Berkas privat; Content-Disposition: attachment; no-store; nosniff; sandbox",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          },
+          "404": {
+            "description": "ID, berkas, atau dokumen aktif tidak ditemukan"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/documents/{id}/history": {
+      "get": {
+        "summary": "Riwayat dokumen berpaginasi",
+        "description": "JWT aktif dan izin document.view. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/documents/{id}/restore": {
+      "post": {
+        "summary": "Pulihkan arsip dan catat versi baru",
+        "description": "JWT aktif dan izin document.restore. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentChange"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/documents/{id}/restore-revision": {
+      "post": {
+        "summary": "Pulihkan keterangan revisi milik dokumen ini sebagai versi baru",
+        "description": "JWT aktif dan izin document.update. Modul dokumen harus aktif.",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Belum masuk"
+          },
+          "403": {
+            "description": "Tidak berhak atau modul nonaktif"
+          },
+          "409": {
+            "description": "Versi berubah; tidak ada overwrite"
+          },
+          "422": {
+            "description": "Validasi ditolak"
+          },
+          "503": {
+            "description": "Layanan belum tersedia"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentChange"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
     "/portal/public": {
       "get": {
         "summary": "Projection konfigurasi Portal yang telah dipublikasikan",
@@ -1069,6 +1976,125 @@
       }
     },
     "schemas": {
+      "ManagedDocument": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "original_name": {
+            "type": "string"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "file_bytes": {
+            "type": "integer"
+          },
+          "checksum_sha256": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "created_username": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "DocumentChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_version",
+          "reason"
+        ],
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          },
+          "revision_id": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "DocumentPolicyChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_version",
+          "allowed_mime_types",
+          "max_file_bytes",
+          "reason"
+        ],
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "allowed_mime_types": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "application/pdf",
+                "text/plain",
+                "text/csv",
+                "image/jpeg",
+                "image/png",
+                "image/webp"
+              ]
+            }
+          },
+          "max_file_bytes": {
+            "type": "integer",
+            "minimum": 1048576,
+            "maximum": 104857600,
+            "default": 52428800
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          }
+        }
+      },
       "PortalFeature": {
         "type": "object",
         "additionalProperties": false,

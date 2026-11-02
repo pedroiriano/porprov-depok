@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 
 const document = JSON.parse(await readFile(new URL('../../../openapi/openapi.yaml', import.meta.url), 'utf8'));
 const requiredPaths = [
+  '/documents/public', '/documents/public/pinned', '/documents/public/{id}/download', '/documents/public/bundle', '/documents/{id}/publication', '/documents/{id}/pin',
+  '/documents', '/documents/policy', '/documents/policy/history', '/documents/{id}', '/documents/{id}/download', '/documents/{id}/history', '/documents/{id}/restore', '/documents/{id}/restore-revision',
   '/profile',
   '/drafts',
   '/integrations/health',

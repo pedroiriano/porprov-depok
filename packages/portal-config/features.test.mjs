@@ -17,3 +17,20 @@ test('features and native anchors respect parent and independent flags',()=>{
  assert.equal(portalTarget(config,'/jadwal#rentang-jadwal'),'/jadwal#rentang-jadwal');
  config.modules.find(m=>m.id==='jadwal').public_enabled=false;assert.equal(localFeature(config,'schedule_periods'),false);
 });
+
+test('private documents adapter preserves explicit disable and source JSON',()=>{
+ const legacy=structuredClone(defaultPortalConfig);legacy.modules=legacy.modules.filter(m=>m.id!=='documents');
+ const normalized=normalizeLegacyPortalConfig(legacy);
+ assert.equal(normalized.modules.find(m=>m.id==='documents').public_enabled,false);
+ assert.equal(normalized.modules.find(m=>m.id==='documents').admin_enabled,true);
+ assert.equal(legacy.modules.some(m=>m.id==='documents'),false);
+ normalized.modules.find(m=>m.id==='documents').admin_enabled=false;
+ assert.equal(normalizeLegacyPortalConfig(normalized).modules.find(m=>m.id==='documents').admin_enabled,false);
+});
+
+test('public downloads adapter retains explicit module/menu choices',()=>{
+ const old=structuredClone(defaultPortalConfig);old.modules=old.modules.filter(m=>m.id!=='downloads');old.pages=old.pages.filter(p=>p.id!=='downloads');old.menus=old.menus.filter(m=>m.id!=='header-downloads');
+ const next=normalizeLegacyPortalConfig(old);assert.ok(next.modules.some(m=>m.id==='downloads'&&m.public_enabled));assert.ok(next.menus.some(m=>m.target==='/unduhan'));assert.ok(next.pages.some(p=>p.path==='/unduhan'));assert.equal(old.modules.some(m=>m.id==='downloads'),false);
+ next.modules.find(m=>m.id==='downloads').public_enabled=false;next.menus=next.menus.filter(m=>m.id!=='header-downloads');
+ const retained=normalizeLegacyPortalConfig(next);assert.equal(retained.modules.find(m=>m.id==='downloads').public_enabled,false);assert.equal(retained.menus.some(m=>m.id==='header-downloads'),false);
+});
