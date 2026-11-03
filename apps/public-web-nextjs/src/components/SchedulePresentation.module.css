@@ -33,3 +33,13 @@
 .detailIntro{padding:1.25rem;background:var(--agenda-soft)}.detailTitle{font-size:1.4rem;line-height:1.4;font-weight:900;margin:.4rem 0 0;overflow-wrap:anywhere}.detailList{padding:0 1.25rem}.detailList>div{padding:1rem 0;border-bottom:1px solid var(--agenda-line)}.detailList dt{display:flex;gap:.5rem;align-items:center;font-size:.8rem;color:var(--agenda-muted)}.detailList dd{margin-top:.5rem;font-size:.95rem;font-weight:700;line-height:1.7;white-space:pre-line;overflow-wrap:anywhere}.detailNotice{font-size:.78rem;line-height:1.7;color:var(--agenda-muted);padding:1.25rem}
 @media(max-width:639px){.agendaList{grid-template-columns:minmax(0,1fr)}.dayAgenda{padding:1rem}.agendaHeading h4{font-size:1rem}.rangeEvent{padding:.5rem;min-height:68px}.rangeEvent strong{font-size:.72rem}.calendarHint{padding:.8rem 1rem}.agendaMark{min-width:42px;min-height:42px}.day small{font-size:.58rem}.cardCta{font-size:.75rem}}
 .dayAgenda{scroll-margin-top:110px}.dayAgenda:focus-visible{outline:3px solid #2563eb;outline-offset:-3px}
+
+/* CHANGE: Shared participant identities remain readable in full cards and clickable daily agenda summaries. */
+.participants{display:block;text-align:left;width:100%;box-sizing:border-box}
+.participantInfo{display:flex;flex-direction:column;min-width:0;gap:.1rem;line-height:1.5;overflow-wrap:anywhere}
+.participantInfo strong{font-size:.9rem;font-weight:800;color:inherit}
+.participantKind{font-size:.65rem;font-weight:600;color:var(--agenda-muted)}
+.participantAffiliation{font-size:.75rem;font-weight:500;color:var(--agenda-muted)}
+.agendaContent>.participants{margin:.5rem 0;font-size:inherit}
+.agendaItem{align-items:flex-start}.agendaMark{flex-shrink:0}.agendaItem>svg{margin-top:.8rem}
+@media(max-width:639px){.agendaItem{gap:.6rem;padding:.75rem}.agendaContent>.participants{padding:.15rem .45rem}.participant{gap:.4rem}.participantInfo strong{font-size:.8rem}.agendaContent .initial{width:22px;height:22px;font-size:.6rem}}

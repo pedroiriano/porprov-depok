@@ -1,12 +1,12 @@
 'use client';
 
-import {useRef,useState} from 'react';
+import {useRef,useState,type ReactNode} from 'react';
 import {ArrowRight,CalendarDays,ChevronRight,LocateFixed,MousePointer2} from 'lucide-react';
 import {monthDays} from '../../../../packages/portal-config/schedule-calendar';
 import styles from './SchedulePresentation.module.css';
 
 export const scheduleToneClasses=[styles.blue,styles.green,styles.violet,styles.amber,styles.rose,styles.cyan];
-export type CalendarBoardEvent={id:string;title:string;subtitle?:string;startsOn:string;endsOn:string;time?:string};
+export type CalendarBoardEvent={id:string;title:string;subtitle?:string;details?:ReactNode;detailsLabel?:string;startsOn:string;endsOn:string;time?:string};
 export type CalendarBoardRow={key:string;title:string;subtitle?:string;color:number;events:CalendarBoardEvent[]};
 const shortDate=(day:string)=>new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(`${day}T12:00:00Z`));
 
@@ -70,7 +70,7 @@ export function ScheduleCalendarBoard({month,today,rows,dayCounts,kind,totalReco
     <p className={styles.calendarHint}>Geser kalender untuk tanggal berikutnya. Kolom Cabor tetap terlihat.{totalRecords!==undefined&&totalRecords>pageRecords?' Jadwal lainnya ada di halaman berikutnya.':''}</p>
     <section ref={agenda} tabIndex={-1} className={styles.dayAgenda} aria-label={`Agenda harian ${kind==='periods'?'Cabor':'pertandingan'}`}>
       <div className={styles.agendaHeading}><div><p className={styles.eyebrow}>Agenda tanggal pilihan</p><h4>{new Intl.DateTimeFormat('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(`${selected}T12:00:00Z`))}</h4><p className={styles.help}>{count?`${count} ${noun} ${kind==='periods'?'berlangsung':'dijadwalkan'}`:'Belum ada agenda pada tanggal ini.'}</p></div><button className={styles.action} type="button" onClick={()=>onShowDay(selected)}><CalendarDays size={16} aria-hidden="true"/>Lihat per hari<ArrowRight size={15} aria-hidden="true"/></button></div>
-      {!!entries.length&&<div className={styles.agendaList}>{entries.map(({row,event})=><button type="button" key={`${row.key}-${event.id}`} className={styles.agendaItem} onClick={()=>onSelect(event.id)} aria-label={`Lihat detail ${row.title}${row.subtitle?' · '+row.subtitle:''}: ${event.title}`}><span className={`${styles.agendaMark} ${scheduleToneClasses[row.color]}`}>{kind==='matches'?event.time||'Laga':<CalendarDays size={19} aria-hidden="true"/>}</span><span className={styles.agendaContent}><strong>{row.title}</strong>{(kind==='matches'||row.subtitle)&&<span>{kind==='matches'?event.title:row.subtitle}</span>}<small>{kind==='matches'?`${event.time||'Jam menyusul'} WIB · ${event.subtitle||''}`:event.subtitle||`${shortDate(event.startsOn)}–${shortDate(event.endsOn)}`}</small></span><ChevronRight size={18} aria-hidden="true"/></button>)}</div>}
+      {!!entries.length&&<div className={styles.agendaList}>{entries.map(({row,event})=><button type="button" key={`${row.key}-${event.id}`} className={styles.agendaItem} onClick={()=>onSelect(event.id)} aria-label={`Lihat detail ${row.title}${row.subtitle?' · '+row.subtitle:''}: ${event.title}${event.detailsLabel?' · '+event.detailsLabel:''}`}><span className={`${styles.agendaMark} ${scheduleToneClasses[row.color]}`}>{kind==='matches'?event.time||'Laga':<CalendarDays size={19} aria-hidden="true"/>}</span><span className={styles.agendaContent}><strong>{row.title}</strong>{(kind==='matches'||row.subtitle)&&<span>{kind==='matches'?event.title:row.subtitle}</span>}{event.details}<small>{kind==='matches'?`${event.time||'Jam menyusul'} WIB · ${event.subtitle||''}`:event.subtitle||`${shortDate(event.startsOn)}–${shortDate(event.endsOn)}`}</small></span><ChevronRight size={18} aria-hidden="true"/></button>)}</div>}
       {count>entries.length&&<p className={styles.help}>Pilih “Lihat per hari” untuk semua {count} {noun}.</p>}
       {!entries.length&&count===0&&<p className={styles.help}>Pilih tanggal lain di atas atau gunakan pencarian Cabor.</p>}
     </section>

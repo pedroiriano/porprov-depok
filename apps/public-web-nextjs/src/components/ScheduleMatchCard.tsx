@@ -7,6 +7,7 @@ import type {EnrichedMatch} from '@/lib/public-models';
 import {matchStatusLabel,matchColor} from '../../../../packages/portal-config/schedule-calendar';
 import {scheduleToneClasses} from './ScheduleCalendarBoard';
 import styles from './SchedulePresentation.module.css';
+import {ScheduleParticipants,scheduleParticipantSummary} from './ScheduleParticipants';
 
 export function ScheduleMatchCard({match,compact=false,onOpen}:{match:EnrichedMatch;compact?:boolean;onOpen?:()=>void}){
   const portal=usePortalConfig();
@@ -16,7 +17,6 @@ export function ScheduleMatchCard({match,compact=false,onOpen}:{match:EnrichedMa
   const caborLink=portal&&caborPath&&portalTarget(portal,caborPath);
   const venueLink=portal&&venuePath&&portalTarget(portal,venuePath);
   const rawDate=new Date(match.matchDate);const date=Number.isNaN(rawDate.getTime())?null:rawDate;
-  const participants=match.participants.slice(0,2);
   const time=date?new Intl.DateTimeFormat('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}).format(date):'Menyusul';
   const day=date?new Intl.DateTimeFormat('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Jakarta'}).format(date):'Tanggal menunggu konfirmasi';
   const color=scheduleToneClasses[matchColor(match.caborId)];
@@ -28,8 +28,8 @@ export function ScheduleMatchCard({match,compact=false,onOpen}:{match:EnrichedMa
       // eslint-disable-next-line @next/next/no-img-element
       <img src={match.caborIconUrl} alt="" loading="lazy" decoding="async"/>
     )}{caborLink?<Link href={caborPath} className="inline-flex min-h-11 items-center hover:underline">{match.caborName}</Link>:<span>{match.caborName}</span>}</div>
-      <div><Heading className={styles.cardTitle}>{onOpen?<button type="button" onClick={onOpen} className={styles.cardTrigger} aria-label={`Lihat detail pertandingan ${match.caborName} · ${match.nomorTandingName}`}>{match.nomorTandingName}</button>:match.nomorTandingName}</Heading><p className={styles.muted}>{match.round} · {match.genderCategory}</p></div>
-      <div className={styles.participants}>{(participants.length?participants:[{id:'waiting-a',display_name:'Peserta menunggu konfirmasi'},{id:'waiting-b',display_name:'Lawan menunggu konfirmasi'}]).map((participant,index)=><div key={participant.id} className={styles.participant}><span className={styles.initial} aria-hidden="true">{index===0?'A':'B'}</span><span className="min-w-0 break-words">{participant.display_name}</span></div>)}</div>
+      <div><Heading className={styles.cardTitle}>{onOpen?<button type="button" onClick={onOpen} className={styles.cardTrigger} aria-label={`Lihat detail pertandingan ${match.caborName} · ${match.nomorTandingName}: ${scheduleParticipantSummary(match.participants)}`}>{match.nomorTandingName}</button>:match.nomorTandingName}</Heading><p className={styles.muted}>{match.round} · {match.genderCategory}</p></div>
+      <ScheduleParticipants participants={match.participants}/>
       <p className={`inline-flex items-start gap-2 ${styles.muted}`}><CalendarDays size={15} className="mt-0.5 shrink-0" aria-hidden="true"/>{day}</p>
     </div>
     <div className={styles.cardFoot}><MapPin size={16} className="shrink-0" aria-hidden="true"/>{venueLink?<Link href={venuePath} className="inline-flex min-h-11 items-center break-words font-bold hover:underline">{match.venueName}</Link>:<span className="break-words font-bold">{match.venueName}</span>}{onOpen&&<span className={styles.cardCta}>Detail <ArrowUpRight size={16} aria-hidden="true"/></span>}</div>

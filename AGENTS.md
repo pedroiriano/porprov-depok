@@ -1,5 +1,8 @@
 # AGENTS.md — Protokol Codex Agent Portal PORPROV Enterprise UI/UX v5
 
+> **Pihak yang bertanding — lokal 3 November 2026:** agenda harian kalender, daftar kartu dan dialog rincian memakai tampilan peserta bersama: Kontingen, Tim atau Individu, nama serta afiliasi yang tersedia. Urutan A/B dipertahankan, sisi yang belum tersedia menunggu konfirmasi, nama panjang tetap utuh dan konten dirender sebagai teks. API/pagination, data, skema dan publikasi Portal tidak berubah. Bukti/runtime mengikuti `docs/runbook/SCHEDULE_VISUAL_REDESIGN_LOCAL.md`; tanpa Git delivery atau VPS.
+
+
 > **Kandidat Public Jadwal dan Bahasa — 2 November 2026:** kalender rentang berkesinambungan, agenda tanggal pilihan, kartu yang membuka detail, serta bahasa pengunjung tanpa istilah pengembangan/infrastruktur. Menggunakan API, pagination, data dan visibilitas Portal existing; tidak membawa dummy, dependency downgrade, perubahan Admin/service, migrasi atau Nginx config. Bukti lokal dan batas runtime terpisah: `docs/runbook/SCHEDULE_VISUAL_REDESIGN_LOCAL.md`, `docs/runbook/PUBLIC_COPY_REVIEW_LOCAL.md`. Aktivasi production hanya dari commit yang ditinjau dengan gate/backup/rollback PASS.
 
 
