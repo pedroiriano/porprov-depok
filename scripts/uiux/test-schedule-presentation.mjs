@@ -26,6 +26,8 @@ registerHooks({
     return next(specifier,context);
   },
   load(url,context,next){
+    // TEST: Route policy is unchanged; isolate participant presentation from Next router context.
+    if(url.endsWith('/PortalProvider.tsx'))return {format:'module',source:'export const usePortalConfig=()=>null; export const PortalLink=()=>null;',shortCircuit:true};
     if(url==='schedule-test:css')return {format:'module',source:'export default new Proxy({},{get:(_,key)=>String(key)});',shortCircuit:true};
     if(url.startsWith(sourceRoot)&&/\.tsx?$/.test(url))return {format:'module',source:ts.transpileModule(readFileSync(fileURLToPath(url),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2023}}).outputText,shortCircuit:true};
     return next(url,context);
@@ -35,6 +37,9 @@ const React=publicRequire('react');const {act}=React;const {createRoot}=publicRe
 const {ScheduleCalendarBoard,scheduleRowSegments,initialScheduleDay}=await import('../../apps/public-web-nextjs/src/components/ScheduleCalendarBoard.tsx');
 const {ScheduleDayStrip}=await import('../../apps/public-web-nextjs/src/components/ScheduleDayStrip.tsx');
 const {SchedulePeriodCard}=await import('../../apps/public-web-nextjs/src/components/SchedulePeriodCard.tsx');
+const {ScheduleMatchCard}=await import('../../apps/public-web-nextjs/src/components/ScheduleMatchCard.tsx');
+const {ScheduleMatchCalendar}=await import('../../apps/public-web-nextjs/src/components/ScheduleMatchCalendar.tsx');
+const {ScheduleParticipants,scheduleParticipantViews}=await import('../../apps/public-web-nextjs/src/components/ScheduleParticipants.tsx');
 const h=React.createElement;
 async function render(element,run){const root=createRoot(document.getElementById('root'));try{await act(async()=>root.render(element));await run();}finally{await act(async()=>root.unmount());}}
 const event={id:'one',title:'Putaran 1 Golf',startsOn:'2026-11-02',endsOn:'2026-11-05'};
@@ -98,4 +103,43 @@ test('all six calendar color pairs meet AA text contrast in light and dark',()=>
   assert.equal(pairs.length,12);
   const luminance=hex=>{const channels=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4);return channels[0]*.2126+channels[1]*.7152+channels[2]*.0722;};
   for(const [,background,text] of pairs){const values=[luminance(background),luminance(text)].sort((a,b)=>b-a);assert.ok((values[0]+.05)/(values[1]+.05)>=4.5,`${text} on ${background}`);}
+});
+
+const participant=(slot,type,name,contingent='Kota Depok')=>({id:`participant-${slot}`,slot,participant_type:type,display_name:name,athlete_name:type==='individual'?name:'',team_name:type==='team'?name:'',kontingen_name:type==='contingent'?name:contingent});
+const match={id:'match-one',caborId:'basket',caborName:'Bola Basket',nomorTandingName:'Beregu 5x5',matchDate:'2026-11-03T01:00:00Z',round:'Penyisihan',venueName:'GOR Kota Depok',genderCategory:'Putri',status:'scheduled',participants:[]};
+
+test('participant identities preserve slot order, sport-specific names, affiliations and honest missing sides',()=>{
+  const supplied=[participant(2,'team','Tim Bandung','Kota Bandung'),participant(1,'team','Tim Depok')];
+  const views=scheduleParticipantViews(supplied);
+  assert.equal(views[0].name,'Tim Depok');assert.equal(views[0].affiliation,'Kota Depok');assert.equal(views[0].label,'Tim');assert.equal(supplied[0].slot,2);
+  assert.equal(scheduleParticipantViews([participant(1,'individual','Ayu')])[0].label,'Individu');
+  assert.equal(scheduleParticipantViews([participant(1,'contingent','Kota Depok')])[0].affiliation,'');
+  const missing=scheduleParticipantViews([participant(2,'individual','Budi')]);assert.equal(missing[0].name,'Menunggu konfirmasi');assert.equal(missing[1].name,'Budi');
+  assert.equal(scheduleParticipantViews([]).length,2);
+  assert.equal(scheduleParticipantViews([participant(1,'future-kind','Peserta khusus')])[0].name,'Peserta khusus');
+  assert.equal(scheduleParticipantViews([participant(1,'team',''),participant(2,'team','B')])[0].name,'Menunggu konfirmasi');
+});
+
+test('daily agenda and list cards show both opponents without opening detail and preserve clickable detail',async()=>{
+  const participants=[participant(1,'team','Tim Depok'),participant(2,'team','Tim Bandung','Kota Bandung')];
+  await render(h(ScheduleMatchCalendar,{month:'2026-11',today:'2026-11-03',items:[{...match,participants}],dayCounts:{'2026-11-03':1},onShowDay:()=>{}}),async()=>{
+    const agenda=document.querySelector('.agendaItem');
+    for(const text of ['Tim Depok','Tim Bandung','Kota Depok','Kota Bandung'])assert.ok(agenda.textContent.includes(text));
+    assert.ok(agenda.getAttribute('aria-label').includes('Tim: Tim Depok (Kota Depok) melawan Tim: Tim Bandung'));
+    assert.equal(agenda.querySelectorAll('button,a').length,0);assert.equal(agenda.querySelectorAll('[role=listitem]').length,2);
+  });
+  let opened=false;
+  await render(h(ScheduleMatchCard,{match:{...match,participants},onOpen:()=>opened=true}),async()=>{
+    assert.ok(document.querySelector('article').textContent.includes('Tim Bandung'));
+    assert.ok(document.querySelector('article').textContent.includes('Kota Bandung'));
+    await act(async()=>document.querySelector('.cardTrigger').click());assert.equal(opened,true);
+  });
+});
+
+test('individual and contingent participants render as escaped text with complete names',async()=>{
+  for(const type of ['individual','contingent'])await render(h(ScheduleParticipants,{participants:[participant(1,type,'<img src=x onerror=alert(1)>'),participant(2,type,'Nama panjang '.repeat(10))]}),async()=>{
+    assert.equal(document.querySelectorAll('img,script').length,0);
+    assert.ok(document.querySelector('[role=list]').textContent.includes('<img src=x onerror=alert(1)>'));
+    assert.ok(document.querySelector('[role=list]').textContent.includes('Nama panjang '.repeat(10).trim()));
+  });
 });

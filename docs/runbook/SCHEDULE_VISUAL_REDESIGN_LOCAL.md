@@ -69,3 +69,16 @@ Hasil final slice penyempurnaan:
 - Diff/secret check scoped PASS; tidak menambah dependency, HTML mentah, inline style dinamis, public endpoint, header atau exception keamanan. Ini bukan audit keamanan menyeluruh/DevSecOps, CI atau bukti runtime production.
 
 Image Public lokal final `sha256:4c7f1eacf858a516ba62be0142468aec46753e531fc2fad3062dd6b836de027b`. Rollback: bandingkan lalu pulihkan hanya file slice dari snapshot, singkirkan file baru `ScheduleDetails.tsx` hanya jika masih identik dengan kandidat ini, build Public melalui launcher canonical dan reload Nginx. Database tidak perlu di-restore untuk rollback UI; dummy memiliki soft-archive rollback tersendiri.
+
+
+## Identitas pihak bertanding — lokal 3 November 2026
+
+Perbaikan terarah pada agenda harian kalender: sebelumnya ringkasan hanya memuat Cabor, nomor, waktu/babak/lokasi meskipun API sudah memberikan peserta. `ScheduleParticipants.tsx` kini dipakai oleh agenda, daftar kartu dan dialog detail. Nama Kontingen, Tim atau Individu tampil langsung, disertai afiliasi Kontingen untuk tim/atlet apabila tersedia dan berbeda dari nama utama. Urutan slot A/B dipertahankan tanpa memutasi array API; sisi belum tersedia ditampilkan menunggu konfirmasi. Jenis lain memakai label Peserta dan display_name yang tersedia; tidak menambah jenis peserta baru pada kontrak backend. Tidak memakai UUID sebagai nama atau membuat lawan/data baru.
+
+Komponen hanya merender teks React (termasuk input berkarakter HTML), tanpa innerHTML, inline style, request tambahan atau endpoint baru. Nama panjang dapat membungkus, tidak dipotong. Tombol agenda mempunyai nama aksesibel berisi kedua pihak dan tetap membuka dialog; tautan Cabor/Venue canonical, pagination, count, filter, WIB, Portal dan guard izin dipertahankan.
+
+Verifikasi proporsional: 10 regresi presentasi/DOM PASS, meliputi urutan, tipe peserta, afiliasi, sisi kosong, escaping dan integrasi agenda/kartu; TypeScript, lint komponen terdampak, pemeriksaan bahasa dan build Public Linux PASS. Public lokal direcreate melalui launcher canonical `infra/docker/compose-up.ps1 -NoDeps public-web`, disusul `nginx -t` dan reload lokal. Snapshot projection API sebelum/sesudah identik, tanpa fixture atau mutasi database.
+
+Browser lokal representative 1440px/390px light/dark memverifikasi Kontingen Kota Depok dan Kabupaten Bandung langsung terlihat pada agenda. Klik membuka detail; Escape mengembalikan fokus; tidak ada overflow halaman. Variasi Tim/Individu, nama panjang dan data belum lengkap dibuktikan regresi in-memory, tanpa memasukkan fixture ke database. Screenshot, log serta manifest checksum berada di snapshot yang ditunjuk `.tmp/schedule-participants-active.txt`. Source rollback: bandingkan dan pulihkan hanya slice dari folder before; runtime rollback memakai image Public sebelumnya yang tercatat, kemudian Nginx-t/reload lokal. Tidak perlu restore database.
+
+Tidak Git delivery, akses VPS, migrasi, perubahan data domain atau publikasi Portal. Enam dokumen root disinkronkan tanpa membuang perubahan existing. Tiga DOCX referensi yang tercantum pada AGENTS.md tidak tersedia di docs/reference saat pemeriksaan; baseline Markdown dan kontrak UI existing digunakan, tanpa mengarang isi DOCX.
