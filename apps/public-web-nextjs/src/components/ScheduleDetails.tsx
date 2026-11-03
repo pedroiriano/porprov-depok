@@ -10,7 +10,7 @@ import {matchResultsHref} from '../../../../packages/portal-config/schedule-resu
 import styles from './SchedulePresentation.module.css';
 
 // ACCESSIBILITY: Calendar, daily agenda and cards share native modal behavior and focus restoration.
-function ScheduleDialog({open,title,onClose,children}:{open:boolean;title:string;onClose:()=>void;children:ReactNode}){
+export function ScheduleDialog({open,title,onClose,children}:{open:boolean;title:string;onClose:()=>void;children:ReactNode}){
   const dialog=useRef<HTMLDialogElement>(null);
   const titleId=useId();
   useEffect(()=>{

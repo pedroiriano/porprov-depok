@@ -1,5 +1,7 @@
 # RULES.md — Aturan Mutlak Portal PORPROV Enterprise UI/UX v5
 
+> **Pengelolaan dan daftar hasil — lokal 3 November 2026:** skor tercatat memakai AdminDataTable Cuba dengan pencarian/sorting/pagination server, pilihan baris/ekspor dan aksi pembaruan/koreksi/riwayat. SearchableSelect canonical mendukung pencarian serta paging opsi; pertandingan yang sudah memiliki skor tidak muncul sebagai input baru. Public menampilkan daftar ringkas, default hari ini dalam WIB, pemilih bulan/tanggal canonical dan dialog hasil. Read-model Gateway baca-saja mempertahankan API lama, JWT/izin/modul serta projection Public tanpa metadata privat. Tanpa migrasi, perubahan data domain, Git atau VPS; bukti/batas: `docs/runbook/MATCH_RESULTS_WORKSPACE_LOCAL.md`.
+
 > **Hasil pertandingan — kandidat lokal 3 November 2026:** input/koreksi skor dikunci sebelum tanggal pertandingan dalam WIB (00.00), termasuk validasi server fail-closed. Menu Hasil memakai modul `/livescore` yang sudah ada dan tetap mengikuti Pengelolaan Portal; tautan Jadwal memilih match yang sama melalui filter UUID sebelum pagination. Kartu hasil bersama membedakan skor belum tersedia dari nol, dan grid data menyesuaikan kartu/kolom opsional. Tanpa migrasi, mutasi data domain, Git delivery atau VPS; bukti/status mengikuti `docs/runbook/MATCH_RESULTS_LOCAL.md`.
 
 

@@ -14,6 +14,12 @@ interface SearchableSelectProps {
   placeholder?: string;
   ariaLabel?: string;
   disabled?: boolean;
+  onSearchChange?: (query: string) => void;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loading?: boolean;
+  selectedOption?: SelectOption;
+  emptyMessage?: string;
 }
 
 export default function SearchableSelect({
@@ -22,18 +28,23 @@ export default function SearchableSelect({
   onChange,
   placeholder = 'Pilih opsi...',
   ariaLabel,
-  disabled = false
+  disabled = false,
+  onSearchChange, onLoadMore, hasMore = false, loading = false, selectedOption: externalSelected,
+  emptyMessage = 'Tidak ada hasil ditemukan.'
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  useEffect(()=>{if(isOpen&&activeIndex>=0)document.getElementById(`${listboxId}-${activeIndex}`)?.scrollIntoView({block:'nearest'});},[isOpen,activeIndex,listboxId]);
 
   // Find the selected option label
-  const selectedOption = options.find(opt => opt.value === value);
+  const selectedOption = options.find(opt => opt.value === value) || externalSelected;
 
   // Filter options based on search query
-  const filteredOptions = options.filter(opt =>
+  const filteredOptions = onSearchChange ? options : options.filter(opt =>
     opt.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (opt.subLabel && opt.subLabel.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -52,14 +63,22 @@ export default function SearchableSelect({
     onChange(val);
     setIsOpen(false);
     setSearchQuery('');
+    setActiveIndex(-1);
+    onSearchChange?.('');
+    triggerRef.current?.focus();
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget))setIsOpen(false);}} onKeyDown={event=>{
+      if(event.key==='Escape'&&isOpen){event.preventDefault();event.stopPropagation();setIsOpen(false);triggerRef.current?.focus();}
+      if((event.key==='ArrowDown'||event.key==='ArrowUp')&&!disabled){event.preventDefault();setIsOpen(true);setActiveIndex(index=>Math.max(0,Math.min(filteredOptions.length-1,index+(event.key==='ArrowDown'?1:-1))));}
+      if(event.key==='Enter'&&isOpen&&activeIndex>=0&&filteredOptions[activeIndex]){event.preventDefault();handleSelect(filteredOptions[activeIndex].value);}
+    }}>
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {setIsOpen(!isOpen);setActiveIndex(-1);}}
         aria-label={ariaLabel || placeholder}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -82,25 +101,33 @@ export default function SearchableSelect({
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="search"
+                role="combobox"
+                aria-label={`Cari ${ariaLabel || placeholder}`}
+                aria-expanded={isOpen}
+                aria-controls={listboxId}
+                aria-activedescendant={filteredOptions[activeIndex] ? `${listboxId}-${activeIndex}` : undefined}
+                aria-autocomplete="list"
+                maxLength={80}
                 autoFocus
                 placeholder="Cari..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {setSearchQuery(e.target.value);setActiveIndex(-1);onSearchChange?.(e.target.value);}}
                 className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               />
             </div>
           </div>
-          <div id={listboxId} role="listbox" aria-label={ariaLabel || placeholder} className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+          <div id={listboxId} role="listbox" aria-busy={loading} aria-label={ariaLabel || placeholder} className="max-h-60 overflow-y-auto custom-scrollbar p-1">
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((opt) => (
+              filteredOptions.map((opt,index) => (
                 <button
                   key={opt.value}
+                  id={`${listboxId}-${index}`}
                   type="button"
                   role="option"
                   aria-selected={value === opt.value}
                   onClick={() => handleSelect(opt.value)}
                   className={`flex min-h-11 w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${
-                    value === opt.value
+                    value === opt.value || activeIndex === index
                       ? 'bg-blue-50 font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-200'
                       : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
                   }`}
@@ -114,10 +141,12 @@ export default function SearchableSelect({
               ))
             ) : (
               <div className="p-3 text-sm text-center text-slate-500 dark:text-slate-400">
-                Tidak ada hasil ditemukan.
+                {loading ? 'Memuat pilihan...' : emptyMessage}
               </div>
             )}
           </div>
+          {loading && filteredOptions.length>0 && <p role="status" className="p-2 text-sm text-slate-600 dark:text-slate-300">Memuat pilihan...</p>}
+          {hasMore && <button type="button" disabled={loading} onClick={onLoadMore} className="min-h-11 w-full rounded-lg font-bold text-blue-700 disabled:opacity-50 dark:text-blue-200">Muat pilihan berikutnya</button>}
         </div>
       )}
     </div>

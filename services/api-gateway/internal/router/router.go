@@ -398,6 +398,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 			r.With(permissionOnly("audit.view")).Handle("/audit", http.StripPrefix("/api/v1/audit", setupProxy(cfg.AuditURL)))
 
 			// Livescore Service (Port 8083) - Hanya admin/koresponden yang boleh mengupdate skor
+			r.With(permissionOnly("livescore.view")).Get("/livescore/workspace", scoreWorkspace(cfg.ScheduleURL, cfg.LivescoreURL))
 			r.With(permissionOnly("livescore.view")).Get("/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)).ServeHTTP)
 			r.With(permissionOnly("livescore.view")).Get("/livescore", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)).ServeHTTP)
 			r.With(permissionOnly("livescore.manage")).Method(http.MethodPost, "/livescore/*", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)))
@@ -462,6 +463,7 @@ func SetupRouter(jwtMid *customMiddleware.JWTMiddleware, cfg *config.AppConfig) 
 
 		// Public LiveScore projection tidak memuat actor, request ID, atau alasan koreksi.
 		r.Get("/livescore/public", http.StripPrefix("/api/v1/livescore", setupProxy(cfg.LivescoreURL)).ServeHTTP)
+		r.Get("/livescore/results", publicScoreResults(cfg.ScheduleURL, cfg.LivescoreURL))
 		r.Get("/livescore/schedule-projection", scheduleProjection(cfg.ScheduleURL))
 	})
 
