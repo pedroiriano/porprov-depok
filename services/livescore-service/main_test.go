@@ -33,7 +33,7 @@ func TestValidateActiveMatchRequiresTwoParticipantSlots(t *testing.T) {
 			_, _ = w.Write([]byte(`[{"participant_type":"individual","slot":1}]`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"id":"00000000-0000-4000-8000-000000000001"}`))
+		_, _ = w.Write([]byte(`{"id":"00000000-0000-4000-8000-000000000001","match_date":"2000-01-01T00:00:00Z"}`))
 	}))
 	defer upstream.Close()
 	service := &server{scheduleURL: upstream.URL, httpClient: &http.Client{Timeout: time.Second}}
@@ -49,7 +49,7 @@ func TestValidateActiveMatchAcceptsTwoOrderedParticipants(t *testing.T) {
 			_, _ = w.Write([]byte(`[{"participant_type":"individual","slot":1},{"participant_type":"team","slot":2}]`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"id":"00000000-0000-4000-8000-000000000001"}`))
+		_, _ = w.Write([]byte(`{"id":"00000000-0000-4000-8000-000000000001","match_date":"2000-01-01T00:00:00Z"}`))
 	}))
 	defer upstream.Close()
 	service := &server{scheduleURL: upstream.URL, httpClient: &http.Client{Timeout: time.Second}}

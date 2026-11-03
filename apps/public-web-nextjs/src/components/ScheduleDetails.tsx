@@ -5,6 +5,8 @@ import {CalendarDays,Clock3,Info,X} from 'lucide-react';
 import type {EnrichedMatch} from '@/lib/public-models';
 import {formatSchedulePeriod,type SchedulePeriod} from '../../../../packages/portal-config/schedule-period';
 import {ScheduleMatchCard} from './ScheduleMatchCard';
+import {PortalLink} from './PortalProvider';
+import {matchResultsHref} from '../../../../packages/portal-config/schedule-results';
 import styles from './SchedulePresentation.module.css';
 
 // ACCESSIBILITY: Calendar, daily agenda and cards share native modal behavior and focus restoration.
@@ -38,5 +40,5 @@ export function SchedulePeriodDetails({item,today,onClose}:{item:SchedulePeriod|
 }
 
 export function ScheduleMatchDetails({item,onClose}:{item:EnrichedMatch|null;onClose:()=>void}){
-  return <ScheduleDialog open={!!item} title="Detail pertandingan" onClose={onClose}>{item&&<><ScheduleMatchCard match={item} compact/>{item.venueAddress&&<p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>Alamat lokasi:</strong> {item.venueAddress}</p>}</>}</ScheduleDialog>;
+  return <ScheduleDialog open={!!item} title="Detail pertandingan" onClose={onClose}>{item&&<><ScheduleMatchCard match={item} compact/>{matchResultsHref(item.id)&&<PortalLink href={matchResultsHref(item.id)!} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-700 px-5 font-bold text-white hover:bg-blue-800">Lihat hasil pertandingan →</PortalLink>}{item.venueAddress&&<p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>Alamat lokasi:</strong> {item.venueAddress}</p>}</>}</ScheduleDialog>;
 }

@@ -503,3 +503,15 @@ canvas {
 .techwind-section-alt {
   background-color: var(--bg-surface);
 }
+
+/* CHANGE: Compact Techwind desktop navigation accommodates Hasil without reserving a duplicate live-score icon. */
+@media(min-width:992px){
+  #topnav>.container{display:flex;align-items:center;gap:1rem;min-height:80px}
+  #topnav .logo{float:none!important;flex-shrink:0;margin-right:0}
+  #topnav #navigation{order:2;flex:1;min-width:0}
+  #topnav .buy-button{order:3;float:none!important;flex-shrink:0;margin:0}
+  #topnav .menu-extras{order:4}
+  #topnav .navigation-menu{display:flex!important;justify-content:center;flex-wrap:wrap;float:none!important;gap:0 .15rem}
+  #topnav .navigation-menu>li{float:none!important;margin:0!important}
+  #topnav .navigation-menu>li>.sub-menu-item{padding:24px 8px!important;font-size:13px!important;letter-spacing:.04em;line-height:24px}
+}

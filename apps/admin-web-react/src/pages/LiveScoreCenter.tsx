@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {scoreEntryOpen} from '../../../../packages/portal-config/schedule-results';
 import { Activity, CircleGauge, History, Loader2, Radio, RefreshCw, Send, Trophy } from 'lucide-react';
 import { useAuth } from 'react-oidc-context';
 import { AdminAlert, AdminEmptyState, AdminLoadingState, AdminPageHeader } from '../components/cuba/AdminPrimitives';
@@ -6,7 +7,7 @@ import { API_BASE_URL, apiClient, authConfig, getApiErrorMessage, unwrapApiData 
 import { useAuthorization } from '../contexts/authorization';
 
 interface ScheduleParticipant { participant_type: 'individual' | 'team' | 'contingent'; kontingen_name: string; athlete_name: string; team_name: string; slot: number; display_name: string }
-interface ScheduleMatch { id: string; cabor_name: string; nomor_tanding_name: string; venue_name: string; round: string; status: string; participants?: ScheduleParticipant[] }
+interface ScheduleMatch { id: string; match_date: string; cabor_name: string; nomor_tanding_name: string; venue_name: string; round: string; status: string; participants?: ScheduleParticipant[] }
 interface ScoreRecord { matchId: string; revisionId: string; revisionNumber: number; scoreA: number; scoreB: number; status: string; actor: string; timestamp: string; correctionReason?: string }
 interface LiveEvent extends Partial<ScoreRecord> { eventId?: string; eventType?: string; sequence?: number; isCorrection?: boolean }
 
@@ -133,14 +134,20 @@ export default function LiveScoreCenter() {
     return () => controller.abort();
   }, [loadHistory, matchId, token]);
 
+  const [scoreClock,setScoreClock] = useState(() => new Date());
+  useEffect(() => { const timer=window.setInterval(()=>setScoreClock(new Date()),30000);return()=>window.clearInterval(timer); },[]);
   const selectedMatch = useMemo(() => matches.find((match) => match.id === matchId), [matchId, matches]);
   const selectedParticipants = useMemo(() => [...(selectedMatch?.participants || [])].sort((first, second) => first.slot - second.slot).slice(0, 2), [selectedMatch]);
+  const dateReady = scoreEntryOpen(selectedMatch?.match_date, scoreClock);
   const participantsReady = selectedParticipants.length === 2 && selectedParticipants.every((participant) => participant.display_name && participant.display_name !== 'Peserta menunggu konfirmasi');
 
+  const selectedScore = scores[matchId];
+  // CHANGE: A match without a result must not inherit the previously selected match's score.
   useEffect(() => {
-    const current = scores[matchId];
-    if (current) { setScoreA(current.scoreA); setScoreB(current.scoreB); setStatus(current.status); }
-  }, [matchId, scores]);
+    setScoreA(selectedScore?.scoreA ?? 0);
+    setScoreB(selectedScore?.scoreB ?? 0);
+    setStatus(selectedScore?.status || 'Belum Mulai');
+  }, [matchId, selectedScore]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -149,6 +156,7 @@ export default function LiveScoreCenter() {
       setFeedback({ type: 'error', message: 'Susunan Peserta A/B belum lengkap. Lengkapi melalui Data Utama → Jadwal Pertandingan sebelum memasukkan skor.' });
       return;
     }
+    if (!dateReady) { setFeedback({type:'error',message:'Skor baru dapat diinput pada tanggal pertandingan dalam WIB.'}); return; }
     setSubmitting(true);
     setFeedback(null);
     try {
@@ -191,14 +199,15 @@ export default function LiveScoreCenter() {
             {selectedMatch && <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800/70"><p className="font-black text-slate-900 dark:text-white">{selectedParticipants.map((item) => item.display_name).join(' melawan ') || 'Peserta belum diatur'}</p><p className="mt-1 text-slate-500 dark:text-slate-300">{selectedMatch.venue_name} · {selectedMatch.round}</p></div>}
             {selectedMatch && !participantsReady && <div className="mt-3"><AdminAlert tone="warning">Input skor dikunci sampai Peserta A dan B dilengkapi pada Jadwal Pertandingan.</AdminAlert></div>}
             <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4">
-              <label className="min-w-0 text-sm font-bold text-slate-700 dark:text-slate-200"><span className="block truncate">Skor A — {selectedParticipants[0]?.display_name || 'belum dipilih'}</span><input type="number" min="0" disabled={!participantsReady} value={scoreA} onChange={(event) => setScoreA(Number(event.target.value))} className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-center text-xl font-black text-slate-950 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white" /></label>
-              <label className="min-w-0 text-sm font-bold text-slate-700 dark:text-slate-200"><span className="block truncate">Skor B — {selectedParticipants[1]?.display_name || 'belum dipilih'}</span><input type="number" min="0" disabled={!participantsReady} value={scoreB} onChange={(event) => setScoreB(Number(event.target.value))} className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-center text-xl font-black text-slate-950 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white" /></label>
+              <label className="min-w-0 text-sm font-bold text-slate-700 dark:text-slate-200"><span className="block truncate">Skor A — {selectedParticipants[0]?.display_name || 'belum dipilih'}</span><input type="number" min="0" disabled={!participantsReady || !dateReady} value={scoreA} onChange={(event) => setScoreA(Number(event.target.value))} className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-center text-xl font-black text-slate-950 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white" /></label>
+              <label className="min-w-0 text-sm font-bold text-slate-700 dark:text-slate-200"><span className="block truncate">Skor B — {selectedParticipants[1]?.display_name || 'belum dipilih'}</span><input type="number" min="0" disabled={!participantsReady || !dateReady} value={scoreB} onChange={(event) => setScoreB(Number(event.target.value))} className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-center text-xl font-black text-slate-950 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white" /></label>
             </div>
+            {selectedMatch&&!dateReady&&<p role="status" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">Skor baru dapat diinput pada tanggal pertandingan dalam WIB. Jadwal: {new Date(selectedMatch.match_date).toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta',day:'numeric',month:'long',year:'numeric'})}.</p>}
             <label htmlFor="livescore-status" className="mt-4 block text-sm font-bold text-slate-700 dark:text-slate-200">Status</label>
-            <select id="livescore-status" value={status} onChange={(event) => setStatus(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white">{scoreStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
-            <label className="mt-5 flex min-h-11 items-center gap-3 rounded-xl border border-slate-200 px-3 text-slate-700 dark:border-slate-700 dark:text-slate-200"><input type="checkbox" checked={correction} onChange={(event) => setCorrection(event.target.checked)} className="size-4 rounded accent-blue-600 focus:ring-2 focus:ring-blue-500" /><span className="text-sm font-bold">Ini adalah koreksi skor</span></label>
-            {correction && <label htmlFor="correction-reason" className="mt-4 block text-sm font-bold text-slate-700 dark:text-slate-200">Alasan koreksi<textarea id="correction-reason" required minLength={5} value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" placeholder="Jelaskan sumber dan alasan koreksi" /></label>}
-            <button type="submit" disabled={submitting || !matchId || !participantsReady} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-slate-900">{submitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}{correction ? 'Simpan koreksi' : 'Simpan pembaruan skor'}</button>
+            <select id="livescore-status" disabled={!dateReady} value={status} onChange={(event) => setStatus(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white">{scoreStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+            <label className="mt-5 flex min-h-11 items-center gap-3 rounded-xl border border-slate-200 px-3 text-slate-700 dark:border-slate-700 dark:text-slate-200"><input type="checkbox" disabled={!dateReady} checked={correction} onChange={(event) => setCorrection(event.target.checked)} className="size-4 rounded accent-blue-600 focus:ring-2 focus:ring-blue-500" /><span className="text-sm font-bold">Ini adalah koreksi skor</span></label>
+            {correction && <label htmlFor="correction-reason" className="mt-4 block text-sm font-bold text-slate-700 dark:text-slate-200">Alasan koreksi<textarea id="correction-reason" disabled={!dateReady} required minLength={5} value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" placeholder="Jelaskan sumber dan alasan koreksi" /></label>}
+            <button type="submit" disabled={submitting || !matchId || !participantsReady || !dateReady} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 font-black text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-slate-900">{submitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}{correction ? 'Simpan koreksi' : 'Simpan pembaruan skor'}</button>
             </fieldset>
           </form>
 

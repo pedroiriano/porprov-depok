@@ -1102,7 +1102,87 @@
           "503": {
             "description": "Dependency tidak tersedia"
           }
-        }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          },
+          {
+            "$ref": "#/components/parameters/Query"
+          },
+          {
+            "$ref": "#/components/parameters/Direction"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "match_date",
+                "nomor_tanding",
+                "venue",
+                "round",
+                "status"
+              ]
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "description": "Bulan kalender WIB, 2000â€“2100",
+            "schema": {
+              "type": "string",
+              "pattern": "^(20[0-9]{2}|2100)-(0[1-9]|1[0-2])$"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Tanggal pertandingan WIB, 2000â€“2100",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "cabor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "venue",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 50
+            }
+          },
+          {
+            "name": "match_id",
+            "in": "query",
+            "required": false,
+            "description": "UUID pertandingan tunggal untuk tautan Jadwal ke Hasil; filter dilakukan sebelum pagination. Nilai kosong/tidak valid/berulang ditolak.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
       }
     },
     "/schedule/periods": {
@@ -1886,16 +1966,93 @@
         "description": "Tanpa parameter tetap array legacy. Filter month/date/cabor/venue/status bersifat additive. Respons berhalaman menambah facets (Cabor/lokasi/status), calendar.month dan calendar.day_counts yang menghitung seluruh hasil terfilter sebelum pagination; tanggal pertandingan mengikuti Asia/Jakarta.",
         "security": [],
         "parameters": [
-          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PerPage" },
-          { "$ref": "#/components/parameters/Query" }, { "$ref": "#/components/parameters/Direction" },
-          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["match_date", "nomor_tanding", "venue", "round", "status"] } },
-          {"name": "month", "in": "query", "description": "Bulan kalender WIB, 2000–2100", "schema": {"type": "string", "pattern": "^(20[0-9]{2}|2100)-(0[1-9]|1[0-2])$"}},
-          {"name": "date", "in": "query", "description": "Tanggal pertandingan WIB, 2000–2100", "schema": {"type": "string", "format": "date"}},
-          {"name": "cabor", "in": "query", "schema": {"type": "string", "format": "uuid"}},
-          {"name": "venue", "in": "query", "schema": {"type": "string", "format": "uuid"}},
-          {"name": "status", "in": "query", "schema": {"type": "string", "maxLength": 50}}
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          },
+          {
+            "$ref": "#/components/parameters/Query"
+          },
+          {
+            "$ref": "#/components/parameters/Direction"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "match_date",
+                "nomor_tanding",
+                "venue",
+                "round",
+                "status"
+              ]
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "description": "Bulan kalender WIB, 2000â€“2100",
+            "schema": {
+              "type": "string",
+              "pattern": "^(20[0-9]{2}|2100)-(0[1-9]|1[0-2])$"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Tanggal pertandingan WIB, 2000â€“2100",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "cabor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "venue",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 50
+            }
+          },
+          {
+            "name": "match_id",
+            "in": "query",
+            "required": false,
+            "description": "UUID pertandingan tunggal untuk tautan Jadwal ke Hasil; filter dilakukan sebelum pagination. Nilai kosong/tidak valid/berulang ditolak.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
         ],
-        "responses": { "200": { "$ref": "#/components/responses/PaginatedList" }, "400": { "$ref": "#/components/responses/InvalidListQuery" } }
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/PaginatedList"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidListQuery"
+          }
+        }
       }
     },
     "/schedule/matches": {
@@ -1923,7 +2080,21 @@
       "get": { "summary": "Membaca skor terkini untuk operator", "responses": { "200": { "description": "Daftar skor terkini" } } }
     },
     "/livescore/update": {
-      "post": { "summary": "Menambahkan revisi skor atau status secara append-only", "responses": { "201": { "description": "Revisi skor tersimpan dan masuk outbox" }, "409": { "description": "Expected revision tidak lagi cocok" }, "422": { "description": "Pertandingan atau skor tidak valid" } } }
+      "post": {
+        "summary": "Menambahkan revisi skor atau status secara append-only",
+        "responses": {
+          "201": {
+            "description": "Revisi skor tersimpan dan masuk outbox"
+          },
+          "409": {
+            "description": "Expected revision tidak lagi cocok"
+          },
+          "422": {
+            "description": "Pertandingan atau skor tidak valid"
+          }
+        },
+        "description": "Skor hanya dapat ditulis mulai tanggal pertandingan dalam WIB (00.00); server memvalidasi tanggal sebelum persistence, termasuk koreksi. Tanggal hilang/tidak sah gagal tertutup."
+      }
     },
     "/livescore/matches/{matchID}": {
       "get": { "summary": "Membaca skor terkini satu pertandingan", "parameters": [{ "$ref": "#/components/parameters/MatchId" }], "responses": { "200": { "description": "Skor terkini" }, "404": { "description": "Skor belum tersedia" } } }
@@ -1932,7 +2103,23 @@
       "get": { "summary": "Membaca riwayat revisi skor immutable", "parameters": [{ "$ref": "#/components/parameters/MatchId" }], "responses": { "200": { "description": "Riwayat revisi skor" } } }
     },
     "/livescore/matches/{matchID}/correct": {
-      "post": { "summary": "Membuat revisi koreksi skor baru", "parameters": [{ "$ref": "#/components/parameters/MatchId" }], "responses": { "201": { "description": "Koreksi tersimpan sebagai revisi baru" }, "409": { "description": "Expected revision tidak lagi cocok" } } }
+      "post": {
+        "summary": "Membuat revisi koreksi skor baru",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MatchId"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Koreksi tersimpan sebagai revisi baru"
+          },
+          "409": {
+            "description": "Expected revision tidak lagi cocok"
+          }
+        },
+        "description": "Skor hanya dapat ditulis mulai tanggal pertandingan dalam WIB (00.00); server memvalidasi tanggal sebelum persistence, termasuk koreksi. Tanggal hilang/tidak sah gagal tertutup."
+      }
     },
     "/medals/standings": {
       "get": { "summary": "Membaca klasemen dari medali berstatus resmi", "security": [], "responses": { "200": { "description": "Klasemen medali resmi" } } }

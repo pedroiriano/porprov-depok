@@ -15,7 +15,12 @@ export function Navbar() {
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const config=usePortalConfig();
-  const menuItems=config?portalMenus(config,'header'):[];
+  const menuItems=config?portalMenus(config,'header').map(item=>item.target.split(/[?#]/)[0]==='/livescore'?{...item,label:'Hasil'}:item):[];
+  // INFO: Hasil reuses the published LiveScore module; disabled/external module policy remains authoritative.
+  if(config&&portalTarget(config,'/livescore')&&!config.menus.some(item=>item.location==='header'&&item.target.split(/[?#]/)[0]==='/livescore')){
+    const position=menuItems.findIndex(item=>item.target==='/jadwal');
+    menuItems.splice(position<0?menuItems.length:position+1,0,{id:'results-shortcut',label:'Hasil',location:'header',target:'/livescore',parent_id:'',enabled:true});
+  }
   const [openSubmenu,setOpenSubmenu]=useState<string|null>(null);
   
   // CHANGE: React owns sticky state, including a restored scroll on initial load.
@@ -86,12 +91,7 @@ export function Navbar() {
             </button>
           </li>
   
-          <li className="inline ps-1 mb-0">
-            <PortalLink href="/livescore" className="inline-flex min-h-11 min-w-11 items-center justify-center" aria-label="Buka skor langsung" onClick={closeMenu}>
-              <span className={`${(!isHomePage || isSticky) ? 'inline-block' : 'hidden'}`}><span className="size-11 inline-flex items-center justify-center tracking-wide align-middle duration-500 text-base text-center rounded-full bg-indigo-600 hover:bg-indigo-700 border border-indigo-600 hover:border-indigo-700 text-white"><i className="ri-live-line" aria-hidden="true"></i></span></span>
-              <span className={`${(isHomePage && !isSticky) ? 'inline-block' : 'hidden'}`}><span className="size-11 inline-flex items-center justify-center tracking-wide border border-gray-50 align-middle duration-500 text-base text-center rounded-full bg-gray-50 hover:bg-gray-200 dark:bg-slate-900 dark:hover:bg-gray-700 hover:border-gray-100 dark:border-gray-800 dark:hover:border-gray-700"><i className="ri-live-line text-red-500" aria-hidden="true"></i></span></span>
-            </PortalLink>
-          </li>
+
         </ul>
         {/*Login button End*/}
 

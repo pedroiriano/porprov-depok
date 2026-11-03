@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+import {PublicCardGrid} from '@/components/PublicCardGrid';
 import { portalMetadata } from '@/lib/portal-config';
 import Image from "next/image";
 import Link from "next/link";
@@ -222,7 +224,7 @@ export default async function CityGuidePage({
             <p className="mb-6 text-sm font-semibold text-slate-600 dark:text-slate-400" aria-live="polite">
               {filteredGuides.length} lokasi ditemukan{searchQuery ? <> untuk &quot;<span className="text-slate-900 dark:text-white">{searchQuery}</span>&quot;</> : ""}.
             </p>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <PublicCardGrid maxColumns={4} className="gap-6">
               {paginatedGuides.map((guide) => (
               <article 
                 key={guide.id}
@@ -297,7 +299,7 @@ export default async function CityGuidePage({
                 </div>
               </article>
               ))}
-            </div>
+            </PublicCardGrid>
 
             {/* Pagination Controls */}
             {totalPages > 1 && (

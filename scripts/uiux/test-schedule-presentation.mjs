@@ -40,6 +40,8 @@ const {SchedulePeriodCard}=await import('../../apps/public-web-nextjs/src/compon
 const {ScheduleMatchCard}=await import('../../apps/public-web-nextjs/src/components/ScheduleMatchCard.tsx');
 const {ScheduleMatchCalendar}=await import('../../apps/public-web-nextjs/src/components/ScheduleMatchCalendar.tsx');
 const {ScheduleParticipants,scheduleParticipantViews}=await import('../../apps/public-web-nextjs/src/components/ScheduleParticipants.tsx');
+const {PublicCardGrid}=await import('../../apps/public-web-nextjs/src/components/PublicCardGrid.tsx');
+const {MatchResultCard}=await import('../../apps/public-web-nextjs/src/components/MatchResultCard.tsx');
 const h=React.createElement;
 async function render(element,run){const root=createRoot(document.getElementById('root'));try{await act(async()=>root.render(element));await run();}finally{await act(async()=>root.unmount());}}
 const event={id:'one',title:'Putaran 1 Golf',startsOn:'2026-11-02',endsOn:'2026-11-05'};
@@ -142,4 +144,19 @@ test('individual and contingent participants render as escaped text with complet
     assert.ok(document.querySelector('[role=list]').textContent.includes('<img src=x onerror=alert(1)>'));
     assert.ok(document.querySelector('[role=list]').textContent.includes('Nama panjang '.repeat(10).trim()));
   });
+});
+
+
+test('visible cards determine columns without reserving disabled optional content',async()=>{
+  await render(h(PublicCardGrid,null,[h('article',{key:'a'},'A'),null,h('article',{key:'b'},'B')]),async()=>{const grid=document.querySelector('[data-card-count]');assert.equal(grid.dataset.cardCount,'2');assert.ok(grid.className.includes('md:grid-cols-2'));assert.ok(!grid.className.includes('grid-cols-3'));});
+  await render(h(PublicCardGrid,{maxColumns:4},h('article',null,'One')),async()=>{assert.equal(document.querySelector('[data-card-count]').dataset.cardCount,'1');assert.ok(!document.querySelector('[data-card-count]').className.includes('grid-cols-4'));});
+});
+
+test('result cards distinguish unavailable scores from recorded zero and preserve the two participants',async()=>{
+ const participants=[participant(1,'team','Tim Depok'),participant(2,'team','Tim Bandung','Kota Bandung')];
+ for(const recorded of [false,true])await render(h(MatchResultCard,{match:{...match,participants},score:recorded?{matchId:match.id,scoreA:0,scoreB:2,status:'Selesai'}:undefined}),async()=>{
+  assert.ok(document.querySelector('article').textContent.includes('Tim Depok'));
+  assert.equal(document.querySelectorAll('strong[aria-label]')[0].textContent,recorded?'0':'–');
+  assert.ok(document.querySelector('article').textContent.includes(recorded?'Selesai':'belum tersedia'));
+ });
 });
