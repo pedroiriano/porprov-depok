@@ -15,6 +15,7 @@ interface PublicPageHeroProps {
   icon?: string;
   breadcrumbs?: BreadcrumbItem[];
   children?: React.ReactNode;
+  compact?: boolean;
 }
 
 export function PublicPageHero({
@@ -24,17 +25,18 @@ export function PublicPageHero({
   icon = "ri-trophy-line",
   breadcrumbs = [],
   children,
+  compact = false,
 }: PublicPageHeroProps) {
   const config=usePortalConfig();const path=usePathname();
   const page=config?.pages.find(p=>p.path===path);const original=defaultPortalConfig.pages.find(p=>p.path===path);
   if(page&&original){if(page.title!==original.title)title=page.title;if(page.description!==original.description)description=page.description;}
   return (
-    <section className="relative isolate overflow-hidden bg-slate-950 pb-16 pt-32 text-white md:pb-20 md:pt-40">
+    <section className={`relative isolate overflow-hidden bg-slate-950 text-white ${compact?'pb-7 pt-24 md:pb-9 md:pt-28':'pb-16 pt-32 md:pb-20 md:pt-40'}`}>
       <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.28),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(245,158,11,0.18),transparent_30%)]" aria-hidden="true" />
       <div className="absolute inset-0 -z-10 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:44px_44px]" aria-hidden="true" />
       <div className="container relative">
         {breadcrumbs.length > 0 && (
-          <nav aria-label="Breadcrumb" className="mb-8">
+          <nav aria-label="Breadcrumb" className={compact?'mb-2':'mb-8'}>
             <ol className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-300">
               <li><Link href="/" className="inline-flex min-h-11 items-center hover:text-white">Beranda</Link></li>
               {breadcrumbs.map((item, index) => (
@@ -53,12 +55,12 @@ export function PublicPageHero({
 
         <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div className="max-w-4xl">
-            <p className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-sky-300">
+            {!compact&&<p className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-sky-300">
               <i className={`${icon} text-lg`} aria-hidden="true" />
               {eyebrow}
-            </p>
-            <h1 className="mt-4 text-4xl font-black leading-tight tracking-[-0.035em] sm:text-5xl lg:text-6xl">{title}</h1>
-            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-200 md:text-lg">{description}</p>
+            </p>}
+            <h1 className={`font-black leading-tight tracking-[-0.035em] ${compact?'mt-2 text-3xl sm:text-4xl':'mt-4 text-4xl sm:text-5xl lg:text-6xl'}`}>{title}</h1>
+            <p className={`max-w-3xl text-slate-200 ${compact?'mt-2 text-sm leading-6':'mt-5 text-base leading-8 md:text-lg'}`}>{description}</p>
           </div>
           {children && <div className="flex flex-wrap items-center gap-3 lg:justify-end">{children}</div>}
         </div>

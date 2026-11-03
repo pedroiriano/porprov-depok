@@ -123,6 +123,7 @@ export function RowsPerPageSelector({ value, rowsPerPage, onChange }: RowsPerPag
       <span className="whitespace-nowrap">Tampilkan</span>
       <div className="relative">
         <select
+          aria-label="Jumlah baris per halaman"
           value={selectedValue}
           onChange={(e) => onChange(Number(e.target.value))}
           className="min-h-11 appearance-none rounded-xl border border-slate-300 bg-white py-1 pl-3 pr-8 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
