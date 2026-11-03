@@ -1,129 +1,58 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { Activity, AlertTriangle, Clock, Loader2, MapPin, Radio } from "lucide-react";
-import { publicApiUrl, unwrapCollection } from "@/lib/public-api";
-import { normalizeEnrichedMatch, type EnrichedMatch, type RawEnrichedMatch } from "@/lib/public-models";
-import { PublicPageHero } from "@/components/PublicPageHero";
-import {matchStatusLabel} from "../../../../../packages/portal-config/schedule-calendar";
+import {Suspense,useCallback,useEffect,useState} from "react";
+import {useSearchParams} from "next/navigation";
+import {PortalLink} from "@/components/PortalProvider";
+import {PublicPageHero} from "@/components/PublicPageHero";
+import {MatchResultCard,type PublicScore} from "@/components/MatchResultCard";
+import {PublicCardGrid} from "@/components/PublicCardGrid";
+import {publicApiUrl,unwrapCollection} from "@/lib/public-api";
+import {normalizeEnrichedMatch,type EnrichedMatch,type RawEnrichedMatch} from "@/lib/public-models";
+import {canonicalMatchId} from "../../../../../packages/portal-config/schedule-results";
 
-interface LiveScoreUpdate {
-  eventVersion?: string;
-  eventId?: string;
-  eventType?: string;
-  sequence?: number;
-  timestamp?: string;
-  actor?: string;
-  matchId: string;
-  scoreA: number;
-  scoreB: number;
-  status: string;
+type Score=PublicScore&{sequence?:number;revisionNumber?:number};
+function ResultsContent(){
+  const query=useSearchParams();const requested=query.get('match')||'';
+  const invalid=query.getAll('match').length>1||!!requested&&!canonicalMatchId(requested);
+  const [matches,setMatches]=useState<EnrichedMatch[]>([]);const [scores,setScores]=useState<Record<string,Score>>({});
+  const [page,setPage]=useState(1);const [total,setTotal]=useState(0);const [search,setSearch]=useState('');const [term,setTerm]=useState('');const [date,setDate]=useState('');
+  const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [connected,setConnected]=useState(false);
+  const activePage=requested?1:page;
+  const load=useCallback(async(signal:AbortSignal)=>{
+    if(invalid){setMatches([]);setTotal(0);setLoading(false);setError('Tautan pertandingan tidak valid. Buka kembali melalui Jadwal.');return;}
+    setLoading(true);setError('');
+    try{
+      const params=new URLSearchParams({page:String(activePage),per_page:'12',sort:'match_date',direction:'desc'});
+      if(requested)params.set('match_id',requested);else{if(term)params.set('q',term);if(date)params.set('date',date);}
+      const [matchResponse,scoreResponse]=await Promise.all([fetch(publicApiUrl(`/livescore/schedule-projection?${params}`),{cache:'no-store',signal}),fetch(publicApiUrl('/livescore/public'),{cache:'no-store',signal})]);
+      if(!matchResponse.ok||!scoreResponse.ok)throw new Error('Unavailable');
+      const [raw,scoreData]=await Promise.all([matchResponse.json(),scoreResponse.json()]);if(signal.aborted)return;
+      setMatches(unwrapCollection<RawEnrichedMatch>(raw).map(normalizeEnrichedMatch));setTotal(Number.isSafeInteger(raw.total)?raw.total:0);
+      setScores(Object.fromEntries(unwrapCollection<Score>(scoreData).map(item=>[item.matchId,item])));
+    }catch{if(!signal.aborted)setError('Hasil pertandingan belum dapat dimuat. Silakan coba lagi.');}
+    finally{if(!signal.aborted)setLoading(false);}
+  },[activePage,requested,invalid,term,date]);
+  const [refresh,setRefresh]=useState(0);
+  useEffect(()=>{const controller=new AbortController();const timeout=window.setTimeout(()=>{controller.abort();setLoading(false);setError('Hasil pertandingan belum dapat dimuat. Silakan coba lagi.');},15000);const begin=window.setTimeout(()=>void load(controller.signal).finally(()=>window.clearTimeout(timeout)),0);return()=>{window.clearTimeout(begin);window.clearTimeout(timeout);controller.abort();};},[load,refresh]);
+  useEffect(()=>{const timer=window.setInterval(()=>setRefresh(value=>value+1),30000);return()=>window.clearInterval(timer);},[]);
+  useEffect(()=>{
+    if(invalid)return;
+    const events=new EventSource(publicApiUrl('/stream/events'));
+    events.onopen=()=>{setConnected(true);setRefresh(value=>value+1);};events.onerror=()=>setConnected(false);
+    events.onmessage=event=>{try{
+      const item=JSON.parse(event.data);
+      if(!canonicalMatchId(item.matchId||'')||!['LIVESCORE_UPDATED','LIVESCORE_CORRECTED'].includes(item.eventType)||!Number.isFinite(item.scoreA)||!Number.isFinite(item.scoreB)||item.scoreA<0||item.scoreB<0)return;
+      // RELIABILITY: Replayed older revisions cannot overwrite a newer visible result.
+      setScores(current=>{const old=current[item.matchId];const revision=item.sequence||item.revisionNumber||0;if(old&&(old.sequence||old.revisionNumber||0)>revision)return current;return {...current,[item.matchId]:item};});
+    }catch{/* SECURITY: Malformed stream data never becomes rendered HTML. */}};
+    return()=>events.close();
+  },[invalid]);
+  return <main className="bg-slate-50 dark:bg-slate-950"><PublicPageHero eyebrow="Jadwal dan skor" title="Hasil Pertandingan" description="Lihat pihak yang bertanding, skor, dan hasil setiap laga." icon="ri-trophy-line" breadcrumbs={[{label:'Hasil'}]}/>
+    <div className="container py-12 md:py-16">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><p role="status" className="text-sm text-slate-600 dark:text-slate-300">{connected?'Pembaruan langsung aktif':'Pembaruan berkala aktif'}</p><PortalLink href="/jadwal#rincian-pertandingan" className="inline-flex min-h-11 items-center font-bold text-blue-700 dark:text-sky-300">← Kembali ke jadwal</PortalLink></div>
+      {requested?<div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700"><p>Hasil pertandingan yang dipilih dari Jadwal.</p><PortalLink href="/livescore" className="inline-flex min-h-11 items-center font-bold text-blue-700 dark:text-sky-300">Semua hasil</PortalLink></div>:<form className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:grid-cols-[minmax(0,1fr)_180px_auto]" onSubmit={event=>{event.preventDefault();setPage(1);setTerm(search.trim());}}><label className="col-span-2 min-w-0 text-sm font-bold sm:col-span-1">Cari pertandingan<input type="search" maxLength={80} value={search} onChange={event=>setSearch(event.target.value)} placeholder="Cabor, peserta, atau lokasi" className="mt-2 block min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"/></label><label className="min-w-0 text-sm font-bold">Tanggal WIB<input type="date" value={date} onChange={event=>{setDate(event.target.value);setPage(1);}} className="mt-2 block min-h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"/></label><button className="min-h-11 rounded-xl bg-blue-700 px-5 font-bold text-white" type="submit">Cari</button></form>}
+      {error?<div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"><p>{error}</p>{!invalid&&<button type="button" className="mt-3 min-h-11 font-bold underline" onClick={()=>setRefresh(value=>value+1)}>Coba lagi</button>}</div>:loading?<p role="status" className="py-12 text-center">Memuat hasil pertandingan…</p>:matches.length?<PublicCardGrid>{matches.map(match=><MatchResultCard key={match.id} match={match} score={scores[match.id]} link={!requested}/>)}</PublicCardGrid>:<div className="rounded-xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700"><h2 className="text-xl font-black">{requested?'Pertandingan belum tersedia':'Belum ada pertandingan yang sesuai'}</h2><p className="mt-2 text-slate-600 dark:text-slate-300">{requested?'Periksa kembali jadwal pertandingan.':'Coba tanggal atau kata pencarian lain.'}</p></div>}
+      {!requested&&!error&&total>0&&<nav aria-label="Halaman hasil pertandingan" className="mt-8 flex flex-wrap items-center justify-between gap-3"><p className="text-sm">Menampilkan {Math.min((activePage-1)*12+1,total)}–{Math.min(activePage*12,total)} dari {total} pertandingan</p><div className="flex gap-3"><button type="button" disabled={loading||page===1} onClick={()=>setPage(value=>value-1)} className="min-h-11 rounded-xl border px-4 disabled:opacity-40">Sebelumnya</button><button type="button" disabled={loading||page*12>=total} onClick={()=>setPage(value=>value+1)} className="min-h-11 rounded-xl border px-4 disabled:opacity-40">Berikutnya</button></div></nav>}
+    </div></main>;
 }
-
-export default function LiveScorePage() {
-  const [matches, setMatches] = useState<EnrichedMatch[]>([]);
-  const [scores, setScores] = useState<Record<string, LiveScoreUpdate>>({});
-  const [connected, setConnected] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [flashCard, setFlashCard] = useState<string | null>(null);
-  const flashTimerRef = useRef<number | null>(null);
-
-  const loadMatches = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [matchResponse, scoreResponse] = await Promise.all([
-        fetch(publicApiUrl("/livescore/schedule-projection"), { cache: "no-store", headers: { Accept: "application/json" } }),
-        fetch(publicApiUrl("/livescore/public"), { cache: "no-store", headers: { Accept: "application/json" } }),
-      ]);
-      if (!matchResponse.ok || !scoreResponse.ok) throw new Error(`API Gateway merespons ${matchResponse.status}/${scoreResponse.status}`);
-      setMatches(unwrapCollection<RawEnrichedMatch>(await matchResponse.json()).map(normalizeEnrichedMatch));
-      const persistedScores = unwrapCollection<LiveScoreUpdate>(await scoreResponse.json());
-      setScores(Object.fromEntries(persistedScores.map((item) => [item.matchId, item])));
-    } catch {
-      setError("Skor pertandingan belum dapat dimuat. Silakan coba lagi.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void loadMatches(), 0);
-    return () => window.clearTimeout(timer);
-  }, [loadMatches]);
-
-  useEffect(() => {
-    const eventSource = new EventSource(publicApiUrl("/stream/events"));
-    eventSource.onopen = () => setConnected(true);
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data) as Partial<LiveScoreUpdate>;
-        const supportedEvent = !data.eventType || data.eventType === "LIVESCORE_UPDATED" || data.eventType === "LIVESCORE_CORRECTED";
-        if (typeof data.matchId !== "string" || !data.matchId || !supportedEvent) return;
-        const update: LiveScoreUpdate = {
-          eventVersion: data.eventVersion,
-          eventId: data.eventId,
-          eventType: data.eventType,
-          sequence: typeof data.sequence === "number" ? data.sequence : undefined,
-          timestamp: data.timestamp,
-          actor: data.actor,
-          matchId: data.matchId,
-          scoreA: typeof data.scoreA === "number" ? data.scoreA : 0,
-          scoreB: typeof data.scoreB === "number" ? data.scoreB : 0,
-          status: typeof data.status === "string" && data.status ? data.status : "Berlangsung",
-        };
-        setScores((current) => ({ ...current, [update.matchId]: update }));
-        setFlashCard(update.matchId);
-        if (flashTimerRef.current !== null) window.clearTimeout(flashTimerRef.current);
-        flashTimerRef.current = window.setTimeout(() => setFlashCard(null), 1000);
-      } catch {
-        // INFO: Event domain lain sengaja diabaikan.
-      }
-    };
-    eventSource.onerror = () => setConnected(false);
-    return () => {
-      eventSource.close();
-      if (flashTimerRef.current !== null) window.clearTimeout(flashTimerRef.current);
-    };
-  }, []);
-
-  return (
-    <main className="bg-slate-50 dark:bg-slate-950">
-      <PublicPageHero eyebrow="Pusat Pertandingan" title="Skor Langsung" description="Pantau skor, peserta, dan hasil pertandingan." icon="ri-live-line" breadcrumbs={[{ label: "Skor langsung" }]}>
-        <div className={`inline-flex min-h-11 w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-black ${connected ? "border-emerald-300/40 bg-emerald-950 text-emerald-200" : "border-amber-300/40 bg-amber-950 text-amber-200"}`} role="status" aria-live="polite"><Radio className={`size-4 ${connected ? "animate-pulse" : ""}`} aria-hidden="true" />{connected ? "Pembaruan langsung" : "Menunggu pembaruan"}</div>
-      </PublicPageHero>
-
-      <div className="container py-14 md:py-20">
-
-      {error && <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="alert"><AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden="true" /><div><h2 className="font-black">Pembaruan pertandingan tertunda</h2><p className="mt-1 text-sm">{error}</p><button type="button" onClick={() => void loadMatches()} className="mt-3 min-h-11 rounded-xl bg-amber-900 px-4 text-sm font-black text-white">Coba lagi</button></div></div>}
-
-      {loading ? <div className="flex min-h-64 items-center justify-center" role="status"><Loader2 className="size-8 animate-spin text-primary-500" aria-hidden="true" /><span className="sr-only">Memuat skor</span></div> : matches.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-16 text-center dark:border-slate-700"><Activity className="mx-auto size-12 text-primary-500" aria-hidden="true" /><h2 className="mt-5 text-xl font-black">Belum ada pertandingan aktif</h2><p className="mt-2 text-slate-500">Skor akan tersedia saat pertandingan dimulai.</p></div> : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_320px]">
-          <div className="space-y-5">{matches.map((match) => {
-            const participants = [...match.participants].sort((first, second) => first.slot - second.slot).slice(0, 2);
-            const participantsReady = participants.length === 2 && participants.every((participant) => participant.display_name && participant.display_name !== "Peserta menunggu konfirmasi");
-            const live = participantsReady ? scores[match.id] : undefined;
-            const participantRows = participants.length === 2
-              ? participants.map((participant) => ({
-                name: participant.display_name,
-                context: participant.participant_type === "contingent" || participant.display_name === participant.kontingen_name ? "" : participant.kontingen_name,
-              }))
-              : [
-                { name: "Peserta menunggu konfirmasi", context: "" },
-                { name: "Lawan menunggu konfirmasi", context: "" },
-              ];
-            const scoreValues = [live?.scoreA, live?.scoreB];
-            return <article key={match.id} className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition duration-500 dark:bg-slate-900 ${live ? "border-red-300 dark:border-red-900" : "border-slate-200 dark:border-slate-800"} ${flashCard === match.id ? "scale-[1.01] shadow-lg ring-2 ring-amber-300" : ""}`}>
-              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40"><div><p className="text-xs font-black uppercase tracking-wider text-primary-600 dark:text-primary-300">{match.caborName}</p><p className="mt-1 text-sm font-bold">{match.nomorTandingName} · {match.round}</p></div><span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider ${live ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300" : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>{participantsReady ? matchStatusLabel(live?.status || match.status) : "Menunggu peserta"}</span></header>
-              <div className="space-y-4 p-5 sm:p-6">{!participantsReady && <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">Skor belum tersedia. Peserta sedang dikonfirmasi.</div>}{participantRows.map((participant, index) => <div key={`${match.id}-${index}`} className="flex items-center justify-between gap-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-500/10 font-black text-primary-600">{participant.name.charAt(0)}</span><div className="min-w-0"><p className="truncate font-black">{participant.name}</p>{participant.context && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{participant.context}</p>}</div></div><span className="text-4xl font-black tabular-nums">{scoreValues[index] ?? "–"}</span></div>)}<div className="flex flex-wrap justify-between gap-3 border-t border-slate-100 pt-4 text-xs text-slate-500 dark:border-slate-800"><span className="flex items-center gap-1.5"><Clock className="size-3.5" aria-hidden="true" />{match.matchDate ? new Date(match.matchDate).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Waktu menyusul"}</span><span className="flex items-center gap-1.5"><MapPin className="size-3.5" aria-hidden="true" />{match.venueId ? <Link href={`/venue/${encodeURIComponent(match.venueId)}`} className="hover:text-primary-600">{match.venueName}</Link> : match.venueName}</span>{live?.timestamp && <span>Diperbarui {new Date(live.timestamp).toLocaleTimeString("id-ID")}</span>}</div></div>
-            </article>;
-          })}</div>
-          <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="flex items-center gap-2 font-black"><Activity className="size-4 text-primary-500" aria-hidden="true" />Ringkasan pertandingan</h2><dl className="mt-5 space-y-4 text-sm"><div className="flex justify-between gap-3"><dt className="text-slate-500">Pertandingan</dt><dd className="font-black">{matches.length}</dd></div><div className="flex justify-between gap-3"><dt className="text-slate-500">Skor tersedia</dt><dd className="font-black">{Object.keys(scores).length}</dd></div><div className="flex justify-between gap-3"><dt className="text-slate-500">Pembaruan</dt><dd className={connected ? "font-black text-emerald-700 dark:text-emerald-400" : "font-black text-amber-700 dark:text-amber-400"}>{connected ? "Langsung" : "Menunggu"}</dd></div></dl></aside>
-        </div>
-      )}
-      </div>
-    </main>
-  );
-}
+export default function LiveScorePage(){return <Suspense fallback={<p role="status" className="p-10">Memuat hasil pertandingan…</p>}><ResultsContent/></Suspense>;}

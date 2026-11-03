@@ -1,5 +1,7 @@
 "use client";
 
+import {PublicCardGrid} from './PublicCardGrid';
+
 import { PortalLink as Link } from './PortalProvider';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -205,7 +207,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
           </div>
         ) : (
           <>
-            <div className="mt-10 grid gap-[30px] sm:grid-cols-2 lg:grid-cols-4">
+            <PublicCardGrid maxColumns={4} className="mt-10 gap-[30px]">
               {visibleVenues.map((venue) => (
                 <article id={venue.id} key={venue.id} className="group flex min-h-full scroll-mt-28 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-700">
                   <div className="relative h-56 overflow-hidden bg-slate-200 dark:bg-slate-800">
@@ -252,7 +254,7 @@ export function VenueShowcase({ displayMode = "home" }: VenueShowcaseProps) {
                   </div>
                 </article>
               ))}
-            </div>
+            </PublicCardGrid>
 
             <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-slate-200 pt-6 sm:flex-row dark:border-slate-800">
               <p className="text-sm text-slate-600 dark:text-slate-400">Menampilkan {visibleVenues.length} dari {venues.length} venue</p>

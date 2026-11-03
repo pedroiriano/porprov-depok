@@ -1,4 +1,6 @@
 import Image from "next/image";
+
+import {PublicCardGrid} from './PublicCardGrid';
 import { PortalLink as Link } from './PortalProvider';
 import type { NearbyCategoryKey, NearbyCityGuide } from "@/lib/nearby-city-guides";
 
@@ -88,7 +90,7 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
           </p>
         </div>
       ) : (
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <PublicCardGrid maxColumns={3} className="gap-6">
         {guides.map((guide) => {
           const presentation = categoryPresentation[guide.nearbyCategoryKey];
           const imageUrl = guide.imageUrl || presentation.image;
@@ -170,7 +172,7 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
             </article>
           );
         })}
-      </div>
+      </PublicCardGrid>
       )}
 
       <div className="mt-10 text-center">

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	portal "github.com/porprov-xv/porprov-depok/packages/portal-config"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -69,6 +70,7 @@ type server struct {
 	pool        *pgxpool.Pool
 	scheduleURL string
 	httpClient  *http.Client
+	now         func() time.Time
 }
 
 var (
@@ -77,6 +79,7 @@ var (
 	errMatchNotActive   = errors.New("match does not exist or is not active")
 	errParticipantsOpen = errors.New("match participants A/B are incomplete")
 	errScheduleDown     = errors.New("schedule service is unavailable")
+	errMatchFuture      = errors.New("skor hanya dapat diinput mulai tanggal pertandingan dalam WIB")
 )
 
 func isRevisionConflict(err error) bool {
@@ -93,12 +96,31 @@ func (s *server) validateActiveMatch(ctx context.Context, matchID string) error 
 	if err != nil {
 		return fmt.Errorf("%w: %v", errScheduleDown, err)
 	}
-	response.Body.Close()
+	defer response.Body.Close()
 	if response.StatusCode == http.StatusNotFound {
 		return errMatchNotActive
 	}
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("%w: HTTP %d", errScheduleDown, response.StatusCode)
+	}
+	var scheduled struct {
+		MatchDate string `json:"match_date"`
+	}
+	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&scheduled); err != nil {
+		return fmt.Errorf("%w: invalid match response", errScheduleDown)
+	}
+	date, err := time.Parse(time.RFC3339Nano, scheduled.MatchDate)
+	if err != nil || date.IsZero() {
+		return fmt.Errorf("%w: invalid match date", errScheduleDown)
+	}
+	now := time.Now()
+	if s.now != nil {
+		now = s.now()
+	}
+	// SECURITY: Server clock and fixed WIB day enforce the same rule on updates and corrections, independent of client timezone.
+	zone := time.FixedZone("WIB", 7*60*60)
+	if now.In(zone).Format("2006-01-02") < date.In(zone).Format("2006-01-02") {
+		return errMatchFuture
 	}
 
 	// INFO: Scoring A/B hanya boleh dimulai ketika Schedule memiliki dua sisi
@@ -290,7 +312,7 @@ func (s *server) updateScore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.validateActiveMatch(r.Context(), payload.MatchID); err != nil {
-		if errors.Is(err, errMatchNotActive) || errors.Is(err, errParticipantsOpen) {
+		if errors.Is(err, errMatchNotActive) || errors.Is(err, errParticipantsOpen) || errors.Is(err, errMatchFuture) {
 			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 			return
 		}
@@ -329,7 +351,7 @@ func (s *server) correctScore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.validateActiveMatch(r.Context(), payload.MatchID); err != nil {
-		if errors.Is(err, errMatchNotActive) || errors.Is(err, errParticipantsOpen) {
+		if errors.Is(err, errMatchNotActive) || errors.Is(err, errParticipantsOpen) || errors.Is(err, errMatchFuture) {
 			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 			return
 		}

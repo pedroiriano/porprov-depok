@@ -1,5 +1,7 @@
 "use client";
 
+import {PublicCardGrid} from './PublicCardGrid';
+
 import { PortalLink as Link } from './PortalProvider';
 import { useMemo, useState } from "react";
 import { publicCaborPath, type CaborModel } from "@/lib/public-models";
@@ -51,7 +53,7 @@ export function CaborDirectory({ cabors }: { cabors: CaborModel[] }) {
           <p className="mt-2 text-slate-500">Ubah kata pencarian atau pilih kategori lain.</p>
         </div>
       ) : (
-        <div className="mt-6 grid gap-[30px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <PublicCardGrid maxColumns={4} className="mt-6 gap-[30px]">
           {filtered.map((cabor) => (
             <Link key={cabor.id} href={publicCaborPath(cabor)} className="group relative flex min-h-80 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition duration-500 hover:-translate-y-1 hover:border-primary-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
               <div className="relative flex h-40 items-center justify-center overflow-hidden bg-gradient-to-br from-primary-900 via-primary-700 to-sky-500 p-7">
@@ -71,7 +73,7 @@ export function CaborDirectory({ cabors }: { cabors: CaborModel[] }) {
               </div>
             </Link>
           ))}
-        </div>
+        </PublicCardGrid>
       )}
     </section>
   );

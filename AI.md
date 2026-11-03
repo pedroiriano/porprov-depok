@@ -1,5 +1,8 @@
 # AI.md — Panduan Masuk Agent AI/Codex Portal PORPROV v5
 
+> **Hasil pertandingan — kandidat lokal 3 November 2026:** input/koreksi skor dikunci sebelum tanggal pertandingan dalam WIB (00.00), termasuk validasi server fail-closed. Menu Hasil memakai modul `/livescore` yang sudah ada dan tetap mengikuti Pengelolaan Portal; tautan Jadwal memilih match yang sama melalui filter UUID sebelum pagination. Kartu hasil bersama membedakan skor belum tersedia dari nol, dan grid data menyesuaikan kartu/kolom opsional. Tanpa migrasi, mutasi data domain, Git delivery atau VPS; bukti/status mengikuti `docs/runbook/MATCH_RESULTS_LOCAL.md`.
+
+
 > **Pihak yang bertanding — lokal 3 November 2026:** agenda harian kalender, daftar kartu dan dialog rincian memakai tampilan peserta bersama: Kontingen, Tim atau Individu, nama serta afiliasi yang tersedia. Urutan A/B dipertahankan, sisi yang belum tersedia menunggu konfirmasi, nama panjang tetap utuh dan konten dirender sebagai teks. API/pagination, data, skema dan publikasi Portal tidak berubah. Bukti/runtime mengikuti `docs/runbook/SCHEDULE_VISUAL_REDESIGN_LOCAL.md`; tanpa Git delivery atau VPS.
 
 

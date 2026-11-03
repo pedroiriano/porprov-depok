@@ -20,11 +20,15 @@ type matchPageRequest struct {
 	sort                              string
 	direction                         string
 	month, date, cabor, venue, status string
+	matchID                           string
 }
 
 func parseMatchPageRequest(r *http.Request) (*matchPageRequest, error) {
 	query := r.URL.Query()
-	if query.Get("page") == "" && query.Get("per_page") == "" && query.Get("q") == "" && query.Get("sort") == "" && query.Get("direction") == "" && query.Get("month") == "" && query.Get("date") == "" && query.Get("cabor") == "" && query.Get("venue") == "" && query.Get("status") == "" {
+	if values, present := query["match_id"]; present && (len(values) != 1 || values[0] == "") {
+		return nil, errors.New("ID pertandingan wajib tunggal dan terisi")
+	}
+	if query.Get("match_id") == "" && query.Get("page") == "" && query.Get("per_page") == "" && query.Get("q") == "" && query.Get("sort") == "" && query.Get("direction") == "" && query.Get("month") == "" && query.Get("date") == "" && query.Get("cabor") == "" && query.Get("venue") == "" && query.Get("status") == "" {
 		return nil, nil
 	}
 	request := &matchPageRequest{query: strings.ToLower(strings.TrimSpace(query.Get("q"))), page: 1, perPage: 10, sort: "match_date", direction: "asc"}
@@ -69,7 +73,11 @@ func parseMatchPageRequest(r *http.Request) (*matchPageRequest, error) {
 		}
 	}
 	request.cabor, request.venue, request.status = query.Get("cabor"), query.Get("venue"), query.Get("status")
-	for _, value := range []string{request.cabor, request.venue} {
+	request.matchID = strings.ToLower(query.Get("match_id"))
+	if len(query["match_id"]) > 1 {
+		return nil, errors.New("ID pertandingan wajib tunggal")
+	}
+	for _, value := range []string{request.cabor, request.venue, request.matchID} {
 		var id pgtype.UUID
 		if value != "" && (len(value) != 36 || id.Scan(value) != nil) {
 			return nil, errors.New("ID filter tidak valid")
@@ -138,7 +146,7 @@ func writeMatchPage(w http.ResponseWriter, matches []enrichedMatch, request *mat
 		if date, err := time.Parse(time.RFC3339, match.MatchDate); err == nil {
 			day = date.In(matchTimeZone).Format("2006-01-02")
 		}
-		if (request.month != "" && !strings.HasPrefix(day, request.month+"-")) || (request.date != "" && day != request.date) || (request.cabor != "" && request.cabor != match.CaborID) || (request.venue != "" && request.venue != match.VenueID) || (request.status != "" && request.status != match.Status) {
+		if (request.matchID != "" && request.matchID != strings.ToLower(match.ID)) || (request.month != "" && !strings.HasPrefix(day, request.month+"-")) || (request.date != "" && day != request.date) || (request.cabor != "" && request.cabor != match.CaborID) || (request.venue != "" && request.venue != match.VenueID) || (request.status != "" && request.status != match.Status) {
 			continue
 		}
 		parts := []string{match.NomorTandingName, match.CaborName, match.VenueName, match.Round, match.Status}
