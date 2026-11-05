@@ -6,7 +6,7 @@ import {ScheduleMatchDetails} from './ScheduleDetails';
 import {matchColor,matchDay} from '../../../../packages/portal-config/schedule-calendar';
 import {ScheduleParticipants,scheduleParticipantSummary} from './ScheduleParticipants';
 
-export function ScheduleMatchCalendar({month,items,dayCounts,today,totalRecords,onShowDay}:{month:string;items:EnrichedMatch[];dayCounts:Record<string,number>;today:string;totalRecords?:number;onShowDay:(day:string)=>void}){
+export function ScheduleMatchCalendar({month,items,dayCounts,today,totalRecords,onShowDay,caborSummaries:_}:{month:string;items:EnrichedMatch[];dayCounts:Record<string,number>;today:string;totalRecords?:number;onShowDay:(day:string)=>void;caborSummaries?:{id:string;name:string;total:number;day_counts:Record<string,number>}[]}){
   const [selected,setSelected]=useState<EnrichedMatch|null>(null);
   const groups=new Map<string,CalendarBoardRow>();
   for(const item of items){

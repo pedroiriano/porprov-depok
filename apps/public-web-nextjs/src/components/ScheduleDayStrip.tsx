@@ -4,7 +4,7 @@ import {CalendarDays,ChevronLeft,ChevronRight} from 'lucide-react';
 import {monthDays,shiftCalendarMonth} from '../../../../packages/portal-config/schedule-calendar';
 import styles from './SchedulePresentation.module.css';
 
-export function ScheduleDayStrip({month,date,today,onMonth,onDate,label,compact=false}:{month:string;date:string;today:string;onMonth:(value:string)=>void;onDate:(value:string)=>void;label:string;compact?:boolean}){
+export function ScheduleDayStrip({month,date,today,onMonth,onDate,label,compact=false,dayCounts:_}:{month:string;date:string;today:string;onMonth:(value:string)=>void;onDate:(value:string)=>void;label:string;compact?:boolean;dayCounts?:Record<string,number>}){
   const strip=useRef<HTMLDivElement>(null);
   const dates=monthDays(month).filter(day=>day.startsWith(month));
   useEffect(()=>{
