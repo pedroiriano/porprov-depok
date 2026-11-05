@@ -6,6 +6,7 @@ export async function NewsSection() {
   const news = await loadDepokNewsOverview(6, 3);
   return (
     <section id="berita" className="relative scroll-mt-24 bg-slate-50 py-16 dark:bg-slate-950 md:py-24" aria-labelledby="featured-news-title">
+      <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-6xl bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-slate-800" aria-hidden="true" />
       <div className="container relative">
         <div className="grid items-end gap-6 md:grid-cols-12">
           <div className="text-center md:col-span-8 md:text-start">
@@ -29,8 +30,8 @@ export async function NewsSection() {
             <div className="grid gap-6 lg:col-span-8">
               {news.latest.map((article) => <NewsCard key={article.id} article={article} horizontal />)}
             </div>
-            <aside className="h-fit rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-28 lg:col-span-4 lg:self-start" aria-labelledby="popular-news-title">
-              <h3 id="popular-news-title" className="rounded-lg bg-slate-100 p-3 text-center text-lg font-black dark:bg-slate-800">Kabar PORPROV lainnya</h3>
+            <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-28 lg:col-span-4 lg:self-start" aria-labelledby="popular-news-title">
+              <h3 id="popular-news-title" className="flex items-center justify-center gap-2 rounded-xl bg-slate-100 p-3 text-center text-base font-black text-slate-900 dark:bg-slate-800 dark:text-white"><i className="ri-fire-line text-amber-500" aria-hidden="true" /> Kabar PORPROV lainnya</h3>
               <div className="mt-5 divide-y divide-slate-200 dark:divide-slate-800">
                 {news.related.map((article, index) => (
                   <Link key={article.id} href={`/berita/${encodeURIComponent(article.slug)}`} className="group flex min-h-20 gap-4 py-4">

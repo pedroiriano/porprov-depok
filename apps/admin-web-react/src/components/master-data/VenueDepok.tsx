@@ -11,7 +11,7 @@ import { requestSoftDeleteReason } from '../../lib/soft-delete';
 import { useTableControls } from '../../hooks/useTableControls';
 import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
-import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
+import { AdminAlert, AdminBadge, AdminPageHeader, AdminRowAction, BulkActionBar } from '../cuba/AdminPrimitives';
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -240,7 +240,7 @@ export default function VenueDepok() {
     {
       key: 'readiness',
       label: 'Kesiapan',
-      render: (item) => <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${item.readiness_status === 'Siap' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200' : item.readiness_status === 'Sedang Digunakan' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200'}`}>{item.readiness_status || 'Persiapan'}</span>,
+      render: (item) => <AdminBadge tone={item.readiness_status === 'Siap' ? 'success' : item.readiness_status === 'Sedang Digunakan' ? 'info' : 'warning'}>{item.readiness_status || 'Persiapan'}</AdminBadge>,
     },
   ], []);
 
@@ -306,7 +306,26 @@ export default function VenueDepok() {
           emptyTitle={search ? 'Lokasi tidak ditemukan' : 'Belum ada lokasi pertandingan'}
           emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan lokasi sebelum menyusun Jadwal Pertandingan.'}
           minWidthClassName="min-w-[760px]"
-          rowActions={(item) => <>{canUpdate && <button type="button" onClick={() => editVenue(item)} aria-label={`Ubah ${item.name}`} title="Ubah lokasi" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>}{canArchive && <button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan lokasi" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>}</>}
+          rowActions={(item) => (
+            <>
+              {canUpdate && (
+                <AdminRowAction
+                  onClick={() => editVenue(item)}
+                  icon={Edit}
+                  label={`Ubah ${item.name}`}
+                />
+              )}
+              {canArchive && (
+                <AdminRowAction
+                  onClick={() => void handleArchive([item.id])}
+                  icon={Trash}
+                  label={`Arsipkan ${item.name}`}
+                  tone="danger"
+                  disabled={archiving}
+                />
+              )}
+            </>
+          )}
         />
 
         {!loading && !listError && totalItems > 0 && (

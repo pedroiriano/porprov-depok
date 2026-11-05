@@ -111,17 +111,19 @@ export function NearbyCityGuides({ guides, venueName }: NearbyCityGuidesProps) {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/5 to-transparent" aria-hidden="true" />
 
-                <span className={`absolute left-4 top-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wider backdrop-blur-md ${presentation.accent}`}>
-                  <i className={presentation.icon} aria-hidden="true" />
-                  {guide.nearbyCategoryLabel}
-                </span>
-
-                {guide.isPinnedVenueRecommendation && (
-                  <span className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-blue-700 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white shadow-lg">
-                    <i className="ri-pushpin-fill" aria-hidden="true" />
-                    Rekomendasi Utama
+                <div className="absolute inset-x-4 top-4 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+                  <span className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wider backdrop-blur-md ${presentation.accent}`}>
+                    <i className={presentation.icon} aria-hidden="true" />
+                    {guide.nearbyCategoryLabel}
                   </span>
-                )}
+
+                  {guide.isPinnedVenueRecommendation && (
+                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-blue-700 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white shadow-lg">
+                      <i className="ri-pushpin-fill" aria-hidden="true" />
+                      <span>Rekomendasi Utama</span>
+                    </span>
+                  )}
+                </div>
 
                 <span className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-slate-950/80 px-3 py-1.5 text-xs font-black text-white backdrop-blur-md">
                   <i className="ri-navigation-line text-primary-300" aria-hidden="true" />

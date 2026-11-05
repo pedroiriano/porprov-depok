@@ -28,6 +28,21 @@ function createNewsUrl(query: string, tag: string, page = 1): string {
   return suffix ? `/berita?${suffix}` : "/berita";
 }
 
+type PaginationItem = number | "ellipsis-start" | "ellipsis-end";
+
+function getPaginationItems(current: number, total: number): PaginationItem[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, "ellipsis-end", total];
+  }
+  if (current >= total - 3) {
+    return [1, "ellipsis-start", total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, "ellipsis-start", current - 1, current, current + 1, "ellipsis-end", total];
+}
+
 export default async function NewsPage({
   searchParams,
 }: {
@@ -75,13 +90,87 @@ export default async function NewsPage({
           )}
 
           {totalPages > 1 && (
-            <nav className="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label="Navigasi halaman berita">
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((number) => <Link key={number} href={createNewsUrl(query, tag, number)} aria-current={number === activePage ? "page" : undefined} className={`inline-flex size-11 items-center justify-center rounded-full border font-black ${number === activePage ? "border-primary-600 bg-primary-600 text-white" : "border-slate-300 bg-white hover:border-primary-500 dark:border-slate-700 dark:bg-slate-900"}`}>{number}</Link>)}
+            <nav className="mt-12 flex flex-wrap items-center justify-center gap-2" aria-label="Navigasi halaman berita">
+              {activePage > 1 ? (
+                <Link
+                  href={createNewsUrl(query, tag, activePage - 1)}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-xs transition-colors hover:border-primary-500 hover:text-primary-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-primary-500 dark:hover:text-sky-300"
+                  aria-label="Ke halaman sebelumnya"
+                >
+                  <i className="ri-arrow-left-s-line text-lg" aria-hidden="true" />
+                  <span>Sebelumnya</span>
+                </Link>
+              ) : (
+                <span
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200/60 bg-slate-100/60 px-4 text-sm font-bold text-slate-400 cursor-not-allowed select-none dark:border-slate-800/60 dark:bg-slate-900/40 dark:text-slate-600"
+                  aria-disabled="true"
+                >
+                  <i className="ri-arrow-left-s-line text-lg" aria-hidden="true" />
+                  <span>Sebelumnya</span>
+                </span>
+              )}
+
+              <div className="px-2 text-sm font-bold text-slate-600 sm:hidden dark:text-slate-400">
+                Halaman <span className="font-black text-slate-900 dark:text-white">{activePage}</span> dari{" "}
+                <span className="font-black text-slate-900 dark:text-white">{totalPages}</span>
+              </div>
+
+              <div className="hidden sm:flex sm:items-center sm:gap-2">
+                {getPaginationItems(activePage, totalPages).map((item, idx) => {
+                  if (typeof item === "string") {
+                    return (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        aria-hidden="true"
+                        className="inline-flex size-11 items-center justify-center font-bold text-slate-400 select-none dark:text-slate-600"
+                      >
+                        …
+                      </span>
+                    );
+                  }
+
+                  const isCurrent = item === activePage;
+                  return (
+                    <Link
+                      key={item}
+                      href={createNewsUrl(query, tag, item)}
+                      aria-current={isCurrent ? "page" : undefined}
+                      aria-label={`Halaman ${item}`}
+                      className={`inline-flex size-11 items-center justify-center rounded-xl border text-sm font-black transition-colors ${
+                        isCurrent
+                          ? "border-primary-600 bg-primary-600 text-white shadow-xs"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-primary-500 hover:text-primary-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-primary-500 dark:hover:text-sky-300"
+                      }`}
+                    >
+                      {item}
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {activePage < totalPages ? (
+                <Link
+                  href={createNewsUrl(query, tag, activePage + 1)}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-xs transition-colors hover:border-primary-500 hover:text-primary-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-primary-500 dark:hover:text-sky-300"
+                  aria-label="Ke halaman selanjutnya"
+                >
+                  <span>Selanjutnya</span>
+                  <i className="ri-arrow-right-s-line text-lg" aria-hidden="true" />
+                </Link>
+              ) : (
+                <span
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200/60 bg-slate-100/60 px-4 text-sm font-bold text-slate-400 cursor-not-allowed select-none dark:border-slate-800/60 dark:bg-slate-900/40 dark:text-slate-600"
+                  aria-disabled="true"
+                >
+                  <span>Selanjutnya</span>
+                  <i className="ri-arrow-right-s-line text-lg" aria-hidden="true" />
+                </span>
+              )}
             </nav>
           )}
         </section>
 
-        <aside className="space-y-7">
+        <aside className="space-y-7 lg:sticky lg:top-24 lg:self-start">
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-labelledby="news-search-title">
             <h2 id="news-search-title" className="rounded-lg bg-slate-100 p-3 text-center text-lg font-black dark:bg-slate-800">Cari berita</h2>
             <form action="/berita" className="mt-5">

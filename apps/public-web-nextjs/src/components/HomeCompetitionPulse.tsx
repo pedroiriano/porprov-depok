@@ -82,19 +82,43 @@ export function HomeCompetitionPulse() {
     return () => { window.clearTimeout(initial); window.clearInterval(interval); };
   }, [loadData]);
 
+  const hasLiveMatches = useMemo(() => {
+    return matches.some((match) => scores[match.id] || /berlangsung|live/i.test(match.status));
+  }, [matches, scores]);
+
   const highlightedMatches = useMemo(() => {
     const live = matches.filter((match) => scores[match.id] || /berlangsung|live/i.test(match.status));
     const upcoming = matches.filter((match) => !live.includes(match));
-    return [...live, ...upcoming].slice(0, 3);
-  }, [matches, scores]);
+    const isMedaliActive = localModule(portal!, 'medali');
+    // Simetri tata letak: saat modul medali aktif (kolom 8/12 dengan 2 kolom kartu),
+    // pilih 2 laga (atau 4 jika cukup) agar tidak ada kartu tunggal menggantung di baris kedua.
+    // Saat modul medali nonaktif (kolom 12/12 penuh dengan 3 kolom kartu), pilih 3 laga.
+    const maxItems = isMedaliActive ? (matches.length >= 4 ? 4 : 2) : 3;
+    return [...live, ...upcoming].slice(0, maxItems);
+  }, [matches, scores, portal]);
 
   return (
     <section className="relative overflow-hidden bg-slate-950 py-16 text-white md:py-24" aria-labelledby="competition-pulse-title">
+      <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-6xl bg-gradient-to-r from-transparent via-sky-500/30 to-transparent" aria-hidden="true" />
+      <div className="absolute inset-x-0 bottom-0 mx-auto h-px max-w-6xl bg-gradient-to-r from-transparent via-sky-500/30 to-transparent" aria-hidden="true" />
       <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,#38bdf8_0,transparent_28%),radial-gradient(circle_at_80%_80%,#f59e0b_0,transparent_24%)]" aria-hidden="true" />
       <div className="container relative">
         <div className="grid items-end gap-6 md:grid-cols-12">
           <div className="md:col-span-8"><p className="text-sm font-black uppercase tracking-[0.2em] text-sky-300">Denyut Pertandingan</p><h2 id="competition-pulse-title" className="mt-3 text-3xl font-black md:text-4xl">Pantau arena dalam satu pandangan.</h2><p className="mt-4 max-w-2xl text-slate-300">Jadwal, peserta, dan hasil pertandingan dalam satu tempat.</p></div>
-          <div className="flex flex-wrap gap-3 md:col-span-4 md:justify-end"><Link href="/livescore" className="inline-flex min-h-11 items-center rounded-lg bg-red-600 px-5 font-black text-white hover:bg-red-700"><i className="ri-live-line me-2" aria-hidden="true" />Lihat hasil</Link><Link href="/jadwal" className="inline-flex min-h-11 items-center rounded-lg border border-white/30 px-5 font-black hover:bg-white hover:text-slate-950">Lihat jadwal</Link></div>
+          <div className="flex flex-wrap gap-3 md:col-span-4 md:justify-end">
+            <Link
+              href="/livescore"
+              className={`inline-flex min-h-11 items-center rounded-lg px-5 font-black text-white transition ${
+                hasLiveMatches
+                  ? "bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/30"
+                  : "bg-primary-600 hover:bg-primary-700"
+              }`}
+            >
+              <i className={`${hasLiveMatches ? "ri-live-line" : "ri-trophy-line"} me-2`} aria-hidden="true" />
+              Lihat hasil
+            </Link>
+            <Link href="/jadwal" className="inline-flex min-h-11 items-center rounded-lg border border-white/30 px-5 font-black hover:bg-white hover:text-slate-950">Lihat jadwal</Link>
+          </div>
         </div>
 
         {loading ? (

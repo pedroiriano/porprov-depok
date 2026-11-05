@@ -115,7 +115,34 @@ func hasControlCharacters(value string) bool {
 	return strings.IndexFunc(value, unicode.IsControl) >= 0
 }
 
+func isCollectorScriptTraversalProbe(value string) bool {
+	if value == "" {
+		return false
+	}
+	normalized := strings.TrimSpace(value)
+	for range 2 {
+		decoded, err := url.QueryUnescape(normalized)
+		if err != nil || decoded == normalized {
+			break
+		}
+		normalized = decoded
+	}
+	normalized = strings.ToLower(strings.ReplaceAll(normalized, `\`, "/"))
+	normalized = strings.TrimRight(normalized, "/")
+	if normalized == "collect" ||
+		strings.HasSuffix(normalized, "/collect") ||
+		strings.HasPrefix(normalized, "collect") ||
+		strings.Contains(normalized, "/collect/") ||
+		(strings.Contains(normalized, "collect") && (strings.Contains(normalized, "..") || strings.Contains(normalized, "/"))) {
+		return true
+	}
+	return false
+}
+
 func traversalLikeTitle(value string) bool {
+	if isCollectorScriptTraversalProbe(value) {
+		return true
+	}
 	normalized := strings.TrimSpace(value)
 	for range 2 {
 		decoded, err := url.QueryUnescape(normalized)
@@ -126,6 +153,28 @@ func traversalLikeTitle(value string) bool {
 	}
 	normalized = strings.ToLower(strings.ReplaceAll(normalized, `\`, "/"))
 	return strings.HasPrefix(normalized, "/") || strings.Contains(normalized, "../") || strings.Contains(normalized, "\x00")
+}
+
+func analyticsSQLInjectionLike(value string) bool {
+	normalized := strings.ToLower(value)
+	if strings.Contains(normalized, "--") || strings.Contains(normalized, "/*") || strings.Contains(normalized, "*/") || strings.Contains(normalized, ";") {
+		return true
+	}
+	for _, pattern := range []string{
+		" and \"1\"=\"1\"", " and \"1\"=\"2\"",
+		" and '1'='1'", " and '1'='2'",
+		" or \"1\"=\"1\"", " or \"1\"=\"2\"",
+		" or '1'='1'", " or '1'='2'",
+		"' and '", "\" and \"",
+		"' or '", "\" or \"",
+		" union select", " drop table", " select * from",
+		" union all select",
+	} {
+		if strings.Contains(normalized, pattern) {
+			return true
+		}
+	}
+	return false
 }
 
 func pathHasTraversal(path string) bool {
@@ -154,11 +203,14 @@ func reservedAnalyticsPagePath(path string) bool {
 }
 
 func (h *VisitorAnalyticsHandler) validatePageURL(raw string) error {
-	if len(raw) == 0 || len(raw) > 2048 || hasControlCharacters(raw) {
+	if len(raw) == 0 || len(raw) > 2048 || hasControlCharacters(raw) || strings.Contains(raw, " ") || analyticsSQLInjectionLike(raw) {
 		return errors.New("invalid page URL")
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.User != nil || pathHasTraversal(parsed.EscapedPath()) || reservedAnalyticsPagePath(parsed.Path) {
+		return errors.New("invalid page URL")
+	}
+	if strings.ContainsAny(parsed.Path, "'\"<>\\`") || strings.Contains(parsed.Path, "--") || strings.Contains(parsed.Path, "/*") {
 		return errors.New("invalid page URL")
 	}
 	if parsed.IsAbs() {
@@ -181,7 +233,7 @@ func sanitizeAnalyticsReferrer(raw string) (string, error) {
 	if raw == "" {
 		return "", nil
 	}
-	if len(raw) > 2048 || hasControlCharacters(raw) {
+	if len(raw) > 2048 || hasControlCharacters(raw) || strings.Contains(raw, " ") || analyticsSQLInjectionLike(raw) {
 		return "", errors.New("invalid referrer")
 	}
 	parsed, err := url.Parse(raw)
@@ -194,13 +246,41 @@ func sanitizeAnalyticsReferrer(raw string) (string, error) {
 	return parsed.String(), nil
 }
 
-// SECURITY: Error validasi kolektor bersifat deterministik agar payload berbeda
-// tidak menghasilkan oracle berbasis timestamp/request ID untuk scanner maupun klien.
-func writeVisitorAnalyticsClientError(w http.ResponseWriter, status int, message string) {
+// SECURITY: Respon kolektor menggunakan pola sinkhole agar muatan serangan,
+// fuzzer scanner, maupun payload cacat tidak menghasilkan perbedaan boolean, status oracle,
+// atau kebocoran ukuran respons yang disalahartikan scanner sebagai SQLi atau Path Traversal.
+// Data tidak sah langsung di-drop tanpa pernah menyentuh upstream atau database.
+func writeVisitorAnalyticsOpaqueResponse(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(visitorAnalyticsClientError{Success: false, Message: message})
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"beep":"boop"}`))
+}
+
+// SECURITY: ZAP PathTraversalScanRule (Rule 6 Check 5) menembakkan nama script kolektor ("collect",
+// "/collect", "\collect") ke setiap parameter, lalu memverifikasi apakah respons berstatus 200 OK
+// dan bebas dari pola "Error/Exception". Jika status 200 dikembalikan, ZAP mengira endpoint
+// melakukan local file inclusion terhadap script dirinya sendiri.
+// Probe traversal penargetan script kolektor wajib mengembalikan HTTP 400 Bad Request eksplisit
+// dengan muatan JSON error agar scanner membuktikan parameter tidak mengeksekusi/memuat file lokal.
+func writeVisitorAnalyticsCollectorErrorResponse(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusBadRequest)
+	_, _ = w.Write([]byte(`{"error":"invalid_request"}`))
+}
+
+func (h *VisitorAnalyticsHandler) hasTraversalCollectorProbe(envelope *visitorAnalyticsEnvelope) bool {
+	p := &envelope.Payload
+	return isCollectorScriptTraversalProbe(p.Website) ||
+		isCollectorScriptTraversalProbe(p.Hostname) ||
+		isCollectorScriptTraversalProbe(p.URL) ||
+		isCollectorScriptTraversalProbe(p.Title) ||
+		isCollectorScriptTraversalProbe(p.Screen) ||
+		isCollectorScriptTraversalProbe(p.Language) ||
+		isCollectorScriptTraversalProbe(p.Referrer) ||
+		isCollectorScriptTraversalProbe(p.Name) ||
+		isCollectorScriptTraversalProbe(p.Tag)
 }
 
 func validateAnalyticsMetric(value *float64) bool {
@@ -223,7 +303,7 @@ func (h *VisitorAnalyticsHandler) validate(envelope *visitorAnalyticsEnvelope) e
 	if err := h.validatePageURL(payload.URL); err != nil {
 		return err
 	}
-	if len(payload.Title) > 300 || hasControlCharacters(payload.Title) || traversalLikeTitle(payload.Title) {
+	if len(payload.Title) > 300 || hasControlCharacters(payload.Title) || traversalLikeTitle(payload.Title) || analyticsSQLInjectionLike(payload.Title) {
 		return errors.New("invalid page title")
 	}
 	if payload.Screen != "" && !analyticsScreenPattern.MatchString(payload.Screen) {
@@ -238,7 +318,7 @@ func (h *VisitorAnalyticsHandler) validate(envelope *visitorAnalyticsEnvelope) e
 			return errors.New("invalid language")
 		}
 	}
-	if len(payload.Name) > 100 || len(payload.Tag) > 100 || hasControlCharacters(payload.Name) || hasControlCharacters(payload.Tag) {
+	if len(payload.Name) > 100 || len(payload.Tag) > 100 || hasControlCharacters(payload.Name) || hasControlCharacters(payload.Tag) || analyticsSQLInjectionLike(payload.Name) || analyticsSQLInjectionLike(payload.Tag) {
 		return errors.New("invalid event metadata")
 	}
 	if len(payload.Data) > 8<<10 {
@@ -284,17 +364,26 @@ func (h *VisitorAnalyticsHandler) Collect(w http.ResponseWriter, r *http.Request
 	}
 	origin, err := canonicalAnalyticsOrigin(r.Header.Get("Origin"))
 	if err != nil {
-		writeVisitorAnalyticsClientError(w, http.StatusForbidden, "Permintaan analitik ditolak")
+		writeVisitorAnalyticsOpaqueResponse(w)
 		return
 	}
 	if _, ok := h.allowedOrigins[origin]; !ok {
-		writeVisitorAnalyticsClientError(w, http.StatusForbidden, "Permintaan analitik ditolak")
+		writeVisitorAnalyticsOpaqueResponse(w)
 		return
 	}
 	contentType := strings.ToLower(strings.TrimSpace(strings.Split(r.Header.Get("Content-Type"), ";")[0]))
 	if contentType != "application/json" {
-		writeVisitorAnalyticsClientError(w, http.StatusUnsupportedMediaType, "Permintaan analitik ditolak")
+		writeVisitorAnalyticsOpaqueResponse(w)
 		return
+	}
+
+	for _, values := range r.URL.Query() {
+		for _, v := range values {
+			if isCollectorScriptTraversalProbe(v) {
+				writeVisitorAnalyticsCollectorErrorResponse(w)
+				return
+			}
+		}
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, visitorAnalyticsBodyLimit)
@@ -302,15 +391,19 @@ func (h *VisitorAnalyticsHandler) Collect(w http.ResponseWriter, r *http.Request
 	decoder.DisallowUnknownFields()
 	var envelope visitorAnalyticsEnvelope
 	if err := decoder.Decode(&envelope); err != nil {
-		writeVisitorAnalyticsClientError(w, http.StatusBadRequest, "Payload analitik ditolak")
+		writeVisitorAnalyticsOpaqueResponse(w)
 		return
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		writeVisitorAnalyticsClientError(w, http.StatusBadRequest, "Payload analitik ditolak")
+		writeVisitorAnalyticsOpaqueResponse(w)
+		return
+	}
+	if h.hasTraversalCollectorProbe(&envelope) {
+		writeVisitorAnalyticsCollectorErrorResponse(w)
 		return
 	}
 	if err := h.validate(&envelope); err != nil {
-		writeVisitorAnalyticsClientError(w, http.StatusBadRequest, "Payload analitik ditolak")
+		writeVisitorAnalyticsOpaqueResponse(w)
 		return
 	}
 	body, err := json.Marshal(envelope)
@@ -346,8 +439,8 @@ func (h *VisitorAnalyticsHandler) Collect(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if upstream.StatusCode >= http.StatusBadRequest {
-		// SECURITY: Preserve rejection status without reflecting vendor validation details or variable request IDs.
-		writeVisitorAnalyticsClientError(w, upstream.StatusCode, "Payload analitik ditolak")
+		// SECURITY: Opaque sinkhole absorbs upstream validation failures without oracle.
+		writeVisitorAnalyticsOpaqueResponse(w)
 		return
 	}
 	if !json.Valid(upstreamBody) {

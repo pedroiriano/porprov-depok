@@ -100,23 +100,23 @@ export function CityGuideSection() {
               </Link>
 
               <div className="grid grid-rows-2 gap-4 lg:gap-6">
-                <Link href="/city-guide?category=wisata-kuliner" className="group relative flex items-center gap-4 overflow-hidden rounded-3xl bg-slate-900 p-5 shadow-xl border border-slate-800 transition-all hover:bg-slate-800 hover:border-amber-500/50">
+                <Link href="/city-guide?category=wisata-kuliner" className="group relative flex items-center gap-4 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-md transition-all hover:border-amber-500/50 hover:bg-slate-100 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-500">
                     <i className="ri-restaurant-2-line text-2xl"></i>
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors">Surga Kuliner</h3>
-                    <p className="mt-1 text-xs text-slate-400">Rasa otentik khas daerah</p>
+                    <h3 className="text-lg font-bold text-slate-900 transition-colors group-hover:text-amber-600 dark:text-white dark:group-hover:text-amber-400">Surga Kuliner</h3>
+                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Rasa otentik khas daerah</p>
                   </div>
                 </Link>
                 
-                <Link href="/city-guide?category=tempat-menginap" className="group relative flex items-center gap-4 overflow-hidden rounded-3xl bg-slate-900 p-5 shadow-xl border border-slate-800 transition-all hover:bg-slate-800 hover:border-indigo-500/50">
+                <Link href="/city-guide?category=tempat-menginap" className="group relative flex items-center gap-4 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-md transition-all hover:border-indigo-500/50 hover:bg-slate-100 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-500">
                     <i className="ri-hotel-bed-line text-2xl"></i>
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">Akomodasi</h3>
-                    <p className="mt-1 text-xs text-slate-400">Nyaman & strategis</p>
+                    <h3 className="text-lg font-bold text-slate-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">Akomodasi</h3>
+                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Nyaman & strategis</p>
                   </div>
                 </Link>
               </div>

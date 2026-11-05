@@ -10,7 +10,7 @@ import { requestSoftDeleteReason } from '../../lib/soft-delete';
 import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { useTableControls } from '../../hooks/useTableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
-import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
+import { AdminAlert, AdminPageHeader, AdminRowAction, BulkActionBar } from '../cuba/AdminPrimitives';
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -248,7 +248,26 @@ export default function Kontingen() {
           onRetry={fetchKontingens}
           emptyTitle={search ? 'Kontingen tidak ditemukan' : 'Belum ada kontingen'}
           emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan kontingen sebelum menyusun peserta pertandingan.'}
-          rowActions={(item) => <>{canUpdate && <button type="button" onClick={() => editKontingen(item)} aria-label={`Ubah ${item.name}`} title="Ubah kontingen" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>}{canArchive && <button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan kontingen" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>}</>}
+          rowActions={(item) => (
+            <>
+              {canUpdate && (
+                <AdminRowAction
+                  onClick={() => editKontingen(item)}
+                  icon={Edit}
+                  label={`Ubah ${item.name}`}
+                />
+              )}
+              {canArchive && (
+                <AdminRowAction
+                  onClick={() => void handleArchive([item.id])}
+                  icon={Trash}
+                  label={`Arsipkan ${item.name}`}
+                  tone="danger"
+                  disabled={archiving}
+                />
+              )}
+            </>
+          )}
         />
         
         {/* Footer Pagination */}

@@ -67,6 +67,7 @@ export function useModalDialog({
     const focusFrame = window.requestAnimationFrame(() => {
       const preferred = optionsRef.current.initialFocusRef?.current
         || dialogRef.current?.querySelector<HTMLElement>('[data-autofocus]')
+        || dialogRef.current?.querySelector<HTMLElement>('form input:not([disabled]):not([type="hidden"]), form select:not([disabled]), form textarea:not([disabled])')
         || dialogRef.current?.querySelector<HTMLElement>(focusableSelector)
         || dialogRef.current;
       preferred?.focus();

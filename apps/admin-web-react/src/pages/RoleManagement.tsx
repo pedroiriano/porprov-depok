@@ -4,7 +4,7 @@ import { useAuth } from 'react-oidc-context';
 import Modal from '../components/Modal';
 import { TextInput } from '../components/common/FormInputs';
 import { AdminDataTable, type AdminDataTableColumn } from '../components/cuba/AdminDataTable';
-import { AdminAlert, AdminPageHeader } from '../components/cuba/AdminPrimitives';
+import { AdminAlert, AdminBadge, AdminPageHeader } from '../components/cuba/AdminPrimitives';
 import { apiClient, authConfig, getApiErrorMessage, unwrapApiData } from '../lib/api';
 import type { SortDirection } from '../hooks/useTableControls';
 import { useAuthorization } from '../contexts/authorization';
@@ -82,7 +82,7 @@ export default function RoleManagement() {
     { key: 'name', label: 'Peran', sortKey: 'name', render: (role) => <div><p className="font-black text-slate-950 dark:text-white">{role.name}</p><p className="text-xs text-slate-500 dark:text-slate-300">{role.slug}</p></div> },
     { key: 'permissions', label: 'Hak akses', sortKey: 'permissions', render: (role) => <span className="font-bold">{role.permissions.length.toLocaleString('id-ID')} izin</span> },
     { key: 'assigned', label: 'Pengguna', sortKey: 'assigned', render: (role) => role.assigned_count.toLocaleString('id-ID') },
-    { key: 'status', label: 'Status', sortKey: 'status', render: (role) => <span className={`rounded-full px-2.5 py-1 text-xs font-black ${role.deleted_at ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-white' : role.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>{role.deleted_at ? 'Diarsipkan' : role.is_active ? 'Aktif' : 'Tidak Aktif'}</span> },
+    { key: 'status', label: 'Status', sortKey: 'status', render: (role) => <AdminBadge tone={role.deleted_at ? 'neutral' : role.is_active ? 'success' : 'warning'}>{role.deleted_at ? 'Diarsipkan' : role.is_active ? 'Aktif' : 'Tidak Aktif'}</AdminBadge> },
   ], []);
   const start = total === 0 ? 0 : (page - 1) * limit + 1; const end = Math.min(page * limit, total);
 

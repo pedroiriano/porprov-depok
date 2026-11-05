@@ -180,25 +180,27 @@ export default async function CityGuidePage({
       </section>
 
       {/* Tabs / Filters */}
-      <div className="sticky top-[72px] z-20 md:top-[88px] bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-y border-slate-200 dark:border-slate-800 py-4 mb-12 shadow-lg">
-        <div className="container flex flex-wrap items-center justify-center gap-2">
-          {categories.map((cat) => {
-            const isActive = activeCategory === cat.id;
-            return (
-              <Link 
-                key={cat.id}
-                href={createCityGuideUrl(cat.id, searchQuery)}
-                className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 ${
-                  isActive 
-                    ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(56,189,248,0.3)]" 
-                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                <i className={cat.icon.split(" ")[0]} aria-hidden="true"></i>
-                {cat.label}
-              </Link>
-            );
-          })}
+      <div className="sticky top-[72px] z-20 md:top-[88px] border-y border-slate-200 bg-white/90 py-2.5 shadow-sm backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90 mb-8 sm:mb-12">
+        <div className="container">
+          <div className="flex items-center gap-2 overflow-x-auto py-1 px-1 scroll-smooth sm:flex-wrap sm:justify-center [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            {categories.map((cat) => {
+              const isActive = activeCategory === cat.id;
+              return (
+                <Link 
+                  key={cat.id}
+                  href={createCityGuideUrl(cat.id, searchQuery)}
+                  className={`flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 ${
+                    isActive 
+                      ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(56,189,248,0.3)]" 
+                      : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <i className={cat.icon.split(" ")[0]} aria-hidden="true"></i>
+                  <span>{cat.label}</span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -228,7 +230,11 @@ export default async function CityGuidePage({
               {paginatedGuides.map((guide) => (
               <article 
                 key={guide.id}
-                className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-sky-500/50 hover:shadow-[0_10px_40px_rgba(56,189,248,0.15)]"
+                className={`group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-xl transition-all duration-500 hover:-translate-y-2 ${
+                  guide.isPinnedVenueRecommendation
+                    ? "border-2 border-amber-400 dark:border-amber-500 shadow-amber-500/10 hover:shadow-[0_10px_40px_rgba(245,158,11,0.25)]"
+                    : "border border-slate-200 dark:border-slate-800 hover:border-sky-500/50 hover:shadow-[0_10px_40px_rgba(56,189,248,0.15)]"
+                }`}
               >
                 {/* Image Area */}
                 <div className="relative h-56 overflow-hidden">
@@ -248,11 +254,20 @@ export default async function CityGuidePage({
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-950 via-white/50 dark:via-transparent to-transparent opacity-90" />
                   
-                  {/* Category Pill */}
-                  <div className="absolute left-4 top-4">
-                    <span className="inline-block rounded-lg bg-white/90 dark:bg-slate-950/60 backdrop-blur-md px-3 py-1.5 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 shadow-sm">
+                  {/* Badges Container */}
+                  <div className="absolute inset-x-3.5 top-3.5 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+                    {/* Category Pill */}
+                    <span className="inline-block shrink-0 rounded-lg bg-white/90 dark:bg-slate-950/70 backdrop-blur-md px-3 py-1.5 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 shadow-sm">
                       {guide.category}
                     </span>
+
+                    {/* Pinned Featured Badge */}
+                    {guide.isPinnedVenueRecommendation && (
+                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 px-2.5 py-1.5 text-xs font-black uppercase tracking-wider text-slate-950 shadow-md">
+                        <i className="ri-pushpin-fill text-slate-950" aria-hidden="true" />
+                        <span>Rekomendasi Utama</span>
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -279,8 +294,8 @@ export default async function CityGuidePage({
                     )}
                   </div>
 
-                  <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <div className="flex items-center text-xs text-slate-500 max-w-[60%]">
+                  <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-100 pt-5 dark:border-slate-800">
+                    <div className={`flex items-center text-xs text-slate-500 ${guide.mapUrl ? "max-w-[65%]" : "flex-1 min-w-0"}`}>
                       <i className="ri-map-pin-line me-1.5 shrink-0"></i>
                       <span className="truncate">{guide.address || "Depok"}</span>
                     </div>

@@ -6,7 +6,7 @@ import { TextInput } from '../components/common/FormInputs';
 import { RowsPerPageSelector, TablePagination } from '../components/common/TableControls';
 import RevisionHistory from '../components/common/RevisionHistory';
 import { AdminDataTable, type AdminDataTableColumn } from '../components/cuba/AdminDataTable';
-import { AdminAlert, AdminPageHeader } from '../components/cuba/AdminPrimitives';
+import { AdminAlert, AdminBadge, AdminPageHeader } from '../components/cuba/AdminPrimitives';
 import { apiClient, authConfig, getApiErrorMessage } from '../lib/api';
 import type { SortDirection } from '../hooks/useTableControls';
 import { useAuthorization } from '../contexts/authorization';
@@ -51,7 +51,7 @@ export default function CityGuideCategories() {
     { key:'name',label:'Kategori',sortKey:'name',render:(item)=><div><p className="font-black text-slate-950 dark:text-white">{item.name}</p><p className="text-xs text-slate-500 dark:text-slate-300">{item.slug}</p></div> },
     { key:'description',label:'Keterangan',render:(item)=><span className="line-clamp-2 text-sm text-slate-600 dark:text-slate-200">{item.description || '—'}</span> },
     { key:'usage',label:'Digunakan',render:(item)=><span className="font-black">{item.usage_count.toLocaleString('id-ID')} panduan</span> },
-    { key:'status',label:'Status',render:(item)=><span className={`rounded-full px-2.5 py-1 text-xs font-black ${item.deleted_at?'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-white':item.is_active?'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200':'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>{item.deleted_at?'Diarsipkan':item.is_active?'Aktif':'Tidak Aktif'}</span> },
+    { key:'status',label:'Status',render:(item)=><AdminBadge tone={item.deleted_at ? 'neutral' : item.is_active ? 'success' : 'warning'}>{item.deleted_at ? 'Diarsipkan' : item.is_active ? 'Aktif' : 'Tidak Aktif'}</AdminBadge> },
   ],[]);
   const start=total===0?0:(page-1)*limit+1; const end=Math.min(page*limit,total);
 

@@ -22,12 +22,31 @@ func TestVisitorAnalyticsVARejectsInvalidMetadata(t *testing.T) {
 	}))
 	defer upstream.Close()
 	handler := NewVisitorAnalyticsHandler(upstream.URL, analyticsTestWebsiteID, []string{"https://porprov.depok.go.id"})
+	collectorTraversalCases := []struct{ field, value string }{
+		{"language", "collect"}, {"language", "collect-collect"},
+	}
+	for _, test := range collectorTraversalCases {
+		t.Run(test.field+"/"+test.value, func(t *testing.T) {
+			payload := map[string]string{"website": analyticsTestWebsiteID, "hostname": "porprov.depok.go.id", "url": "/", "title": "Beranda", "screen": "1440x900", "language": "id-ID"}
+			payload[test.field] = test.value
+			body, _ := json.Marshal(map[string]any{"type": "event", "payload": payload})
+			recorder := httptest.NewRecorder()
+			handler.Collect(recorder, analyticsRequest(string(body)))
+			if recorder.Code != http.StatusBadRequest || recorder.Header().Get("Cache-Control") != "no-store" || recorder.Body.String() != `{"error":"invalid_request"}` {
+				t.Errorf("invalid collector probe returned %d, expected uncached 400 invalid_request", recorder.Code)
+			}
+		})
+	}
 	cases := []struct{ field, value string }{
-		{"language", "collect"}, {"language", "collect-collect"}, {"language", "../etc/passwd"},
+		{"language", "../etc/passwd"},
 		{"language", "%252e%252e%252fetc"}, {"language", "en--US"}, {"language", "en_US"},
 		{"language", "en-" + strings.Repeat("a-", 128)},
 		{"hostname", "porprov.depok.go.id AND 1=1 --"}, {"hostname", "porprov.depok.go.id OR 1=1 --"},
 		{"screen", "800x600' OR '1'='1' --"}, {"screen", "800x600' AND '1'='2' --"},
+		{"title", `Portal PORPROV XV Jawa Barat 2026" AND "1"="1" --`},
+		{"title", `Portal PORPROV XV Jawa Barat 2026" AND "1"="2" --`},
+		{"url", "https://porprov.depok.go.id/' AND '1'='1"},
+		{"url", "https://porprov.depok.go.id/' AND '1'='2"},
 	}
 	var first string
 	for _, test := range cases {
@@ -37,8 +56,8 @@ func TestVisitorAnalyticsVARejectsInvalidMetadata(t *testing.T) {
 			body, _ := json.Marshal(map[string]any{"type": "event", "payload": payload})
 			recorder := httptest.NewRecorder()
 			handler.Collect(recorder, analyticsRequest(string(body)))
-			if recorder.Code != http.StatusBadRequest || recorder.Header().Get("Cache-Control") != "no-store" {
-				t.Errorf("invalid metadata returned %d, expected uncached 400", recorder.Code)
+			if recorder.Code != http.StatusOK || recorder.Header().Get("Cache-Control") != "no-store" || recorder.Body.String() != `{"beep":"boop"}` {
+				t.Errorf("invalid metadata returned %d, expected uncached 200 beep boop", recorder.Code)
 			}
 			if first == "" {
 				first = recorder.Body.String()
@@ -94,7 +113,7 @@ func TestVisitorAnalyticsVAUpstreamClientErrorIsStable(t *testing.T) {
 	for range 2 {
 		w := httptest.NewRecorder()
 		handler.Collect(w, analyticsRequest(body))
-		if w.Code != 400 || w.Header().Get("Cache-Control") != "no-store" || strings.Contains(w.Body.String(), "private upstream") || strings.Contains(w.Body.String(), "requestId") {
+		if w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" || w.Body.String() != `{"beep":"boop"}` {
 			t.Error("upstream client error leaked internals or was cacheable")
 		}
 		if first != "" && first != w.Body.String() {

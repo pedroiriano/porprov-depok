@@ -44,7 +44,7 @@ export function HeroSection({ hero }: HeroSectionProps) {
 
       <div className="container relative flex min-h-[100svh] items-center pb-12 pt-28 sm:pt-32 md:h-full md:min-h-0">
         <div className="grid w-full grid-cols-1 items-center gap-8 md:grid-cols-12 md:gap-8">
-          <div className="md:col-span-7 lg:col-span-8">
+          <div className={isCountdownFinished ? "md:col-span-12" : "md:col-span-7 lg:col-span-8"}>
             <div className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold tracking-wide text-white backdrop-blur-md">
               <span className="size-2.5 rounded-full bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.9)]" aria-hidden="true" />
               7 - 20 November 2026
@@ -62,6 +62,30 @@ export function HeroSection({ hero }: HeroSectionProps) {
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-200 drop-shadow-md sm:text-lg whitespace-pre-line">
               {hero.description}
             </p>
+
+            <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
+              <PortalLink
+                href="/jadwal"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-sky-500/25 transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400"
+              >
+                <i className="ri-calendar-event-line text-lg" aria-hidden="true" />
+                Lihat Jadwal Pertandingan
+              </PortalLink>
+              <PortalLink
+                href="/livescore"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 py-3 text-sm font-black text-white backdrop-blur-md transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                <i className="ri-trophy-line text-lg text-amber-300" aria-hidden="true" />
+                Hasil Pertandingan
+              </PortalLink>
+              <PortalLink
+                href="/medali"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 py-3 text-sm font-black text-white backdrop-blur-md transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                <i className="ri-medal-line text-lg text-amber-300" aria-hidden="true" />
+                Klasemen Medali
+              </PortalLink>
+            </div>
 
           </div>
 

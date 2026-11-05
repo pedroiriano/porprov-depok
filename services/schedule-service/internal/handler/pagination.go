@@ -63,11 +63,10 @@ func parseMatchPageRequest(r *http.Request) (*matchPageRequest, error) {
 	}
 	request.month, request.date = query.Get("month"), query.Get("date")
 	for _, field := range []struct{ value, layout string }{{request.month, "2006-01"}, {request.date, "2006-01-02"}} {
-		value, layout := field.value, field.layout
-		if value == "" {
+		if field.value == "" {
 			continue
 		}
-		parsed, err := time.Parse(layout, value)
+		parsed, err := time.Parse(field.layout, field.value)
 		if err != nil || parsed.Year() < 2000 || parsed.Year() > 2100 {
 			return nil, errors.New("bulan atau tanggal tidak valid")
 		}
@@ -93,6 +92,13 @@ func parseMatchPageRequest(r *http.Request) (*matchPageRequest, error) {
 
 // INFO: A fixed UTC+7 offset keeps competition dates consistent with the Public calendar on every host.
 var matchTimeZone = time.FixedZone("Asia/Jakarta", 7*60*60)
+
+type matchCalendarCabor struct {
+	ID        string         `json:"id"`
+	Name      string         `json:"name"`
+	Total     int            `json:"total"`
+	DayCounts map[string]int `json:"day_counts"`
+}
 
 type matchFacetOption struct {
 	ID   string `json:"id"`
@@ -141,6 +147,7 @@ func buildMatchFacets(matches []enrichedMatch) matchFacets {
 func writeMatchPage(w http.ResponseWriter, matches []enrichedMatch, request *matchPageRequest) {
 	filtered := make([]enrichedMatch, 0, len(matches))
 	dayCounts := map[string]int{}
+	caborSummaries := map[string]*matchCalendarCabor{}
 	for _, match := range matches {
 		day := ""
 		if date, err := time.Parse(time.RFC3339, match.MatchDate); err == nil {
@@ -157,9 +164,36 @@ func writeMatchPage(w http.ResponseWriter, matches []enrichedMatch, request *mat
 			filtered = append(filtered, match)
 			if day != "" {
 				dayCounts[day]++
+				if match.CaborID != "" || match.CaborName != "" {
+					key := match.CaborID
+					if key == "" {
+						key = match.CaborName
+					}
+					entry, exists := caborSummaries[key]
+					if !exists {
+						entry = &matchCalendarCabor{
+							ID:        match.CaborID,
+							Name:      match.CaborName,
+							DayCounts: map[string]int{},
+						}
+						caborSummaries[key] = entry
+					}
+					entry.Total++
+					entry.DayCounts[day]++
+				}
 			}
 		}
 	}
+	caborsList := make([]matchCalendarCabor, 0, len(caborSummaries))
+	for _, entry := range caborSummaries {
+		caborsList = append(caborsList, *entry)
+	}
+	sort.Slice(caborsList, func(i, j int) bool {
+		if caborsList[i].Name == caborsList[j].Name {
+			return caborsList[i].ID < caborsList[j].ID
+		}
+		return caborsList[i].Name < caborsList[j].Name
+	})
 	sort.SliceStable(filtered, func(i, j int) bool {
 		comparison := 0
 		switch request.sort {
@@ -210,11 +244,13 @@ func writeMatchPage(w http.ResponseWriter, matches []enrichedMatch, request *mat
 		TotalPages int             `json:"total_pages"`
 		Facets     matchFacets     `json:"facets"`
 		Calendar   struct {
-			Month     string         `json:"month"`
-			DayCounts map[string]int `json:"day_counts"`
+			Month     string               `json:"month"`
+			DayCounts map[string]int       `json:"day_counts"`
+			Cabors    []matchCalendarCabor `json:"cabors"`
 		} `json:"calendar"`
 	}{data, total, request.page, request.perPage, totalPages, buildMatchFacets(matches), struct {
-		Month     string         `json:"month"`
-		DayCounts map[string]int `json:"day_counts"`
-	}{request.month, dayCounts}})
+		Month     string               `json:"month"`
+		DayCounts map[string]int       `json:"day_counts"`
+		Cabors    []matchCalendarCabor `json:"cabors"`
+	}{request.month, dayCounts, caborsList}})
 }

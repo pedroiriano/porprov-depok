@@ -1,6 +1,7 @@
 import { PortalLink as Link } from '@/components/PortalProvider';
 import { loadPortalConfig, localModule, localFeature, portalTarget } from '@/lib/portal-config';
 import { EditorialSection } from '@/components/PortalSections';
+import { PublicCardGrid } from '@/components/PublicCardGrid';
 import type { ReactNode } from 'react';
 import { HeroSection } from "@/components/HeroSection";
 import { MascotSection } from "@/components/MascotSection";
@@ -91,7 +92,7 @@ export default async function Home() {
             <p className="mx-auto mt-4 max-w-2xl text-slate-600 dark:text-slate-300">Akses cepat untuk penonton, atlet, kontingen, media, dan masyarakat Jawa Barat.</p>
           </div>
 
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <PublicCardGrid maxColumns={4} className="mt-10 gap-5">
             {informationLinks.filter(item=>portalTarget(portal,item.href)).map((item) => (
               <Link key={item.href} href={item.href} className="group relative min-h-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1.5 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:border-slate-800 dark:bg-slate-900">
                 <div className={`absolute inset-0 -z-0 bg-gradient-to-br opacity-70 ${item.accent}`} aria-hidden="true" />
@@ -106,7 +107,7 @@ export default async function Home() {
                 </div>
               </Link>
             ))}
-          </div>
+          </PublicCardGrid>
         </div>
       </section>);
       default:return null;

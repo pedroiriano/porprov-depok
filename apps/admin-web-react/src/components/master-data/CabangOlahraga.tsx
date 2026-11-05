@@ -10,7 +10,7 @@ import { requestSoftDeleteReason } from '../../lib/soft-delete';
 import { TablePagination, RowsPerPageSelector } from '../common/TableControls';
 import { useTableControls } from '../../hooks/useTableControls';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
-import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
+import { AdminAlert, AdminBadge, AdminPageHeader, AdminRowAction, BulkActionBar } from '../cuba/AdminPrimitives';
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -206,7 +206,7 @@ export default function CabangOlahraga() {
       key: 'status',
       label: 'Status',
       sortKey: 'status',
-      render: (item) => <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${item.status === 'Aktif' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200' : item.status === 'Eksibisi' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>{item.status || 'Aktif'}</span>,
+      render: (item) => <AdminBadge tone={item.status === 'Aktif' ? 'success' : item.status === 'Eksibisi' ? 'warning' : 'neutral'}>{item.status || 'Aktif'}</AdminBadge>,
     },
   ], []);
 
@@ -252,7 +252,26 @@ export default function CabangOlahraga() {
           onRetry={fetchCabors}
           emptyTitle={search ? 'Cabang olahraga tidak ditemukan' : 'Belum ada cabang olahraga'}
           emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan cabang olahraga pertama sebagai dasar nomor pertandingan.'}
-          rowActions={(item) => <>{canUpdate && <button type="button" onClick={() => editCabor(item)} aria-label={`Ubah ${item.name}`} title="Ubah cabor" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>}{canArchive && <button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan ${item.name}`} title="Arsipkan cabor" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>}</>}
+          rowActions={(item) => (
+            <>
+              {canUpdate && (
+                <AdminRowAction
+                  onClick={() => editCabor(item)}
+                  icon={Edit}
+                  label={`Ubah ${item.name}`}
+                />
+              )}
+              {canArchive && (
+                <AdminRowAction
+                  onClick={() => void handleArchive([item.id])}
+                  icon={Trash}
+                  label={`Arsipkan ${item.name}`}
+                  tone="danger"
+                  disabled={archiving}
+                />
+              )}
+            </>
+          )}
         />
 
         {!loading && !listError && totalItems > 0 && (

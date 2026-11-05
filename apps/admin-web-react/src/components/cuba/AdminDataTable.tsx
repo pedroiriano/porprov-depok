@@ -92,9 +92,8 @@ export function AdminDataTable<T, K extends string>({
   selectionEnabled?: boolean;
   minWidthClassName?: string;
 }) {
-  if (loading) return <AdminLoadingState label={loadingLabel} />;
   if (error) return <AdminErrorState message={error} onRetry={onRetry} />;
-  if (rows.length === 0) return <AdminEmptyState title={emptyTitle} description={emptyDescription} />;
+  if (!loading && rows.length === 0) return <AdminEmptyState title={emptyTitle} description={emptyDescription} />;
 
   const selectableIds = selectionEnabled ? rows.filter(isRowSelectable).map(getRowId) : [];
   const selectedOnPage = selectableIds.filter((id) => selectedIds.has(id)).length;
@@ -116,7 +115,7 @@ export function AdminDataTable<T, K extends string>({
 
   return (
     <div className="overflow-x-auto">
-      <table className={`w-full border-collapse text-left ${minWidthClassName}`}>
+      <table className={`w-full border-collapse text-left ${minWidthClassName}`} aria-busy={loading || undefined}>
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="border-y border-slate-200 bg-slate-50 text-xs font-black uppercase tracking-wider text-slate-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
@@ -138,7 +137,13 @@ export function AdminDataTable<T, K extends string>({
               return (
                 <th key={column.key} scope="col" aria-sort={ariaSort} className={`px-4 py-3 ${column.headerClassName || ''}`}>
                   {column.sortKey ? (
-                    <button type="button" onClick={() => onSort(column.sortKey!)} className="inline-flex min-h-11 items-center gap-1.5 text-left hover:text-blue-700 dark:hover:text-blue-200" aria-label={`Urutkan berdasarkan ${column.label}`}>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => onSort(column.sortKey!)}
+                      className={`inline-flex min-h-11 items-center gap-1.5 text-left hover:text-blue-700 disabled:pointer-events-none dark:hover:text-blue-200 ${active ? 'font-black text-blue-700 dark:text-blue-300' : ''}`}
+                      aria-label={`Urutkan berdasarkan ${column.label}`}
+                    >
                       {column.label}
                       <SortIcon className={`size-3.5 ${active ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'}`} aria-hidden="true" />
                     </button>
@@ -150,20 +155,48 @@ export function AdminDataTable<T, K extends string>({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-          {rows.map((row) => {
-            const id = getRowId(row);
-            const selectable = isRowSelectable(row);
-            const selected = selectedIds.has(id);
-            return (
-              <tr key={id} aria-selected={selected || undefined} className={`transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-950/20 ${selected ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}>
-                {selectionEnabled && <td className="px-4 py-3 text-center">
-                  <SelectionCheckbox checked={selected} disabled={!selectable} label={selectable ? `Pilih ${selectionLabel} ${getRowLabel?.(row) || id}` : `${selectionLabel} ${getRowLabel?.(row) || id} tidak dapat dipilih`} onChange={(checked) => setRowSelection(id, checked)} />
-                </td>}
-                {columns.map((column) => <td key={column.key} className={`px-4 py-3 ${column.className || ''}`}>{column.render(row)}</td>)}
-                {rowActions && <td className="px-4 py-3 text-right"><div className="flex justify-end gap-1">{rowActions(row)}</div></td>}
+          {loading ? (
+            Array.from({ length: 5 }).map((_, rowIndex) => (
+              <tr key={`skeleton-row-${rowIndex}`} className="animate-pulse">
+                {selectionEnabled && (
+                  <td className="px-4 py-4 text-center">
+                    <div className="mx-auto size-4 rounded bg-slate-200 dark:bg-slate-700" />
+                  </td>
+                )}
+                {columns.map((column, colIndex) => (
+                  <td key={`skeleton-cell-${colIndex}`} className={`px-4 py-4 ${column.className || ''}`}>
+                    <div
+                      className="h-4 rounded bg-slate-200 dark:bg-slate-700"
+                      style={{ width: `${Math.max(45, 80 - ((colIndex * 15 + rowIndex * 12) % 35))}%` }}
+                    />
+                  </td>
+                ))}
+                {rowActions && (
+                  <td className="px-4 py-4 text-right">
+                    <div className="flex justify-end gap-1.5">
+                      <div className="size-8 rounded-xl bg-slate-200 dark:bg-slate-700" />
+                      <div className="size-8 rounded-xl bg-slate-200 dark:bg-slate-700" />
+                    </div>
+                  </td>
+                )}
               </tr>
-            );
-          })}
+            ))
+          ) : (
+            rows.map((row) => {
+              const id = getRowId(row);
+              const selectable = isRowSelectable(row);
+              const selected = selectedIds.has(id);
+              return (
+                <tr key={id} aria-selected={selected || undefined} className={`transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-950/20 ${selected ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}>
+                  {selectionEnabled && <td className="px-4 py-3 text-center">
+                    <SelectionCheckbox checked={selected} disabled={!selectable} label={selectable ? `Pilih ${selectionLabel} ${getRowLabel?.(row) || id}` : `${selectionLabel} ${getRowLabel?.(row) || id} tidak dapat dipilih`} onChange={(checked) => setRowSelection(id, checked)} />
+                  </td>}
+                  {columns.map((column) => <td key={column.key} className={`px-4 py-3 ${column.className || ''}`}>{column.render(row)}</td>)}
+                  {rowActions && <td className="px-4 py-3 text-right"><div className="flex justify-end gap-1.5">{rowActions(row)}</div></td>}
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </div>

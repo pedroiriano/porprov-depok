@@ -10,7 +10,7 @@ import MediaSelectorModal from '../components/media/MediaSelectorModal';
 // INFO: Import table controls
 import { useTableControls } from '../hooks/useTableControls';
 import { TablePagination, RowsPerPageSelector } from '../components/common/TableControls';
-import { AdminAlert, AdminPageHeader, BulkActionBar } from '../components/cuba/AdminPrimitives';
+import { AdminAlert, AdminPageHeader, AdminRowAction, BulkActionBar } from '../components/cuba/AdminPrimitives';
 import { AdminDataTable, type AdminDataTableColumn } from '../components/cuba/AdminDataTable';
 import RevisionHistory from '../components/common/RevisionHistory';
 import { applyRevisionFields } from '../lib/revision';
@@ -466,11 +466,35 @@ export default function CityGuide() {
     },
   ];
 
-  const cityGuideActions = (item: CityGuideRecord) => <>
-    {canManageVenuePin && <button type="button" onClick={() => void handlePinForVenues(item)} disabled={item.is_pinned_venue_recommendation || pinningID !== ''} aria-label={item.is_pinned_venue_recommendation ? `${item.title} sedang dipin untuk seluruh lokasi pertandingan` : `Pin ${item.title} untuk seluruh lokasi pertandingan`} title={item.is_pinned_venue_recommendation ? 'Rekomendasi utama aktif' : 'Jadikan rekomendasi utama seluruh lokasi pertandingan'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200">{pinningID === item.id ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Pin className="size-4" aria-hidden="true" />}</button>}
-    {canUpdate && <button type="button" onClick={() => openEditForm(item)} aria-label={`Ubah ${item.title}`} title="Ubah Panduan Kota" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>}
-    {canArchive && <button type="button" onClick={() => void handleArchive([item.id])} disabled={item.is_pinned_venue_recommendation || archiving} aria-label={item.is_pinned_venue_recommendation ? `${item.title} harus diganti pinnya sebelum diarsipkan` : `Arsipkan ${item.title}`} title={item.is_pinned_venue_recommendation ? 'Ganti rekomendasi utama sebelum mengarsipkan' : 'Arsipkan Panduan Kota'} className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>}
-  </>;
+  const cityGuideActions = (item: CityGuideRecord) => (
+    <>
+      {canManageVenuePin && (
+        <AdminRowAction
+          onClick={() => void handlePinForVenues(item)}
+          icon={Pin}
+          label={item.is_pinned_venue_recommendation ? `${item.title} sedang dipin untuk seluruh lokasi pertandingan` : `Pin ${item.title} untuk seluruh lokasi pertandingan`}
+          tone="primary"
+          disabled={item.is_pinned_venue_recommendation || pinningID !== ''}
+        />
+      )}
+      {canUpdate && (
+        <AdminRowAction
+          onClick={() => openEditForm(item)}
+          icon={Edit}
+          label={`Ubah ${item.title}`}
+        />
+      )}
+      {canArchive && (
+        <AdminRowAction
+          onClick={() => void handleArchive([item.id])}
+          icon={Trash}
+          label={item.is_pinned_venue_recommendation ? `${item.title} harus diganti pinnya sebelum diarsipkan` : `Arsipkan ${item.title}`}
+          tone="danger"
+          disabled={item.is_pinned_venue_recommendation || archiving}
+        />
+      )}
+    </>
+  );
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {

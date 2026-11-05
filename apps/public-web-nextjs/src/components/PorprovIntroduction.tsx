@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { PortalLink as Link } from './PortalProvider';
+import { PortalLink as Link, PortalModule } from './PortalProvider';
 import {PinnedDocumentButton} from './DocumentDownloads';
 
 const purposes = [
@@ -85,9 +85,16 @@ export function PorprovIntroduction() {
               </div>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/cabor" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary-500 px-5 py-3 font-bold text-white transition hover:-translate-y-0.5 hover:bg-primary-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500">
-                  <i className="ri-medal-line me-2 text-lg" aria-hidden="true" /> Jelajahi Cabang Olahraga
-                </Link>
+                <PortalModule id="cabor">
+                  <Link href="/cabor" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary-500 px-5 py-3 font-bold text-white transition hover:-translate-y-0.5 hover:bg-primary-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500">
+                    <i className="ri-medal-line me-2 text-lg" aria-hidden="true" /> Jelajahi Cabang Olahraga
+                  </Link>
+                </PortalModule>
+                <PortalModule id="venue">
+                  <Link href="/venue" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary-500 px-5 py-3 font-bold text-white transition hover:-translate-y-0.5 hover:bg-primary-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500">
+                    <i className="ri-map-pin-2-line me-2 text-lg" aria-hidden="true" /> Lokasi Pertandingan
+                  </Link>
+                </PortalModule>
                 <Link href="/jadwal" className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 font-bold text-slate-800 transition hover:-translate-y-0.5 hover:border-primary-400 hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:border-primary-500 dark:hover:text-primary-300">
                   <i className="ri-calendar-event-line me-2 text-lg" aria-hidden="true" /> Lihat Jadwal
                 </Link>

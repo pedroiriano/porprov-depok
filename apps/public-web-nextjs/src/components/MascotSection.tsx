@@ -31,7 +31,10 @@ const mascots = [
 
 export function MascotSection() {
   return (
-    <section id="maskot" className="relative scroll-mt-24 overflow-hidden bg-[#D2EAF1] dark:bg-slate-950 py-16 text-slate-900 dark:text-white md:py-24" aria-labelledby="mascot-title">
+    <section id="maskot" className="relative scroll-mt-24 overflow-hidden bg-gradient-to-b from-sky-50/70 via-sky-100/50 to-sky-50/70 dark:from-slate-950 dark:via-slate-900/60 dark:to-slate-950 py-16 text-slate-900 dark:text-white md:py-24" aria-labelledby="mascot-title">
+      {/* Ambient top/bottom edge feathering */}
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white dark:from-slate-950 to-transparent pointer-events-none" aria-hidden="true" />
+      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white dark:from-slate-950 to-transparent pointer-events-none" aria-hidden="true" />
       <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_1px_1px,rgba(148,163,184,0.28)_1px,transparent_0)] [background-size:24px_24px]" aria-hidden="true" />
       <div className="absolute -start-32 top-1/4 size-80 rounded-full bg-red-500/15 blur-3xl" aria-hidden="true" />
       <div className="absolute -end-32 bottom-0 size-80 rounded-full bg-sky-500/15 blur-3xl" aria-hidden="true" />

@@ -209,16 +209,37 @@ export function VenueInteractivePage() {
             {/* Scrollable List */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
               {isLoading ? (
-                <div className="flex justify-center p-8 text-slate-400">
-                  <i className="ri-loader-4-line animate-spin text-2xl"></i>
+                <div className="space-y-3 p-2" aria-label="Memuat daftar venue">
+                  {Array.from({ length: 3 }, (_, index) => (
+                    <div key={index} className="animate-pulse rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                      <div className="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="mt-3 flex gap-2">
+                        <div className="h-3 w-16 rounded bg-slate-100 dark:bg-slate-800" />
+                        <div className="h-3 w-24 rounded bg-slate-100 dark:bg-slate-800" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : error ? (
-                <div className="p-4 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 rounded-xl">
+                <div className="rounded-xl bg-red-50 p-4 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-300">
                   Lokasi pertandingan belum dapat dimuat. Coba lagi nanti.
                 </div>
               ) : filteredVenues.length === 0 ? (
-                <div className="p-8 text-center text-sm text-slate-500">
-                  Venue tidak ditemukan. Ubah pencarian atau status kesiapan.
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                    <i className="ri-map-pin-line text-2xl" aria-hidden="true" />
+                  </div>
+                  <p className="mt-3 text-sm font-bold text-slate-700 dark:text-slate-200">Venue tidak ditemukan</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Ubah kata kunci pencarian atau status kesiapan.</p>
+                  {(searchQuery || readinessFilter) && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchQuery(""); setReadinessFilter(""); }}
+                      className="mt-3 inline-flex min-h-9 items-center justify-center rounded-lg bg-slate-100 px-3 text-xs font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                      Atur ulang pencarian
+                    </button>
+                  )}
                 </div>
               ) : (
                 filteredVenues.map((venue) => (
@@ -238,7 +259,7 @@ export function VenueInteractivePage() {
                           {venue.caborCount} Cabor
                         </span>
                         <span className="inline-flex items-center rounded bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                          Kapasitas {venue.capacity || "-"}
+                          Kapasitas {venue.capacity ? new Intl.NumberFormat("id-ID").format(venue.capacity) : "Menunggu"}
                         </span>
                       </div>
                     </button>

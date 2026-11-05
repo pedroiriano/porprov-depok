@@ -91,13 +91,15 @@ func TestVisitorAnalyticsRejectsTraversalAndUntrustedPayloads(t *testing.T) {
 		return fmt.Sprintf(`{"type":"event","payload":{"website":%q,"hostname":%q,"url":%q,"title":%q}}`, analyticsTestWebsiteID, hostname, pageURL, title)
 	}
 	tests := []struct {
-		name   string
-		body   string
-		origin string
+		name           string
+		body           string
+		origin         string
+		expectedStatus int
+		expectedBody   string
 	}{
-		{name: "ZAP title attack value", body: validPayload("/collect", "porprov.depok.go.id", "/")},
-		{name: "ZAP URL attack value", body: validPayload("Beranda", "porprov.depok.go.id", "/collect")},
-		{name: "reserved analytics path", body: validPayload("Beranda", "porprov.depok.go.id", "/analytics/api/collect")},
+		{name: "ZAP title attack value", body: validPayload("/collect", "porprov.depok.go.id", "/"), expectedStatus: http.StatusBadRequest, expectedBody: `{"error":"invalid_request"}`},
+		{name: "ZAP URL attack value", body: validPayload("Beranda", "porprov.depok.go.id", "/collect"), expectedStatus: http.StatusBadRequest, expectedBody: `{"error":"invalid_request"}`},
+		{name: "reserved analytics path", body: validPayload("Beranda", "porprov.depok.go.id", "/analytics/api/collect"), expectedStatus: http.StatusBadRequest, expectedBody: `{"error":"invalid_request"}`},
 		{name: "reserved API path", body: validPayload("Beranda", "porprov.depok.go.id", "/api/v1/master-data/cabors")},
 		{name: "relative traversal", body: validPayload("../etc/passwd", "porprov.depok.go.id", "/")},
 		{name: "double encoded traversal", body: validPayload("%252e%252e%252fetc", "porprov.depok.go.id", "/")},
@@ -115,8 +117,14 @@ func TestVisitorAnalyticsRejectsTraversalAndUntrustedPayloads(t *testing.T) {
 			}
 			recorder := httptest.NewRecorder()
 			handler.Collect(recorder, request)
-			if recorder.Code < http.StatusBadRequest || recorder.Code >= http.StatusInternalServerError {
-				t.Fatalf("expected deterministic 4xx, got %d: %s", recorder.Code, recorder.Body.String())
+			expectedStatus := test.expectedStatus
+			expectedBody := test.expectedBody
+			if expectedStatus == 0 {
+				expectedStatus = http.StatusOK
+				expectedBody = `{"beep":"boop"}`
+			}
+			if recorder.Code != expectedStatus || recorder.Body.String() != expectedBody {
+				t.Fatalf("expected status %d body %s, got %d: %s", expectedStatus, expectedBody, recorder.Code, recorder.Body.String())
 			}
 		})
 	}
@@ -140,8 +148,8 @@ func TestVisitorAnalyticsRejectsSQLScannerPayloadDeterministically(t *testing.T)
 		body := fmt.Sprintf(`{"type":"event","payload":{"website":%q,"hostname":"porprov.depok.go.id","url":"/","title":"Beranda","screen":%q}}`, analyticsTestWebsiteID, screen)
 		recorder := httptest.NewRecorder()
 		handler.Collect(recorder, analyticsRequest(body))
-		if recorder.Code != http.StatusBadRequest {
-			t.Fatalf("expected deterministic 400, got %d: %s", recorder.Code, recorder.Body.String())
+		if recorder.Code != http.StatusOK || recorder.Body.String() != `{"beep":"boop"}` {
+			t.Fatalf("expected opaque sinkhole 200, got %d: %s", recorder.Code, recorder.Body.String())
 		}
 		if responseBody == "" {
 			responseBody = recorder.Body.String()
@@ -160,7 +168,7 @@ func TestVisitorAnalyticsRejectsOversizedBody(t *testing.T) {
 	body := `{"type":"event","payload":{"website":"` + analyticsTestWebsiteID + `","hostname":"porprov.depok.go.id","url":"/","title":"` + strings.Repeat("a", visitorAnalyticsBodyLimit) + `"}}`
 	recorder := httptest.NewRecorder()
 	handler.Collect(recorder, analyticsRequest(body))
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for oversized body, got %d", recorder.Code)
+	if recorder.Code != http.StatusOK || recorder.Body.String() != `{"beep":"boop"}` {
+		t.Fatalf("expected 200 for oversized body, got %d", recorder.Code)
 	}
 }

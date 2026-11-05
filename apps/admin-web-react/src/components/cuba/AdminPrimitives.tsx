@@ -146,3 +146,61 @@ export function BulkActionBar({
     </div>
   );
 }
+
+export function AdminRowAction({
+  onClick,
+  icon: Icon,
+  label,
+  tone = 'default',
+  disabled = false,
+}: {
+  onClick: () => void;
+  icon: LucideIcon;
+  label: string;
+  tone?: 'default' | 'danger' | 'warning' | 'primary';
+  disabled?: boolean;
+}) {
+  const toneClasses = {
+    default: 'hover:border-blue-300 hover:text-blue-600 dark:hover:border-blue-800 dark:hover:text-blue-300',
+    primary: 'hover:border-blue-400 hover:text-blue-700 dark:hover:border-blue-700 dark:hover:text-blue-200',
+    danger: 'hover:border-rose-300 hover:text-rose-600 dark:hover:border-rose-800 dark:hover:text-rose-400',
+    warning: 'hover:border-amber-300 hover:text-amber-700 dark:hover:border-amber-800 dark:hover:text-amber-300',
+  }[tone];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={`admin-cuba-icon-button transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0 disabled:pointer-events-none disabled:opacity-40 ${toneClasses}`}
+    >
+      <Icon className="size-4" aria-hidden="true" />
+    </button>
+  );
+}
+
+export function AdminBadge({
+  children,
+  tone = 'neutral',
+  className = '',
+}: {
+  children: ReactNode;
+  tone?: 'success' | 'info' | 'warning' | 'danger' | 'neutral';
+  className?: string;
+}) {
+  const toneClasses = {
+    success: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+    info: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
+    warning: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+    danger: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800',
+    neutral: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+  }[tone];
+
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-black tracking-wide ${toneClasses} ${className}`}>
+      {children}
+    </span>
+  );
+}

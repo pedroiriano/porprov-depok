@@ -95,14 +95,29 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
       <div className="container mt-12 grid gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
         <div className="space-y-12">
           <section aria-labelledby="facility-title"><p className="text-sm font-black uppercase tracking-wider text-primary-500">Arena Pertandingan</p><h2 id="facility-title" className="mt-2 text-3xl font-black">Fasilitas & kapasitas</h2><p className="mt-5 text-lg leading-relaxed text-slate-600 dark:text-slate-300">{venue.facilities || "Informasi fasilitas belum tersedia."}</p>
-            <dl className="mt-7 grid gap-4 sm:grid-cols-3"><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-600 dark:text-slate-400">Kapasitas</dt><dd className="mt-2 text-2xl font-black">{venue.capacity ? new Intl.NumberFormat("id-ID").format(venue.capacity) : "TBA"}</dd></div><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-600 dark:text-slate-400">Cabang olahraga</dt><dd className="mt-2 text-2xl font-black">{cabors.length}</dd></div><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-600 dark:text-slate-400">Jadwal aktif</dt><dd className="mt-2 text-2xl font-black">{matches.length}</dd></div></dl>
+            <dl className="mt-7 grid gap-4 sm:grid-cols-3"><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-600 dark:text-slate-400">Kapasitas</dt><dd className="mt-2 text-xl font-black sm:text-2xl">{venue.capacity ? new Intl.NumberFormat("id-ID").format(venue.capacity) : "Menunggu konfirmasi"}</dd></div><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-600 dark:text-slate-400">Cabang olahraga</dt><dd className="mt-2 text-2xl font-black">{cabors.length}</dd></div><div className="rounded-2xl bg-primary-500/10 p-5"><dt className="text-sm font-bold text-slate-600 dark:text-slate-400">Jadwal aktif</dt><dd className="mt-2 text-2xl font-black">{matches.length}</dd></div></dl>
           </section>
-          <PortalFeature id="schedule_matches"><section aria-labelledby="venue-schedule-title"><h2 id="venue-schedule-title" className="text-3xl font-black">Jadwal di venue ini</h2>{matches.length ? <div className="mt-6 grid gap-5">{matches.map((match) => <ScheduleMatchCard key={match.id} match={match} />)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-slate-500 dark:border-slate-700">Jadwal di lokasi ini belum tersedia.</p>}</section></PortalFeature>
+          <PortalFeature id="schedule_matches">
+            <section aria-labelledby="venue-schedule-title">
+              <h2 id="venue-schedule-title" className="text-3xl font-black">Jadwal di venue ini</h2>
+              {matches.length ? (
+                <div className="mt-6 grid gap-5">{matches.map((match) => <ScheduleMatchCard key={match.id} match={match} />)}</div>
+              ) : (
+                <div className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                  <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                    <i className="ri-calendar-event-line text-2xl" aria-hidden="true" />
+                  </div>
+                  <h3 className="mt-3 font-bold text-slate-800 dark:text-slate-200">Belum ada pertandingan dijadwalkan</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Jadwal resmi di lokasi ini akan tampil setelah dirilis panitia.</p>
+                </div>
+              )}
+            </section>
+          </PortalFeature>
         </div>
 
         <aside className="space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Navigasi venue</h2><p className="mt-3 text-sm leading-relaxed text-slate-500">Buka rute untuk petunjuk arah ke lokasi.</p>{venue.mapRouteUrl ? <a href={venue.mapRouteUrl} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary-500 px-4 font-black text-white hover:bg-primary-600"><i className="ri-direction-line me-2" aria-hidden="true" />Buka rute</a> : <p className="mt-5 rounded-xl bg-slate-100 p-4 text-sm dark:bg-slate-800">Tautan rute belum tersedia.</p>}{coordinateAvailable && <p className="mt-4 text-xs text-slate-500">Koordinat: {venue.latitude.toFixed(6)}, {venue.longitude.toFixed(6)}</p>}</div>
-          <PortalModule id="cabor"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Cabang olahraga</h2>{cabors.length ? <ul className="mt-4 space-y-2">{cabors.map((cabor) => <li key={cabor.id}><Link href={publicCaborPath(cabor)} className="flex min-h-11 items-center justify-between rounded-xl px-3 font-bold hover:bg-primary-500/10 hover:text-primary-600 dark:hover:text-primary-300">{cabor.name}<i className="ri-arrow-right-s-line" aria-hidden="true" /></Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-500">Cabor belum ditautkan.</p>}</div></PortalModule>
+          <PortalModule id="cabor"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Cabang olahraga</h2>{cabors.length ? <ul className="mt-4 space-y-2">{cabors.map((cabor) => <li key={cabor.id}><Link href={publicCaborPath(cabor)} className="flex min-h-11 items-center justify-between rounded-xl px-3 font-bold hover:bg-primary-500/10 hover:text-primary-600 dark:hover:text-primary-300">{cabor.name}<i className="ri-arrow-right-s-line" aria-hidden="true" /></Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Cabang olahraga untuk arena ini sedang disiapkan.</p>}</div></PortalModule>
         </aside>
       </div>
 

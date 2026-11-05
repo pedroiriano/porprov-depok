@@ -98,11 +98,26 @@ export default async function CaborDetailPage({ params }: { params: Promise<{ id
           <section aria-labelledby="nomor-title"><div className="flex items-end justify-between gap-4"><div><p className="text-sm font-black uppercase tracking-wider text-primary-500">Disiplin</p><h2 id="nomor-title" className="mt-2 text-3xl font-black">Nomor pertandingan</h2></div><span className="text-sm font-bold text-slate-500">{nomor.length} nomor</span></div>
             {nomor.length ? <div className="mt-6 grid gap-4 sm:grid-cols-2">{nomor.map((item) => <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><h3 className="font-black">{item.name}</h3><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{item.genderCategory} · {item.matchType}</p></article>)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-slate-500 dark:border-slate-700">Nomor pertandingan sedang disahkan panitia.</p>}
           </section>
-          <PortalFeature id="schedule_matches"><section aria-labelledby="schedule-title"><h2 id="schedule-title" className="text-3xl font-black">Jadwal {cabor.name}</h2>{matches.length ? <div className="mt-6 grid gap-5">{matches.map((match) => <ScheduleMatchCard key={match.id} match={match} />)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-slate-500 dark:border-slate-700">Jadwal belum tersedia.</p>}</section></PortalFeature>
+          <PortalFeature id="schedule_matches">
+            <section aria-labelledby="schedule-title">
+              <h2 id="schedule-title" className="text-3xl font-black">Jadwal {cabor.name}</h2>
+              {matches.length ? (
+                <div className="mt-6 grid gap-5">{matches.map((match) => <ScheduleMatchCard key={match.id} match={match} />)}</div>
+              ) : (
+                <div className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                  <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                    <i className="ri-calendar-event-line text-2xl" aria-hidden="true" />
+                  </div>
+                  <h3 className="mt-3 font-bold text-slate-800 dark:text-slate-200">Belum ada pertandingan dijadwalkan</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Jadwal resmi untuk cabang olahraga ini akan diumumkan panitia.</p>
+                </div>
+              )}
+            </section>
+          </PortalFeature>
         </div>
         <aside className="space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Informasi resmi</h2><dl className="mt-5 space-y-4 text-sm"><div><dt className="text-slate-500">Status</dt><dd className="mt-1 font-black">{cabor.status}</dd></div><div><dt className="text-slate-500">Total medali</dt><dd className="mt-1 font-black">{cabor.totalMedals || "Menunggu penetapan"}</dd></div><div><dt className="text-slate-500">Delegasi teknis</dt><dd className="mt-1 font-black">{cabor.technicalDelegate || "Menunggu penetapan"}</dd></div></dl></div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Venue terkait</h2>{venues.length ? <ul className="mt-4 space-y-2">{venues.map((venue) => <li key={venue.id}><Link href={publicVenuePath(venue)} className="flex min-h-11 items-center justify-between rounded-xl px-3 font-bold hover:bg-primary-500/10 hover:text-primary-600 dark:hover:text-primary-300">{venue.name}<i className="ri-arrow-right-s-line" aria-hidden="true" /></Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-500">Venue belum ditautkan.</p>}</div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Venue terkait</h2>{venues.length ? <ul className="mt-4 space-y-2">{venues.map((venue) => <li key={venue.id}><Link href={publicVenuePath(venue)} className="flex min-h-11 items-center justify-between rounded-xl px-3 font-bold hover:bg-primary-500/10 hover:text-primary-600 dark:hover:text-primary-300">{venue.name}<i className="ri-arrow-right-s-line" aria-hidden="true" /></Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Lokasi pertandingan sedang diverifikasi panitia.</p>}</div>
         </aside>
       </div>
     </main>

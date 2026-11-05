@@ -21,7 +21,7 @@ import type {
 } from '../../types/master-data';
 import { requestSoftDeleteReason } from '../../lib/soft-delete';
 import { AdminDataTable, type AdminDataTableColumn } from '../cuba/AdminDataTable';
-import { AdminAlert, AdminPageHeader, BulkActionBar } from '../cuba/AdminPrimitives';
+import { AdminAlert, AdminBadge, AdminPageHeader, AdminRowAction, BulkActionBar } from '../cuba/AdminPrimitives';
 import RevisionHistory from '../common/RevisionHistory';
 import { applyRevisionFields } from '../../lib/revision';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -344,7 +344,7 @@ export default function JadwalPertandingan() {
       key: 'status',
       label: 'Status',
       sortKey: 'status',
-      render: (item) => <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${item.status === 'finished' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : item.status === 'ongoing' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200' : item.status === 'delayed' ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>{matchStatusLabels[item.status] || item.status}</span>,
+      render: (item) => <AdminBadge tone={item.status === 'finished' ? 'success' : item.status === 'ongoing' ? 'info' : item.status === 'delayed' ? 'danger' : 'neutral'} className={item.status === 'ongoing' ? 'animate-pulse' : ''}>{matchStatusLabels[item.status] || item.status}</AdminBadge>,
     },
   ];
 
@@ -405,7 +405,26 @@ export default function JadwalPertandingan() {
           emptyTitle={search ? 'Jadwal pertandingan tidak ditemukan' : 'Belum ada jadwal dengan susunan peserta'}
           emptyDescription={search ? 'Ubah kata pencarian untuk memperluas hasil.' : 'Tambahkan jadwal setelah nomor pertandingan, lokasi, dan kontingen tersedia.'}
           minWidthClassName="min-w-[1180px]"
-          rowActions={(item) => <>{canUpdate && <button type="button" onClick={() => editMatch(item)} aria-label={`Ubah jadwal ${getNomorTandingName(item.nomor_tanding_id)}`} title="Ubah jadwal dan peserta" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-blue-200"><Edit className="size-4" aria-hidden="true" /></button>}{canArchive && <button type="button" onClick={() => void handleArchive([item.id])} disabled={archiving} aria-label={`Arsipkan jadwal ${getNomorTandingName(item.nomor_tanding_id)}`} title="Arsipkan jadwal" className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"><Trash className="size-4" aria-hidden="true" /></button>}</>}
+          rowActions={(item) => (
+            <>
+              {canUpdate && (
+                <AdminRowAction
+                  onClick={() => editMatch(item)}
+                  icon={Edit}
+                  label={`Ubah jadwal ${getNomorTandingName(item.nomor_tanding_id)}`}
+                />
+              )}
+              {canArchive && (
+                <AdminRowAction
+                  onClick={() => void handleArchive([item.id])}
+                  icon={Trash}
+                  label={`Arsipkan jadwal ${getNomorTandingName(item.nomor_tanding_id)}`}
+                  tone="danger"
+                  disabled={archiving}
+                />
+              )}
+            </>
+          )}
         />
         
         {!loading && !listError && totalItems > 0 && (

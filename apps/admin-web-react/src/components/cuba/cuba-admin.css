@@ -82,7 +82,9 @@
 
 @media (max-width: 639px) {
   .admin-cuba-popover {
+    max-height: calc(100dvh - 5.5rem);
     max-width: calc(100vw - 1.5rem);
+    overflow-y: auto;
     position: fixed;
     right: 0.75rem;
     top: 4.5rem;

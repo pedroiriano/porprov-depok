@@ -302,11 +302,19 @@ export function CubaAdminShell({
           ))}
         </nav>
 
-        <div className={`border-t border-white/10 p-4 ${desktopCollapsed ? 'lg:hidden' : ''}`}>
-          <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-white/10">
-            <p className="text-xs font-black text-white">PORPROV XV 2026</p>
-            <p className="mt-1 text-xs leading-relaxed text-blue-100">Ruang kerja operator Kota Depok</p>
-          </div>
+        <div className="border-t border-white/10 p-3">
+          {desktopCollapsed ? (
+            <div className="hidden lg:grid place-items-center py-2" title="PORPROV XV 2026 Kota Depok">
+              <span className="grid size-9 place-items-center rounded-xl bg-white/15 text-[11px] font-black tracking-wider text-white ring-1 ring-white/20">
+                XV
+              </span>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-white/10">
+              <p className="text-xs font-black text-white">PORPROV XV 2026</p>
+              <p className="mt-1 text-xs leading-relaxed text-blue-100">Ruang kerja operator Kota Depok</p>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -331,7 +339,10 @@ export function CubaAdminShell({
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="hidden rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200 sm:inline-flex dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-800">Sistem siap</span>
+              <span className="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200 sm:inline-flex dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-800">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+                Sistem siap
+              </span>
               <button
                 type="button"
                 className="admin-cuba-icon-button"
@@ -356,7 +367,32 @@ export function CubaAdminShell({
                 {notificationOpen && (
                   <div id="cuba-notifications" className="admin-cuba-popover w-[min(22rem,calc(100vw-1.5rem))]" role="region" aria-label="Daftar notifikasi">
                     <div className="flex items-center justify-between gap-3"><p className="font-black text-[var(--admin-heading)]">Notifikasi</p><button type="button" onClick={() => void markAllNotificationsRead()} disabled={unreadCount === 0} className="min-h-10 rounded-lg px-2 text-xs font-black text-blue-700 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-200 dark:hover:bg-blue-950/40">Tandai semua dibaca</button></div>
-                    {notificationLoading && notifications.length === 0 ? <p className="mt-3 text-sm text-[var(--admin-muted)]">Memuat notifikasi...</p> : notificationError ? <div className="mt-3"><p className="text-sm font-bold text-red-600 dark:text-red-300">{notificationError}</p><button type="button" onClick={() => void loadNotifications()} className="mt-2 min-h-10 text-xs font-black text-blue-700 dark:text-blue-200">Coba lagi</button></div> : notifications.length === 0 ? <p className="mt-3 text-sm text-[var(--admin-muted)]">Belum ada notifikasi.</p> : <ul className="admin-cuba-scrollbar mt-3 max-h-80 space-y-2 overflow-y-auto">{notifications.map((item) => <li key={item.id} className={`rounded-xl border p-3 ${item.read_at ? 'border-[var(--admin-border)]' : 'border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30'}`}><Link to={item.target_path || '/'} onClick={() => { void markNotificationRead(item); setNotificationOpen(false); }} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"><span className="flex items-start gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-300" aria-hidden="true" /><span className="min-w-0"><strong className="block text-sm text-[var(--admin-heading)]">{item.title}</strong><span className="mt-1 block text-xs leading-5 text-[var(--admin-muted)]">{item.message}</span><time className="mt-1 block text-[11px] font-bold text-blue-700 dark:text-blue-200" dateTime={item.created_at}>{relativeTime(item.created_at)}</time></span></span></Link></li>)}</ul>}
+                    {notificationLoading && notifications.length === 0 ? (
+                      <div className="space-y-2 py-3">
+                        {[1, 2].map((n) => (
+                          <div key={n} className="flex items-start gap-2.5 rounded-xl border border-[var(--admin-border)] p-3 animate-pulse">
+                            <div className="size-4 mt-0.5 rounded bg-slate-200 dark:bg-slate-700" />
+                            <div className="flex-1 space-y-1.5">
+                              <div className="h-3.5 w-3/4 rounded bg-slate-200 dark:bg-slate-700" />
+                              <div className="h-2.5 w-1/2 rounded bg-slate-200 dark:bg-slate-700" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : notificationError ? (
+                      <div className="mt-3">
+                        <p className="text-sm font-bold text-red-600 dark:text-red-300">{notificationError}</p>
+                        <button type="button" onClick={() => void loadNotifications()} className="mt-2 min-h-10 text-xs font-black text-blue-700 dark:text-blue-200">Coba lagi</button>
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-6 text-center text-[var(--admin-muted)]">
+                        <span className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300">
+                          <Bell className="size-5" aria-hidden="true" />
+                        </span>
+                        <p className="mt-2 text-xs font-bold text-[var(--admin-heading)]">Belum ada notifikasi baru</p>
+                        <p className="mt-0.5 text-[11px] text-[var(--admin-muted)]">Pemberitahuan sistem akan muncul di sini.</p>
+                      </div>
+                    ) : <ul className="admin-cuba-scrollbar mt-3 max-h-80 space-y-2 overflow-y-auto">{notifications.map((item) => <li key={item.id} className={`rounded-xl border p-3 ${item.read_at ? 'border-[var(--admin-border)]' : 'border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30'}`}><Link to={item.target_path || '/'} onClick={() => { void markNotificationRead(item); setNotificationOpen(false); }} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"><span className="flex items-start gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-300" aria-hidden="true" /><span className="min-w-0"><strong className="block text-sm text-[var(--admin-heading)]">{item.title}</strong><span className="mt-1 block text-xs leading-5 text-[var(--admin-muted)]">{item.message}</span><time className="mt-1 block text-[11px] font-bold text-blue-700 dark:text-blue-200" dateTime={item.created_at}>{relativeTime(item.created_at)}</time></span></span></Link></li>)}</ul>}
                   </div>
                 )}
               </div>

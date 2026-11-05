@@ -11,7 +11,7 @@ import { publicApiUrl } from "@/lib/public-api";
 import { normalizeEnrichedMatch, type EnrichedMatch, type RawEnrichedMatch } from "@/lib/public-models";
 import { jakartaDate, shiftCalendarMonth, matchStatusLabel } from '../../../../packages/portal-config/schedule-calendar';
 
-type MatchPage = {data:RawEnrichedMatch[];total:number;page:number;per_page:number;total_pages:number;facets:{cabors:{id:string;name:string}[];venues:{id:string;name:string}[];statuses:string[]};calendar:{month:string;day_counts:Record<string,number>}};
+type MatchPage = {data:RawEnrichedMatch[];total:number;page:number;per_page:number;total_pages:number;facets:{cabors:{id:string;name:string}[];venues:{id:string;name:string}[];statuses:string[]};calendar:{month:string;day_counts:Record<string,number>;cabors?:{id:string;name:string;total:number;day_counts:Record<string,number>}[]}};
 
 export function ScheduleMatches() {
   const today=jakartaDate();
@@ -25,7 +25,7 @@ export function ScheduleMatches() {
   const [status,setStatus]=useState('');
   const [page,setPage]=useState(1);
   const [refresh,setRefresh]=useState(0);
-  const perPage=view==='calendar'?24:12;
+  const perPage=view==='calendar'?100:12;
   const requestKey=JSON.stringify([view,month,search,date,cabor,venue,status,page,refresh]);
   const [settled,setSettled]=useState<{key:string;data:MatchPage|null;error:boolean}>({key:'',data:null,error:false});
   const loading=settled.key!==requestKey;
@@ -64,16 +64,44 @@ export function ScheduleMatches() {
     <div className="mt-5 grid gap-4 sm:grid-cols-2">
       <label className="min-w-0 text-sm font-bold">Cari rincian<span className="relative block"><input type="search" maxLength={80} value={search} onChange={event=>{setSearch(event.target.value);setPage(1);}} placeholder="Cabor, peserta, lokasi, atau babak" className={field}/></span></label>
       {view==='calendar'?<div><label htmlFor="match-calendar-month" className="text-sm font-bold">Bulan pertandingan</label><div className="mt-2 flex gap-2"><button type="button" className={button} disabled={month==='2000-01'} aria-label="Bulan pertandingan sebelumnya" onClick={()=>{setMonth(shiftCalendarMonth(month,-1));setPage(1);}}><ChevronLeft className="size-4" aria-hidden="true"/></button><input id="match-calendar-month" type="month" min="2000-01" max="2100-12" value={month} onChange={event=>{if(/^(20\d{2}|2100)-(0[1-9]|1[0-2])$/.test(event.target.value)){setMonth(event.target.value);setPage(1);}}} className={`${field} mt-0`}/><button type="button" className={button} disabled={month==='2100-12'} aria-label="Bulan pertandingan berikutnya" onClick={()=>{setMonth(shiftCalendarMonth(month,1));setPage(1);}}><ChevronRight className="size-4" aria-hidden="true"/></button></div></div>:<label className="text-sm font-bold">Tanggal pertandingan<input type="date" min="2000-01-01" max="2100-12-31" value={date} onChange={event=>showDay(event.target.value)} className={field}/></label>}
-      <details className="sm:col-span-2 rounded-xl border border-slate-200 p-4 dark:border-slate-700"><summary className="min-h-11 cursor-pointer content-center font-bold">Filter Cabor, lokasi, dan status{[cabor,venue,status].filter(Boolean).length?` · ${[cabor,venue,status].filter(Boolean).length} dipilih`:""}</summary><div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <details className="sm:col-span-2 rounded-xl border border-slate-200 p-4 dark:border-slate-700"><summary className="min-h-11 cursor-pointer content-center font-bold">Filter Cabor, lokasi, dan status{[cabor,venue,status].filter(Boolean).length?` · ${[cabor,venue,status].filter(Boolean).length} dipilih`:""}</summary>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <label className="text-sm font-bold">Cabang olahraga<select value={cabor} onChange={event=>{setCabor(event.target.value);setPage(1);}} className={field}><option value="">Semua Cabor</option>{options?.cabors.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label className="text-sm font-bold">Lokasi<select value={venue} onChange={event=>{setVenue(event.target.value);setPage(1);}} className={field}><option value="">Semua lokasi</option>{options?.venues.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label className="text-sm font-bold">Status<select value={status} onChange={event=>{setStatus(event.target.value);setPage(1);}} className={field}><option value="">Semua status</option>{options?.statuses.map(item=><option key={item} value={item}>{matchStatusLabel(item)}</option>)}</select></label>
-      <button type="button" onClick={reset} className={`${button} self-end text-blue-800 dark:text-sky-200`}>Atur ulang filter</button>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <span className="text-xs text-slate-500 dark:text-slate-400">
+          {[cabor,venue,status].filter(Boolean).length ? `${[cabor,venue,status].filter(Boolean).length} filter diterapkan` : "Menampilkan seluruh jadwal tanpa filter tambahan"}
+        </span>
+        <button type="button" onClick={reset} className={`${button} text-sm text-blue-800 dark:text-sky-200`}>Atur ulang filter</button>
       </div></details>
     </div>
     {view==='cards'&&<ScheduleDayStrip month={month} date={date} today={today} label="rincian pertandingan" onMonth={value=>{setMonth(value);setDate('');setPage(1);}} onDate={showDay}/>}
-    <div aria-live="polite">{loading?<p role="status" className="mt-6 text-slate-600 dark:text-slate-300">Memuat rincian pertandingan...</p>:settled.error?<div role="alert" className="mt-6 rounded-xl bg-amber-50 p-5 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">Rincian pertandingan belum dapat dimuat. <button type="button" className="min-h-11 underline" onClick={()=>setRefresh(value=>value+1)}>Coba lagi</button></div>:view==='calendar'&&data?<><ScheduleMatchCalendar key={requestKey} totalRecords={data.total} month={month} items={matches} dayCounts={data.calendar.day_counts} today={today} onShowDay={day=>{showDay(day);setView('cards');}}/>{!data.total&&<p className="mt-5 rounded-xl border border-dashed border-slate-300 p-5 text-slate-600 dark:border-slate-700 dark:text-slate-300">Belum ada pertandingan yang sesuai pada bulan ini. Pilih bulan lain atau ubah filter.</p>}</>:!matches.length?<p className="mt-6 rounded-xl border border-dashed border-slate-300 p-6 text-slate-600 dark:border-slate-700 dark:text-slate-300">Pertandingan tidak ditemukan. Ubah pencarian atau tanggal.</p>:<div className="mt-8 space-y-8">{groups.map(([id,group])=><section key={id} aria-label={group.name}><div className={presentation.groupHead}><h3 className="text-xl font-black">{group.name}</h3><span className="text-sm text-slate-600 dark:text-slate-300">{group.items.length} pertandingan ditampilkan</span></div><div className={presentation.cards}>{group.items.map(match=><ScheduleMatchCard key={match.id} match={match} compact onOpen={()=>setSelected(match)}/>)}</div></section>)}</div>}</div>
-    {!!data?.total&&<div className="mt-6 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-600 dark:text-slate-300">Menampilkan {(data.page-1)*perPage+1}–{Math.min(data.page*perPage,data.total)} dari {data.total} pertandingan · Halaman {data.page} dari {data.total_pages}</p><div className="flex gap-2"><button type="button" className={button} disabled={loading||data.page===1} onClick={()=>setPage(data.page-1)}>Sebelumnya</button><button type="button" className={button} disabled={loading||data.page>=data.total_pages} onClick={()=>setPage(data.page+1)}>Berikutnya</button></div></div>}
+    <div aria-live="polite">{loading?(
+      <div className="mt-6 space-y-4" aria-label="Memuat rincian pertandingan">
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-40 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+          <div className="h-4 w-24 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="flex items-center justify-between gap-3">
+                <div className="h-4 w-24 rounded bg-slate-200 dark:bg-slate-800" />
+                <div className="h-6 w-16 rounded-full bg-slate-200 dark:bg-slate-800" />
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="h-5 w-3/4 rounded bg-slate-200 dark:bg-slate-800" />
+                <div className="h-4 w-1/2 rounded bg-slate-200 dark:bg-slate-800" />
+              </div>
+              <div className="mt-5 h-8 w-full rounded-xl bg-slate-200/60 dark:bg-slate-800/60" />
+            </div>
+          ))}
+        </div>
+      </div>
+    ):settled.error?<div role="alert" className="mt-6 rounded-xl bg-amber-50 p-5 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">Rincian pertandingan belum dapat dimuat. <button type="button" className="min-h-11 underline" onClick={()=>setRefresh(value=>value+1)}>Coba lagi</button></div>:view==='calendar'&&data?<><ScheduleMatchCalendar key={requestKey} totalRecords={data.total} month={month} items={matches} dayCounts={data.calendar.day_counts} caborSummaries={data.calendar.cabors} today={today} onShowDay={day=>{showDay(day);setView('cards');}}/>{!data.total&&<p className="mt-5 rounded-xl border border-dashed border-slate-300 p-5 text-slate-600 dark:border-slate-700 dark:text-slate-300">Belum ada pertandingan yang sesuai pada bulan ini. Pilih bulan lain atau ubah filter.</p>}</>:!matches.length?<p className="mt-6 rounded-xl border border-dashed border-slate-300 p-6 text-slate-600 dark:border-slate-700 dark:text-slate-300">Pertandingan tidak ditemukan. Ubah pencarian atau tanggal.</p>:<div className="mt-8 space-y-8">{groups.map(([id,group])=><section key={id} aria-label={group.name}><div className={presentation.groupHead}><h3 className="text-xl font-black">{group.name}</h3><span className="text-sm text-slate-600 dark:text-slate-300">{group.items.length} pertandingan ditampilkan</span></div><div className={presentation.cards}>{group.items.map(match=><ScheduleMatchCard key={match.id} match={match} compact onOpen={()=>setSelected(match)}/>)}</div></section>)}</div>}</div>
+    {!!data?.total&&view==='cards'&&<div className="mt-6 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-600 dark:text-slate-300">Menampilkan {(data.page-1)*perPage+1}–{Math.min(data.page*perPage,data.total)} dari {data.total} pertandingan · Halaman {data.page} dari {data.total_pages}</p><div className="flex gap-2"><button type="button" className={button} disabled={loading||data.page===1} onClick={()=>setPage(data.page-1)}>Sebelumnya</button><button type="button" className={button} disabled={loading||data.page>=data.total_pages} onClick={()=>setPage(data.page+1)}>Berikutnya</button></div></div>}
     <ScheduleMatchDetails item={selected} onClose={()=>setSelected(null)}/>
   </section>;
 }

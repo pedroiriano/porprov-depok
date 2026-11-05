@@ -120,21 +120,21 @@ export function RowsPerPageSelector({ value, rowsPerPage, onChange }: RowsPerPag
   const selectedValue = value !== undefined ? value : (rowsPerPage !== undefined ? rowsPerPage : 10);
   return (
     <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-      <span className="whitespace-nowrap">Tampilkan</span>
+      <span className="whitespace-nowrap font-medium">Tampilkan</span>
       <div className="relative">
         <select
           aria-label="Jumlah baris per halaman"
           value={selectedValue}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="min-h-11 appearance-none rounded-xl border border-slate-300 bg-white py-1 pl-3 pr-8 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          className="min-h-11 appearance-none rounded-xl border border-slate-300 bg-white py-1.5 pl-3 pr-8 text-sm font-bold text-slate-900 shadow-xs transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
         >
           {ROWS_PER_PAGE_OPTIONS.map((opt) => (
-            <option key={opt} value={opt} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{opt}</option>
+            <option key={opt} value={opt} className="bg-white font-semibold text-slate-900 dark:bg-slate-800 dark:text-white">{opt}</option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
       </div>
-      <span className="whitespace-nowrap">baris</span>
+      <span className="whitespace-nowrap font-medium">baris</span>
     </div>
   );
 }

@@ -48,14 +48,27 @@ export function CaborDirectory({ cabors }: { cabors: CaborModel[] }) {
       <p className="mt-7 text-sm font-bold text-slate-500" aria-live="polite">Menampilkan {filtered.length} dari {cabors.length} cabang olahraga.</p>
       {filtered.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-slate-300 px-6 py-14 text-center dark:border-slate-700">
-          <i className="ri-search-eye-line text-4xl text-slate-400" aria-hidden="true" />
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+            <i className="ri-search-eye-line text-3xl" aria-hidden="true" />
+          </div>
           <h3 className="mt-4 text-xl font-black">Cabang olahraga tidak ditemukan</h3>
-          <p className="mt-2 text-slate-500">Ubah kata pencarian atau pilih kategori lain.</p>
+          <p className="mx-auto mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+            {query ? <>Tidak ada cabang olahraga yang sesuai dengan kata kunci &quot;{query}&quot;.</> : "Belum ada cabang olahraga pada kategori ini."}
+          </p>
+          {(query || category !== "semua") && (
+            <button
+              type="button"
+              onClick={() => { setQuery(""); setCategory("semua"); }}
+              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary-600 px-5 text-sm font-bold text-white shadow-sm hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+            >
+              Atur ulang pencarian
+            </button>
+          )}
         </div>
       ) : (
         <PublicCardGrid maxColumns={4} className="mt-6 gap-[30px]">
           {filtered.map((cabor) => (
-            <Link key={cabor.id} href={publicCaborPath(cabor)} className="group relative flex min-h-80 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition duration-500 hover:-translate-y-1 hover:border-primary-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+            <Link key={cabor.id} href={publicCaborPath(cabor)} className="group relative flex min-h-80 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-500 hover:-translate-y-1 hover:border-primary-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
               <div className="relative flex h-40 items-center justify-center overflow-hidden bg-gradient-to-br from-primary-900 via-primary-700 to-sky-500 p-7">
                 <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_center,white_1px,transparent_1px)] [background-size:16px_16px]" aria-hidden="true" />
                 <span className="relative flex size-24 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-white/95 text-4xl text-primary-700 shadow-lg">
@@ -67,7 +80,7 @@ export function CaborDirectory({ cabors }: { cabors: CaborModel[] }) {
               </div>
               <div className="flex flex-1 flex-col p-6">
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-primary-600 dark:text-primary-300">{cabor.category}</p>
-                <h3 className="mt-2 text-xl font-black transition group-hover:text-primary-600 dark:group-hover:text-primary-300">{cabor.name}</h3>
+                <h3 className="mt-2 line-clamp-2 text-xl font-black transition group-hover:text-primary-600 dark:group-hover:text-primary-300">{cabor.name}</h3>
                 <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-500 dark:text-slate-400">{cabor.description}</p>
                 <span className="mt-auto inline-flex min-h-11 items-center pt-5 text-sm font-black text-primary-600 dark:text-primary-300">Lihat detail <i className="ri-arrow-right-line ms-2 transition group-hover:translate-x-1" aria-hidden="true" /></span>
               </div>
